@@ -841,6 +841,28 @@ describe('directive incremental behavior', () => {
 		]);
 	});
 
+	describe('a line that ends a quoted paragraph matches batch however it is fed', () => {
+		fed_cases([
+			['emphasis before a nested quote', '> *a\n> > b*\n'],
+			['emphasis before a fence', '> *a\n> ```\n> b*\n'],
+			['emphasis before a directive close', '> :::box\n> _a\n> :::\n> b_\n'],
+			['strikethrough before a quoted list item', '> - ~~a\n> - b~~\n'],
+			['a link before a nested quote', '> [a\n> > b](u)\n'],
+			['a link before a directive close', '> :::box\n> [a\n> :::\n> b](u)\n'],
+			['an element before a nested quote', '> x <b>a\n> > b</b>\n'],
+			['an element over a marked line', '> x <b>a\n> b</b> c\n'],
+			['an element over two marked lines', '> x <b>a\n> b\n> c</b>\n> d\n'],
+			['an element over a line in a nested quote', '> > x <b>a\n> > b</b>\n'],
+			['an element before an unmarked line', '> x <b>a\nb</b>\n'],
+			[
+				'an element with a hard break in a quoted list',
+				'> - ::toc[]<span>`a``\\\n> </div></b>|</span>\n',
+			],
+			['a backslash in emphasis before a nested quote', '> *a\\\n> > b*\n'],
+			['a link closed at the start of a marked line', '> [a\n> ](u)\n'],
+		]);
+	});
+
 	describe('a leaf in a list item matches batch however it is fed', () => {
 		fed_cases([
 			['line at the marker', '- ::toc[]\ntext\n'],

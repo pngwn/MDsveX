@@ -64,6 +64,28 @@ delete it.
   - Measured and rejected: a dry run with the real tag parsers (-19.5%) and a
     hand-written walk (-8.7%).
 
+### open inline nodes at a quoted line end
+
+- **Source:** #970, `bq_soft_break` in `packages/parse/src/main.ts`, which link
+  text, the delimiter states and the inline element state call at a linefeed
+  in a block quote.
+- **Measured:** a synthetic document, nothing in the corpus has the shape:
+  300 quoted paragraphs whose link and image text runs over a line, `parse`
+  -3.2% to -5.0% over six runs in both arm orders. The same with emphasis
+  reads -0.2% to -2.4%. Against the branch point, one workload per process with
+  `compare_one`, where a document of plain quoted lines read -0.7% to +1.3%.
+  `quick` reads -0.04% with no row past the default 3.0% floor.
+- **Cause:** not isolated with a stub. A linefeed inside link text or a
+  delimiter in a quote now asks the paragraph's whole question
+  (`bq_line_ends_para`), two more tests than before. Link text also pushed
+  `inline` twice at a continuation line, so the rest of the line after the
+  link stayed in the second one. It now goes back through the paragraph
+  state. The emphasis rows only gained the tests and move less, so the
+  return to the paragraph state is probably the larger part for links.
+- **Ideas:** guesses, none built. When the first character after the markers
+  is a letter no line can end the paragraph, so `bq_line_ends_para` could
+  return before its tests. The paragraph state would gain from that too.
+
 ### tag paragraph open elements
 
 - **Source:** #964, the scan of a paragraph that starts at a tag

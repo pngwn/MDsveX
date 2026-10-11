@@ -6,6 +6,8 @@ import { describe, expect, test } from 'vitest';
 
 import { parse_markdown_svelte } from '../src/main';
 import type { NodeBuffer } from '../src/utils';
+import { print_ast } from './print';
+import { checked_tree, lines, pick, random } from './stream_shape';
 
 const this_dir = dirname(fileURLToPath(import.meta.url));
 const fixtures_root = resolve(this_dir, 'fixtures/pfm/block_quotes');
@@ -529,5 +531,224 @@ describe('Block quotes', () => {
 
 		const bq2_children = non_breaks(nodes, bqs[1].index);
 		expect(bq2_children[0].kind).toBe('paragraph');
+	});
+});
+
+describe('a line that ends a paragraph in a block quote, with something open', () => {
+	const openers: [string, string][] = [
+		['emphasis', '_'],
+		['strong emphasis', '*'],
+		['strikethrough', '~~'],
+		['subscript', '~'],
+		['superscript', '^'],
+		['link text', '['],
+		['image text', '!['],
+		['inline directive text', ':d['],
+		['an inline element', 'x <b>'],
+	];
+	const enders: [string, string][] = [
+		['a marked blank line', '> %sa\n>\n> b\n'],
+		['an unmarked line', '> %sa\nb\n'],
+		['a nested quote', '> %sa\n> > b\n'],
+		['a heading', '> %sa\n> # b\n'],
+		['a thematic break', '> %sa\n> ---\n'],
+		['a code fence', '> %sa\n> ```\n> b\n> ```\n'],
+		['the close of a container directive', '> :::box\n> %sa\n> :::\n> b\n'],
+		['the next item of a quoted list', '> - %sa\n> - b\n'],
+		['a nested list in a quoted list', '> - %sa\n>   - b\n'],
+	];
+	const inline = /^ *(text|soft_break|hard_break)\b/;
+	/** the tree without its text, the open marker is text in one and absent in the other */
+	const blocks = (tree: string) =>
+		tree
+			.split('\n')
+			.filter((row) => !inline.test(row))
+			.join('\n');
+
+	for (const [what, opener] of openers) {
+		for (const [name, source] of enders) {
+			test(`${what} before ${name}`, () => {
+				const tree = checked_tree(source.replace('%s', opener));
+				const plain = opener.startsWith('x') ? 'x ' : '';
+				expect(blocks(tree)).toBe(
+					blocks(checked_tree(source.replace('%s', plain)))
+				);
+			});
+		}
+	}
+
+	const quote = (...rest: string[]) => lines('root', '  block_quote', ...rest);
+
+	test('emphasis does not reach into a nested quote', () => {
+		expect(checked_tree('> *a\n> > b*\n')).toBe(
+			quote(
+				'    paragraph',
+				'      text "*a"',
+				'    block_quote',
+				'      paragraph',
+				'        text "b"',
+				'        text "*"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('a fence line is not text of the emphasis', () => {
+		expect(checked_tree('> *a\n> ```\n> b*\n')).toBe(
+			quote('    paragraph', '      text "*a"', '    code_fence "> b*\\n"')
+		);
+	});
+
+	test('a link does not reach into a nested quote', () => {
+		expect(checked_tree('> [a\n> > b](u)\n')).toBe(
+			quote(
+				'    paragraph',
+				'      text "[a"',
+				'    block_quote',
+				'      paragraph',
+				'        text "b"',
+				'        text "](u)"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('a backslash before the nested quote is text outside the emphasis', () => {
+		expect(checked_tree('> *a\\\n> > b*\n')).toBe(
+			checked_tree('> *a\n> > b*\n').replace('"*a"', '"*a\\\\"')
+		);
+	});
+
+	test('a continuation line stays in what is open', () => {
+		for (const [open, close] of [
+			['_', '_'],
+			['*', '*'],
+			['~~', '~~'],
+			['~', '~'],
+			['^', '^'],
+			['[', '](u)'],
+			['![', '](u)'],
+			[':d[', ']'],
+			['<b>', '</b>'],
+		]) {
+			const tree = checked_tree(`> x ${open}a\n> b${close}\n`).split('\n');
+			expect(tree.slice(0, 4), open).toEqual([
+				'root',
+				'  block_quote',
+				'    paragraph',
+				'      text "x "',
+			]);
+			expect(tree.slice(5), open).toEqual([
+				'        text "a"',
+				'        soft_break',
+				'        text "b"',
+				'  line_break',
+			]);
+		}
+	});
+
+	test('a bracket at the start of a marked line closes the link text', () => {
+		expect(checked_tree('> [a\n> ](u)\n')).toBe(
+			quote(
+				'    paragraph',
+				'      link href="u"',
+				'        text "a"',
+				'        soft_break',
+				'  line_break'
+			)
+		);
+		expect(checked_tree('> ![a\n> ](u)\n')).toContain('image src="u"');
+		expect(checked_tree('> :d[a\n> ]\n')).toBe(
+			quote(
+				'    paragraph',
+				'      directive_inline name="d"',
+				'        text "a"',
+				'        soft_break',
+				'  line_break'
+			)
+		);
+	});
+
+	test('an inline element spans a marked line as it does outside a quote', () => {
+		expect(checked_tree('> x <b>a\n> b</b> c\n')).toBe(
+			quote(
+				'    paragraph',
+				'      text "x "',
+				'      html tag="b"',
+				'        text "a"',
+				'        soft_break',
+				'        text "b"',
+				'      text " c"',
+				'  line_break'
+			)
+		);
+	});
+
+	// no backtick, a code span keeps the markers of the lines it spans in its value
+	const PIECES = [
+		' ',
+		' ',
+		'a',
+		'*',
+		'**',
+		'_',
+		'~~',
+		'~',
+		'^',
+		'[',
+		'](u)',
+		'![',
+		':d[',
+		']',
+		'{x}',
+		'\\',
+		'<b>',
+		'</b>',
+		'<span>',
+		'</span>',
+		'<a href="u">',
+		'</a>',
+		'<Chart />',
+		'<br>',
+	];
+
+	test('random lines of one paragraph build the tree they build outside a quote', () => {
+		const rand = random(7);
+		const differ: string[] = [];
+		for (let i = 0; i < 2000; i++) {
+			const rows: string[] = [];
+			const count = 2 + Math.floor(rand() * 2);
+			for (let l = 0; l < count; l++) {
+				let row = pick(rand, ['a', 'b c', 'x ']);
+				const pieces = Math.floor(rand() * 5);
+				for (let k = 0; k < pieces; k++) row += pick(rand, PIECES);
+				rows.push(row + pick(rand, ['\n', '\n', ' \n', '\\\n']));
+			}
+			const plain = rows.join('');
+			const quoted = rows.map((row) => '> ' + row).join('');
+			const outside = print_ast(parse_markdown_svelte(plain).nodes, plain)
+				.split('\n')
+				.slice(1)
+				.map((row) => '  ' + row);
+			const inside = print_ast(parse_markdown_svelte(quoted).nodes, quoted)
+				.split('\n')
+				.slice(2);
+			// the linefeed after the block is a child of the root in both
+			outside[outside.length - 1] = inside[inside.length - 1];
+			if (inside.join('\n') !== outside.join('\n'))
+				differ.push(JSON.stringify(quoted));
+		}
+		expect(differ).toEqual([]);
+	});
+
+	test('an inline element ends at the same line after a hard break and a linefeed', () => {
+		const hard = '> - ::toc[]<span>`a``\\\n> </div></b>|</span>\n';
+		const soft = hard.replace('\\\n', '\n');
+		expect(checked_tree(hard)).toBe(
+			checked_tree(soft).replace('soft_break', 'hard_break')
+		);
+		expect(checked_tree('> x <b>a\\\n> > b</b>\n')).toBe(
+			checked_tree('> x <b>a\n> > b</b>\n').replace('"a"', '"a\\\\"')
+		);
 	});
 });
