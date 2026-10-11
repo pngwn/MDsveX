@@ -25,7 +25,7 @@ describe('a delimiter with no text before the end of its table cell', () => {
 		vi.restoreAllMocks();
 	});
 
-	test.each(['*', '**', '_', '~', '~~', '^'])(
+	test.each(['*', '**', '_', '~', '^'])(
 		'a lone %s before a pipe is text',
 		(delimiter) => {
 			expect(checked_tree(`|a|\n|-|\n|${delimiter}|\n`)).toBe(
@@ -52,6 +52,12 @@ describe('a delimiter with no text before the end of its table cell', () => {
 			);
 		}
 	);
+
+	test('a doubled ~ before a pipe is read as before the line end', () => {
+		expect(checked_tree('|a|\n|-|\n|~~|\n')).toBe(
+			body_cell('text "~"', 'text "~"')
+		);
+	});
 
 	test('in a later cell of the row', () => {
 		expect(checked_tree('| a | b |\n|-|-|\n| x |*|\n')).toBe(

@@ -2,6 +2,16 @@ import { describe, test, expect } from 'vitest';
 import { parse_markdown_svelte } from '../src/main';
 import type { NodeBuffer } from '../src/utils';
 import { get_all_child_kinds, inline_shape } from './utils';
+import { NodeKind } from '../src/utils';
+import { shape } from './plugin_harness';
+import {
+	both,
+	every_path,
+	fed_mismatch,
+	lines,
+	pick,
+	random,
+} from './stream_shape';
 
 function non_breaks(nodes: NodeBuffer, parent: number = 0) {
 	return nodes
@@ -97,7 +107,7 @@ describe('Subscript (~)', () => {
 
 		const para = children[0];
 		const sub_count = get_all_child_kinds(nodes, para.index).filter(
-			(k) => k === 'subscript',
+			(k) => k === 'subscript'
 		).length;
 		expect(sub_count).toBe(2);
 	});
@@ -154,3 +164,105 @@ describe('subscript beside non-ascii characters', () => {
 		expect(inline_shape(input, 1)).toBe(shape);
 	});
 });
+
+describe('a subscript before a doubled tilde', () => {
+	const sub = ['subscript', '  mustache "x"', '  text "~"'];
+
+	test('at the end of a line and of the input', () => {
+		for (const end of ['\n', '', ' \n']) {
+			const tree = every_path(`~{x}~~${end}`);
+			expect(tree, JSON.stringify(end)).toContain(
+				lines('  paragraph', ...sub.map((row) => `    ${row}`))
+			);
+		}
+	});
+
+	test('in a heading and a list item', () => {
+		for (const end of ['\n', '']) {
+			expect(every_path(`# ~{x}~~${end}`), JSON.stringify(end)).toContain(
+				lines('  heading depth=1 "~{x}~~"', ...sub.map((row) => `    ${row}`))
+			);
+			expect(every_path(`- ~{x}~~${end}`), JSON.stringify(end)).toContain(
+				lines('    list_item', ...sub.map((row) => `      ${row}`))
+			);
+		}
+	});
+
+	test('in a header cell and a body cell, padded or not', () => {
+		both('~{x}~~', sub);
+		both('~{x}~~ ', sub);
+		both(' ~{x}~~', sub);
+		both('~{x}~~|~{x}~~ ', sub, sub);
+	});
+
+	test('around a link and an element', () => {
+		const link = ['subscript', '  link href="u"', '    text "c"', '  text "~"'];
+		const element = [
+			'subscript',
+			'  html tag="b"',
+			'    text "y"',
+			'  text "~"',
+		];
+		both('~[c](u)~~', link);
+		both('~[c](u)~~ ', link);
+		both('~<b>y</b>~~', element);
+		both('~<b>y</b>~~ ', element);
+		expect(every_path('~[c](u)~~')).toBe(
+			lines('root', '  paragraph', ...link.map((row) => `    ${row}`))
+		);
+	});
+
+	test('text after the tildes still opens a strikethrough', () => {
+		both('~{x}~~b', ['text "~"', 'mustache "x"', 'text "~~b"']);
+		both('{x}~~b~~', ['mustache "x"', 'strikethrough', '  text "b"']);
+	});
+
+	test('a doubled tilde with nothing after it is two tildes', () => {
+		for (const end of ['\n', '']) {
+			expect(every_path(`a ~~${end}`), JSON.stringify(end)).toContain(
+				lines('  paragraph', '    text "a "', '    text "~"', '    text "~"')
+			);
+		}
+		both('a ~~', ['text "a "', 'text "~"', 'text "~"']);
+		both('a ~~ ', ['text "a "', 'text "~"', 'text "~"']);
+	});
+
+	test('random cells give what the paragraph gives', () => {
+		const rand = random(976);
+		const pieces = ['~', '~', '~~', '{x}', '[c](u)', '<b>y</b>', 'a', ' b'];
+		for (let i = 0; i < 400; i++) {
+			// a tag at the start of a line is a block
+			let cell = 'x ';
+			const length = 1 + Math.floor(rand() * 6);
+			for (let k = 0; k < length; k++) cell += pick(rand, pieces);
+			cell = cell.trim();
+			const want = inline_of(`${cell}\n`, 'paragraph');
+			for (const [where, source] of [
+				['header', `|${cell}|\n|-|\n`],
+				['padded header', `| ${cell} |\n|-|\n`],
+				['body', `|h|\n|-|\n|${cell}|\n`],
+				['padded body', `|h|\n|-|\n| ${cell} |\n`],
+				['body at the end', `|h|\n|-|\n|${cell}`],
+				['paragraph at the end', cell],
+			]) {
+				const kind = where.includes('paragraph') ? 'paragraph' : 'table_cell';
+				expect(
+					inline_of(source, kind),
+					`${JSON.stringify(cell)} ${where}`
+				).toBe(want);
+				expect(fed_mismatch(source), JSON.stringify(source)).toBe('');
+			}
+		}
+	}, 30_000);
+});
+
+/** the children of the last node of a kind, neighbouring text joined */
+function inline_of(source: string, kind: string): string {
+	const { nodes } = parse_markdown_svelte(source);
+	const found = nodes.get_kinds(NodeKind[kind as 'paragraph']);
+	if (found.length === 0) return `no ${kind}`;
+	const tree = shape(nodes, source, found[found.length - 1], {
+		merge_text: true,
+	});
+	return JSON.stringify(Array.isArray(tree) ? tree.slice(1) : []);
+}

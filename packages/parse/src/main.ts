@@ -3026,6 +3026,18 @@ export class PFMParser {
 		);
 	}
 
+	/** the class of the char after two tildes at the cursor, the end of the input and the pipe that ends a cell count as a line end */
+	private after_tildes_class(): number {
+		const code = char_code_at.call(
+			this.source,
+			this.cursor + 2 - this.source_base
+		);
+		if (code !== code || (code === PIPE && this.in_table)) {
+			return CharMask.whitespace;
+		}
+		return classify(code);
+	}
+
 	private next_class(): number {
 		const c = this.cursor;
 		if (c === this.class_floor && this.inline_range_parse) {
@@ -7423,7 +7435,7 @@ export class PFMParser {
 								char_code_at.call(source, this.cursor + 1 - base) === TILDE &&
 								this.prev_class() &
 									(CharMask.whitespace | CharMask.punctuation) &&
-								classify(char_code_at.call(source, this.cursor + 2 - base)) &
+								this.after_tildes_class() &
 									(CharMask.word | CharMask.punctuation)
 							) {
 								const n_id = this.emit_open_pending(
@@ -9389,13 +9401,8 @@ export class PFMParser {
 
 			// no empty strikethrough, the tildes at the cursor follow the opener
 			if (this.cursor === this.pending_starts[this.id_slots[n_id]] + 2) {
-				// anything but whitespace or the nan wildcard after them opens the inner node
-				if (
-					!(
-						classify(char_code_at.call(source, this.cursor + 2 - base)) &
-						CharMask.whitespace
-					)
-				) {
+				// anything but a line end or whitespace after them opens the inner node
+				if (!(this.after_tildes_class() & CharMask.whitespace)) {
 					this.states.push(StateKind.inline);
 					const inner = this.emit_open_pending(
 						NodeKind.strikethrough,
