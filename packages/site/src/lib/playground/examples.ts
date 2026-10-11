@@ -18,6 +18,7 @@ const ORDER: [slug: string, title: string][] = [
 	['templates', 'Templates'],
 	['directives', 'Directives'],
 	['code', 'Code blocks'],
+	['math', 'Math'],
 	['all-mode', 'All mode'],
 ];
 

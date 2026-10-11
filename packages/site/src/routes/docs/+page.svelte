@@ -35,6 +35,7 @@ const nav = [
 			["component_mode", "docs#component_mode", true],
 			["parse_plugins", "docs#parse_plugins", true],
 			["highlight", "docs#highlight", true],
+			["math", "docs#math", true],
 		],
 	],
 	[
@@ -93,6 +94,19 @@ const nav = [
 			["custom highlighters", "docs#custom-highlighters", false],
 			["twoslash", "docs#twoslash", false],
 			["with compile", "docs#highlighting-with-compile", false],
+		],
+	],
+	[
+		"Math",
+		"docs#math-1",
+		[
+			["styles", "docs#math-styles", false],
+			["KaTeX", "docs#katex", false],
+			["options", "docs#math-options", false],
+			["errors", "docs#math-errors", false],
+			["math components", "docs#math-components", false],
+			["custom renderers", "docs#custom-math-renderers", false],
+			["with compile", "docs#math-with-compile", false],
 		],
 	],
 	[
