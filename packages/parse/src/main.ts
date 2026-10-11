@@ -209,6 +209,8 @@ const ID_POOL_CAP = 1 << 16;
 const EMPTY_IDS = new Int32Array(0);
 /** placeholder for rarely used stacks until their first push, never written */
 const NO_STACK: any[] = [];
+/** in a table cell code span, where every pipe is an escaped one */
+const ESCAPED_PIPE = /\\\|/g;
 
 // shared by every parser, a parser drops its references when it hands them back so no two hold the same table
 let spare_ids: Int32Array | null = null;
@@ -947,6 +949,7 @@ export class PFMParser {
 	private info_end_pos: number = 0;
 	private checkpoint_cursor: number = 0;
 	private code_span_open_pos: number = 0;
+	private span_vs: number = 0;
 	private prev_cursor: number = 0;
 	// the lowest state stack depth sampled since the cursor last moved
 	private prev_depth: number = 0;
@@ -1101,7 +1104,16 @@ export class PFMParser {
 		this.source_end += len;
 		if (wait === FeedWait.table_cell) this.table_cell_resume();
 		this._run();
-		if (this.spec_para !== -1) this.spec_scan_to(this.cursor, false);
+		if (this.spec_para !== -1) {
+			// a code span that fails goes back to its backticks, the lines it took may belong to a later block
+			const top = this.states[this.states.length - 1];
+			this.spec_scan_to(
+				top >= StateKind.code_span_start && top <= StateKind.code_span_end
+					? this.code_span_open_pos
+					: this.cursor,
+				false
+			);
+		}
 		// the root trims between blocks itself, this trims inside paragraphs and containers
 		if (this.cursor - this.trim_point > TRIM_GAP) this.trim_at_stall();
 		// a fence stall leaves the cursor at its content start while its scan line moves on
@@ -2128,6 +2140,72 @@ export class PFMParser {
 		return true;
 	}
 
+	/** the value start of a code span the states read, kept for cell_span_text */
+	private span_start(id: number, pos: number): void {
+		this.span_vs = pos;
+		this.out.set_value_start(id, pos);
+	}
+
+	private span_close(id: number, value_end: number, end: number): void {
+		if (this.in_table) this.cell_span_text(id, value_end);
+		this.out.set_value_end(id, value_end);
+		this.emit_close(id, end);
+	}
+
+	/** the backslash of an escaped pipe is not code, so the text goes out as a string before the close */
+	private cell_span_text(id: number, value_end: number): void {
+		const base = this.source_base;
+		const from = this.span_vs - base;
+		const to = value_end - base;
+		const at = string_index_of.call(this.source, '\\|', from);
+		if (at === -1 || at >= to - 1) return;
+		this.out.attr(
+			id,
+			'text',
+			string_slice.call(this.source, from, to).replace(ESCAPED_PIPE, '|')
+		);
+	}
+
+	/**
+	 * the pipe at pos follows a backslash that is not itself escaped, as the header row scan of try_start_table reads it
+	 * the count stops at the opening backticks, a table row keeps its whole line in the window
+	 */
+	private pipe_escaped(pos: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const floor = this.code_span_open_pos + this.extra;
+		let p = pos;
+		while (p > floor && char_code_at.call(source, p - 1 - base) === BACKSLASH)
+			p--;
+		return ((pos - p) & 1) === 1;
+	}
+
+	/**
+	 * a pipe or linefeed in a code span in a table cell, an escaped pipe stays in the span
+	 * anything else ends the cell, so the span fails as at a blank line and inline reads its content again
+	 */
+	private code_span_in_cell(code: number): void {
+		if (code === PIPE && this.pipe_escaped(this.cursor)) {
+			this.cursor++;
+			return;
+		}
+		// handle_repair turns the revoked code_span into text for the backticks
+		const open = this.code_span_open_pos;
+		const delim_end = open + this.extra;
+		this.chomp(delim_end, true);
+		this.out.revoke(
+			this.node_stack[this.node_stack.length - 1],
+			string_slice.call(
+				this.source,
+				open - this.source_base,
+				delim_end - this.source_base
+			),
+			this.one_shot ? open : undefined
+		);
+		this.node_stack.pop();
+		this.states.pop();
+	}
+
 	/** reparse a #! with no hint as an ordinary code span from the # */
 	private code_span_hint_revert(current_node: number): void {
 		this.chomp(this.info_start_pos - 2, true);
@@ -2139,7 +2217,7 @@ export class PFMParser {
 			current_node
 		);
 		this.node_stack.push(cs_id);
-		this.out.set_value_start(cs_id, this.cursor);
+		this.span_start(cs_id, this.cursor);
 	}
 
 	private open_text_run(p0: number, parent: number): void {
@@ -4611,22 +4689,17 @@ export class PFMParser {
 	}
 
 	/**
-	 * only whitespace follows pos on its line and the next line is blank, starts a
-	 * block or is missing, false when that line is not whole yet
+	 * pos ends its line and the next line is blank, starts a block or is missing,
+	 * false when that line is not whole yet
 	 */
 	private line_ends_block(pos: number): boolean {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
-		let p = pos;
-		while (p < length) {
-			const ch = char_code_at.call(source, p - base);
-			if (ch === LINEFEED) break;
-			if (ch !== SPACE && ch !== TAB) return false;
-			p++;
-		}
-		if (p >= length) return this.finished;
-		p++;
+		if (pos >= length) return this.finished;
+		// spaces before the line end are text of the paragraph, it has to open to hold them
+		if (char_code_at.call(source, pos - base) !== LINEFEED) return false;
+		const p = pos + 1;
 		if (
 			!this.finished &&
 			(p >= length || string_index_of.call(source, '\n', p - base) === -1)
@@ -8054,7 +8127,7 @@ export class PFMParser {
 								current_node
 							);
 							this.node_stack.push(cs_id_h);
-							this.out.set_value_start(cs_id_h, this.cursor);
+							this.span_start(cs_id_h, this.cursor);
 							continue;
 						}
 						case SPACE: {
@@ -8097,7 +8170,7 @@ export class PFMParser {
 								current_node
 							);
 							this.node_stack.push(cs_id);
-							this.out.set_value_start(cs_id, this.cursor);
+							this.span_start(cs_id, this.cursor);
 
 							continue;
 						}
@@ -8150,7 +8223,7 @@ export class PFMParser {
 							// the leading-space path defers until its close handler
 							// determines whether stripping applies.
 							if (char_code_at.call(source, this.cursor - 2 - base) !== SPACE) {
-								this.out.set_value_start(cs_id, this.cursor);
+								this.span_start(cs_id, this.cursor);
 							}
 
 							continue;
@@ -8203,9 +8276,12 @@ export class PFMParser {
 									BACKTICK &&
 								char_code_at.call(source, this.cursor + 2 - base) !== BACKTICK)
 						) {
-							this.out.set_value_start(current_node, this.checkpoint_cursor);
-							this.out.set_value_end(current_node, this.cursor);
-							this.emit_close(current_node, this.cursor + this.extra);
+							this.span_start(current_node, this.checkpoint_cursor);
+							this.span_close(
+								current_node,
+								this.cursor,
+								this.cursor + this.extra
+							);
 							this.node_stack.pop();
 							this.states.pop();
 							this.chomp(this.extra);
@@ -8216,10 +8292,10 @@ export class PFMParser {
 					} else if (
 						code === LINEFEED ||
 						code !== code ||
-						(code === PIPE && this.in_table && !this.inline_range_parse)
+						(code === PIPE && this.in_table && !this.pipe_escaped(this.cursor))
 					) {
-						// code_span_end continues the span, fails it at a blank line or eof, or unwinds it at a cell pipe
-						this.out.set_value_start(current_node, this.checkpoint_cursor);
+						// code_span_end continues the span, or fails it at a blank line, eof or the end of a cell
+						this.span_start(current_node, this.checkpoint_cursor);
 						this.chomp(this.cursor, true);
 						this.states.pop();
 						this.states.push(StateKind.code_span_end);
@@ -8245,9 +8321,12 @@ export class PFMParser {
 						char_code_at.call(source, this.cursor + 1 - base) !== BACKTICK
 					) {
 						this.states.pop();
-						this.out.set_value_start(current_node, this.checkpoint_cursor + 1);
-						this.emit_close(current_node, this.cursor + this.extra);
-						this.out.set_value_end(current_node, this.cursor - 1);
+						this.span_start(current_node, this.checkpoint_cursor + 1);
+						this.span_close(
+							current_node,
+							this.cursor - 1,
+							this.cursor + this.extra
+						);
 						this.node_stack.pop();
 					} else if (
 						this.extra === 2 &&
@@ -8256,9 +8335,12 @@ export class PFMParser {
 						char_code_at.call(source, this.cursor + 2 - base) !== BACKTICK
 					) {
 						this.states.pop();
-						this.out.set_value_start(current_node, this.checkpoint_cursor + 1);
-						this.emit_close(current_node, this.cursor + this.extra);
-						this.out.set_value_end(current_node, this.cursor - 1);
+						this.span_start(current_node, this.checkpoint_cursor + 1);
+						this.span_close(
+							current_node,
+							this.cursor - 1,
+							this.cursor + this.extra
+						);
 						this.node_stack.pop();
 					} else {
 						this.states.pop();
@@ -8269,14 +8351,9 @@ export class PFMParser {
 				}
 
 				case StateKind.code_span_end: {
-					// in table cells, | breaks through code spans
-					// a header cell range holds no cell boundary, a pipe in it is escaped and stays in the span
-					if (
-						this.in_table &&
-						(code === PIPE || code === LINEFEED) &&
-						!this.inline_range_parse
-					) {
-						this.unwind_inline_for_table();
+					// a cell ends at a pipe that is not escaped, and at its line end
+					if (this.in_table && (code === PIPE || code === LINEFEED)) {
+						this.code_span_in_cell(code);
 						continue;
 					}
 					if (code === BACKTICK) {
@@ -8293,9 +8370,12 @@ export class PFMParser {
 						}
 						if (run === this.extra) {
 							// exact match - close the code span
-							this.out.set_value_end(current_node, this.cursor);
 							this.states.pop();
-							this.emit_close(current_node, this.cursor + this.extra);
+							this.span_close(
+								current_node,
+								this.cursor,
+								this.cursor + this.extra
+							);
 							this.node_stack.pop();
 							this.chomp(this.extra);
 							continue;
@@ -10486,6 +10566,9 @@ export class PFMParser {
 						return false;
 					}
 				}
+				// the two chars after a { tell a {@tag from an expression
+				if (code === OPEN_BRACE && !this.finished && this.cursor + 2 >= length)
+					return true;
 				if (code === OPEN_ANGLE_BRACKET || this.at_svelte_tag(code)) {
 					this.open_spec_para(current_node, false);
 					return false;
@@ -12057,47 +12140,6 @@ export class PFMParser {
 				this.states.pop();
 			} else if (top === StateKind.inline) {
 				this.states.pop();
-			} else if (
-				top === StateKind.code_span_end ||
-				top === StateKind.code_span_start ||
-				top === StateKind.code_span_content_leading_space ||
-				top === StateKind.code_span_leading_space_end ||
-				top === StateKind.code_span_info
-			) {
-				const cs_id = this.node_stack[this.node_stack.length - 1];
-				const delim_end = this.code_span_open_pos + this.extra;
-				this.out.revoke(
-					cs_id,
-					string_slice.call(
-						this.source,
-						this.code_span_open_pos - this.source_base,
-						delim_end - this.source_base
-					),
-					this.one_shot ? this.code_span_open_pos : undefined
-				);
-				this.node_stack.pop();
-				this.states.pop();
-				const parent_id = this.node_stack[this.node_stack.length - 1];
-				let ve = this.cursor;
-				while (
-					ve > delim_end &&
-					(char_code_at.call(this.source, ve - 1 - this.source_base) ===
-						SPACE ||
-						char_code_at.call(this.source, ve - 1 - this.source_base) === TAB)
-				) {
-					ve--;
-				}
-				if (ve > delim_end) {
-					this.emit_leaf(
-						NodeKind.text,
-						delim_end,
-						parent_id,
-						delim_end,
-						ve,
-						this.cursor
-					);
-				}
-				// don't push to node_stack - this text node is immediately closed
 			} else {
 				// emphasis, strong, strikethrough, superscript, link_text
 				const node_id = this.node_stack[this.node_stack.length - 1];

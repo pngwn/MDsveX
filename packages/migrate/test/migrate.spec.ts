@@ -262,6 +262,30 @@ describe("footnotes stay as literal text", () => {
 	});
 });
 
+describe("a pipe in inline code in a table cell", () => {
+	function pfm_code(input: string): string[] {
+		const out = migrate(input);
+		const { nodes, errors } = parse_markdown_svelte(out);
+		expect(errors.size, `PFM parse errors in:\n${out}`).toBe(0);
+		const code: string[] = [];
+		for (let i = 0; i < nodes.size; i++) {
+			const node = nodes.get_node(i);
+			if (node.kind !== "code_span") continue;
+			code.push(nodes._strings[i] ?? out.slice(node.value[0], node.value[1]));
+		}
+		return code;
+	}
+
+	test("stays escaped and stays in the code", () => {
+		const input =
+			"| `a \\| b` | c |\n|---|---|\n| `string \\| number` or d \\| e | ``f`\\|g`` |";
+		expect(m(input)).toBe(
+			"| `a \\| b` | c |\n| --- | --- |\n| `string \\| number` or d \\| e | ``f`\\|g`` |",
+		);
+		expect(pfm_code(input)).toEqual(["a | b", "string | number", "f`|g"]);
+	});
+});
+
 describe("table merge markers stay literal", () => {
 	test("a lone > cell is escaped", () => {
 		const input = "| a | b |\n|---|---|\n| x | > |";

@@ -148,6 +148,8 @@ x~1~ -> x<sub>1</sub>
 
 **Tables**, GFM pipe tables as base, with three extensions. Whitespace alignment is insignificant; only structure matters.
 
+A pipe escaped with a backslash (`\|`) does not end a cell. Inside a code span in a cell the backslash is not part of the code, so `` `string \| number` `` is the code `string | number`.
+
 Header columns via a `||` separator. The delimiter row decides: a `||` between two delimiter cells, with an empty `||` cell at the same place in the header row, splits the columns. One `||` makes the side with fewer columns the header columns, the left side on a tie. Two `||` make header columns on both sides. In body rows, the cells in header columns render as row headers (`<th scope="row">`). In body rows a `||` at the split is one separator and a single `|` there works too. A `||` anywhere else is an empty cell, as in GFM.
 
 Left-side headers:
