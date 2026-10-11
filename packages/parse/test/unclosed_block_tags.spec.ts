@@ -5,7 +5,9 @@ import { PluginDispatcher } from '../src/plugin_dispatch';
 import type { ParsePlugin } from '../src/plugin_types';
 import { WireTreeBuilder } from '../src/wire_tree_builder';
 import {
+	every_path,
 	every_tree,
+	fed_mismatch,
 	joined_tree,
 	lines,
 	pick,
@@ -323,4 +325,210 @@ describe('random lines that start at an unclosed tag', () => {
 			}
 		}
 	});
+});
+
+describe('a tag left open in a svelte block', () => {
+	const block = (...rows: string[]) =>
+		lines(
+			'root',
+			'  svelte_block tag="if"',
+			'    svelte_branch tag="if" "x"',
+			...rows.map((row) => `      ${row}`)
+		);
+	const after = [
+		'  line_break',
+		'  line_break',
+		'  paragraph',
+		'    text "after"',
+		'  line_break',
+	];
+
+	it('is text in a paragraph of the branch and the block closes', () => {
+		expect(every_path('{#if x}\n<n>\n{/if}\n\nafter\n')).toBe(
+			lines(
+				block('line_break', 'paragraph', '  text "<n>"', 'line_break'),
+				...after
+			)
+		);
+		expect(every_path('{#if x}\n<span>\n{/if}\n\nafter\n')).toBe(
+			lines(
+				block('line_break', 'paragraph', '  text "<span>"', 'line_break'),
+				...after
+			)
+		);
+		expect(every_path('{#if x}\n<div class="a">\n{/if}\n\nafter\n')).toBe(
+			lines(
+				block(
+					'line_break',
+					'paragraph',
+					'  text "<div class=\\"a\\">"',
+					'line_break'
+				),
+				...after
+			)
+		);
+	});
+
+	it('ends at the next branch', () => {
+		expect(every_path('{#if x}\n<n>\n{:else}\nb\n{/if}\n')).toBe(
+			lines(
+				'root',
+				'  svelte_block tag="if"',
+				'    svelte_branch tag="if" "x"',
+				'      line_break',
+				'      paragraph',
+				'        text "<n>"',
+				'      line_break',
+				'    svelte_branch tag="else"',
+				'      line_break',
+				'      paragraph',
+				'        text "b"',
+				'      line_break',
+				'  line_break'
+			)
+		);
+	});
+
+	it('keeps the blocks after it in the branch', () => {
+		expect(every_path('{#if x}\n<n>\ny\n{/if}\n')).toBe(
+			lines(
+				block(
+					'line_break',
+					'paragraph',
+					'  text "<n>"',
+					'line_break',
+					'paragraph',
+					'  text "y"',
+					'line_break'
+				),
+				'  line_break'
+			)
+		);
+		expect(every_path('{#if x}\n<n>\n# h\n- a\n{/if}\n')).toBe(
+			lines(
+				block(
+					'line_break',
+					'paragraph',
+					'  text "<n>"',
+					'line_break',
+					'heading depth=1 "h"',
+					'  text "h"',
+					'line_break',
+					'list ordered=false start=0 tight=true',
+					'  list_item',
+					'    text "a"',
+					'line_break'
+				),
+				'  line_break'
+			)
+		);
+	});
+
+	it('with a second tag left open inside it', () => {
+		expect(every_path('{#if x}\n<n>\n<m>\n{/if}\n')).toBe(
+			lines(
+				block(
+					'line_break',
+					'paragraph',
+					'  text "<n>"',
+					'line_break',
+					'paragraph',
+					'  text "<m>"',
+					'line_break'
+				),
+				'  line_break'
+			)
+		);
+	});
+
+	it('around a block that closes', () => {
+		expect(every_path('{#if x}\n<n>\n{#if y}\nb\n{/if}\n{/if}\n')).toBe(
+			lines(
+				block(
+					'line_break',
+					'paragraph',
+					'  text "<n>"',
+					'line_break',
+					'svelte_block tag="if"',
+					'  svelte_branch tag="if" "y"',
+					'    line_break',
+					'    paragraph',
+					'      text "b"',
+					'    line_break',
+					'line_break'
+				),
+				'  line_break'
+			)
+		);
+	});
+
+	it('at the end of the input', () => {
+		expect(every_path('{#if x}\n<n>\n')).toBe(
+			block('line_break', 'paragraph', '  text "<n>"', 'line_break')
+		);
+	});
+
+	it('an element that closes in the branch is still an element', () => {
+		expect(every_path('{#if x}\n<n>\ny\n</n>\n{/if}\n')).toBe(
+			lines(
+				block(
+					'line_break',
+					'html tag="n"',
+					'  line_break',
+					'  paragraph',
+					'    text "y"',
+					'  line_break',
+					'line_break'
+				),
+				'  line_break'
+			)
+		);
+	});
+
+	it('a block opened inside the element closes there', () => {
+		expect(every_path('<n>\n{#if x}\ny\n{/if}\n</n>\n')).toBe(
+			lines(
+				'root',
+				'  html tag="n"',
+				'    line_break',
+				'    svelte_block tag="if"',
+				'      svelte_branch tag="if" "x"',
+				'        line_break',
+				'        paragraph',
+				'          text "y"',
+				'        line_break',
+				'    line_break',
+				'  line_break'
+			)
+		);
+	});
+
+	it('random blocks close and leave no text outside a paragraph', () => {
+		const rand = random(983);
+		for (let i = 0; i < 600; i++) {
+			const inner = document(rand).replace(/\n*$/, '\n');
+			const close = pick(rand, ['{/if}', '{/if}', '{:else}\nz\n{/if}']);
+			const source = `{#if x}\n${inner}${close}\n\nafter\n`;
+			const label = JSON.stringify(source);
+			expect(fed_mismatch(source), label).toBe('');
+			for (const [name, nodes] of every_tree(source)) {
+				const root = nodes.get_node(0).children.map((c) => nodes.get_node(c));
+				const last = root.filter((node) => node.kind !== 'line_break').pop()!;
+				expect(last.kind, `${label} ${name}`).toBe('paragraph');
+				const walk = (index: number): void => {
+					const node = nodes.get_node(index);
+					for (const child of node.children) {
+						if (
+							node.kind === 'svelte_branch' &&
+							nodes.get_node(child).kind === 'text'
+						) {
+							expect.fail(`${label} ${name}: text right under a branch`);
+						}
+						walk(child);
+					}
+				};
+				walk(0);
+			}
+		}
+	}, 30_000);
 });

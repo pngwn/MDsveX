@@ -363,6 +363,25 @@ describe('a delimiter that never closes', () => {
 	}
 });
 
+describe('an element left open in a svelte block', () => {
+	const cases: [string, string][] = [
+		[
+			'{#if x}\n<n>\n{/if}\n\nafter\n',
+			'{#if x}\n<p>&lt;n&gt;</p>{/if}<p>after</p>',
+		],
+		[
+			'{#if x}\n<n>\n{:else}\nb\n{/if}\n',
+			'{#if x}\n<p>&lt;n&gt;</p>{:else}\n<p>b</p>{/if}',
+		],
+	];
+
+	for (const [input, expected] of cases) {
+		it(JSON.stringify(input), () => {
+			expect(render(input)).toBe(expected);
+		});
+	}
+});
+
 describe('a pipe next to an emphasis mark', () => {
 	const cases: [string, string][] = [
 		['fan|_tas_|tic\n', '<p>fan<em>tas</em>tic</p>'],

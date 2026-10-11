@@ -10175,6 +10175,29 @@ export class PFMParser {
 		this.chomp(end, true);
 	}
 
+	/**
+	 * revokes the elements left open between this state and the svelte branch they opened in
+	 * each is the text of its open tag, false when another container sits between them
+	 */
+	private revoke_branch_elements(): boolean {
+		const states = this.states;
+		let s = states.length - 1;
+		while (s >= 0 && states[s] === StateKind.html_block_element) s--;
+		if (s < 0 || states[s] !== StateKind.svelte_branch) return false;
+		const tags = this.html_tag_stack;
+		for (let i = states.length - 1; i > s; i--) {
+			const id = this.node_stack.pop()!;
+			let t = tags.length - 1;
+			while (t >= 0 && tags[t].id !== id) t--;
+			if (t !== -1) tags.length = t;
+			this.html_block_depth--;
+			states.pop();
+		}
+		// off the node stack they are stale, the sweep revokes what they hold first
+		this.revoke_stale_pending(false);
+		return true;
+	}
+
 	private _run_html_block_element(code: number, current_node: number): boolean {
 		const source = this.source;
 		const base = this.source_base;
@@ -10367,6 +10390,9 @@ export class PFMParser {
 				this.start_svelte_block(token, current_node);
 				return false;
 			}
+			// a branch or close token is for a block around this element, which never closed
+			if (token && this.svelte_block_depth > 0 && this.revoke_branch_elements())
+				return false;
 		}
 
 		if (code === ASTERISK || code === DASH || code === UNDERSCORE) {
