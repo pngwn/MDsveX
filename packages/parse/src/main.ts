@@ -10144,6 +10144,15 @@ export class PFMParser {
 					this.chomp(close.end, true);
 					return false;
 				}
+				// the tag closes an element around this one, a paragraph opened for it would stay empty
+				if (opener_idx !== -1) {
+					while (this.html_tag_stack.length > opener_idx + 1) {
+						this.close_html_inline(this.html_tag_stack.pop()!.id, this.cursor);
+					}
+					this.close_html_inline(this.html_tag_stack.pop()!.id, close.end);
+					this.chomp(close.end, true);
+					return false;
+				}
 			}
 		}
 
