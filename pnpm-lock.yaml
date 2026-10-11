@@ -193,9 +193,6 @@ importers:
       '@mdsvex/parse':
         specifier: workspace:*
         version: link:../parse
-      '@mdsvex/plugin-autolink':
-        specifier: workspace:*
-        version: link:../../plugins/autolink
       '@mdsvex/render':
         specifier: workspace:*
         version: link:../render
@@ -594,6 +591,9 @@ importers:
 
   packages/site:
     dependencies:
+      '@mdsvex/plugin-anchors':
+        specifier: workspace:*
+        version: link:../../plugins/anchors
       '@mdsvex/repl':
         specifier: workspace:*
         version: link:../repl
@@ -658,9 +658,12 @@ importers:
       '@fontsource/source-code-pro':
         specifier: ^5.2.5
         version: 5.2.5
-      '@mdsvex/plugin-autolink':
+      '@mdsvex/plugin-anchors':
         specifier: workspace:*
-        version: link:../../plugins/autolink
+        version: link:../../plugins/anchors
+      '@mdsvex/plugin-steps':
+        specifier: workspace:*
+        version: link:../../plugins/steps
       mdsvex:
         specifier: workspace:*
         version: link:../mdsvex
@@ -693,11 +696,38 @@ importers:
         specifier: ^8.0.5
         version: 8.0.5(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(@types/node@24.7.1)(esbuild@0.27.4)(terser@5.44.0)
 
-  plugins/autolink:
-    dependencies:
-      '@mdsvex/parse':
-        specifier: workspace:*
-        version: link:../../packages/parse
+  plugins/anchors:
+    devDependencies:
+      mdsvex:
+        specifier: workspace:^
+        version: link:../../packages/mdsvex
+      npm-run-all2:
+        specifier: ^7.0.2
+        version: 7.0.2
+      shx:
+        specifier: ^0.3.4
+        version: 0.3.4
+
+  plugins/steps:
+    devDependencies:
+      '@sveltejs/package':
+        specifier: ^3.0.0
+        version: 3.0.0(svelte@5.57.1(@typescript-eslint/types@8.57.2))(typescript@6.0.2)
+      '@sveltejs/vite-plugin-svelte':
+        specifier: ^6.2.4
+        version: 6.2.4(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0))
+      mdsvex:
+        specifier: workspace:^
+        version: link:../../packages/mdsvex
+      npm-run-all2:
+        specifier: ^7.0.2
+        version: 7.0.2
+      svelte:
+        specifier: ^5.55.0
+        version: 5.57.1(@typescript-eslint/types@8.57.2)
+      vite:
+        specifier: ^7.3.1
+        version: 7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0)
 
 packages:
 
@@ -2049,6 +2079,21 @@ packages:
       typescript:
         optional: true
 
+  '@sveltejs/load-config@0.2.3':
+    resolution: {integrity: sha512-VT3qmUb8pRV2QrZjd8iAmtg8lf4W0TIjZbvXtz5MKei/q96teWZgGJyyidJzOjzZzvdq616eSRVeMYIQChUTAQ==}
+    engines: {node: '>= 18.0.0'}
+
+  '@sveltejs/package@3.0.0':
+    resolution: {integrity: sha512-iZXRdFKR6fh6b95TygyYwF1ZyX0V9PwstvgwYfhIcMjgyN5Uegvqpr5Xkmi55uEnw9TW7cmzrfLAX8tbU2ZEvw==}
+    engines: {node: '>=22'}
+    hasBin: true
+    peerDependencies:
+      svelte: ^3.44.0 || ^4.0.0 || ^5.0.0-next.1
+      typescript: ^6.0.0
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+
   '@sveltejs/svelte-json-tree@2.2.1':
     resolution: {integrity: sha512-M8l23/R3y1fI2+RaOzfUzmkysTWWsw/NClUgGpvydl9vXRonPN1/btQQievaNyeWNfUj12tjPfh5yTrXWpaKkg==}
     engines: {pnpm: ^9.0.0}
@@ -2492,6 +2537,10 @@ packages:
   chokidar@4.0.3:
     resolution: {integrity: sha512-Qgzu8kfBvo+cA4962jnP1KkS6Dop5NS6g7R5LFYJr4b8Ub94PPQXUksCw9PvXoeXPRRddRNC5C1JQUR2SMGtnA==}
     engines: {node: '>= 14.16.0'}
+
+  chokidar@5.0.0:
+    resolution: {integrity: sha512-TQMmc3w+5AxjpL8iIiwebF73dRDF4fBIieAqGn9RGCWaEVwQ6Fb2cGe31Yns0RRIzii5goJ1Y7xbMwo1TxMplw==}
+    engines: {node: '>= 20.19.0'}
 
   ci-info@3.9.0:
     resolution: {integrity: sha512-NIxF55hv4nSqQswkAeiOi1r83xy8JldOFDTWiug55KBu9Jnblncd2U6ViHmYgHf01TPZS77NJBhBMKdWj9HQMQ==}
@@ -3918,6 +3967,10 @@ packages:
     resolution: {integrity: sha512-GDhwkLfywWL2s6vEjyhri+eXmfH6j1L7JE27WhqLeYzoh/A3DBaYGEj2H/HFZCn/kMfim73FXxEJTw06WtxQwg==}
     engines: {node: '>= 14.18.0'}
 
+  readdirp@5.1.1:
+    resolution: {integrity: sha512-Kko+Y5XQ6fM+Ce3dq3m9YGxnacYZYl9cA1wZjaF3Vbry2L3i1qVg8+CAgNPsXRArPMUMCaOR7oa9Nqntc43JKA==}
+    engines: {node: '>= 20.19.0'}
+
   rechoir@0.6.2:
     resolution: {integrity: sha512-HFM8rkZ+i3zrV+4LQjwQ0W+ez98pApMGM3HUrN04j3CqzPOzl9nmP15Y8YXNm8QHGv/eacOVEjqhmWpkRV0NAw==}
     engines: {node: '>= 0.10'}
@@ -4028,6 +4081,11 @@ packages:
 
   semver@7.7.1:
     resolution: {integrity: sha512-hlq8tAfn0m/61p4BVRcPzIGr6LKiMwo4VM6dGi6pt4qcRkmNzTcWq6eCEjEh+qXjkMDvPlOFFSGwQjoEa6gyMA==}
+    engines: {node: '>=10'}
+    hasBin: true
+
+  semver@7.8.5:
+    resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
     engines: {node: '>=10'}
     hasBin: true
 
@@ -4218,6 +4276,12 @@ packages:
     peerDependencies:
       svelte: ^3.55 || ^4.0.0-next.0 || ^4.0 || ^5.0.0-next.0
       typescript: ^4.9.4 || ^5.0.0
+
+  svelte2tsx@0.7.61:
+    resolution: {integrity: sha512-EpQ/+UHITBULeUojx/LLD3uTYasZXcX1BrqlrzfLUnT9vdUhaOWK59a3ryWcFU8L0sY1SP+gRhJ2Beiis98+qw==}
+    peerDependencies:
+      svelte: ^3.55 || ^4.0.0-next.0 || ^4.0 || ^5.0.0-next.0
+      typescript: ^4.9.4 || ^5.0.0 || ^6.0.0
 
   svelte@5.55.0:
     resolution: {integrity: sha512-SThllKq6TRMBwPtat7ASnm/9CDXnIhBR0NPGw0ujn2DVYx9rVwsPZxDaDQcYGdUz/3BYVsCzdq7pZarRQoGvtw==}
@@ -5991,6 +6055,18 @@ snapshots:
     optionalDependencies:
       typescript: 6.0.2
 
+  '@sveltejs/load-config@0.2.3': {}
+
+  '@sveltejs/package@3.0.0(svelte@5.57.1(@typescript-eslint/types@8.57.2))(typescript@6.0.2)':
+    dependencies:
+      '@sveltejs/load-config': 0.2.3
+      chokidar: 5.0.0
+      semver: 7.8.5
+      svelte: 5.57.1(@typescript-eslint/types@8.57.2)
+      svelte2tsx: 0.7.61(svelte@5.57.1(@typescript-eslint/types@8.57.2))(typescript@6.0.2)
+    optionalDependencies:
+      typescript: 6.0.2
+
   '@sveltejs/svelte-json-tree@2.2.1(svelte@5.57.1(@typescript-eslint/types@8.57.2))':
     dependencies:
       svelte: 5.57.1(@typescript-eslint/types@8.57.2)
@@ -6592,6 +6668,10 @@ snapshots:
   chokidar@4.0.3:
     dependencies:
       readdirp: 4.1.2
+
+  chokidar@5.0.0:
+    dependencies:
+      readdirp: 5.1.1
 
   ci-info@3.9.0: {}
 
@@ -8301,6 +8381,8 @@ snapshots:
 
   readdirp@4.1.2: {}
 
+  readdirp@5.1.1: {}
+
   rechoir@0.6.2:
     dependencies:
       resolve: 1.22.10
@@ -8517,6 +8599,8 @@ snapshots:
   semver@5.7.2: {}
 
   semver@7.7.1: {}
+
+  semver@7.8.5: {}
 
   set-cookie-parser@2.7.1: {}
 
@@ -8744,6 +8828,13 @@ snapshots:
       scule: 1.3.0
       svelte: 5.57.1(@typescript-eslint/types@8.57.2)
       typescript: 5.9.3
+
+  svelte2tsx@0.7.61(svelte@5.57.1(@typescript-eslint/types@8.57.2))(typescript@6.0.2):
+    dependencies:
+      dedent-js: 1.0.1
+      scule: 1.3.0
+      svelte: 5.57.1(@typescript-eslint/types@8.57.2)
+      typescript: 6.0.2
 
   svelte@5.55.0:
     dependencies:

@@ -6,6 +6,7 @@ import type { NodeView } from '../src/node_view';
 import { PluginDispatcher } from '../src/plugin_dispatch';
 import type { ParsePlugin } from '../src/plugin_types';
 import { TreeBuilder } from '../src/tree_builder';
+import { kind_to_string } from '../src/utils';
 import { WireTreeBuilder } from '../src/wire_tree_builder';
 import {
 	PATHS,
@@ -27,8 +28,6 @@ const sequential = (kind: string, parse: Parse): ParsePlugin => ({
 });
 
 const ATTRS = { attrs: ['id', 'href', 'keep', 'seen'] };
-// a closed pending node keeps its undo log, see the it.fails below
-const LOGGED = { ...ATTRS, quiet: false };
 
 const wrap: Parse = (node) => {
 	node.wrap_inner('link', { id: 'W' });
@@ -130,7 +129,7 @@ describe('parse plugins: structural methods build one tree on every path', () =>
 			expect_parity(
 				'a *b* c\n\n<div>\n\nx\n\n</div>\n',
 				() => [on('strong_emphasis', all), on('html', all)],
-				LOGGED
+				ATTRS
 			)
 		).toEqual([
 			'root',
@@ -208,12 +207,10 @@ describe('parse plugins: a revoke undoes the node on every path', () => {
 	});
 
 	it('an attr delete stays once the node does', () => {
-		expect(expect_parity('a *b* c\n', () => [keep, drop_keep], LOGGED)).toEqual(
-			[
-				'root',
-				['paragraph', 'text:a ', ['strong_emphasis', 'text:b'], 'text: c'],
-			]
-		);
+		expect(expect_parity('a *b* c\n', () => [keep, drop_keep], ATTRS)).toEqual([
+			'root',
+			['paragraph', 'text:a ', ['strong_emphasis', 'text:b'], 'text: c'],
+		]);
 	});
 
 	it('an attr set then deleted on the node itself', () => {
@@ -302,7 +299,7 @@ describe('parse plugins: close callbacks and revokes', () => {
 	];
 
 	it('a node that closes fires its callback once', () => {
-		const { tree, log } = expect_parity_logged('a *b* c\n', logging, LOGGED);
+		const { tree, log } = expect_parity_logged('a *b* c\n', logging, ATTRS);
 		expect(log).toEqual(['open', 'close']);
 		expect(tree).toEqual([
 			'root',
@@ -459,7 +456,7 @@ describe('parse plugins: a revoked parent leaves a child that stays alone', () =
 		const { tree, log } = expect_parity_logged(
 			'_x *b* y\n',
 			(log) => [on('strong_emphasis', mark(log))],
-			LOGGED
+			ATTRS
 		);
 		expect(tree).toEqual([
 			'root',
@@ -472,7 +469,7 @@ describe('parse plugins: a revoked parent leaves a child that stays alone', () =
 		const { tree } = expect_parity_logged(
 			'[a *b* c\n',
 			(log) => [on('strong_emphasis', mark(log))],
-			LOGGED
+			ATTRS
 		);
 		expect(tree).toEqual([
 			'root',
@@ -484,7 +481,7 @@ describe('parse plugins: a revoked parent leaves a child that stays alone', () =
 		const { tree } = expect_parity_logged(
 			'<div>\n\n# h *a* b\n',
 			(log) => [on('strong_emphasis', mark(log))],
-			LOGGED
+			ATTRS
 		);
 		expect(tree).toEqual([
 			'root',
@@ -497,7 +494,7 @@ describe('parse plugins: a revoked parent leaves a child that stays alone', () =
 		const { tree, log } = expect_parity_logged(
 			'*a <span>b</span> c\n',
 			(log) => [on('html', mark(log))],
-			LOGGED
+			ATTRS
 		);
 		expect(tree).toEqual([
 			'root',
@@ -540,7 +537,7 @@ describe('parse plugins: wrap_inner in a close callback', () => {
 
 	it('from a pending node that stays', () => {
 		expect(
-			expect_parity('a *b* c\n', () => [wrap_parent('strong_emphasis')], LOGGED)
+			expect_parity('a *b* c\n', () => [wrap_parent('strong_emphasis')], ATTRS)
 		).toEqual([
 			'root',
 			[
@@ -755,8 +752,8 @@ describe('parse plugins: a sequential pass that changes structure', () => {
 });
 
 describe('parse plugins: undo logs of closed pending nodes', () => {
-	// the parser sends no commit for a pending node it closes, so its log stays
-	it.fails.each(PATHS)(
+	// a close the parser did not give up on is final, so the log goes with it
+	it.each(PATHS)(
 		'%s: a delimiter that closed leaves the dispatcher quiet',
 		(_, run) => {
 			const out = run('a *b* c\n\nd\n', [on('strong_emphasis', wrap)]);
@@ -1041,5 +1038,72 @@ describe('parse plugins: a builder reset for the next document', () => {
 		feed('# second\n');
 		expect(() => kept[0].type).toThrow(stale);
 		expect(kept[1].text_content).toBe('second');
+	});
+});
+
+describe('parse plugins: closes the dispatcher has nothing for', () => {
+	/** the kinds whose close reached the dispatcher */
+	function dispatched(source: string, plugins: ParsePlugin[]) {
+		const dispatcher = new PluginDispatcher(
+			plugins,
+			new SourceTextSource(source)
+		);
+		const closes: string[] = [];
+		const dispatch_close = dispatcher.dispatch_close.bind(dispatcher);
+		dispatcher.dispatch_close = (index, buf, hold) => {
+			closes.push(kind_to_string(buf.kind_at(index)));
+			dispatch_close(index, buf, hold);
+		};
+		const tree = new TreeBuilder(16, dispatcher);
+		new PFMParser(tree).parse(source);
+		return { closes, dispatcher, nodes: tree.get_buffer() };
+	}
+
+	it('skip it between the nodes a plugin handles', () => {
+		const { closes, dispatcher } = dispatched('a *b* c\n\n# d\n\n- e\n- f\n', [
+			on('heading', (node) => {
+				node.attrs.id = 'h';
+			}),
+		]);
+		expect(closes).toEqual(['heading']);
+		expect(dispatcher.quiet()).toBe(true);
+	});
+
+	it('skip it while a wrapper is open', () => {
+		const source = '# a\n\nb *c* `d`\n\n- e\n- f\n';
+		const { closes, dispatcher, nodes } = dispatched(source, [
+			on('heading', (node) => {
+				node.wrap_from('html', { tag: 'section' });
+			}),
+		]);
+		// the heading ran a handler and the root holds the wrapper
+		expect(closes).toEqual(['heading', 'root']);
+		expect(dispatcher.quiet()).toBe(true);
+		expect(shape(nodes, source)).toEqual([
+			'root',
+			[
+				'html',
+				['heading', 'text:a'],
+				[
+					'paragraph',
+					'text:b ',
+					['strong_emphasis', 'text:c'],
+					'text: ',
+					'code_span',
+				],
+				['list', ['list_item', 'text:e'], ['list_item', 'text:f']],
+			],
+		]);
+	});
+
+	it('reach it for a pending node a plugin changed, once', () => {
+		const { closes, dispatcher } = dispatched('a *b* c *d\n\ne\n', [
+			on('strong_emphasis', (node) => {
+				node.attrs.keep = '1';
+			}),
+		]);
+		// the one left open is closed, held and revoked
+		expect(closes).toEqual(['strong_emphasis', 'strong_emphasis']);
+		expect(dispatcher.quiet()).toBe(true);
 	});
 });

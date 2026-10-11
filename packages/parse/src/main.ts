@@ -51,7 +51,7 @@ export type {
 	DirectiveHandlers,
 } from './plugin_types';
 export type { NodeView, WrapperView } from './node_view';
-export { NodeKind, NodeBuffer } from './utils';
+export { NodeKind, NodeBuffer, take_src } from './utils';
 export { PluginDispatcher, has_directive_handlers } from './plugin_dispatch';
 export { SourceTextSource, WireTextSource } from './node_view';
 
@@ -965,6 +965,7 @@ export class PFMParser {
 		this.errors = EMPTY_ERRORS;
 		this.tab_size = tab_size;
 		if (options !== undefined) this.set_options(options);
+		if (emitter.follow !== undefined) emitter.follow(this);
 	}
 
 	/** the syntax options for the documents that follow, one left out is off again */
@@ -1685,6 +1686,15 @@ export class PFMParser {
 	bind(emitter: Emitter, tab_size: number = 2): void {
 		this.out = emitter;
 		this.tab_size = tab_size;
+		if (emitter.follow !== undefined) emitter.follow(this);
+	}
+
+	/**
+	 * @internal the emitter put nodes of its own in the slots of the next ids,
+	 * ids go on after them, an emitter this parser has left is ignored
+	 */
+	skip_ids(emitter: Emitter, next: number): void {
+		if (emitter === this.out && next > this.next_id) this.next_id = next;
 	}
 
 	/** drop strings of the last document so a reused parser does not pin them */
@@ -1903,6 +1913,16 @@ export class PFMParser {
 		this.out.close(id, end, (info & ID_KIND_MASK) as NodeKind);
 		this.id_info[id] = info | ID_CLOSED;
 		if (id === this.spec_para) this.end_spec_para(end);
+	}
+
+	/** close of a delimiter with no closer, it stays pending until its revoke */
+	private emit_close_pending(id: number, end: number): void {
+		const info = this.id_info[id];
+		const kind = (info & ID_KIND_MASK) as NodeKind;
+		const out = this.out;
+		if (out.close_pending !== undefined) out.close_pending(id, end, kind);
+		else out.close(id, end, kind);
+		this.id_info[id] = info | ID_CLOSED;
 	}
 
 	/** open writes an id state before any read, so spare tables need no clearing */
@@ -2468,12 +2488,12 @@ export class PFMParser {
 
 	/**
 	 * try to parse a block-level directive at `pos`. the `[content]`
-	 * brackets are required - empty text must be explicit (`::name[]`).
-	 * an optional argument list may follow the brackets immediately:
-	 * `::name[content](key=val, key2=val2)`.
+	 * brackets are optional. an optional argument list may follow the
+	 * brackets or the name immediately:
+	 * `::name[content](key=val, key2=val2)`, `::name(key=val)`.
 	 * returns:
 	 *   - `{ kind: 'leaf' | 'container', colons, name, content_start, content_end, args, end }`
-	 *     on success
+	 *     on success, both content offsets -1 without brackets
 	 *   - `null` if not a directive
 	 *   - `false` if we need more input (stall)
 	 */
@@ -2530,43 +2550,43 @@ export class PFMParser {
 		const name = string_slice.call(source, name_start - base, p - base);
 		const kind = colon_count >= 3 ? ('container' as const) : ('leaf' as const);
 
-		// [content] is required - empty text must be explicit
+		// both stay -1 without brackets, anything but args then fails the line end check
+		let content_start = -1;
+		let content_end = -1;
 		if (
-			p >= length ||
-			char_code_at.call(source, p - base) !== OPEN_SQUARE_BRACKET
+			p < length &&
+			char_code_at.call(source, p - base) === OPEN_SQUARE_BRACKET
 		) {
-			return null;
-		}
-
-		p++; // skip [
-		const content_start = p;
-		let bracket_depth = 1;
-		while (p < length && bracket_depth > 0) {
-			const ch = char_code_at.call(source, p - base);
-			if (ch === OPEN_SQUARE_BRACKET) bracket_depth++;
-			else if (ch === CLOSE_SQUARE_BRACKET) bracket_depth--;
-			else if (ch === BACKSLASH && p + 1 < length) {
-				p++;
-			} // skip escaped char
-			else if (ch === BACKTICK) {
-				// brackets in a code span are code, as in inline directive text
-				const span_end = this.label_code_span_end(p);
-				if (span_end === -2) return false;
-				p = span_end;
-				continue;
-			} else if (ch === LINEFEED) break; // no line breaks in content bracket
-			if (bracket_depth > 0) p++;
-		}
-		if (bracket_depth !== 0) {
+			p++; // skip [
+			content_start = p;
+			let bracket_depth = 1;
+			while (p < length && bracket_depth > 0) {
+				const ch = char_code_at.call(source, p - base);
+				if (ch === OPEN_SQUARE_BRACKET) bracket_depth++;
+				else if (ch === CLOSE_SQUARE_BRACKET) bracket_depth--;
+				else if (ch === BACKSLASH && p + 1 < length) {
+					p++;
+				} // skip escaped char
+				else if (ch === BACKTICK) {
+					// brackets in a code span are code, as in inline directive text
+					const span_end = this.label_code_span_end(p);
+					if (span_end === -2) return false;
+					p = span_end;
+					continue;
+				} else if (ch === LINEFEED) break; // no line breaks in content bracket
+				if (bracket_depth > 0) p++;
+			}
+			if (bracket_depth !== 0) {
+				if (p >= length && !this.finished) return false;
+				// unmatched bracket - not a valid directive
+				return null;
+			}
+			content_end = p;
+			p++; // skip ]
 			if (p >= length && !this.finished) return false;
-			// unmatched bracket - not a valid directive
-			return null;
 		}
-		const content_end = p;
-		p++; // skip ]
 
-		// optional argument list must follow the brackets immediately
-		if (p >= length && !this.finished) return false;
+		// optional argument list must follow the brackets or the name immediately
 		let args: Record<string, string> | null = null;
 		if (p < length && char_code_at.call(source, p - base) === OPEN_PAREN) {
 			const parsed = this.try_parse_directive_args(p);
@@ -4630,6 +4650,8 @@ export class PFMParser {
 		}
 		this.pending_remove(id);
 		if (drop) this.out.revoke(id);
+		// no list decides on it later, so say now that it stays
+		else this.out.commit(id);
 	}
 
 	/**
@@ -6088,7 +6110,7 @@ export class PFMParser {
 			}
 		}
 		this.states.pop();
-		this.emit_close(current_node, this.cursor);
+		this.emit_close_pending(current_node, this.cursor);
 		this.out.set_value_end(current_node, this.cursor);
 		this.node_stack.pop();
 		return true;
@@ -12112,6 +12134,11 @@ export class PFMParser {
 				}
 				if (this.kind_of(node_id) === NodeKind.directive_inline) {
 					this.directive_text_pop(node_id);
+				}
+				// left on the tag stack a close tag in a later cell matches it
+				const tags = this.html_tag_stack;
+				if (tags.length !== 0 && tags[tags.length - 1].id === node_id) {
+					tags.pop();
 				}
 				this.node_stack.pop();
 				this.states.pop();

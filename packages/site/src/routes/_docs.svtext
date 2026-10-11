@@ -208,6 +208,7 @@ interface MdsvexOptions {
 	highlight?: HighlightOptions | Highlighter | false;
 	math?: MathOptions | MathRenderer | false;
 	unwrap_images?: boolean;
+	import_images?: boolean;
 	heading_ids?:
 		| boolean
 		| { slug?: (text: string, heading: { depth: number }) => string };
@@ -283,7 +284,7 @@ mdsvex({ plugins: [steps()] });
 ```
 
 ````svx
-:::steps[]
+:::steps
 
 ## Install
 
@@ -297,7 +298,9 @@ Add it to the config.
 :::
 ````
 
-Here each heading inside `:::steps[]` starts a step. The plugin wraps the heading and what follows it in a `step` directive with the heading as its label, so the page renders the plugin's `steps` and `step` components.
+Here each heading inside `:::steps` starts a step. The plugin wraps the heading and what follows it in a `step` directive with the heading as its label, so the page renders the plugin's `steps` and `step` components.
+
+The first-party plugins are listed under [Plugins](docs#plugins-1).
 
 A plugin is an object:
 
@@ -370,7 +373,7 @@ Things to know:
 - **Only containers have children.** The bracket text of a leaf or inline directive is not passed to `children` or `descendants` handlers. Their own `parse` still runs, though an inline directive gets its args after it, so read them in the function `parse` returns.
 - **Your own export wins.** A `directives` export of the same name from a [`components` module](docs#declaring-directives) or a template replaces the plugin's component. The plugin's handlers still run, so your `step` gets the same `label` and `children`.
 - **A later plugin wins a name.** When two plugins have an entry for the same directive, the later one's component and handlers are used.
-- **Other plugins still see the nodes.** A heading inside `:::steps[]` reaches the `heading` handlers of `parse_plugins` too, after the bound handler ran. A plugin's `parse` runs ahead of `parse_plugins`.
+- **Other plugins still see the nodes.** A heading inside `:::steps` reaches the `heading` handlers of `parse_plugins` too, after the bound handler ran. A plugin's `parse` runs ahead of `parse_plugins`.
 
 `compile()` takes `plugins` as well. It writes `module` as the import specifier exactly as given.
 
@@ -467,6 +470,54 @@ Several images in one paragraph are all unwrapped, on one line or on lines of th
 
 `compile()` takes the option too, and the editor reads it from the manifest the plugin writes, or from `unwrap_images` in an `mdsvex.config.json`.
 
+### `import_images`
+
+```ts
+import_images: boolean = true;
+```
+
+A markdown image with a relative url is imported, and the image gets what the import gives. Vite then hashes the file, inlines a small one, and fails the build when the file is missing.
+
+```svx
+![A chart](./chart.png)
+```
+
+```svelte
+<script>
+	import __mdsvex_img_0 from './chart.png';
+</script>
+
+<p><img src={__mdsvex_img_0} alt="A chart" /></p>
+```
+
+The path is relative to the document, as it is on GitHub and in an editor preview. Which urls are imported:
+
+| url | imported as |
+| --- | --- |
+| `./chart.png`, `../img/chart.png` | as written |
+| `chart.png`, `img/chart.png` | `./chart.png`, `./img/chart.png` |
+| `$lib/chart.png`, `#lib/chart.png`, `@/chart.png`, `~/chart.png` | as written, so Vite resolves the alias |
+| `./chart.png?url`, `./sprite.svg#icon` | as written, the query and the fragment stay on the import |
+| `./my%20chart.png` | `./my chart.png`, the path is decoded to name the file |
+| `/chart.png` | not imported |
+| `https://example.com/chart.png`, `//example.com/chart.png`, `data:…` | not imported |
+| `#section`, `?query` | not imported |
+| `{src}`, `./{name}.png` | not imported, a url with a Svelte expression is left to Svelte |
+
+A file used twice is imported once. An alias has to start with `$`, `#`, `@` or `~`. Any other bare path is a file beside the document, so `images/chart.png` is `./images/chart.png` even when `images` is an alias in your Vite config.
+
+A query reaches Vite, so `![A chart](./chart.png?url)` and `?inline` work as they do in any import. With a query that makes the import something other than a url, such as `?enhanced` from `@sveltejs/enhanced-img`, an `img` [replacement](docs#custom-components) decides what to do with the value. It gets the imported value as its `src` prop.
+
+A file in `static` or `public` is served from the root, so write it as `/chart.png`. Only markdown images are imported. An `<img src="./chart.png">` you type as HTML, a link to an image, and a url in frontmatter stay as written.
+
+Set `import_images: false` to leave every url as written:
+
+```js
+mdsvex({ import_images: false });
+```
+
+`compile()` takes the option too. It is off there by default, because the import only means something to a bundler that takes image files. The editor compiles without it, so a replaced `img` always sees a string `src` there.
+
 ### `heading_ids`
 
 ```ts
@@ -525,6 +576,8 @@ const anchors = {
 
 mdsvex({ heading_ids: true, parse_plugins: [anchors] });
 ```
+
+[`@mdsvex/plugin-anchors`](docs#anchors) is that plugin, with a choice of where the link goes.
 
 A [replacement](docs#custom-components) for a heading gets the `id` as a prop. `compile()` takes the option too. The ids belong to the compile, so `@mdsvex/parse` used on its own, for a streaming render, makes none. The editor reads the option from the manifest the plugin writes, or from `heading_ids: true` in an `mdsvex.config.json`, which can't hold a `slug` function.
 
@@ -965,17 +1018,21 @@ A template's directives come before those of the `components` modules, in the sa
 | form | example | props |
 | --- | --- | --- |
 | inline | `:abbr[HTML](title=HyperText)` | args, and the text in brackets as `children` |
-| leaf | `::youtube[A talk](id=dQw4w9WgXcQ)` | args, and the text in brackets as `label` |
-| container | `:::Callout[Heads up](kind=warn)` ... `:::` | args, the text in brackets as `label` and the body as `children` |
+| leaf | `::youtube[A talk](id=dQw4w9WgXcQ)`, `::toc` | args, and the text in brackets as `label` |
+| container | `:::Callout[Heads up](kind=warn)` ... `:::`, `:::note` ... `:::` | args, the text in brackets as `label` and the body as `children` |
 
-The brackets are required, and can be empty: `::toc[]`. A leaf or container takes a line of its own, and a container ends at a line of colons. Containers nest when the outer one uses more colons. The bracket text can hold emphasis, strong, code and other directives, but links and images in it stay plain text.
+A leaf or container takes a line of its own, and a container ends at a line of colons. Its brackets are optional: `::toc` is the same as `::toc[]`, and args can follow the name directly, as in `::toc(depth=2)`. Nothing else can follow on the line, so `::toc is here` is a paragraph. A line that is only `::word` or `:::word` is a directive and needs a component, write `\::word` to keep it as text.
+
+An inline directive always needs its brackets, which can be empty: `:icon[]`. Without them a `:tada:` or `std::vector` in a sentence would be a directive.
+
+Containers nest when the outer one uses more colons. The bracket text can hold emphasis, strong, code and other directives, but links and images in it stay plain text.
 
 A name starts with a letter, then letters, digits, `_` or `-`. A name that isn't a JavaScript identifier, such as `info-box`, matches a string export: `export { default as 'info-box' } from './InfoBox.svelte'`.
 
 ### Directive props
 
 - Args in parentheses become string props: `(kind=warn, title="A title")` gives `kind="warn"` and `title="A title"`. Values are never Svelte expressions.
-- `label` is a snippet of the bracket text of a leaf or container. Its inline markdown is rendered, and empty brackets pass no `label`.
+- `label` is a snippet of the bracket text of a leaf or container. Its inline markdown is rendered, and empty or missing brackets pass no `label`.
 - `children` is a snippet of an inline directive's bracket text, or of a container's body.
 
 ```svelte
@@ -1004,7 +1061,159 @@ A [parse plugin](docs#parse_plugins) can handle directives that have no componen
 
 ### Directives from a plugin
 
-A [plugin](docs#plugins) can bring directives of its own, with the components that render them. They sit below everything above: an export of the same name from a `components` module or a template replaces the plugin's component.
+A [plugin](docs#plugins) can bring directives of its own, with the components that render them. They sit below everything above: an export of the same name from a `components` module or a template replaces the plugin's component. [`@mdsvex/plugin-steps`](docs#steps) is one.
+
+## Plugins
+
+The first-party plugins are packages of their own, named `@mdsvex/plugin-*`. Each exports a function, and what it returns goes in the [`plugins`](docs#plugins) option:
+
+```js
+import { mdsvex } from 'mdsvex';
+import { anchors } from '@mdsvex/plugin-anchors';
+import { steps } from '@mdsvex/plugin-steps';
+
+mdsvex({ heading_ids: true, plugins: [steps(), anchors()] });
+```
+
+| package | what it adds |
+| --- | --- |
+| [`@mdsvex/plugin-steps`](docs#steps) | numbered steps, one for each heading inside `:::steps` |
+| [`@mdsvex/plugin-anchors`](docs#anchors) | a link to itself on every heading that has an id |
+
+### Steps
+
+```bash
+pnpm add --save-dev @mdsvex/plugin-steps@next
+```
+
+```js
+import { steps } from '@mdsvex/plugin-steps';
+
+mdsvex({ plugins: [steps()] });
+```
+
+Each heading written directly inside `:::steps` starts a step. The heading is its title, and what follows, up to the next such heading, is its body:
+
+````svx
+:::steps
+
+## Install
+
+```sh
+pnpm add mdsvex
+```
+
+## Configure
+
+Add it to the config.
+
+:::
+````
+
+```html
+<ol class="steps" role="list">
+	<li class="step">
+		<div class="step-title"><h2>Install</h2></div>
+		<div class="step-body"><pre>...</pre></div>
+	</li>
+	<li class="step">
+		<div class="step-title"><h2>Configure</h2></div>
+		<div class="step-body"><p>Add it to the config.</p></div>
+	</li>
+</ol>
+```
+
+- **The first heading sets the depth.** If it is a `##`, every `##` written directly inside the container starts a step. A heading of any other depth is content of the step it is in.
+- **`(level=3)` names the depth instead**, as in `:::steps(level=3)`, whatever the first heading is.
+- **Only headings written directly inside count.** One in a block quote, a list or another directive starts no step.
+- **Content before the first heading is in no step.** It stays at the top of the list, where only list items belong, so put an introduction above the container or in its brackets: `:::steps[Set up a project]` renders that text in a `<p class="steps-label">` ahead of the list.
+- **Steps nest** when the outer container uses more colons, and the inner list counts from 1.
+- **A step can be written out** as `:::step[Its title]` inside the container, beside the ones headings make.
+
+The titles are still headings, so [`heading_ids`](docs#heading_ids) and [anchors](docs#anchors) reach them.
+
+The numbers are drawn by a small stylesheet that comes with the components, from a CSS counter. Its selectors have no specificity, so any rule of yours wins, and it reads these custom properties from `.steps`:
+
+| property | default |
+| --- | --- |
+| `--steps-marker-size` | `1.75rem` |
+| `--steps-gap` | `0.75rem` |
+| `--steps-marker-color` | `inherit` |
+| `--steps-marker-background` | the text colour at 12% |
+| `--steps-line` | the text colour at 20% |
+
+`steps({ css: false })` leaves the stylesheet out and keeps the markup, which is then a plain numbered list. Write your own from there, or start from a copy of `@mdsvex/plugin-steps/steps.css`.
+
+To change the markup, export your own `steps` or `step` from a [directives module](docs#declaring-directives). It replaces the plugin's component and gets the same props, `label` (the title, or the bracket text of the container) and `children`:
+
+```svelte
+<!-- src/lib/Step.svelte -->
+<script>
+	let { label, children } = $props();
+</script>
+
+<li class="step">
+	<header>{@render label?.()}</header>
+	{@render children?.()}
+</li>
+```
+
+```js
+// src/lib/directives.js
+export { default as step } from './Step.svelte';
+```
+
+The plugin's own components can be imported from `@mdsvex/plugin-steps/Steps.svelte` and `@mdsvex/plugin-steps/Step.svelte`, to wrap one in yours.
+
+### Anchors
+
+```bash
+pnpm add --save-dev @mdsvex/plugin-anchors@next
+```
+
+```js
+import { anchors } from '@mdsvex/plugin-anchors';
+
+mdsvex({ heading_ids: true, plugins: [anchors()] });
+```
+
+Puts a link to itself on every heading that has an id:
+
+```html
+<h2 id="getting-started"><a href="#getting-started">Getting started</a></h2>
+```
+
+**It needs [`heading_ids`](docs#heading_ids).** The plugin makes no ids of its own. It links the id each heading has once `heading_ids` has run, so with the option off no heading has one and nothing is linked. A heading left without an id, such as `## {title}`, gets no link either. An id a [parse plugin](docs#parse_plugins) set is linked like any other.
+
+```ts
+anchors({
+	position: 'wrap' | 'prepend' | 'append' = 'wrap',
+	attrs: Record<string, string>
+});
+```
+
+- **`'wrap'`** puts the content of the heading inside the link. A heading that already holds a link is left as it is, since a link can't hold another.
+- **`'prepend'`** and **`'append'`** add an empty link before or after the content, with `aria-hidden="true"` and `tabindex="-1"`, for a stylesheet to draw:
+
+```js
+anchors({ position: 'prepend', attrs: { class: 'anchor' } });
+```
+
+```html
+<h2 id="getting-started">
+	<a href="#getting-started" aria-hidden="true" tabindex="-1" class="anchor"></a>Getting started
+</h2>
+```
+
+```css
+.anchor::before {
+	content: '#';
+}
+```
+
+- **`attrs`** are more attributes for the link. One named as a default replaces it.
+
+`compile()` takes both plugins the same way, through its `plugins` option.
 
 ## Syntax highlighting
 
@@ -1704,6 +1913,9 @@ To also convert CommonMark documents to mdsvex's markdown, use `migrate`, which 
 | `{title}` in a document | `{metadata.title}` |
 | `remarkPlugins`, `rehypePlugins` | [`parse_plugins`](docs#parse_plugins) |
 | `rehype-slug` | [`heading_ids: true`](docs#heading_ids) |
+| `rehype-autolink-headings` | [`@mdsvex/plugin-anchors`](docs#anchors) |
+| `mdsvex-relative-images` | built in, see [`import_images`](docs#import_images) |
+| `![alt](./a.png)` served from the page's url | imported from beside the document, write `/a.png` for a file in `static`, or set [`import_images: false`](docs#import_images) |
 
 The migrator handles the `layout` rows and flags `<slot />` and `layoutPropForwarding`. The other rows are yours to change.
 

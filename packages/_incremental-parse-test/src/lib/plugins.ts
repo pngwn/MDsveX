@@ -1,7 +1,25 @@
 import type { DirectiveHandlers, ParsePlugin } from "@mdsvex/parse";
-import { autolink } from "@mdsvex/plugin-autolink";
 
 type Wrapper = { close(): void };
+
+/** an id and a link on each heading, fused so both show while it streams in */
+export function autolink(): ParsePlugin {
+	return {
+		heading: {
+			parse(node) {
+				const link = node.wrap_inner("link");
+				return () => {
+					const slug = node.text_content
+						.toLowerCase()
+						.replace(/[^\w]+/g, "-")
+						.replace(/^-+|-+$/g, "");
+					node.attrs.id = slug;
+					link.attrs.href = `#${slug}`;
+				};
+			},
+		},
+	};
+}
 
 export function wrap_parent(): ParsePlugin {
 	return {

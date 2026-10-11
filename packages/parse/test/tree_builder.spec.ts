@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { PFMParser, parse_markdown_svelte } from '../src/main';
+import { SourceTextSource, type WrapperView } from '../src/node_view';
 import type { Emitter } from '../src/opcodes';
+import { PluginDispatcher } from '../src/plugin_dispatch';
+import type { ParsePlugin } from '../src/plugin_types';
 import { TreeBuilder } from '../src/tree_builder';
 import { NodeBuffer, NodeKind } from '../src/utils';
 
@@ -435,6 +438,130 @@ describe('TreeBuilder ids as indices', () => {
 				null
 			);
 		}
+	});
+});
+
+describe('TreeBuilder ids as indices with nodes the parser did not make', () => {
+	const id_map = (tb: TreeBuilder) =>
+		(tb as unknown as { id_to_index: unknown }).id_to_index;
+
+	/** a wrapper per heading, a node before and after each list, a section from each heading */
+	const plugins = (): ParsePlugin[] => [
+		{
+			heading: {
+				parse(node, ctx: { section?: WrapperView }) {
+					ctx.section?.close();
+					ctx.section = node.wrap_from('html', { tag: 'section' });
+					const link = node.wrap_inner('link');
+					return () => {
+						link.attrs.href = '#' + node.text_content;
+					};
+				},
+			},
+			list: {
+				parse(node) {
+					node.prepend('html', { tag: 'hr' });
+					return () => {
+						node.append('html', { tag: 'hr' });
+					};
+				},
+			},
+		},
+	];
+
+	const docs = [
+		'# One *a* b\n\ntext `code` [link](u)\n\n- a\n- b\n\n## Two\n\n> quote\n\nend\n',
+		'intro\n\n# A\n\n1. x\n\n2. y\n\n# B\n\n| h |\n| - |\n| c |\n\ntext *open\n',
+		'# A\n\n<div>\n\n## inside\n\n- never closed\n',
+	];
+
+	function parse(doc: string, between: boolean): TreeBuilder {
+		const dispatcher = new PluginDispatcher(
+			plugins(),
+			new SourceTextSource(doc)
+		);
+		const tb = new TreeBuilder(8, dispatcher);
+		// an emitter in between hides the parser from the builder
+		new PFMParser(between ? new ShiftedIds(tb, 0) : tb).parse(doc);
+		return tb;
+	}
+
+	for (const doc of docs) {
+		it(`plugin nodes leave ids equal to slots: ${JSON.stringify(doc)}`, () => {
+			const direct = parse(doc, false);
+			expect(id_map(direct)).toBe(null);
+			const mapped = parse(doc, true);
+			expect(id_map(mapped)).not.toBe(null);
+			expect(dump(direct.get_buffer())).toEqual(dump(mapped.get_buffer()));
+		});
+	}
+
+	it('a repair that pushes a node mid document leaves ids equal to slots', () => {
+		const doc = '> <div>\n> a\n\nafter *the* quote\n\n- b\n';
+		const direct = new TreeBuilder(8);
+		new PFMParser(direct).parse(doc);
+		expect(id_map(direct)).toBe(null);
+		const mapped = new TreeBuilder(8);
+		new PFMParser(new ShiftedIds(mapped, 0)).parse(doc);
+		expect(id_map(mapped)).not.toBe(null);
+		expect(dump(direct.get_buffer())).toEqual(dump(mapped.get_buffer()));
+	});
+});
+
+describe('parser ids an emitter moves', () => {
+	function recorder() {
+		const ids: number[] = [];
+		const followed: unknown[] = [];
+		const emitter: Emitter = {
+			open: (id) => void ids.push(id),
+			close() {},
+			text() {},
+			attr() {},
+			set_value_start() {},
+			set_value_end() {},
+			revoke() {},
+			commit() {},
+			cursor() {},
+			follow: (parser) => void followed.push(parser),
+		};
+		return { emitter, ids, followed };
+	}
+
+	it('tells an emitter which parser it gets, when made and when bound', () => {
+		const first = recorder();
+		const second = recorder();
+		const parser = new PFMParser(first.emitter);
+		expect(first.followed).toEqual([parser]);
+		parser.bind(second.emitter);
+		expect(first.followed).toEqual([parser]);
+		expect(second.followed).toEqual([parser]);
+	});
+
+	it('goes on from the id its emitter skipped to', () => {
+		const { emitter, ids } = recorder();
+		const parser = new PFMParser(emitter);
+		emitter.open = (id) => {
+			ids.push(id);
+			// as a builder that put eight nodes of its own after the paragraph
+			if (id === 1) parser.skip_ids(emitter, 10);
+			// never back
+			if (id === 10) parser.skip_ids(emitter, 3);
+		};
+		parser.parse('a\n\nb\n');
+		expect(ids.slice(0, 4)).toEqual([0, 1, 10, 11]);
+	});
+
+	it('ignores an emitter it has left', () => {
+		const first = recorder();
+		const second = recorder();
+		const parser = new PFMParser(first.emitter);
+		parser.bind(second.emitter);
+		second.emitter.open = (id) => {
+			second.ids.push(id);
+			parser.skip_ids(first.emitter, 100);
+		};
+		parser.parse('a\n');
+		expect(second.ids.slice(0, 3)).toEqual([0, 1, 2]);
 	});
 });
 

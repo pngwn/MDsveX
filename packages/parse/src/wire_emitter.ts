@@ -17,8 +17,10 @@ import { NodeKind } from "./utils";
  *                opens a new node. pending=1 for speculative (optimistic rendering).
  *                extra is kind-specific (heading depth, backtick count, etc.).
  *
- *   C  Close     ["C", id]
- *                closes a node. Implicitly commits if pending.
+ *   C  Close     ["C", id] or ["C", id, 1]
+ *                closes a node. Implicitly commits if pending, unless it is a
+ *                paragraph, which K or R settles, or the close has the flag,
+ *                a delimiter with no closer whose R follows
  *
  *   T  Text      ["T", id, content]
  *                appends text content to a node. multiple T opcodes for the same id
@@ -196,6 +198,11 @@ export class WireEmitter implements Emitter {
 		if (this.kinds.get(id) === NodeKind.text) return;
 
 		this.batch.push([WireOp.Close, id]);
+	}
+
+	close_pending(id: number, _end: number): void {
+		// the flag tells a consumer the node is not final, its revoke follows
+		this.batch.push([WireOp.Close, id, 1]);
 	}
 
 	text(parent: number, start: number, end: number): void {

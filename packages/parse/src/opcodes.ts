@@ -1,5 +1,11 @@
 import type { NodeKind } from './utils';
 
+/** the parser as an emitter that keeps ids equal to its slots sees it */
+export interface IdSource {
+	/** the next id is at least next, a call from an emitter the parser left does nothing */
+	skip_ids(emitter: Emitter, next: number): void;
+}
+
 /**
  * emitter interface for pfm parser opcodes.
  *
@@ -31,13 +37,21 @@ export interface Emitter {
 	): void;
 
 	/**
-	 * close a previously opened node. implicitly commits pending nodes.
+	 * close a previously opened node, a pending node is final from here on
+	 * unless it is a paragraph, which a commit or a revoke settles later
 	 * @param id id of the node to close.
 	 * @param end source byte offset where this node ends.
 	 * @param kind kind at open, a revoke may have rewritten it since, omitting
 	 *   it makes the builder track revokes
 	 */
 	close(id: number, end: number, kind?: NodeKind): void;
+
+	/**
+	 * close a pending delimiter that reached the end of its block with no
+	 * closer, it is not final and its revoke follows once the parser is back
+	 * at block level, when it is missing the parser calls close
+	 */
+	close_pending?(id: number, end: number, kind: NodeKind): void;
 
 	/**
 	 * emit leaf text content within a node.
@@ -105,7 +119,8 @@ export interface Emitter {
 	 * used for tight-list speculation: paragraphs inside list_items are
 	 * opened pending so renderers can hide their wrapper during streaming;
 	 * when the list turns out to be loose we commit each one so the wrapper
-	 * becomes visible.
+	 * becomes visible. a paragraph opened pending outside a list, one that
+	 * starts with a tag or an image, is committed when it closes with text
 	 * @param id id of the node to commit.
 	 */
 	commit(id: number): void;
@@ -120,4 +135,11 @@ export interface Emitter {
 
 	/** the incremental finish emitted the last opcode, reserved storage can go */
 	end?(): void;
+
+	/**
+	 * the parser that emits here from now on, called when it is made or bound,
+	 * an emitter that puts nodes of its own in id slots moves the next id past
+	 * them with skip_ids so ids stay dense for it
+	 */
+	follow?(ids: IdSource): void;
 }

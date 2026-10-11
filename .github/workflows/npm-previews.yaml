@@ -24,4 +24,4 @@ jobs:
         env:
           CI: true
           name: mdsvex
-      - run: pnpx pkg-pr-new publish './packages/*' --template './packages/test-app/'
+      - run: pnpx pkg-pr-new publish './packages/*' './plugins/*' --template './packages/test-app/'

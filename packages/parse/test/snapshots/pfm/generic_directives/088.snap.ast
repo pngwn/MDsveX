@@ -1,10 +1,5 @@
 root
-  paragraph
-    text "::"
-    text ":note"
-    soft_break
-    text "bare container opener is a paragraph now"
-  line_break
-  paragraph
-    text ":::"
-  line_break
+  directive_container name="note"
+    paragraph
+      text "a bare container opener is a directive"
+    line_break

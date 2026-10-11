@@ -19,7 +19,7 @@ test("the template replaces elements with its exports", async ({ page }) => {
 	const heading = page.locator("article h2.section");
 	await expect(heading).toHaveText("Replaced heading");
 	await expect(heading).toHaveAttribute("data-level", "2");
-	// the autolink id reaches the replacement as a prop
+	// the heading id reaches the replacement as a prop
 	await expect(heading).toHaveAttribute("id", "replaced-heading");
 	await expect(page.locator("article aside.callout")).toContainText(
 		"renders as the template's callout"

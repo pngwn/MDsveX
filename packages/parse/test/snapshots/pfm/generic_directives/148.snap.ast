@@ -1,0 +1,12 @@
+root
+  paragraph
+    text "::"
+    text ":name "
+    text "[x"
+    text "]"
+    soft_break
+    text "body"
+  line_break
+  paragraph
+    text ":::"
+  line_break

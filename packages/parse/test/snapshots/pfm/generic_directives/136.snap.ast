@@ -1,0 +1,20 @@
+root
+  directive_container name="steps"
+    heading depth=2 "One"
+      text "One"
+    line_break
+    line_break
+    paragraph
+      text "First."
+    line_break
+    line_break
+    heading depth=2 "Two"
+      text "Two"
+    line_break
+    line_break
+    list ordered=false start=0 tight=true
+      list_item
+        text "a"
+      list_item
+        text "b"
+    line_break

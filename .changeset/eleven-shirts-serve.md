@@ -1,6 +1,5 @@
 ---
 'incremental-parse-test': minor
-'@mdsvex/plugin-autolink': minor
 'mdsvex': minor
 '@mdsvex/render': minor
 '@mdsvex/parse': minor

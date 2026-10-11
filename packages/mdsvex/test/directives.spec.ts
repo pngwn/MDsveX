@@ -145,6 +145,109 @@ describe('the three forms', () => {
 	});
 });
 
+describe('block forms without brackets', () => {
+	test('a bare leaf is void', () => {
+		expect(body(compile_all('::toc', only('toc')))).toBe('<Toc_MDSVEX_D_G />');
+		expect(body(compile_all('text\n::toc\nmore\n', only('toc')))).toBe(
+			'<p>text</p><Toc_MDSVEX_D_G /><p>more</p>'
+		);
+	});
+
+	test('a bare leaf takes args as props', () => {
+		expect(
+			body(compile_all('::toc(depth=2, title="On this page")', only('toc')))
+		).toBe('<Toc_MDSVEX_D_G depth="2" title="On this page" />');
+	});
+
+	test('a bare container has only children', () => {
+		expect(body(compile_all(':::note\n# h\n\n> q\n:::', only('note')))).toBe(
+			'<Note_MDSVEX_D_G>\n<h1>h</h1><blockquote>\n<p>q</p>\n</blockquote>\n</Note_MDSVEX_D_G>'
+		);
+	});
+
+	test('a bare container takes args as props', () => {
+		expect(
+			body(
+				compile_all(
+					':::Callout(kind=warn)\nBody *markdown*\n:::',
+					only('Callout')
+				)
+			)
+		).toBe(
+			'<Callout_MDSVEX_D_G kind="warn">\n' +
+				'<p>Body <strong>markdown</strong></p>\n' +
+				'</Callout_MDSVEX_D_G>'
+		);
+	});
+
+	test('a bare container without a body is void', () => {
+		expect(body(compile_all(':::note\n:::', only('note')))).toBe(
+			'<Note_MDSVEX_D_G />'
+		);
+		expect(body(compile_all(':::note(k=v)\n:::', only('note')))).toBe(
+			'<Note_MDSVEX_D_G k="v" />'
+		);
+	});
+
+	test('compiles to the same code as empty brackets', () => {
+		const names = only('outer', 'inner', 'toc', 'k');
+		const pairs: [string, string][] = [
+			['::toc', '::toc[]'],
+			['::toc(a=1)\n', '::toc[](a=1)\n'],
+			[':::outer\nbody\n:::\n', ':::outer[]\nbody\n:::\n'],
+			[
+				'::::outer(a=1)\n:::inner\nsee :k[x]\n:::\n::toc\n::::\n',
+				'::::outer[](a=1)\n:::inner[]\nsee :k[x]\n:::\n::toc[]\n::::\n',
+			],
+			['> :::outer\n> q\n> :::\n', '> :::outer[]\n> q\n> :::\n'],
+			['- ::toc\n- b\n', '- ::toc[]\n- b\n'],
+			[
+				'{#if a}\n:::outer\nx\n:::\n{/if}\n',
+				'{#if a}\n:::outer[]\nx\n:::\n{/if}\n',
+			],
+		];
+		for (const [bare, bracketed] of pairs) {
+			expect(compile_all(bare, names), bare).toBe(
+				compile_all(bracketed, names)
+			);
+		}
+	});
+
+	test('a line with anything else after the name is a paragraph, no component needed', () => {
+		expect(compile('::toc is not here').code).toBe('<p>::toc is not here</p>');
+		expect(compile('::before:').code).toBe('<p>::before:</p>');
+		expect(compile(':::note [x]').code).toBe('<p>:::note [x]</p>');
+	});
+
+	test('the inline form without brackets is text', () => {
+		expect(body(compile_all('a :abbr b :tada: 10:30', only('abbr')))).toBe(
+			'<p>a :abbr b :tada: 10:30</p>'
+		);
+	});
+
+	test('every form compiles as svelte 5', () => {
+		const raw = [
+			'::toc',
+			'',
+			'::youtube(id=abc)',
+			'',
+			':::Callout(kind=warn)',
+			'Body *markdown*',
+			':::',
+			'',
+			':::note',
+			'plain',
+			':::',
+		].join('\n');
+		const code = compile(raw, {
+			directives: only('toc', 'youtube', 'Callout', 'note'),
+		}).code;
+		for (const generate of ['client', 'server'] as const) {
+			svelte_compile(code, { generate, filename: 'doc.svelte' });
+		}
+	});
+});
+
 /** the source offset the innermost mapping of a compile gives the generated offset */
 function mapped_source(
 	mappings: {
@@ -323,6 +426,18 @@ describe('unknown directives', () => {
 		['inline', 'text\n\nsome :thing[x] here', ':thing', 3, 6],
 		['leaf', '::thing[x]', '::thing', 1, 1],
 		['container', '# t\n\n:::thing[x]\nbody\n:::', ':::thing', 3, 1],
+		['bare leaf', 'text\n\n::thing', '::thing', 3, 1],
+		['bare leaf with args', '# t\n\ntext\n::thing(k=v)\n', '::thing', 4, 1],
+		['bare container', '# t\n\n:::thing\nbody\n:::', ':::thing', 3, 1],
+		['bare container with args', ':::thing(k=v)\nbody\n:::', ':::thing', 1, 1],
+		['bare leaf in a block quote', 'text\n\n> ::thing\n', '::thing', 3, 3],
+		[
+			'bare container in a list',
+			'- a\n-   :::thing\n    b\n    :::\n',
+			':::thing',
+			2,
+			5,
+		],
 	];
 	for (const [form, raw, shown, line, column] of cases) {
 		test(`an unknown ${form} directive is a compile error naming it`, () => {

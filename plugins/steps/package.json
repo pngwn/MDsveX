@@ -1,0 +1,70 @@
+{
+	"name": "@mdsvex/plugin-steps",
+	"version": "0.0.1",
+	"description": "Numbered steps for mdsvex, each heading inside a steps directive starts one",
+	"type": "module",
+	"scripts": {
+		"build": "run-s build:check build:package",
+		"build:check": "tsc",
+		"build:package": "svelte-package -i src -o dist",
+		"test": "vitest --disableConsoleIntercept",
+		"test:run": "vitest run"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		},
+		"./directives": {
+			"types": "./dist/unstyled.d.ts",
+			"svelte": "./dist/directives.js"
+		},
+		"./directives/unstyled": {
+			"types": "./dist/unstyled.d.ts",
+			"svelte": "./dist/unstyled.js"
+		},
+		"./Steps.svelte": {
+			"types": "./dist/Steps.svelte.d.ts",
+			"svelte": "./dist/Steps.svelte"
+		},
+		"./Step.svelte": {
+			"types": "./dist/Step.svelte.d.ts",
+			"svelte": "./dist/Step.svelte"
+		},
+		"./steps.css": "./dist/steps.css",
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"dist"
+	],
+	"sideEffects": [
+		"**/*.css",
+		"./dist/directives.js"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pngwn/MDsveX.git",
+		"directory": "plugins/steps"
+	},
+	"keywords": [
+		"mdsvex",
+		"mdsvex-plugin",
+		"svelte",
+		"markdown",
+		"steps"
+	],
+	"author": "pngwn <hello@pngwn.io>",
+	"license": "MIT",
+	"peerDependencies": {
+		"mdsvex": "^1.0.0-next.2",
+		"svelte": "^5.0.0"
+	},
+	"devDependencies": {
+		"@sveltejs/package": "^3.0.0",
+		"@sveltejs/vite-plugin-svelte": "^6.2.4",
+		"mdsvex": "workspace:^",
+		"npm-run-all2": "^7.0.2",
+		"svelte": "^5.55.0",
+		"vite": "^7.3.1"
+	}
+}

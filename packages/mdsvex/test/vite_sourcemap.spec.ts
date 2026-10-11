@@ -95,7 +95,9 @@ function eager(
 		undefined,
 		undefined,
 		undefined,
-		highlight
+		highlight,
+		// as the plugin has it by default, fixtures hold relative images
+		{ import_images: true }
 	);
 	const chained = remapping([compile_map as never, map as never], () => null);
 	if (chained.sourcesContent) {

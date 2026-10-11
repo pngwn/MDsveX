@@ -28,7 +28,8 @@
 	},
 	"dependencies": {
 		"@fontsource/source-code-pro": "^5.2.5",
-		"@mdsvex/plugin-autolink": "workspace:*",
+		"@mdsvex/plugin-anchors": "workspace:*",
+		"@mdsvex/plugin-steps": "workspace:*",
 		"mdsvex": "workspace:*"
 	}
 }
