@@ -90,11 +90,11 @@ function fed(source: string, chunk: number): string {
 }
 
 export function checked_tree(source: string): string {
-	for (const chunk of [0, 1, 3]) {
+	for (const chunk of [0, 1, 2, 3]) {
 		expect(broken(source, chunk), `fed ${chunk}`).toEqual([]);
 	}
 	const whole = print_ast(parse_markdown_svelte(source).nodes, source);
-	for (const chunk of [1, 3]) {
+	for (const chunk of [1, 2, 3]) {
 		expect(fed(source, chunk), `fed ${chunk}`).toBe(whole);
 	}
 	return whole;

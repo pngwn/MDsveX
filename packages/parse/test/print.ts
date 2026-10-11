@@ -92,7 +92,8 @@ export function print_ast(
 	if (VALUE_KINDS.has(node.kind)) {
 		const [vs, ve] = node.value;
 		if (vs !== SENTINEL && ve !== SENTINEL && ve > vs) {
-			const val = source.slice(vs, ve);
+			// a stored string is the text when the range does not hold it as written
+			const val = nodes._strings[index] ?? source.slice(vs, ve);
 			parts.push(`"${escape(val)}"`);
 		}
 	}

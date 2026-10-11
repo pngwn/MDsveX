@@ -209,6 +209,8 @@ const ID_POOL_CAP = 1 << 16;
 const EMPTY_IDS = new Int32Array(0);
 /** placeholder for rarely used stacks until their first push, never written */
 const NO_STACK: any[] = [];
+/** in a table cell code span, where every pipe is an escaped one */
+const ESCAPED_PIPE = /\\\|/g;
 
 // shared by every parser, a parser drops its references when it hands them back so no two hold the same table
 let spare_ids: Int32Array | null = null;
@@ -947,6 +949,7 @@ export class PFMParser {
 	private info_end_pos: number = 0;
 	private checkpoint_cursor: number = 0;
 	private code_span_open_pos: number = 0;
+	private span_vs: number = 0;
 	private prev_cursor: number = 0;
 	// the lowest state stack depth sampled since the cursor last moved
 	private prev_depth: number = 0;
@@ -2128,6 +2131,32 @@ export class PFMParser {
 		return true;
 	}
 
+	/** the value start of a code span the states read, kept for cell_span_text */
+	private span_start(id: number, pos: number): void {
+		this.span_vs = pos;
+		this.out.set_value_start(id, pos);
+	}
+
+	private span_close(id: number, value_end: number, end: number): void {
+		if (this.in_table) this.cell_span_text(id, value_end);
+		this.out.set_value_end(id, value_end);
+		this.emit_close(id, end);
+	}
+
+	/** the backslash of an escaped pipe is not code, so the text goes out as a string before the close */
+	private cell_span_text(id: number, value_end: number): void {
+		const base = this.source_base;
+		const from = this.span_vs - base;
+		const to = value_end - base;
+		const at = string_index_of.call(this.source, '\\|', from);
+		if (at === -1 || at >= to - 1) return;
+		this.out.attr(
+			id,
+			'text',
+			string_slice.call(this.source, from, to).replace(ESCAPED_PIPE, '|')
+		);
+	}
+
 	/**
 	 * the pipe at pos follows a backslash that is not itself escaped, as the header row scan of try_start_table reads it
 	 * the count stops at the opening backticks, a table row keeps its whole line in the window
@@ -2179,7 +2208,7 @@ export class PFMParser {
 			current_node
 		);
 		this.node_stack.push(cs_id);
-		this.out.set_value_start(cs_id, this.cursor);
+		this.span_start(cs_id, this.cursor);
 	}
 
 	private open_text_run(p0: number, parent: number): void {
@@ -8161,7 +8190,7 @@ export class PFMParser {
 								current_node
 							);
 							this.node_stack.push(cs_id_h);
-							this.out.set_value_start(cs_id_h, this.cursor);
+							this.span_start(cs_id_h, this.cursor);
 							continue;
 						}
 						case SPACE: {
@@ -8204,7 +8233,7 @@ export class PFMParser {
 								current_node
 							);
 							this.node_stack.push(cs_id);
-							this.out.set_value_start(cs_id, this.cursor);
+							this.span_start(cs_id, this.cursor);
 
 							continue;
 						}
@@ -8257,7 +8286,7 @@ export class PFMParser {
 							// the leading-space path defers until its close handler
 							// determines whether stripping applies.
 							if (char_code_at.call(source, this.cursor - 2 - base) !== SPACE) {
-								this.out.set_value_start(cs_id, this.cursor);
+								this.span_start(cs_id, this.cursor);
 							}
 
 							continue;
@@ -8310,9 +8339,12 @@ export class PFMParser {
 									BACKTICK &&
 								char_code_at.call(source, this.cursor + 2 - base) !== BACKTICK)
 						) {
-							this.out.set_value_start(current_node, this.checkpoint_cursor);
-							this.out.set_value_end(current_node, this.cursor);
-							this.emit_close(current_node, this.cursor + this.extra);
+							this.span_start(current_node, this.checkpoint_cursor);
+							this.span_close(
+								current_node,
+								this.cursor,
+								this.cursor + this.extra
+							);
 							this.node_stack.pop();
 							this.states.pop();
 							this.chomp(this.extra);
@@ -8326,7 +8358,7 @@ export class PFMParser {
 						(code === PIPE && this.in_table && !this.pipe_escaped(this.cursor))
 					) {
 						// code_span_end continues the span, or fails it at a blank line, eof or the end of a cell
-						this.out.set_value_start(current_node, this.checkpoint_cursor);
+						this.span_start(current_node, this.checkpoint_cursor);
 						this.chomp(this.cursor, true);
 						this.states.pop();
 						this.states.push(StateKind.code_span_end);
@@ -8352,9 +8384,12 @@ export class PFMParser {
 						char_code_at.call(source, this.cursor + 1 - base) !== BACKTICK
 					) {
 						this.states.pop();
-						this.out.set_value_start(current_node, this.checkpoint_cursor + 1);
-						this.emit_close(current_node, this.cursor + this.extra);
-						this.out.set_value_end(current_node, this.cursor - 1);
+						this.span_start(current_node, this.checkpoint_cursor + 1);
+						this.span_close(
+							current_node,
+							this.cursor - 1,
+							this.cursor + this.extra
+						);
 						this.node_stack.pop();
 					} else if (
 						this.extra === 2 &&
@@ -8363,9 +8398,12 @@ export class PFMParser {
 						char_code_at.call(source, this.cursor + 2 - base) !== BACKTICK
 					) {
 						this.states.pop();
-						this.out.set_value_start(current_node, this.checkpoint_cursor + 1);
-						this.emit_close(current_node, this.cursor + this.extra);
-						this.out.set_value_end(current_node, this.cursor - 1);
+						this.span_start(current_node, this.checkpoint_cursor + 1);
+						this.span_close(
+							current_node,
+							this.cursor - 1,
+							this.cursor + this.extra
+						);
 						this.node_stack.pop();
 					} else {
 						this.states.pop();
@@ -8395,9 +8433,12 @@ export class PFMParser {
 						}
 						if (run === this.extra) {
 							// exact match - close the code span
-							this.out.set_value_end(current_node, this.cursor);
 							this.states.pop();
-							this.emit_close(current_node, this.cursor + this.extra);
+							this.span_close(
+								current_node,
+								this.cursor,
+								this.cursor + this.extra
+							);
 							this.node_stack.pop();
 							this.chomp(this.extra);
 							continue;

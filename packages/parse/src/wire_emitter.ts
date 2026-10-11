@@ -267,6 +267,18 @@ export class WireEmitter implements Emitter {
 			return;
 		}
 
+		// the text replaces what was sent of the range, its value_end then sends nothing
+
+		if (key === "text") {
+			const state = this.text_state.get(id);
+			if (state && state.sent > state.start) {
+				this.batch.push([WireOp.Clear, state.target]);
+			}
+			this.text_state.delete(id);
+			this.batch.push([WireOp.Text, id, value]);
+			return;
+		}
+
 		if (key === "value_end") {
 			const state = this.text_state.get(id);
 			if (state) {
