@@ -1197,7 +1197,7 @@ describe('a tag at the start of a line matches batch however it is fed', () => {
 			[
 				'root',
 				'  paragraph',
-				'    text tag="b" "<b>"',
+				'    text "<b>"',
 				'    text "</b>"',
 				'  line_break',
 				'  thematic_break',
@@ -1207,8 +1207,8 @@ describe('a tag at the start of a line matches batch however it is fed', () => {
 			[
 				'root',
 				'  paragraph',
-				'    text tag="b" "<b>"',
-				'    text tag="i" "<i>"',
+				'    text "<b>"',
+				'    text "<i>"',
 				'    text "</b>"',
 				'  line_break',
 				'  thematic_break',
@@ -1218,8 +1218,9 @@ describe('a tag at the start of a line matches batch however it is fed', () => {
 			[
 				'root',
 				'  paragraph',
-				'    text tag="span" "<span>"',
-				'    text "[\\\\</span>"',
+				'    text "<span>"',
+				'    text "["',
+				'    text "</span>"',
 				'  line_break',
 				'  line_break',
 				'  paragraph',
@@ -1228,18 +1229,15 @@ describe('a tag at the start of a line matches batch however it is fed', () => {
 			].join('\n')
 		);
 		expect(printed('<b><script></b>\n---\n')).toBe(
-			[
-				'root',
-				'  paragraph',
-				'    text tag="b" "<b>"',
-				'    html tag="script"',
-			].join('\n')
+			['root', '  paragraph', '    text "<b>"', '    html tag="script"'].join(
+				'\n'
+			)
 		);
 		expect(printed('<span>[`</span>\n<div></div>`\n')).toBe(
 			[
 				'root',
 				'  paragraph',
-				'    text tag="span" "<span>"',
+				'    text "<span>"',
 				'    text "["',
 				'    code_span "</span>\\n<div></div>"',
 				'  line_break',
@@ -1250,7 +1248,7 @@ describe('a tag at the start of a line matches batch however it is fed', () => {
 			[
 				'root',
 				'  paragraph',
-				'    text tag="b" "<b>"',
+				'    text "<b>"',
 				'    text "x"',
 				'    text "</b foo>"',
 				'  line_break',
@@ -1265,7 +1263,7 @@ describe('a tag at the start of a line matches batch however it is fed', () => {
 			[
 				'root',
 				'  paragraph',
-				'    text tag="div" "<div>"',
+				'    text "<div>"',
 				'    text "</div>"',
 				'  line_break',
 				'  line_break',
