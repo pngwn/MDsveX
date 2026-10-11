@@ -1,121 +1,6 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 
-import { PFMParser, parse_markdown_svelte } from '../src/main';
-import type { Emitter } from '../src/opcodes';
-import { TreeBuilder } from '../src/tree_builder';
-import { NodeKind, kind_to_string } from '../src/utils';
-import { print_ast } from './print';
-
-const enum Seen {
-	open,
-	closed,
-	revoked,
-}
-
-/** every node opened once and ended once, what a builder needs of the stream */
-class Stream implements Emitter {
-	private kinds: NodeKind[] = [];
-	private seen: Seen[] = [];
-	broken: string[] = [];
-
-	private fail(what: string, id: number): void {
-		const kind = id === undefined ? 'no' : kind_to_string(this.kinds[id]);
-		this.broken.push(`${what}: ${kind} ${id}`);
-	}
-
-	private add(id: number, kind: NodeKind, parent: number, seen: Seen): void {
-		if (this.seen[id] !== undefined) this.fail('opened twice', id);
-		if (parent !== -1 && this.seen[parent] === undefined) {
-			this.fail('opened under an unknown parent', id);
-		}
-		this.kinds[id] = kind;
-		this.seen[id] = seen;
-	}
-
-	open(id: number, kind: NodeKind, _start: number, parent: number): void {
-		this.add(id, kind, parent, Seen.open);
-	}
-	leaf(id: number, kind: NodeKind, _start: number, parent: number): void {
-		this.add(id, kind, parent, Seen.closed);
-	}
-	close(id: number): void {
-		if (this.seen[id] === undefined) this.fail('closed but never opened', id);
-		else if (this.seen[id] === Seen.closed) this.fail('closed twice', id);
-		else if (this.seen[id] === Seen.revoked)
-			this.fail('closed after a revoke', id);
-		this.seen[id] = Seen.closed;
-	}
-	revoke(id: number): void {
-		if (this.seen[id] === undefined) this.fail('revoked but never opened', id);
-		this.seen[id] = Seen.revoked;
-	}
-	commit(): void {}
-	text(): void {}
-	attr(): void {}
-	set_value_start(): void {}
-	set_value_end(): void {}
-	cursor(): void {}
-
-	finish(): string[] {
-		for (let id = 0; id < this.seen.length; id++) {
-			if (this.seen[id] === Seen.open) this.fail('never closed', id);
-		}
-		return this.broken;
-	}
-}
-
-function broken(source: string, chunk: number): string[] {
-	const stream = new Stream();
-	const parser = new PFMParser(stream);
-	if (chunk === 0) parser.parse(source);
-	else {
-		parser.init();
-		for (let i = 0; i < source.length; i += chunk) {
-			parser.feed(source.slice(i, i + chunk));
-		}
-		parser.finish();
-	}
-	return stream.finish();
-}
-
-function fed(source: string, chunk: number): string {
-	const tree = new TreeBuilder(source.length);
-	const parser = new PFMParser(tree);
-	parser.init();
-	for (let i = 0; i < source.length; i += chunk) {
-		parser.feed(source.slice(i, i + chunk));
-	}
-	parser.finish();
-	return print_ast(tree.get_buffer(), source);
-}
-
-function checked_tree(source: string): string {
-	for (const chunk of [0, 1, 3]) {
-		expect(broken(source, chunk), `fed ${chunk}`).toEqual([]);
-	}
-	const whole = print_ast(parse_markdown_svelte(source).nodes, source);
-	for (const chunk of [1, 3]) {
-		expect(fed(source, chunk), `fed ${chunk}`).toBe(whole);
-	}
-	return whole;
-}
-
-function lines(...rows: string[]): string {
-	return rows.join('\n');
-}
-
-function random(seed: number): () => number {
-	return () => {
-		seed = (seed + 0x6d2b79f5) | 0;
-		let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-		t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-	};
-}
-
-function pick(rand: () => number, from: string[]): string {
-	return from[Math.floor(rand() * from.length)];
-}
+import { broken, checked_tree, lines, pick, random } from './stream_shape';
 
 describe('an html element left open in a table cell', () => {
 	test('a close tag in a later row is text', () => {
@@ -250,7 +135,108 @@ describe('an html element left open in a table cell', () => {
 	});
 });
 
-// a bare delimiter run or an escaped pipe in a cell breaks the stream another way
+describe('a close tag in a header cell', () => {
+	test('for an element opened before the table is text', () => {
+		expect(checked_tree('<div>\n|</div>\n-')).toBe(
+			lines(
+				'root',
+				'  paragraph',
+				'    text "<div>"',
+				'  line_break',
+				'  table alignments=["none"] col_count=1',
+				'    table_header',
+				'      table_cell',
+				'        text "</div>"'
+			)
+		);
+	});
+
+	test('for an element opened on the header line before the first pipe', () => {
+		expect(checked_tree('<span>|<span>|</span>\n-|-')).toBe(
+			lines(
+				'root',
+				'  paragraph',
+				'    text "<span>"',
+				'  table alignments=["none","none"] col_count=2',
+				'    table_header',
+				'      table_cell',
+				'        text tag="span" "<span>"',
+				'      table_cell',
+				'        text "</span>"'
+			)
+		);
+	});
+
+	test('the element still closes after the table', () => {
+		expect(
+			checked_tree('<div>\n| a </div> b |\n|---|\n| c |\n</div>\n\nd\n')
+		).toBe(
+			lines(
+				'root',
+				'  html tag="div"',
+				'    line_break',
+				'    table alignments=["none"] col_count=1',
+				'      table_header',
+				'        table_cell',
+				'          text "a "',
+				'          text "</div> b"',
+				'      table_row',
+				'        table_cell',
+				'          text "c"',
+				'      table_row',
+				'        table_cell',
+				'  line_break',
+				'  line_break',
+				'  paragraph',
+				'    text "d"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('the element still closes from a body row', () => {
+		expect(checked_tree('<span>|<span>|</span>\n-|-\n|</span> x\n')).toBe(
+			lines(
+				'root',
+				'  html tag="span"',
+				'    table alignments=["none","none"] col_count=2',
+				'      table_header',
+				'        table_cell',
+				'          text tag="span" "<span>"',
+				'        table_cell',
+				'          text "</span>"',
+				'      table_row',
+				'        table_cell',
+				'        table_cell',
+				'  paragraph',
+				'    text "x"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('an element opened in the cell closes in it', () => {
+		expect(
+			checked_tree('<div>\n\n| <b>x</b> </div> |\n|---|\n\n</div>\n')
+		).toBe(
+			lines(
+				'root',
+				'  html tag="div"',
+				'    line_break',
+				'    line_break',
+				'    table alignments=["none"] col_count=1',
+				'      table_header',
+				'        table_cell',
+				'          html tag="b"',
+				'            text "x"',
+				'          text "</div>"',
+				'    line_break',
+				'  line_break'
+			)
+		);
+	});
+});
+
 const CELL_PIECES = [
 	'<span>',
 	'</span>',
@@ -271,11 +257,21 @@ const CELL_PIECES = [
 	'- ',
 	'&amp;',
 	'---',
+	'*',
+	'**',
+	'_',
+	'~~',
+	'~',
+	'^',
+	'\\',
+	'\\|',
 	'|',
 	'|',
 ];
 
 const DELIMITER_ROWS = ['---', '|-|', '|-|-|', '-|-'];
+
+const LEADS = ['', '', '', '', '<span>', '<div>\n', '<b>\n'];
 
 function cells(rand: () => number): string {
 	let row = '';
@@ -285,8 +281,9 @@ function cells(rand: () => number): string {
 }
 
 function table(rand: () => number): string {
-	// a leading pipe, a tag before it would open an element around the table
-	let source = `|${cells(rand)}\n${pick(rand, DELIMITER_ROWS)}\n`;
+	let source = pick(rand, LEADS);
+	if (rand() < 0.7) source += '|';
+	source += `${cells(rand)}\n${pick(rand, DELIMITER_ROWS)}\n`;
 	const rows = Math.floor(rand() * 4);
 	for (let r = 0; r < rows; r++) {
 		source += `${rand() < 0.7 ? '|' : ''}${cells(rand)}\n`;
@@ -297,15 +294,17 @@ function table(rand: () => number): string {
 
 describe('random tables with html in their cells', () => {
 	test('every node is opened once and ended once', () => {
+		// the parser reports a state loop it had to break out of here
+		const loops = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const rand = random(1);
 		for (let i = 0; i < 4000; i++) {
 			const source = table(rand);
 			for (const chunk of [0, 3]) {
-				expect(
-					broken(source, chunk),
-					`${JSON.stringify(source)} fed ${chunk}`
-				).toEqual([]);
+				const label = `${JSON.stringify(source)} fed ${chunk}`;
+				expect(broken(source, chunk), label).toEqual([]);
+				expect(loops.mock.calls, label).toEqual([]);
 			}
 		}
+		loops.mockRestore();
 	});
 });

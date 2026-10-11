@@ -6906,6 +6906,9 @@ export class PFMParser {
 						}
 
 						this.close_strong(n_id);
+					} else if (this.in_table && (code === PIPE || code === LINEFEED)) {
+						// inline pops here in a table cell, pushing it again would ping pong
+						this.unwind_inline_for_table();
 					} else if (
 						code === LINEFEED &&
 						this._delimiter_lf_close(current_node)
@@ -8280,7 +8283,7 @@ export class PFMParser {
 					} else if (
 						code === LINEFEED ||
 						code !== code ||
-						(code === PIPE && this.in_table)
+						(code === PIPE && this.in_table && !this.inline_range_parse)
 					) {
 						// code_span_end continues the span, fails it at a blank line or eof, or unwinds it at a cell pipe
 						this.out.set_value_start(current_node, this.checkpoint_cursor);
@@ -8334,7 +8337,12 @@ export class PFMParser {
 
 				case StateKind.code_span_end: {
 					// in table cells, | breaks through code spans
-					if (this.in_table && (code === PIPE || code === LINEFEED)) {
+					// a header cell range holds no cell boundary, a pipe in it is escaped and stays in the span
+					if (
+						this.in_table &&
+						(code === PIPE || code === LINEFEED) &&
+						!this.inline_range_parse
+					) {
 						this.unwind_inline_for_table();
 						continue;
 					}
@@ -9084,6 +9092,11 @@ export class PFMParser {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
+		// inline pops at a pipe or linefeed in a table cell, pushing it again would ping pong
+		if (this.in_table && (code === PIPE || code === LINEFEED)) {
+			this.unwind_inline_for_table();
+			return false;
+		}
 		if (!code) {
 			this._unwind_unterminated_delimiter();
 			return false;
@@ -9139,6 +9152,11 @@ export class PFMParser {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
+		// inline pops at a pipe or linefeed in a table cell, pushing it again would ping pong
+		if (this.in_table && (code === PIPE || code === LINEFEED)) {
+			this.unwind_inline_for_table();
+			return false;
+		}
 		if (!code) {
 			this._unwind_unterminated_delimiter();
 			return false;
@@ -9219,6 +9237,11 @@ export class PFMParser {
 	}
 
 	private _run_superscript(code: number, current_node: number): boolean {
+		// inline pops at a pipe or linefeed in a table cell, pushing it again would ping pong
+		if (this.in_table && (code === PIPE || code === LINEFEED)) {
+			this.unwind_inline_for_table();
+			return false;
+		}
 		if (!code) {
 			this._unwind_unterminated_delimiter();
 			return false;
@@ -9250,6 +9273,11 @@ export class PFMParser {
 	private _run_subscript(code: number, current_node: number): boolean {
 		const source = this.source;
 		const base = this.source_base;
+		// inline pops at a pipe or linefeed in a table cell, pushing it again would ping pong
+		if (this.in_table && (code === PIPE || code === LINEFEED)) {
+			this.unwind_inline_for_table();
+			return false;
+		}
 		if (!code) {
 			this._unwind_unterminated_delimiter();
 			return false;
@@ -12012,12 +12040,16 @@ export class PFMParser {
 		this.source = string_slice.call(this.source, 0, end - this.source_base);
 		this.source_end = this.source_base + this.source.length;
 		this.inline_range_parse = true;
+		// a close tag in the range would close an element opened before it and the cell around the range
+		const save_tags = this.html_tag_stack;
+		if (save_tags.length !== 0) this.html_tag_stack = [];
 
 		this._run();
 
 		this.source = save_source;
 		this.source_end = save_end;
 		this.inline_range_parse = false;
+		this.html_tag_stack = save_tags;
 
 		// unwind anything left above the sentinel
 		while (this.states.length > sentinel) {
