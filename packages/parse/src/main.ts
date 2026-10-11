@@ -8410,8 +8410,11 @@ export class PFMParser {
 						);
 						this.node_stack.pop();
 					} else {
+						// not the closer, the next state reads the char after it
 						this.states.pop();
 						this.states.push(StateKind.code_span_content_leading_space);
+						this.cursor++;
+						continue;
 					}
 					this.chomp(this.extra);
 					continue;

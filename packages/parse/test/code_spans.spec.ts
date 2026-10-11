@@ -8,6 +8,7 @@ import { PFMParser, parse_markdown_svelte } from '../src/main';
 import { TreeBuilder } from '../src/tree_builder';
 import { NodeKind } from '../src/utils';
 import { print_ast } from './print';
+import { checked_tree, lines } from './stream_shape';
 
 const this_dir = dirname(fileURLToPath(import.meta.url));
 const fixtures_root = resolve(this_dir, 'fixtures/pfm/code_spans');
@@ -859,4 +860,77 @@ describe('code spans wrapped in delimiters', () => {
 			}
 		});
 	}
+});
+
+describe('a lone backtick in a padded two backtick span', () => {
+	test('the blank line after it fails the span', () => {
+		expect(checked_tree('`` a `\n\nb ``\n')).toBe(
+			lines(
+				'root',
+				'  paragraph',
+				'    text "``"',
+				'    text " a "',
+				'    text "`"',
+				'  line_break',
+				'  line_break',
+				'  paragraph',
+				'    text "b "',
+				'    text "``"',
+				'  line_break'
+			)
+		);
+		expect(checked_tree('> `` a `\n\nb ``\n')).toBe(
+			lines(
+				'root',
+				'  block_quote',
+				'    paragraph',
+				'      text "``"',
+				'      text " a "',
+				'      text "`"',
+				'  line_break',
+				'  line_break',
+				'  paragraph',
+				'    text "b "',
+				'    text "``"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('so does the end of the input', () => {
+		expect(checked_tree('`` a `')).toBe(
+			lines(
+				'root',
+				'  paragraph',
+				'    text "``"',
+				'    text " a "',
+				'    text "`"'
+			)
+		);
+		expect(checked_tree('``  #!js `')).toBe(
+			lines(
+				'root',
+				'  paragraph',
+				'    text "``"',
+				'    text "  #"',
+				'    text "!js "',
+				'    text "`"'
+			)
+		);
+	});
+
+	test('a single line end after it stays in the span', () => {
+		expect(checked_tree('`` a `\nb ``\n')).toBe(
+			lines('root', '  paragraph', '    code_span " a `\\nb "', '  line_break')
+		);
+	});
+
+	test('a padded closer after it still strips the padding', () => {
+		expect(checked_tree('`` a ` ``\n')).toBe(
+			lines('root', '  paragraph', '    code_span "a `"', '  line_break')
+		);
+		expect(checked_tree('`` a ` b ``\n')).toBe(
+			lines('root', '  paragraph', '    code_span "a ` b"', '  line_break')
+		);
+	});
 });
