@@ -2251,6 +2251,25 @@ export class PFMParser {
 	}
 
 	/**
+	 * a pipe outside a table, directly before or after an emphasis mark it is the intraword marker and gets no text
+	 * @returns 1 for the marker, 0 for text, -1 when the char after it is not here yet
+	 */
+	private pipe_marker(pos: number): number {
+		const source = this.source;
+		const base = this.source_base;
+		const prev = char_code_at.call(source, pos - 1 - base);
+		if (prev === ASTERISK || prev === UNDERSCORE || prev === TILDE) {
+			let p = pos - 1;
+			while (p > base && char_code_at.call(source, p - 1 - base) === BACKSLASH)
+				p--;
+			if (((pos - 1 - p) & 1) === 0) return 1;
+		}
+		if (pos + 1 >= this.source_end) return this.finished ? 0 : -1;
+		const next = char_code_at.call(source, pos + 1 - base);
+		return next === ASTERISK || next === UNDERSCORE || next === TILDE ? 1 : 0;
+	}
+
+	/**
 	 * a pipe or linefeed in a code span in a table cell, an escaped pipe stays in the span
 	 * anything else ends the cell, so the span fails as at a blank line and inline reads its content again
 	 */
@@ -7962,10 +7981,14 @@ export class PFMParser {
 							// context for _ and * without producing output.
 							// fan|_tas_|tic -> fan<em>tas</em>tic
 							if (!this.in_table) {
-								this.cursor++;
-								continue;
+								const marker = this.pipe_marker(this.cursor);
+								if (marker === -1) break main_loop;
+								if (marker === 1) {
+									this.cursor++;
+									continue;
+								}
 							}
-							// in table context, | is a cell separator - fall through
+							// a cell separator in a table, text anywhere else
 						}
 						// falls through
 						default: {
@@ -8043,14 +8066,17 @@ export class PFMParser {
 						continue;
 					}
 
-					// pipe in non-table context: transparent intraword delimiter.
-					// close the text node and let inline consume the pipe.
+					// a pipe outside a table is text unless it is the intraword marker, inline consumes that
 					if (code === PIPE && !this.in_table) {
-						this.states.pop();
-						this.emit_close(current_node, this.cursor);
-						this.out.set_value_end(current_node, this.cursor);
-						this.node_stack.pop();
-						continue;
+						const marker = this.pipe_marker(this.cursor);
+						if (marker === -1) break main_loop;
+						if (marker === 1) {
+							this.states.pop();
+							this.emit_close(current_node, this.cursor);
+							this.out.set_value_end(current_node, this.cursor);
+							this.node_stack.pop();
+							continue;
+						}
 					}
 
 					// handle backslash escapes within text

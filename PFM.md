@@ -58,6 +58,8 @@ _*strong inside emphasis*_
 intraword: fan|_tas_|tic
 ```
 
+The `|` is the marker only directly before or after a `_`, `*` or `~`. Any other `|` outside a table is literal text, so `a | b` and `a || b` render as written.
+
 A delimiter opens after whitespace or punctuation, and closes before whitespace or punctuation. This applies to `_`, `*` and `~~`:
 
 - Punctuation includes Unicode punctuation and symbols, so curly quotes, dashes, ellipses, guillemets and CJK punctuation work like ASCII punctuation: `“*quoted*”`, `word—_aside_`, `*重要*。`.
