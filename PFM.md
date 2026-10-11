@@ -98,6 +98,23 @@ bar
 
 -> blockquote containing `foo`, followed by a separate root-level paragraph `bar`.
 
+A paragraph in a blockquote ends at a marked line that is blank or starts another block: a nested blockquote, a heading, a thematic break, a fence, the close of a container directive, or a list item when the paragraph is in a list. Emphasis, link text or an inline HTML element still open at that line ends there too and its opening marker is literal text. Over any other marked line it carries on, as it does over a line outside a blockquote:
+
+```markdown
+> some _emphasis
+> over two lines_ and <b>an
+> element</b>
+```
+
+-> one paragraph with the emphasis and the `<b>` element each spanning a line.
+
+```markdown
+> _foo
+> > bar_
+```
+
+-> a paragraph `_foo`, then a nested blockquote containing `bar_`.
+
 **Paragraphs**, A paragraph of only HTML tags, components, `{@...}` tags and whitespace gets no `<p>`, and any text outside the tags wraps the whole paragraph in one. A paragraph holding a block level element such as `<div>` is never wrapped:
 
 ```markdown

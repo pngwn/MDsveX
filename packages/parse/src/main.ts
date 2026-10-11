@@ -6282,23 +6282,7 @@ export class PFMParser {
 			if (!this.finished && !this.can_decide_after_lf(this.cursor))
 				return false;
 			if (this.block_quote_depth > 0) {
-				const stripped = this.skip_bq_markers(
-					this.cursor + 1,
-					this.block_quote_depth
-				);
-				if (
-					stripped !== -1 &&
-					!this.is_blank_at_pos(stripped) &&
-					!this.is_heading_start(stripped) &&
-					!this.is_thematic_break_start(stripped)
-				) {
-					this.emit_bare_leaf(
-						NodeKind.soft_break,
-						this.cursor,
-						current_node,
-						this.cursor + 1
-					);
-					this.chomp(stripped, true);
+				if (this.bq_soft_break(current_node)) {
 					this.states.push(StateKind.inline);
 					return true;
 				}
@@ -9818,31 +9802,7 @@ export class PFMParser {
 	 */
 	private link_text_lf_ends(current_node: number): boolean {
 		if (this.in_heading) return true;
-		if (this.block_quote_depth > 0) {
-			const stripped = this.skip_bq_markers(
-				this.cursor + 1,
-				this.block_quote_depth
-			);
-			if (
-				stripped === -1 ||
-				this.is_blank_at_pos(stripped) ||
-				this.is_heading_start(stripped) ||
-				this.is_thematic_break_start(stripped) ||
-				this.is_fence_start(stripped) ||
-				(this.list_depth > 0 && this.bq_list_marker(stripped))
-			) {
-				return true;
-			}
-			this.emit_bare_leaf(
-				NodeKind.soft_break,
-				this.cursor,
-				current_node,
-				this.cursor + 1
-			);
-			this.chomp(stripped, true);
-			this.states.push(StateKind.inline);
-			return false;
-		}
+		if (this.block_quote_depth > 0) return !this.bq_soft_break(current_node);
 		return (
 			this.is_blank_line_after(this.cursor) || this.lf_ends_inline(this.cursor)
 		);
@@ -9871,6 +9831,26 @@ export class PFMParser {
 				this.is_directive_close_line(stripped)) ||
 			(this.list_depth > 0 && this.bq_list_marker(stripped))
 		);
+	}
+
+	/**
+	 * takes the marked line after the linefeed at the cursor as a soft break, false when that
+	 * line ends the paragraph, the caller pushes inline
+	 */
+	private bq_soft_break(current_node: number): boolean {
+		const stripped = this.skip_bq_markers(
+			this.cursor + 1,
+			this.block_quote_depth
+		);
+		if (stripped === -1 || this.bq_line_ends_para(stripped)) return false;
+		this.emit_bare_leaf(
+			NodeKind.soft_break,
+			this.cursor,
+			current_node,
+			this.cursor + 1
+		);
+		this.chomp(stripped, true);
+		return true;
 	}
 
 	/** a list marker on a marked continuation line inside a list in a quote */
@@ -9943,10 +9923,11 @@ export class PFMParser {
 		if (
 			code === LINEFEED &&
 			// pop wherever inline pops at a linefeed or the two ping pong, in a block quote
-			// a marked line interrupts and an unmarked one ends the quote
-			(this.block_quote_depth > 0 ||
-				this.in_heading ||
-				this.lf_ends_inline(this.cursor))
+			// inline always pops so a line that goes on with the paragraph is taken here
+			(this.in_heading ||
+				(this.block_quote_depth > 0
+					? !this.bq_soft_break(current_node)
+					: this.lf_ends_inline(this.cursor)))
 		) {
 			// block interrupt after newline - close unclosed inline html element
 			if (
