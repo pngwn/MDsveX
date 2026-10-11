@@ -331,6 +331,12 @@ BRACE_STOP[APOSTROPHE] = 1;
 BRACE_STOP[BACKTICK] = 1;
 BRACE_STOP[SLASH] = 1;
 
+/** the marks a pipe can be the intraword marker of */
+const MARK = new Uint8Array(128);
+MARK[ASTERISK] = 1;
+MARK[UNDERSCORE] = 1;
+MARK[TILDE] = 1;
+
 const TEXT_BREAK = new Uint8Array(128);
 TEXT_BREAK[LINEFEED] = 1;
 TEXT_BREAK[BACKSLASH] = 1;
@@ -986,6 +992,10 @@ export class PFMParser {
 	private checkpoint_cursor: number = 0;
 	private code_span_open_pos: number = 0;
 	private span_vs: number = 0;
+	/** the mark a marker pipe leads, the node it opens starts at the pipe so its revoke gives the pipe back */
+	private lead_mark: number = -1;
+	/** the cursor after the last mark that closed its node, a pipe there is the marker */
+	private mark_closed: number = -1;
 	private prev_cursor: number = 0;
 	// the lowest state stack depth sampled since the cursor last moved
 	private prev_depth: number = 0;
@@ -1861,6 +1871,8 @@ export class PFMParser {
 		this.info_end_pos = 0;
 		this.checkpoint_cursor = 0;
 		this.code_span_open_pos = 0;
+		this.lead_mark = -1;
+		this.mark_closed = -1;
 		this.prev_cursor = 0;
 		this.prev_depth = 0;
 		this.loop_without_progress = 0;
@@ -1971,7 +1983,10 @@ export class PFMParser {
 	): number {
 		const id = this.next_id++;
 		if (id >= this.id_info.length) this.grow_ids(id);
-		this.out.open(id, kind, start, parent, extra, true);
+		if (start === this.lead_mark) {
+			this.lead_mark = -1;
+			this.out.open(id, kind, start - 1, parent, extra, true);
+		} else this.out.open(id, kind, start, parent, extra, true);
 		const slot = this.pending_count;
 		this.pending_starts[slot] = start;
 		this.pending_ids[slot] = id;
@@ -2138,6 +2153,7 @@ export class PFMParser {
 			states.pop();
 			node_stack.pop();
 			const p = ++this.cursor;
+			this.mark_closed = p;
 			// pop trailing inline so parent state sees next char directly
 			if (states[states.length - 1] === StateKind.inline) states.pop();
 			if (
@@ -2292,22 +2308,55 @@ export class PFMParser {
 	}
 
 	/**
-	 * a pipe outside a table, directly before or after an emphasis mark it is the intraword marker and gets no text
-	 * @returns 1 for the marker, 0 for text, -1 when the char after it is not here yet
+	 * a pipe outside a table read by the inline state, the intraword marker gets no text
+	 * it is the marker directly after a mark that closed a node and directly before one that opens one
+	 * @returns 1 for the marker, 0 for text, -1 when the chars after it are not here yet
 	 */
 	private pipe_marker(pos: number): number {
+		if (pos === this.mark_closed) return 1;
+		const opens = this.mark_opens(pos + 1);
+		if (opens === 1) this.lead_mark = pos + 1;
+		return opens;
+	}
+
+	/**
+	 * how the inline state reads a mark that follows a pipe, the pipe is punctuation before it
+	 * @returns 1 when it opens a node, 0 when it closes one or is text, -1 when the chars after it are not here yet
+	 */
+	private mark_opens(pos: number): number {
 		const source = this.source;
 		const base = this.source_base;
-		const prev = char_code_at.call(source, pos - 1 - base);
-		if (prev === ASTERISK || prev === UNDERSCORE || prev === TILDE) {
-			let p = pos - 1;
-			while (p > base && char_code_at.call(source, p - 1 - base) === BACKSLASH)
-				p--;
-			if (((pos - 1 - p) & 1) === 0) return 1;
+		const length = this.source_end;
+		const mark = pos < length ? char_code_at.call(source, pos - base) : 0;
+		const tilde = mark === TILDE;
+		if (!tilde && mark !== ASTERISK && mark !== UNDERSCORE) {
+			return pos < length || this.finished ? 0 : -1;
 		}
-		if (pos + 1 >= this.source_end) return this.finished ? 0 : -1;
-		const next = char_code_at.call(source, pos + 1 - base);
-		return next === ASTERISK || next === UNDERSCORE || next === TILDE ? 1 : 0;
+		const c1 = char_code_at.call(source, pos + 1 - base);
+		const doubled = tilde && c1 === TILDE;
+		if (!this.finished && pos + (doubled ? 2 : 1) >= length) return -1;
+		// the end of the input reads as every class, as it does for the states
+		const next = classify(pos + 1 < length ? c1 : NaN);
+		const parent = this.states[this.states.length - 2];
+		const edge = CharMask.whitespace | CharMask.punctuation;
+		const inner = CharMask.word | CharMask.punctuation;
+		if (!tilde) {
+			const closes =
+				parent ===
+					(mark === ASTERISK
+						? StateKind.strong_emphasis
+						: StateKind.emphasis) && (next & edge) !== 0;
+			return !closes && (next & inner) !== 0 ? 1 : 0;
+		}
+		if (!doubled) {
+			return parent !== StateKind.subscript && (next & inner) !== 0 ? 1 : 0;
+		}
+		const c2 =
+			pos + 2 < length ? char_code_at.call(source, pos + 2 - base) : NaN;
+		if (parent === StateKind.strikethrough && (classify(c2) & edge) !== 0)
+			return 0;
+		// a strikethrough reads the end of the input after its tildes as a line end
+		return c2 === c2 && (classify(c2) & inner) !== 0 ? 1 : 0;
 	}
 
 	/**
@@ -8132,11 +8181,13 @@ export class PFMParser {
 						continue;
 					}
 
-					// a pipe outside a table is text unless it is the intraword marker, inline consumes that
+					// a pipe outside a table is text unless it is the intraword marker, before a mark inline decides
 					if (code === PIPE && !this.in_table) {
-						const marker = this.pipe_marker(this.cursor);
-						if (marker === -1) break main_loop;
-						if (marker === 1) {
+						if (this.cursor + 1 >= length) {
+							if (!this.finished) break main_loop;
+						} else if (
+							MARK[char_code_at.call(source, this.cursor + 1 - base)] === 1
+						) {
 							this.states.pop();
 							this.emit_close(current_node, this.cursor);
 							this.out.set_value_end(current_node, this.cursor);
@@ -9418,7 +9469,7 @@ export class PFMParser {
 			this.pending_remove(n_id);
 			this.states.pop();
 			this.node_stack.pop();
-			this.cursor++;
+			this.mark_closed = ++this.cursor;
 			if (this.states[this.states.length - 1] === StateKind.inline) {
 				this.states.pop();
 			}
@@ -9504,6 +9555,7 @@ export class PFMParser {
 			this.states.pop();
 			this.node_stack.pop();
 			this.chomp(2);
+			this.mark_closed = this.cursor;
 			if (this.states[this.states.length - 1] === StateKind.inline) {
 				this.states.pop();
 			}
@@ -9582,7 +9634,7 @@ export class PFMParser {
 			this.pending_remove(n_id);
 			this.states.pop();
 			this.node_stack.pop();
-			this.cursor++;
+			this.mark_closed = ++this.cursor;
 			if (this.states[this.states.length - 1] === StateKind.inline) {
 				this.states.pop();
 			}
