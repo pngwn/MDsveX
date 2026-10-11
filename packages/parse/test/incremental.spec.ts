@@ -1188,6 +1188,26 @@ describe('a tag at the start of a line matches batch however it is fed', () => {
 		['elements in an element', '<a href="https://x.y/z"><b>x</b></a>\n\nb\n'],
 		['element in a script in an element', '<b><script></b></script></b>\n'],
 		['open tag closed by the element', '<b><i></b>\n\nb\n'],
+		['element another close tag leaves open in a quote', '> <b></i>\n\nb\n'],
+		['open tag closed by a later element then text', '<Chart /><b><i></b>x\n'],
+		[
+			'block level tag closed by a container',
+			'<section>\n<Chart /> <div>x</section>\n',
+		],
+		['block level tag left open', '<Chart /> <div>x\n\nb\n'],
+		[
+			'block level tag left open then one that closes',
+			'<Chart /> <div>x <p>y</p>\n',
+		],
+		[
+			'block level tag left open on a later line',
+			'<Chart /> a\n<div>x\ny\n\nb\n',
+		],
+		['close tag of no element after a tag', '<Chart /></b>\n\nb\n'],
+		['close tag of no element after a svelte tag', '{@html x}</b>\n\nb\n'],
+		['close tag of no element after an element', '<b>y</b></n>\n\nb\n'],
+		['close tag of no element in one left open', '<b>y</b><x></v>\n\nb\n'],
+		['close tag of no element in an element', '<Chart /><b></i></b>\n\nb\n'],
 	]);
 
 	it('keeps the paragraph of an element whose close tag is not one', () => {
@@ -1319,6 +1339,153 @@ describe('a tag at the start of a line matches batch however it is fed', () => {
 				'  line_break',
 				'  paragraph',
 				'    text "b"',
+				'  line_break',
+			].join('\n')
+		);
+	});
+
+	it('keeps the paragraph of an element that never closes after other tags', () => {
+		const printed = (input: string) => print_ast(parse_batch(input), input);
+		// as `x <b>x</i>` builds it, a close tag of another name closes nothing
+		expect(printed('<Chart /> <b>x</i>\n')).toBe(
+			[
+				'root',
+				'  paragraph',
+				'    html tag="Chart" self_closing=true',
+				'    text " "',
+				'    text tag="b" "<b>"',
+				'    text "x"',
+				'    text "</i>"',
+				'  line_break',
+			].join('\n')
+		);
+		expect(printed('> <b></i>\n')).toBe(
+			[
+				'root',
+				'  block_quote',
+				'    paragraph',
+				'      text tag="b" "<b>"',
+				'      text "</i>"',
+				'  line_break',
+			].join('\n')
+		);
+		expect(printed('<b>y</b><x></v>\n')).toBe(
+			[
+				'root',
+				'  paragraph',
+				'    html tag="b"',
+				'      text "y"',
+				'    text tag="x" "<x>"',
+				'    text "</v>"',
+				'  line_break',
+			].join('\n')
+		);
+		// a block level tag that is literal text is no block
+		expect(printed('<Chart /> <div>x\n')).toBe(
+			[
+				'root',
+				'  paragraph',
+				'    html tag="Chart" self_closing=true',
+				'    text " "',
+				'    text tag="div" "<div>"',
+				'    text "x"',
+				'  line_break',
+			].join('\n')
+		);
+	});
+
+	it('gives tags no paragraph when one close tag closes two of them', () => {
+		const printed = (input: string) => print_ast(parse_batch(input), input);
+		// as `<b><i></b>` alone on its line
+		expect(printed('<Chart /><b><i></b>\n')).toBe(
+			[
+				'root',
+				'  html tag="Chart" self_closing=true',
+				'  html tag="b"',
+				'    html tag="i"',
+				'  line_break',
+			].join('\n')
+		);
+		expect(printed('<Chart /><b><i></b>x\n')).toBe(
+			[
+				'root',
+				'  paragraph',
+				'    html tag="Chart" self_closing=true',
+				'    html tag="b"',
+				'      html tag="i"',
+				'    text "x"',
+				'  line_break',
+			].join('\n')
+		);
+	});
+
+	it('gives tags no paragraph when a close tag of their container closes one', () => {
+		const printed = (input: string) => print_ast(parse_batch(input), input);
+		expect(printed('<div>\n<Chart /> <b>x</div>\n')).toBe(
+			[
+				'root',
+				'  html tag="div"',
+				'    line_break',
+				'    html tag="Chart" self_closing=true',
+				'    text " "',
+				'    html tag="b"',
+				'      text "x"',
+				'  line_break',
+			].join('\n')
+		);
+		// with a block level tag still open there, which is then an element
+		expect(printed('<section>\n<Chart /> <div>x</section>\n')).toBe(
+			[
+				'root',
+				'  html tag="section"',
+				'    line_break',
+				'    html tag="Chart" self_closing=true',
+				'    text " "',
+				'    html tag="div"',
+				'      text "x"',
+				'  line_break',
+			].join('\n')
+		);
+	});
+
+	it('takes a close tag that closes nothing for text outside tags', () => {
+		const printed = (input: string) => print_ast(parse_batch(input), input);
+		// as `</b><Chart />` builds it
+		expect(printed('<Chart /></b>\n')).toBe(
+			[
+				'root',
+				'  paragraph',
+				'    html tag="Chart" self_closing=true',
+				'    text "</b>"',
+				'  line_break',
+			].join('\n')
+		);
+		expect(printed('{@html x}</b>\n')).toBe(
+			[
+				'root',
+				'  paragraph',
+				'    svelte_tag tag="html" "x"',
+				'    text "</b>"',
+				'  line_break',
+			].join('\n')
+		);
+		expect(printed('<b>y</b></n>\n')).toBe(
+			[
+				'root',
+				'  paragraph',
+				'    html tag="b"',
+				'      text "y"',
+				'    text "</n>"',
+				'  line_break',
+			].join('\n')
+		);
+		// inside an element it is text of that element
+		expect(printed('<Chart /><b></i></b>\n')).toBe(
+			[
+				'root',
+				'  html tag="Chart" self_closing=true',
+				'  html tag="b"',
+				'    text "</i>"',
 				'  line_break',
 			].join('\n')
 		);
