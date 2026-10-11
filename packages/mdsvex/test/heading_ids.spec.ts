@@ -58,7 +58,7 @@ function target(): TraceTarget {
 /** the html of every entry point, which must all be the same */
 function compile_every(raw: string, options: CompileOptions): string {
 	const plain = compile(raw, options).code;
-	const { parse_plugins, components } = options;
+	const { parse_plugins, components, directives } = options;
 	expect(compile(raw, { ...options, sourcemap: true }).code).toBe(plain);
 	// twice over one session, the second document meets a used arena
 	const session = new CompilerSession();
@@ -75,7 +75,7 @@ function compile_every(raw: string, options: CompileOptions): string {
 				components,
 				undefined,
 				options,
-				undefined,
+				directives,
 				undefined,
 				undefined,
 				options
@@ -88,7 +88,7 @@ function compile_every(raw: string, options: CompileOptions): string {
 				components,
 				undefined,
 				options,
-				undefined,
+				directives,
 				undefined,
 				undefined,
 				options
@@ -102,7 +102,7 @@ function compile_every(raw: string, options: CompileOptions): string {
 			components,
 			undefined,
 			options,
-			undefined,
+			directives,
 			undefined,
 			undefined,
 			undefined,
@@ -644,10 +644,12 @@ describe('every way to compile', () => {
 			'| ## Cell |',
 			'| --- |',
 		].join('\n');
+		// the bare container is a directive, so it needs its component
 		const code = compile_every(raw, {
 			heading_ids: true,
-			strict_directives: false,
+			directives: [{ specifier: 'mdsvex:directives', names: ['note'] }],
 		});
+		expect(code).toContain('<Note_MDSVEX_D_G>');
 		expect(ids(code)).toEqual(['quote', 'item', 'section', 'shown', 'note']);
 	});
 
