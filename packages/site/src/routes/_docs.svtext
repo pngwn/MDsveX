@@ -762,6 +762,30 @@ A template renders the document with `{@render children()}`:
 
 Templates are ordinary components, so editing one hot reloads the documents that use it. See the [templates playground example](/playground/templates).
 
+### Documents as templates
+
+A template can be a document too, so its own content is markdown. Like a component, it reads its props and renders `children`. This is `src/lib/templates/Note.svx`:
+
+```svx
+<script>
+	let { title, children } = $props();
+</script>
+
+# {title}
+
+{@render children()}
+
+Written by the _docs team_.
+```
+
+```js
+mdsvex({
+	templates: { note: '#lib/templates/Note.svx' }
+});
+```
+
+It can [replace elements](docs#replacing-elements-in-a-template) from its `<script module>`, as a component does. As a template it is never wrapped in a template itself, so a `template` key in its frontmatter, `select_template` and the `default` entry don't apply to it.
+
 ### Choosing a template
 
 mdsvex picks a document's template from the first of these that gives an answer:

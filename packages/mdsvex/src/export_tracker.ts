@@ -13,11 +13,17 @@ export function same_names(
 
 export type Warn = (message: string) => void;
 
+/** the svelte a document compiles to, null for a file that is not a document */
+export type DocumentSource = (
+	file: string,
+	code: string
+) => { code: string; frontmatter: boolean } | null;
+
 /**
  * export scans per resolved file and the files each document read names from,
  * any module that supplies replacements scans through here
  */
-export function export_tracker() {
+export function export_tracker(document?: DocumentSource) {
 	const scanned = new Map<string, { code: string; result: ScannedExports }>();
 	const doc_files = new Map<string, readonly string[]>();
 	/** the timestamp of each file whose export set changed */
@@ -36,10 +42,18 @@ export function export_tracker() {
 			}
 			const hit = scanned.get(file);
 			if (hit !== undefined && hit.code === code) return hit.result;
-			const result = await scan_exports_detail(
-				code,
-				file.endsWith('.svelte') ? 'svelte' : 'js'
-			);
+			// in the svelte of a document a fence that shows a module script is text
+			const doc = document === undefined ? null : document(file, code);
+			const result =
+				doc === null
+					? await scan_exports_detail(
+							code,
+							file.endsWith('.svelte') ? 'svelte' : 'js'
+						)
+					: await scan_exports_detail(doc.code, 'svelte');
+			// the export mdsvex writes for the frontmatter replaces no element
+			if (doc !== null && doc.frontmatter)
+				result.names = result.names.filter((name) => name !== 'metadata');
 			for (const star of result.stars) {
 				warn(
 					`${file} re-exports "${star}" with export *, whose names a static ` +

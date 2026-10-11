@@ -50,7 +50,7 @@ const POST = template('post', [
 ]);
 
 /** a vite app on disk inside the package, so svelte resolves from it */
-function write_app(): string {
+function write_app(more: Record<string, string> = {}): string {
 	const root = mkdtempSync(join(HERE, '.tmp-templates-'));
 	const files: Record<string, string> = {
 		'package.json': JSON.stringify({
@@ -107,6 +107,7 @@ function write_app(): string {
 			'<section id="bare"><Bare /></section>',
 			'<section id="as-docs"><AsDocs /></section>',
 		].join('\n'),
+		...more,
 	};
 	for (const [path, content] of Object.entries(files)) {
 		mkdirSync(dirname(join(root, path)), { recursive: true });
@@ -408,6 +409,137 @@ describe('templates option', () => {
 		expect(await ssr(server, '/src/theme.svx')).toContain(
 			'<p class="docs-p">para</p>'
 		);
+	});
+});
+
+function note(module_lines: string[]): string {
+	return [
+		'---',
+		'kind: note',
+		'template: missing',
+		'---',
+		'',
+		'```svelte',
+		'<script module>',
+		"  export { default as p } from '../DocsParagraph.svelte';",
+		'</script>',
+		'```',
+		'',
+		'<script module>',
+		...module_lines,
+		'</script>',
+		'',
+		'<script>',
+		'  let { title, children } = $props();',
+		'</script>',
+		'',
+		'## A {metadata.kind} on *{title}*',
+		'',
+		'<article class="note">{@render children()}</article>',
+		'',
+	].join('\n');
+}
+
+describe('a document as a template', () => {
+	let root: string;
+	let server: ViteDevServer;
+	let plugins: Plugin[];
+	const NOTE = 'src/lib/templates/Note.svx';
+	const HEADING = "  export { default as h1 } from '../PostHeading.svelte';";
+
+	beforeAll(async () => {
+		root = write_app({
+			[NOTE]: note([HEADING]),
+			'src/post.svx': '---\ntitle: Hello\n---\n\n# Heading\n\ntext\n',
+			'src/theme.svx': '---\ntemplate: theme\n---\n\n# Themed\n',
+		});
+		plugins = mdsvex({
+			templates: {
+				default: '#lib/templates/Note.svx',
+				theme: {
+					component: '#lib/templates/Note.svx',
+					components: '#lib/theme.ts',
+				},
+			},
+		});
+		server = await serve(root, plugins);
+	});
+
+	afterAll(async () => {
+		await server?.close();
+		rmSync(root, { recursive: true, force: true });
+	});
+
+	test('resolves to the document with no template of its own', async () => {
+		const container = server.environments.ssr.pluginContainer;
+		const unwrapped = vite_path(root, NOTE) + '?template=false';
+		expect((await container.resolveId('mdsvex:template/default'))?.id).toBe(
+			unwrapped
+		);
+		const loaded = await container.load('\0mdsvex:template/theme');
+		const code = typeof loaded === 'string' ? loaded : loaded?.code;
+		expect(code).toContain(
+			`export { default } from ${JSON.stringify(unwrapped)};`
+		);
+	});
+
+	test('reads its replacements from its module script, not a fence or the frontmatter', async () => {
+		const transform = plugins[0].transform as Function;
+		const result = await transform.call(
+			{ addWatchFile() {} },
+			'# Heading\n\ntext\n',
+			vite_path(root, 'src/post.svx')
+		);
+		expect(result.code).toContain(
+			"import Template_MDSVEX, { h1 as H1_MDSVEX_T } from 'mdsvex:template/default';\n"
+		);
+	});
+
+	test('wraps a document once, as markdown, with its replacements', async () => {
+		const html = await ssr(server, '/src/post.svx');
+		expect(html).toContain('<h2>A note on <strong>Hello</strong></h2>');
+		expect(html.split('<article class="note">').length).toBe(2);
+		expect(html).toContain(
+			'<article class="note"><h1 class="post-heading">Heading</h1><p>text</p>'
+		);
+	});
+
+	test('takes extra replacements over its own', async () => {
+		const html = await ssr(server, '/src/theme.svx');
+		expect(html).toContain(
+			'<article class="note"><h1 class="theme-override">Themed</h1>'
+		);
+	});
+
+	test('a changed module script recompiles the documents it wraps', async () => {
+		const ssr_env = server.environments.ssr;
+		await ssr_env.transformRequest('/src/post.svx');
+		const file = vite_path(root, NOTE);
+		const code = note([
+			HEADING,
+			"  export { default as p } from '../DocsParagraph.svelte';",
+		]);
+		writeFileSync(file, code);
+		ssr_env.moduleGraph.onFileChange(file);
+		const hot = plugins[0].hotUpdate as Function;
+		const update = (timestamp: number) =>
+			hot.call(
+				{ environment: ssr_env },
+				{
+					type: 'update',
+					file,
+					timestamp,
+					modules: [],
+					read: async () => code,
+					server,
+				}
+			);
+		const ids = (await update(1)).map((m: any) => m.id);
+		expect(ids).toContain(vite_path(root, 'src/post.svx'));
+		expect(await ssr(server, '/src/post.svx')).toContain(
+			'<p class="docs-p">text</p>'
+		);
+		expect(await update(2)).toBeUndefined();
 	});
 });
 

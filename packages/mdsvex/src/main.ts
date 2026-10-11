@@ -4,7 +4,12 @@ import remapping from '@ampproject/remapping';
 // ahead of compile, so @mdsvex/render/sourcemap stays first in the chunk they share
 import { base64_utf8, chained_base64, pfm_map } from './sourcemap_chain';
 import type { StoredDocument } from './sourcemap_chain';
-import { CompilerSession, check_plugins, compile_inputs } from './compile';
+import {
+	CompilerSession,
+	check_plugins,
+	compile,
+	compile_inputs,
+} from './compile';
 import type { Bundle, ComponentMode, Parsed } from './compile';
 import { slug_of } from './heading_ids';
 import type { HeadingOptions } from './heading_ids';
@@ -27,6 +32,7 @@ import {
 	svelte_request,
 } from './ids';
 import { export_tracker } from './export_tracker';
+import type { DocumentSource } from './export_tracker';
 import { component_registry } from './component_registry';
 import { plugin_registry } from './plugin_registry';
 import {
@@ -83,7 +89,8 @@ export interface MdsvexOptions extends SyntaxOptions, HeadingOptions {
 	/**
 	 * svelte components that wrap documents by name, each resolves as an import
 	 * from the vite root would, the default entry wraps documents that pick none,
-	 * an element named export of the module script of a template replaces that element
+	 * an element named export of the module script of a template replaces that
+	 * element, a template may be a document, which no template wraps in turn
 	 *
 	 * @example
 	 * templates: {
@@ -314,12 +321,30 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	const has_templates =
 		written_templates !== undefined &&
 		Object.keys(written_templates).length !== 0;
+	// a plain compile, none of these options change the module script of a document
+	const scanned_document: DocumentSource = (file, code) => {
+		if (!matches(file)) return null;
+		const result = compile(code, {
+			filename: file,
+			frontmatter: options.frontmatter,
+			parse_plugins: options.parse_plugins,
+			template: false,
+			strict_directives: false,
+			highlight: false,
+			math: false,
+			import_images: false,
+		});
+		return { code: result.code, frontmatter: result.metadata !== undefined };
+	};
 	// a config without replacements or templates builds none of their state
-	const tracker = list.length === 0 && !has_templates ? null : export_tracker();
+	const tracker =
+		list.length === 0 && !has_templates
+			? null
+			: export_tracker(scanned_document);
 	const registry =
 		list.length === 0 ? null : component_registry(list, tracker!);
 	const templates = has_templates
-		? template_registry(written_templates!, tracker!)
+		? template_registry(written_templates!, tracker!, matches)
 		: null;
 	let command: 'build' | 'serve' = 'serve';
 
