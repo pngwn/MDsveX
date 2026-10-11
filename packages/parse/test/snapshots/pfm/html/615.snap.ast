@@ -1,5 +1,5 @@
 root
   paragraph
     html tag="a" self_closing=true
-    text tag="b2" data="foo" "<b2\ndata=\"foo\" >"
+    text "<b2\ndata=\"foo\" >"
   line_break

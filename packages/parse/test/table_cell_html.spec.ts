@@ -1,14 +1,13 @@
 import { describe, expect, test, vi } from 'vitest';
 
 import {
-	broken,
 	checked_tree,
 	every_path,
 	lines,
 	pick,
+	problems,
 	random,
 	revoked_once,
-	wire_revokes,
 } from './stream_shape';
 
 describe('an html element left open in a table cell', () => {
@@ -19,7 +18,7 @@ describe('an html element left open in a table cell', () => {
 				'  table alignments=["none"] col_count=1',
 				'    table_header',
 				'      table_cell',
-				'        text tag="span" "<span>"',
+				'        text "<span>"',
 				'        text "- "',
 				'        text "[ "',
 				'        text "]"',
@@ -40,7 +39,7 @@ describe('an html element left open in a table cell', () => {
 				'        text "]"',
 				'    table_row',
 				'      table_cell',
-				'        text tag="span" "<span>"',
+				'        text "<span>"',
 				'        text ":::"',
 				'    table_row',
 				'      table_cell',
@@ -58,7 +57,7 @@ describe('an html element left open in a table cell', () => {
 				'  table alignments=["none"] col_count=1',
 				'    table_header',
 				'      table_cell',
-				'        text tag="div" "<div>"',
+				'        text "<div>"',
 				'        text "```"',
 				'    table_row',
 				'      table_cell',
@@ -75,7 +74,7 @@ describe('an html element left open in a table cell', () => {
 				'    table_header',
 				'      table_cell',
 				'        text "a "',
-				'        text tag="span" "<span>"',
+				'        text "<span>"',
 				'        text "b"',
 				'      table_cell',
 				'        text "c"',
@@ -92,7 +91,7 @@ describe('an html element left open in a table cell', () => {
 				'    table_header',
 				'      table_cell',
 				'        text "a "',
-				'        text tag="i" "<i>"',
+				'        text "<i>"',
 				'        text "b"',
 				'  line_break',
 				'  paragraph',
@@ -114,7 +113,7 @@ describe('an html element left open in a table cell', () => {
 				'          text "---"',
 				'      table_row',
 				'        table_cell',
-				'          text tag="div" "<div>"',
+				'          text "<div>"',
 				'          text ":::"',
 				'      table_row',
 				'        table_cell',
@@ -136,7 +135,7 @@ describe('an html element left open in a table cell', () => {
 				'        html tag="b"',
 				'          text "a"',
 				'      table_cell',
-				'        text tag="i" "<i>"',
+				'        text "<i>"',
 				'        text "b"',
 				'    table_row',
 				'      table_cell',
@@ -161,7 +160,7 @@ describe('the open tag of an element left open in a table cell', () => {
 				'        text "a"',
 				'    table_row',
 				'      table_cell',
-				'        text tag="span" "<span>"'
+				'        text "<span>"'
 			)
 		);
 	});
@@ -173,7 +172,7 @@ describe('the open tag of an element left open in a table cell', () => {
 				'  table alignments=["none"] col_count=1',
 				'    table_header',
 				'      table_cell',
-				'        text tag="span" "<span>"'
+				'        text "<span>"'
 			)
 		);
 	});
@@ -185,12 +184,12 @@ describe('the open tag of an element left open in a table cell', () => {
 				'  table alignments=["none"] col_count=1',
 				'    table_header',
 				'      table_cell',
-				'        text tag="span" "<span>"',
+				'        text "<span>"',
 				'        text "a"',
 				'    table_row',
 				'      table_cell',
 				'        text "x "',
-				'        text tag="a" href="u" "<a href=\\"u\\">"',
+				'        text "<a href=\\"u\\">"',
 				'        text "y"'
 			)
 		);
@@ -222,7 +221,7 @@ describe('a close tag in a header cell', () => {
 				'  table alignments=["none","none"] col_count=2',
 				'    table_header',
 				'      table_cell',
-				'        text tag="span" "<span>"',
+				'        text "<span>"',
 				'      table_cell',
 				'        text "</span>"'
 			)
@@ -264,7 +263,7 @@ describe('a close tag in a header cell', () => {
 				'    table alignments=["none","none"] col_count=2',
 				'      table_header',
 				'        table_cell',
-				'          text tag="span" "<span>"',
+				'          text "<span>"',
 				'        table_cell',
 				'          text "</span>"',
 				'      table_row',
@@ -448,7 +447,7 @@ describe('padding before the end of a table cell', () => {
 				'        text "["',
 				'    table_row',
 				'      table_cell',
-				'        text name="y" ":y["'
+				'        text ":y["'
 			)
 		);
 	});
@@ -590,13 +589,14 @@ describe('random tables with html in their cells', () => {
 		for (let i = 0; i < 4000; i++) {
 			const source = table(rand);
 			for (const chunk of [0, 1, 3]) {
+				const found = problems(source, chunk);
+				// an expect per document is most of the run time
+				if (found.length === 0 && loops.mock.calls.length === 0) continue;
 				const label = `${JSON.stringify(source)} fed ${chunk}`;
-				expect(broken(source, chunk), label).toEqual([]);
-				const ids = wire_revokes(source, chunk);
-				expect(new Set(ids).size, `${label} over the wire`).toBe(ids.length);
+				expect(found, label).toEqual([]);
 				expect(loops.mock.calls, label).toEqual([]);
 			}
 		}
 		loops.mockRestore();
-	});
+	}, 30_000);
 });

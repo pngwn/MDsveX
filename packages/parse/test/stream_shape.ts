@@ -3,8 +3,9 @@ import { expect } from 'vitest';
 import { PFMParser, WireEmitter, parse_markdown_svelte } from '../src/main';
 import type { Emitter } from '../src/opcodes';
 import { TreeBuilder } from '../src/tree_builder';
-import { NodeKind, kind_to_string } from '../src/utils';
+import { type NodeBuffer, NodeKind, kind_to_string } from '../src/utils';
 import { WireOp } from '../src/wire_emitter';
+import { WireTreeBuilder } from '../src/wire_tree_builder';
 import { run_batch, run_wire, shape } from './plugin_harness';
 import { print_ast } from './print';
 
@@ -90,9 +91,7 @@ class Stream implements Emitter {
 	}
 }
 
-export function broken(source: string, chunk: number): string[] {
-	const stream = new Stream();
-	const parser = new PFMParser(stream);
+function run(parser: PFMParser, source: string, chunk: number): void {
 	if (chunk === 0) parser.parse(source);
 	else {
 		parser.init();
@@ -101,7 +100,73 @@ export function broken(source: string, chunk: number): string[] {
 		}
 		parser.finish();
 	}
+}
+
+export function broken(source: string, chunk: number): string[] {
+	const stream = new Stream();
+	run(new PFMParser(stream), source, chunk);
 	return stream.finish();
+}
+
+/** every opcode to both, so one parse checks the stream and builds the tree */
+function tee(stream: Stream, tree: TreeBuilder): Emitter {
+	return {
+		open(id, kind, start, parent, extra, pending) {
+			stream.open(id, kind, start, parent);
+			tree.open(id, kind, start, parent, extra, pending);
+		},
+		leaf(id, kind, start, parent, value_start, value_end, end) {
+			stream.leaf(id, kind, start, parent, value_start, value_end);
+			tree.leaf(id, kind, start, parent, value_start, value_end, end);
+		},
+		close(id, end, kind) {
+			stream.close(id);
+			tree.close(id, end, kind);
+		},
+		text(parent, start, end, kind) {
+			stream.text(parent, start, end);
+			tree.text(parent, start, end, kind);
+		},
+		attr(id, key, value) {
+			tree.attr(id, key, value);
+		},
+		set_value_start(id, pos) {
+			stream.set_value_start(id, pos);
+			tree.set_value_start(id, pos);
+		},
+		set_value_end(id, pos) {
+			stream.set_value_end(id, pos);
+			tree.set_value_end(id, pos);
+		},
+		revoke(id, text, at) {
+			stream.revoke(id);
+			tree.revoke(id, text, at);
+		},
+		commit(id) {
+			tree.commit(id);
+		},
+		cursor(pos) {
+			tree.cursor(pos);
+		},
+	};
+}
+
+/** what the stream, the batch tree and the wire of a document get wrong, one parse each */
+export function problems(source: string, chunk: number): string[] {
+	const stream = new Stream();
+	const tree = new TreeBuilder(source.length || 16);
+	run(new PFMParser(tee(stream, tree)), source, chunk);
+	const found = stream.finish();
+	for (const problem of unsound(tree.get_buffer(), source)) found.push(problem);
+	const ops = wire_ops(source, chunk);
+	const ids = revoked(ops);
+	if (new Set(ids).size !== ids.length) found.push('revoked twice on the wire');
+	const wire = new WireTreeBuilder(128);
+	wire.apply(ops);
+	for (const problem of unsound(wire.get_buffer(), null)) {
+		found.push(`wire ${problem}`);
+	}
+	return found;
 }
 
 function fed(source: string, chunk: number): string {
@@ -126,8 +191,7 @@ export function checked_tree(source: string): string {
 	return whole;
 }
 
-/** the ids the wire revokes, one entry per revoke, whole or fed in chunks */
-export function wire_revokes(source: string, chunk: number): number[] {
+function wire_ops(source: string, chunk: number): unknown[][] {
 	const emitter = new WireEmitter();
 	const parser = new PFMParser(emitter);
 	const ops: unknown[][] = [];
@@ -145,9 +209,18 @@ export function wire_revokes(source: string, chunk: number): number[] {
 		parser.finish();
 	}
 	ops.push(...emitter.flush());
+	return ops;
+}
+
+function revoked(ops: unknown[][]): number[] {
 	return ops
 		.filter((op) => op[0] === WireOp.Revoke)
 		.map((op) => op[1] as number);
+}
+
+/** the ids the wire revokes, one entry per revoke, whole or fed in chunks */
+export function wire_revokes(source: string, chunk: number): number[] {
+	return revoked(wire_ops(source, chunk));
 }
 
 /** no path revokes a node twice, the stream whole and fed and the wire the same */
@@ -178,6 +251,45 @@ export function every_path(source: string): string {
 		);
 	}
 	return whole;
+}
+
+/** each node of the given kinds that has metadata, with its keys */
+export function with_metadata(
+	nodes: NodeBuffer,
+	kinds: string[],
+	index = 0,
+	out: string[] = []
+): string[] {
+	const node = nodes.get_node(index);
+	if (kinds.includes(node.kind)) {
+		const meta = nodes.metadata_at(index);
+		const keys = meta
+			? Object.keys(meta).filter((key) => meta[key] !== undefined)
+			: [];
+		if (keys.length !== 0) out.push(`${node.kind} ${keys.sort().join(',')}`);
+	}
+	for (const child of node.children) with_metadata(nodes, kinds, child, out);
+	return out;
+}
+
+/** each text node with no text or with metadata, no built tree holds one */
+export function unsound(nodes: NodeBuffer, source: string | null): string[] {
+	const out = with_metadata(nodes, ['text']);
+	const walk = (index: number): void => {
+		const node = nodes.get_node(index);
+		if (node.kind === 'text') {
+			// a repair and the wire keep text as a string
+			const stored = nodes._strings[index];
+			const [start, end] = node.value;
+			if (
+				stored !== undefined ? stored === '' : source === null || !(end > start)
+			)
+				out.push(`empty text ${index}`);
+		}
+		for (const child of node.children) walk(child);
+	};
+	walk(0);
+	return out;
 }
 
 export function lines(...rows: string[]): string {
