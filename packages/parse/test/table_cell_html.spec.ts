@@ -103,7 +103,7 @@ describe('an html element left open in a table cell', () => {
 		);
 	});
 
-	test('an element around the table still closes from a row', () => {
+	test('an element around the table still closes at the start of a row line', () => {
 		expect(checked_tree('<span> |---\n---\n<div>:::\n</span>&amp;')).toBe(
 			lines(
 				'root',
@@ -116,8 +116,6 @@ describe('an html element left open in a table cell', () => {
 				'        table_cell',
 				'          text "<div>"',
 				'          text ":::"',
-				'      table_row',
-				'        table_cell',
 				'  paragraph',
 				'    text "&amp;"'
 			)
@@ -245,8 +243,6 @@ describe('a close tag in a header cell', () => {
 				'      table_row',
 				'        table_cell',
 				'          text "c"',
-				'      table_row',
-				'        table_cell',
 				'  line_break',
 				'  line_break',
 				'  paragraph',
@@ -256,23 +252,22 @@ describe('a close tag in a header cell', () => {
 		);
 	});
 
-	test('the element still closes from a body row', () => {
+	test('a body cell does not close the element either', () => {
 		expect(checked_tree('<span>|<span>|</span>\n-|-\n|</span> x\n')).toBe(
 			lines(
 				'root',
-				'  html tag="span"',
-				'    table alignments=["none","none"] col_count=2',
-				'      table_header',
-				'        table_cell',
-				'          text "<span>"',
-				'        table_cell',
-				'          text "</span>"',
-				'      table_row',
-				'        table_cell',
-				'        table_cell',
 				'  paragraph',
-				'    text "x"',
-				'  line_break'
+				'    text "<span>"',
+				'  table alignments=["none","none"] col_count=2',
+				'    table_header',
+				'      table_cell',
+				'        text "<span>"',
+				'      table_cell',
+				'        text "</span>"',
+				'    table_row',
+				'      table_cell',
+				'        text "</span> x"',
+				'      table_cell'
 			)
 		);
 	});
@@ -618,5 +613,222 @@ describe('random tables with html in their cells', () => {
 			}
 		}
 		loops.mockRestore();
+	}, 30_000);
+});
+
+/** a table of one column in a div, the row as its header and then as a body row */
+function in_div(row: string, ...cell: string[]): void {
+	const table = [
+		'  html tag="div"',
+		'    line_break',
+		'    line_break',
+		'    table alignments=["none"] col_count=1',
+	];
+	const tail = [
+		'    line_break',
+		'    paragraph',
+		'      text "d"',
+		'    line_break',
+		'    line_break',
+		'  line_break',
+	];
+	const children = cell.map((child) => `          ${child}`);
+	expect(every_path(`<div>\n\n|${row}|\n|-|\n\nd\n\n</div>\n`), 'header').toBe(
+		lines(
+			'root',
+			...table,
+			'      table_header',
+			'        table_cell',
+			...children,
+			...tail
+		)
+	);
+	// with no pipe after it a close tag could end the row line
+	for (const end of row.trimEnd().endsWith('>') ? ['|'] : ['|', '']) {
+		expect(
+			every_path(`<div>\n\n|h|\n|-|\n|${row}${end}\n\nd\n\n</div>\n`),
+			`body ${JSON.stringify(end)}`
+		).toBe(
+			lines(
+				'root',
+				...table,
+				'      table_header',
+				'        table_cell',
+				'          text "h"',
+				'      table_row',
+				'        table_cell',
+				...children,
+				...tail
+			)
+		);
+	}
+}
+
+describe('a close tag in a cell of a table inside an element', () => {
+	test('is text, the table and the element carry on', () => {
+		in_div(' a </div> b ', 'text "a "', 'text "</div> b"');
+		in_div('</div>', 'text "</div>"');
+		in_div(' </div> ', 'text "</div>"');
+	});
+
+	test('after an element closed in the cell', () => {
+		in_div(
+			' <b>x</b> </div> ',
+			'html tag="b"',
+			'  text "x"',
+			'text " "',
+			'text "</div>"'
+		);
+	});
+
+	test('inside an element left open in the cell', () => {
+		in_div(' <b>x </div> y ', 'text "<b>"', 'text "x "', 'text "</div> y"');
+	});
+
+	test('the cells after it stay in the row', () => {
+		expect(
+			every_path(
+				'<div>\n\n| h | i |\n|-|-|\n| a </div> b | c |\n\nd\n\n</div>\n'
+			)
+		).toBe(
+			lines(
+				'root',
+				'  html tag="div"',
+				'    line_break',
+				'    line_break',
+				'    table alignments=["none","none"] col_count=2',
+				'      table_header',
+				'        table_cell',
+				'          text "h"',
+				'        table_cell',
+				'          text "i"',
+				'      table_row',
+				'        table_cell',
+				'          text "a "',
+				'          text "</div> b"',
+				'        table_cell',
+				'          text "c"',
+				'    line_break',
+				'    paragraph',
+				'      text "d"',
+				'    line_break',
+				'    line_break',
+				'  line_break'
+			)
+		);
+	});
+
+	test('a close tag that starts a row line ends the table and closes the element', () => {
+		expect(every_path('<div>\n\n| h |\n|-|\n| a |\n</div>\n\nx\n')).toBe(
+			lines(
+				'root',
+				'  html tag="div"',
+				'    line_break',
+				'    line_break',
+				'    table alignments=["none"] col_count=1',
+				'      table_header',
+				'        table_cell',
+				'          text "h"',
+				'      table_row',
+				'        table_cell',
+				'          text "a"',
+				'  line_break',
+				'  line_break',
+				'  paragraph',
+				'    text "x"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('a close tag that ends the row line ends the table and closes the element', () => {
+		for (const end of ['\n', ' \n', '']) {
+			expect(
+				every_path(`<div>\n\n| h | i |\n|-|-|\n| a </div>${end}`),
+				JSON.stringify(end)
+			).toBe(
+				lines(
+					'root',
+					'  html tag="div"',
+					'    line_break',
+					'    line_break',
+					'    table alignments=["none","none"] col_count=2',
+					'      table_header',
+					'        table_cell',
+					'          text "h"',
+					'        table_cell',
+					'          text "i"',
+					'      table_row',
+					'        table_cell',
+					'          text "a "',
+					'        table_cell',
+					...(end === '' ? [] : ['  line_break'])
+				)
+			);
+		}
+	});
+
+	test('a close tag of no open element still starts a row', () => {
+		expect(every_path('<div>\n\n| h |\n|-|\n</b> a\n\n</div>\n')).toBe(
+			lines(
+				'root',
+				'  html tag="div"',
+				'    line_break',
+				'    line_break',
+				'    table alignments=["none"] col_count=1',
+				'      table_header',
+				'        table_cell',
+				'          text "h"',
+				'      table_row',
+				'        table_cell',
+				'          text "</b> a"',
+				'    line_break',
+				'  line_break'
+			)
+		);
+	});
+});
+
+describe('random tables inside an element', () => {
+	const pieces = [
+		'</div>',
+		'</div>',
+		'</b>',
+		'<b>',
+		'<span>',
+		'</span>',
+		'a',
+		'b c',
+		' ',
+		' | ',
+		'*',
+		'`',
+		'{x}',
+	];
+
+	test('no cell ends the element', () => {
+		const rand = random(975);
+		for (let i = 0; i < 1500; i++) {
+			const row = () => {
+				let out = '| ';
+				const length = 1 + Math.floor(rand() * 5);
+				for (let k = 0; k < length; k++) out += pick(rand, pieces);
+				// a close tag that ends the row line would close the element
+				return `${out} |`;
+			};
+			let source = '<div>\n\n| h | i |\n|-|-|\n';
+			const rows = Math.floor(rand() * 3);
+			for (let r = 0; r < rows; r++) source += `${row()}\n`;
+			source += '\nd\n\n</div>\n';
+			const label = JSON.stringify(source);
+			const tree = checked_tree(source);
+			const top = tree.split('\n').filter((line) => /^ {2}\S/.test(line));
+			expect(top, label).toEqual(['  html tag="div"', '  line_break']);
+			expect(tree, label).toContain('\n    paragraph\n      text "d"\n');
+			expect(tree.split('\n      table_row').length - 1, label).toBe(rows);
+			for (const chunk of [0, 1, 3]) {
+				expect(problems(source, chunk), `${label} fed ${chunk}`).toEqual([]);
+			}
+		}
 	}, 30_000);
 });
