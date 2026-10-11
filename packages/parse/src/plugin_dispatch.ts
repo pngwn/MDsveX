@@ -19,10 +19,15 @@ import type {
 	NodeHandler,
 	ComposedHandler,
 	PluginContext,
+	PluginData,
+	PluginDocument,
+	PluginWarning,
 	DirectiveContext,
 	DirectiveEntry,
 	DirectiveHandler,
 	DirectiveHandlers,
+	DirectiveTable,
+	NamedDirectiveHandlers,
 } from './plugin_types';
 
 const NONE = 0xffffffff;
@@ -34,28 +39,33 @@ const NODE_KIND_COUNT = 36;
 const SYNTHETIC_ID_BASE = 0x40000000;
 
 /** single handler: no wrapper needed, just normalize return type. */
-function compose_1(h: NodeHandler): ComposedHandler {
+function compose_1(h: NodeHandler, at: number): ComposedHandler {
 	const parse = h.parse;
 	return function handler_1(
 		view: NodeView,
-		ctx: PluginContext
+		contexts: PluginContext[]
 	): (() => void)[] | null {
-		const cb = parse(view, ctx);
+		const cb = parse(view, contexts[at]);
 		if (cb) return [cb];
 		return null;
 	};
 }
 
 /** two handlers: unrolled, both call sites monomorphic. */
-function compose_2(a: NodeHandler, b: NodeHandler): ComposedHandler {
+function compose_2(
+	a: NodeHandler,
+	b: NodeHandler,
+	at_a: number,
+	at_b: number
+): ComposedHandler {
 	const pa = a.parse;
 	const pb = b.parse;
 	return function handler_2(
 		view: NodeView,
-		ctx: PluginContext
+		contexts: PluginContext[]
 	): (() => void)[] | null {
-		const ca = pa(view, ctx);
-		const cb = pb(view, ctx);
+		const ca = pa(view, contexts[at_a]);
+		const cb = pb(view, contexts[at_b]);
 		if (ca) {
 			if (cb) return [ca, cb];
 			return [ca];
@@ -69,18 +79,21 @@ function compose_2(a: NodeHandler, b: NodeHandler): ComposedHandler {
 function compose_3(
 	a: NodeHandler,
 	b: NodeHandler,
-	c: NodeHandler
+	c: NodeHandler,
+	at_a: number,
+	at_b: number,
+	at_c: number
 ): ComposedHandler {
 	const pa = a.parse;
 	const pb = b.parse;
 	const pc = c.parse;
 	return function handler_3(
 		view: NodeView,
-		ctx: PluginContext
+		contexts: PluginContext[]
 	): (() => void)[] | null {
-		const ca = pa(view, ctx);
-		const cb = pb(view, ctx);
-		const cc = pc(view, ctx);
+		const ca = pa(view, contexts[at_a]);
+		const cb = pb(view, contexts[at_b]);
+		const cc = pc(view, contexts[at_c]);
 		let result: (() => void)[] | null = null;
 		if (ca) {
 			result = [ca];
@@ -96,16 +109,16 @@ function compose_3(
 }
 
 /** four or more handlers: loop fallback. */
-function compose_n(handlers: NodeHandler[]): ComposedHandler {
+function compose_n(handlers: NodeHandler[], at: number[]): ComposedHandler {
 	const parses = handlers.map((h) => h.parse);
 	const len = parses.length;
 	return function handler_n(
 		view: NodeView,
-		ctx: PluginContext
+		contexts: PluginContext[]
 	): (() => void)[] | null {
 		let result: (() => void)[] | null = null;
 		for (let i = 0; i < len; i++) {
-			const cb = parses[i](view, ctx);
+			const cb = parses[i](view, contexts[at[i]]);
 			if (cb) {
 				result ? result.push(cb) : (result = [cb]);
 			}
@@ -114,16 +127,24 @@ function compose_n(handlers: NodeHandler[]): ComposedHandler {
 	};
 }
 
-function compose(handlers: NodeHandler[]): ComposedHandler {
+/** at is the place of the plugin of each handler, which picks its context */
+function compose(handlers: NodeHandler[], at: number[]): ComposedHandler {
 	switch (handlers.length) {
 		case 1:
-			return compose_1(handlers[0]);
+			return compose_1(handlers[0], at[0]);
 		case 2:
-			return compose_2(handlers[0], handlers[1]);
+			return compose_2(handlers[0], handlers[1], at[0], at[1]);
 		case 3:
-			return compose_3(handlers[0], handlers[1], handlers[2]);
+			return compose_3(
+				handlers[0],
+				handlers[1],
+				handlers[2],
+				at[0],
+				at[1],
+				at[2]
+			);
 		default:
-			return compose_n(handlers);
+			return compose_n(handlers, at);
 	}
 }
 
@@ -136,38 +157,45 @@ interface RegistrationResult {
 	has_handler: Uint32Array;
 	/** PAST_END for each kind with a fused handler, shared, never written */
 	open_wants: Int32Array;
+	/** the name of each plugin by its place, undefined for one without */
+	names: (string | undefined)[];
 }
 
 /** above every buffer index, a small integer with all low bits set so an or with an index keeps it */
 const PAST_END = 0x3fffffff;
 
 function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
-	const fused_plugins: ParsePlugin[] = [];
-	const sequential_plugins: ParsePlugin[] = [];
-
-	for (const p of plugins) {
-		if (p.sequential) {
-			sequential_plugins.push(p);
-		} else {
-			fused_plugins.push(p);
-		}
-	}
-
 	// build per-kind handler lists for fused plugins
 	const per_kind: (NodeHandler[] | null)[] = new Array(NODE_KIND_COUNT).fill(
 		null
 	);
+	const per_kind_at: number[][] = [];
+	for (let k = 0; k < NODE_KIND_COUNT; k++) per_kind_at.push([]);
+	const sequential: RegistrationResult['sequential'] = [];
+	const names: (string | undefined)[] = [];
 
-	for (const plugin of fused_plugins) {
+	for (let at = 0; at < plugins.length; at++) {
+		const plugin = plugins[at];
+		names.push(typeof plugin.name === 'string' ? plugin.name : undefined);
+		// a sequential plugin gets a table of its own
+		const table: HandlersTable | null = plugin.sequential
+			? new Array(NODE_KIND_COUNT).fill(null)
+			: null;
 		for (const key of Object.keys(plugin)) {
 			if (key === 'sequential') continue;
 			const kind = string_to_kind(key);
 			if (kind === undefined) continue;
 			const entry = plugin[key];
 			if (!entry || typeof entry !== 'object' || !('parse' in entry)) continue;
+			if (table !== null) {
+				table[kind] = compose_1(entry as NodeHandler, at);
+				continue;
+			}
 			if (!per_kind[kind]) per_kind[kind] = [];
 			per_kind[kind]!.push(entry as NodeHandler);
+			per_kind_at[kind].push(at);
 		}
+		if (table !== null) sequential.push({ plugin, handlers: table });
 	}
 
 	// compose fused handlers
@@ -177,24 +205,10 @@ function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
 	for (let i = 0; i < NODE_KIND_COUNT; i++) {
 		const list = per_kind[i];
 		if (list && list.length > 0) {
-			fused[i] = compose(list);
+			fused[i] = compose(list, per_kind_at[i]);
 			has_handler[i >> 5] |= 1 << (i & 31);
 		}
 	}
-
-	// build sequential handler tables
-	const sequential = sequential_plugins.map((plugin) => {
-		const table: HandlersTable = new Array(NODE_KIND_COUNT).fill(null);
-		for (const key of Object.keys(plugin)) {
-			if (key === 'sequential') continue;
-			const kind = string_to_kind(key);
-			if (kind === undefined) continue;
-			const entry = plugin[key];
-			if (!entry || typeof entry !== 'object' || !('parse' in entry)) continue;
-			table[kind] = compose_1(entry as NodeHandler);
-		}
-		return { plugin, handlers: table };
-	});
 
 	const open_wants = new Int32Array(64);
 	for (let k = 0; k < 64; k++) {
@@ -209,6 +223,7 @@ function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
 		),
 		has_handler,
 		open_wants,
+		names,
 	};
 }
 
@@ -284,6 +299,8 @@ interface BoundEntry {
 	/** the kinds children and descendants hold a handler for */
 	child_kinds: number[];
 	descendant_kinds: number[];
+	/** the name of the plugin the table came with, undefined for a bare table */
+	plugin: string | undefined;
 }
 
 type BoundRegistration = Map<string, BoundEntry>;
@@ -329,10 +346,26 @@ function bound_table(
 	return table;
 }
 
+/** an entry of a table is an object, so a name that is a string is the name of a plugin */
+function is_named(table: DirectiveTable): table is NamedDirectiveHandlers {
+	return typeof (table as NamedDirectiveHandlers).name === 'string';
+}
+
 /** null when no entry has a handler, so nothing needs a dispatcher */
-function register_bound(tables: DirectiveHandlers[]): BoundRegistration | null {
+function register_bound(tables: DirectiveTable[]): BoundRegistration | null {
 	let bound: BoundRegistration | null = null;
-	for (const table of tables) {
+	for (const given of tables) {
+		let table: DirectiveHandlers;
+		let plugin: string | undefined;
+		if (is_named(given)) {
+			table = given.directives;
+			plugin = given.name;
+			if (table === null || typeof table !== 'object') {
+				throw new TypeError(
+					`the directives of plugin "${plugin}" must be an object of entries by directive name`
+				);
+			}
+		} else table = given;
 		for (const name of Object.keys(table)) {
 			const entry = table[name];
 			if (entry == null || typeof entry !== 'object') continue;
@@ -368,6 +401,7 @@ function register_bound(tables: DirectiveHandlers[]): BoundRegistration | null {
 				parse,
 				child_kinds,
 				descendant_kinds,
+				plugin,
 			});
 		}
 	}
@@ -376,12 +410,12 @@ function register_bound(tables: DirectiveHandlers[]): BoundRegistration | null {
 
 // by array, a caller with many documents passes the same one
 const bound_registrations = new WeakMap<
-	DirectiveHandlers[],
+	DirectiveTable[],
 	BoundRegistration | null
 >();
 
 function bound_for(
-	tables: DirectiveHandlers[] | undefined
+	tables: DirectiveTable[] | undefined
 ): BoundRegistration | null {
 	if (tables === undefined || tables.length === 0) return null;
 	let bound = bound_registrations.get(tables);
@@ -394,7 +428,7 @@ function bound_for(
 
 /** true when a table binds a handler, without one a parse needs no dispatcher for them */
 export function has_directive_handlers(
-	tables: DirectiveHandlers[] | undefined
+	tables: DirectiveTable[] | undefined
 ): boolean {
 	return bound_for(tables) !== null;
 }
@@ -414,12 +448,55 @@ class Scope {
 	}
 }
 
-class BoundContext implements DirectiveContext {
+/**
+ * context fields, symbol keyed so the keys a plugin puts on its context are
+ * the only ones it finds there
+ */
+const HOST: unique symbol = Symbol('host');
+const PLUGIN: unique symbol = Symbol('plugin');
+
+/** the context of one plugin for one document, the document half is read from the dispatcher */
+class Context implements PluginContext {
+	[HOST]: PluginDispatcher;
+	/** the name of the plugin, undefined for one without */
+	[PLUGIN]: string | undefined;
+	[key: string]: any;
+
+	constructor(host: PluginDispatcher, plugin: string | undefined) {
+		this[HOST] = host;
+		this[PLUGIN] = plugin;
+	}
+
+	get filename(): string | undefined {
+		return this[HOST]._filename();
+	}
+
+	get frontmatter(): Record<string, unknown> | undefined {
+		return this[HOST]._frontmatter();
+	}
+
+	get data(): Record<string, any> {
+		return this[HOST]._data(this[PLUGIN]);
+	}
+
+	warn(code: string, message: string, node?: NodeView): void {
+		this[HOST]._warn(this[PLUGIN], code, message, node);
+	}
+}
+
+class BoundContext extends Context implements DirectiveContext {
 	directive: NodeView;
 	index: number;
 	state: Record<string, any>;
 
-	constructor(directive: NodeView, index: number, state: Record<string, any>) {
+	constructor(
+		host: PluginDispatcher,
+		plugin: string | undefined,
+		directive: NodeView,
+		index: number,
+		state: Record<string, any>
+	) {
+		super(host, plugin);
 		this.directive = directive;
 		this.index = index;
 		this.state = state;
@@ -492,7 +569,7 @@ class CloseCallbackStore {
 function dispatch_open(
 	kind: NodeKind,
 	view: NodeView,
-	ctx: PluginContext,
+	ctx: PluginContext[],
 	fused: HandlersTable,
 	has_handler: Uint32Array
 ): (() => void)[] | null {
@@ -635,7 +712,17 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	private state_traps: ProxyHandler<Record<string | symbol, any>> | null = null;
 	private undo: UndoLog = NO_UNDO;
 	private close_cbs: CloseCallbackStore = NO_CLOSE_CBS;
-	private ctx: PluginContext | null = null;
+	/** the name of each plugin by its place */
+	private names: (string | undefined)[];
+	/** the context of each plugin by its place, made for the first dispatch of a document */
+	private contexts: PluginContext[] | null = null;
+	/** what whoever runs the parse said about the document */
+	private doc: PluginDocument | null = null;
+	/** what handlers reported for the document, null until the first */
+	private warned: PluginWarning[] | null = null;
+	/** the data object of each plugin name and the proxy its handlers write through */
+	private bags: Map<string, Record<string, any>> | null = null;
+	private bag_proxies: Map<string, Record<string, any>> | null = null;
 	private text_source: TextSource;
 
 	/**
@@ -677,7 +764,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	constructor(
 		plugins: ParsePlugin[] | undefined,
 		text_source: TextSource,
-		directive_handlers?: DirectiveHandlers[]
+		directive_handlers?: DirectiveTable[]
 	) {
 		// bound handlers alone leave the cached registration to the next plugins
 		const reg =
@@ -687,6 +774,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		this.fused = reg.fused;
 		this.has_handler = reg.has_handler;
 		this.sequential = reg.sequential;
+		this.names = reg.names;
 		this.text_source = text_source;
 		this.handled = this.handles = reg.open_wants;
 		this.bound = bound_for(directive_handlers);
@@ -704,6 +792,119 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		cache.clear();
 		cache.rebind(buf, this.text_source);
 		return cache;
+	}
+
+	/** a context for each plugin, new for each document */
+	private make_contexts(): PluginContext[] {
+		const names = this.names;
+		const contexts: PluginContext[] = [];
+		for (let i = 0; i < names.length; i++) {
+			contexts.push(new Context(this, names[i]));
+		}
+		return (this.contexts = contexts);
+	}
+
+	/**
+	 * what the handlers learn about the document through their context, set
+	 * before its parse and forgotten at the next reset
+	 */
+	set_document(doc: PluginDocument | undefined): void {
+		this.doc = doc ?? null;
+	}
+
+	/** what handlers reported for the document, in the order they did, undefined for none */
+	get warnings(): PluginWarning[] | undefined {
+		const warned = this.warned;
+		return warned === null || warned.length === 0 ? undefined : warned;
+	}
+
+	/**
+	 * what plugins left in ctx.data for the document, by plugin name, a plugin
+	 * that left nothing has no key, undefined when none left any
+	 */
+	data(): PluginData | undefined {
+		const bags = this.bags;
+		if (bags === null) return undefined;
+		let out: PluginData | undefined;
+		for (const [name, bag] of bags) {
+			// a write that was undone leaves an empty object
+			let empty = true;
+			for (const _key in bag) {
+				empty = false;
+				break;
+			}
+			if (empty) continue;
+			if (out === undefined) out = {};
+			out[name] = bag;
+		}
+		return out;
+	}
+
+	/** @internal */
+	_filename(): string | undefined {
+		const doc = this.doc;
+		return doc === null ? undefined : doc.filename;
+	}
+
+	/** @internal */
+	_frontmatter(): Record<string, unknown> | undefined {
+		const doc = this.doc;
+		if (doc === null) return undefined;
+		const read = doc.frontmatter;
+		return read === undefined ? undefined : read();
+	}
+
+	/** @internal the proxy over the data object of a plugin name, made when first read */
+	_data(plugin: string | undefined): Record<string, any> {
+		if (plugin === undefined) {
+			throw new Error(
+				'ctx.data is kept by plugin name, give the plugin a name to use it'
+			);
+		}
+		let proxies = this.bag_proxies;
+		if (proxies === null) {
+			proxies = this.bag_proxies = new Map();
+			this.bags = new Map();
+		}
+		let proxy = proxies.get(plugin);
+		if (proxy === undefined) {
+			const bag = {};
+			proxy = new Proxy(bag, this.traps());
+			proxies.set(plugin, proxy);
+			this.bags!.set(plugin, bag);
+		}
+		return proxy;
+	}
+
+	/** @internal */
+	_warn(
+		plugin: string | undefined,
+		code: string,
+		message: string,
+		node: NodeView | undefined
+	): void {
+		if (
+			typeof code !== 'string' ||
+			code === '' ||
+			typeof message !== 'string'
+		) {
+			throw new TypeError(
+				'ctx.warn takes a code and a message, both strings, and a node to point at'
+			);
+		}
+		let start: number | undefined;
+		let end: number | undefined;
+		if (node != null) {
+			const span = node._span();
+			if (span[0] !== NONE) start = span[0];
+			if (span[1] !== NONE) end = span[1];
+		}
+		const warning: PluginWarning = { plugin, code, message, start, end };
+		let warned = this.warned;
+		if (warned === null) warned = this.warned = [];
+		warned.push(warning);
+		// it goes with the node whose handler reported it
+		this.undo.record_warn(warned, warning);
 	}
 
 	/** buffer index and prior kind of each kind rewrite, see UndoLog */
@@ -1132,7 +1333,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		const global = dispatch_open(
 			kind,
 			view,
-			this.ctx ?? (this.ctx = {}),
+			this.contexts ?? this.make_contexts(),
 			this.fused,
 			this.has_handler
 		);
@@ -1224,6 +1425,8 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		const callback = handler(
 			view,
 			new BoundContext(
+				this,
+				scope.entry.plugin,
 				this.cache!.get(scope.directive)!,
 				index,
 				scope.state ?? (scope.state = this.make_state())
@@ -1236,8 +1439,13 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		return callbacks;
 	}
 
-	/** a state object behind a proxy that logs each write, the undo log must be its own by now */
+	/** a state object behind a proxy that logs each write */
 	private make_state(): Record<string, any> {
+		return new Proxy({}, this.traps());
+	}
+
+	/** the traps of a state or data proxy, the undo log must be its own by now */
+	private traps(): ProxyHandler<Record<string | symbol, any>> {
 		let traps = this.state_traps;
 		if (traps === null) {
 			const undo = this.undo;
@@ -1260,7 +1468,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 				},
 			};
 		}
-		return new Proxy({}, traps);
+		return traps;
 	}
 
 	/**
@@ -1302,7 +1510,10 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		else state = scope.state = this.make_state();
 		undo.set_active_node(buf_idx);
 		this.running = buf_idx;
-		const callback = parse(view, new BoundContext(view, 0, state));
+		const callback = parse(
+			view,
+			new BoundContext(this, entry.plugin, view, 0, state)
+		);
 		undo.clear_active_node();
 		this.running = NONE;
 
@@ -1472,7 +1683,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 			}
 			if (!handled) continue;
 			const close_store = new CloseCallbackStore();
-			const ctx = this.ctx ?? (this.ctx = {});
+			const ctx = this.contexts ?? this.make_contexts();
 			const stack: number[] = [];
 
 			while (true) {
@@ -1557,8 +1768,12 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		this.handles = this.handled;
 		this.wants_floor = -1;
 		this.next_synthetic_id = SYNTHETIC_ID_BASE;
-		// plugins keep per document state on it
-		this.ctx = null;
+		// plugins keep per document state on theirs
+		this.contexts = null;
+		this.doc = null;
+		this.warned = null;
+		this.bags = null;
+		this.bag_proxies = null;
 		if (this.cache !== null) this.cache.invalidate();
 	}
 }

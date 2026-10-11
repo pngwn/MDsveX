@@ -4,7 +4,11 @@ import { PFMParser, WireEmitter } from '../src/main';
 import { SourceTextSource, WireTextSource } from '../src/node_view';
 import { PluginDispatcher } from '../src/plugin_dispatch';
 import type { Emitter } from '../src/opcodes';
-import type { DirectiveHandlers, ParsePlugin } from '../src/plugin_types';
+import type {
+	DirectiveTable,
+	ParsePlugin,
+	PluginDocument,
+} from '../src/plugin_types';
 import { TreeBuilder } from '../src/tree_builder';
 import type { NodeBuffer, NodeKind } from '../src/utils';
 import { WireTreeBuilder } from '../src/wire_tree_builder';
@@ -84,7 +88,9 @@ export interface PluginRun {
 /** global plugins and handlers bound to directive names */
 export interface PluginSetup {
 	plugins?: ParsePlugin[];
-	directive_handlers?: DirectiveHandlers[];
+	directive_handlers?: DirectiveTable[];
+	/** what the handlers learn about the document through their context */
+	document?: PluginDocument;
 }
 
 /** a plain array is the global plugins alone */
@@ -103,11 +109,13 @@ function dispatcher_for(
 		(bound === undefined || bound.length === 0)
 	)
 		return undefined;
-	return new PluginDispatcher(
+	const dispatcher = new PluginDispatcher(
 		plugins,
 		wire ? new WireTextSource([]) : new SourceTextSource(source),
 		bound
 	);
+	if (!Array.isArray(setup)) dispatcher.set_document(setup.document);
+	return dispatcher;
 }
 
 /**
