@@ -53,6 +53,7 @@ const nav = [
 		"docs#templates-1",
 		[
 			["defining templates", "docs#defining-templates", false],
+			["documents as templates", "docs#documents-as-templates", false],
 			["choosing a template", "docs#choosing-a-template", false],
 			["opting out", "docs#opting-out", false],
 			["template props", "docs#template-props", false],

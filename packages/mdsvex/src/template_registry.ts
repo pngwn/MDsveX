@@ -46,7 +46,8 @@ interface TemplateDirectives {
  */
 export function template_registry(
 	written: Record<string, TemplateSpec>,
-	tracker: ExportTracker
+	tracker: ExportTracker,
+	is_document: (id: string) => boolean
 ) {
 	const keys = Object.keys(written);
 	let root = '';
@@ -189,6 +190,18 @@ export function template_registry(
 		return modules?.get(name);
 	}
 
+	/** the component of a template, a document is imported as one no template wraps */
+	async function component_of(ctx: Rollup.PluginContext, m: TemplateModule) {
+		const resolved = await ctx.resolve(m.spec, importer_in(root), {
+			skipSelf: true,
+		});
+		if (resolved === null || !is_document(resolved.id)) return resolved;
+		// its own query for a template stays ahead of this one
+		const id =
+			resolved.id + (resolved.id.includes('?') ? '&' : '?') + 'template=false';
+		return { ...resolved, id };
+	}
+
 	return {
 		set_root(dir: string): void {
 			root = dir;
@@ -271,16 +284,17 @@ export function template_registry(
 			const m = await module_of(ctx, name);
 			if (m === undefined) return undefined;
 			if (m.extra !== null) return '\0' + id;
-			return ctx.resolve(m.spec, importer_in(root), { skipSelf: true });
+			return component_of(ctx, m);
 		},
 		/** the module of a template with extra replacements, resolved in the environment of ctx */
 		async load(ctx: Rollup.PluginContext, id: string) {
 			const name = id.slice(1 + TEMPLATE_ID.length);
 			const m = await module_of(ctx, name);
 			if (m === undefined || m.extra === null) return undefined;
-			const from = importer_in(root);
-			const main = await ctx.resolve(m.spec, from, { skipSelf: true });
-			const extra = await ctx.resolve(m.extra.spec, from, { skipSelf: true });
+			const main = await component_of(ctx, m);
+			const extra = await ctx.resolve(m.extra.spec, importer_in(root), {
+				skipSelf: true,
+			});
 			const a = JSON.stringify(main!.id);
 			const b = JSON.stringify(extra!.id);
 			// a named export shadows the same name from export *
