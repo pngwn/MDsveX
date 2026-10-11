@@ -389,6 +389,17 @@ describe('wire format: attrs', () => {
 });
 
 describe('wire format: revoke', () => {
+	it('revoke carries the opening text of an inline directive', () => {
+		for (const input of ['x :tabs[y z\n', '<b>x :tabs[y z\n']) {
+			const revokes = ops_of(parse_wire(input), WireOp.Revoke).filter(
+				(op) => typeof op[2] === 'string' && op[2].startsWith(':')
+			);
+			// the parser repeats the revoke when the block ends
+			expect(revokes.length).toBe(2);
+			for (const revoke of revokes) expect(revoke[2]).toBe(':tabs[');
+		}
+	});
+
 	it('revoke includes delimiter for emphasis', () => {
 		// Unclosed emphasis, should be revoked
 		const ops = parse_wire('_unclosed\n');

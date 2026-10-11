@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import { get_content, get_all_child_kinds } from './utils';
-import { run_batch, run_wire, shape } from './plugin_harness';
+import { expect_parity, run_batch, run_wire, shape } from './plugin_harness';
 import { print_ast } from './print';
 import {
 	NodeKind,
@@ -882,6 +882,108 @@ describe('malformed directive arguments', () => {
 		expect(find_child(nodes, root.index, 'directive_container')).toBeNull();
 		expect(find_child(nodes, root.index, 'paragraph')).not.toBeNull();
 	});
+});
+
+describe('unclosed inline directives', () => {
+	const cases: [string, string, unknown][] = [
+		[
+			'at the end of a paragraph',
+			'x :tabs[y z\n',
+			['root', ['paragraph', 'text:x :tabs[y z']],
+		],
+		[
+			'around a strong',
+			'x :tabs[y *z* w\n\nnext\n',
+			[
+				'root',
+				[
+					'paragraph',
+					'text:x :tabs[y ',
+					['strong_emphasis', 'text:z'],
+					'text: w',
+				],
+				['paragraph', 'text:next'],
+			],
+		],
+		[
+			'with nothing after the bracket',
+			'x :tabs[\n',
+			['root', ['paragraph', 'text:x :tabs[']],
+		],
+		[
+			'at the end of the input',
+			'x :tabs[y z',
+			['root', ['paragraph', 'text:x :tabs[y z']],
+		],
+		[
+			'with args text after it',
+			'x :tabs[y (a=1) z\n',
+			['root', ['paragraph', 'text:x :tabs[y (a=1) z']],
+		],
+		[
+			'inside emphasis',
+			'_a :tabs[y z_ b\n',
+			['root', ['paragraph', 'text:_a :tabs[y z_ b']],
+		],
+		[
+			'inside a strong across a line',
+			'*a :tabs[y z\nb* c\n',
+			['root', ['paragraph', 'text:*a :tabs[y z', 'soft_break', 'text:b* c']],
+		],
+		[
+			'inside another one',
+			'x :a[b :c[d e\n',
+			['root', ['paragraph', 'text:x :a[b :c[d e']],
+		],
+		[
+			'across a soft break',
+			'x :tabs[y\nz w\n',
+			['root', ['paragraph', 'text:x :tabs[y', 'soft_break', 'text:z w']],
+		],
+		[
+			'in a heading',
+			'# h :tabs[y z\n',
+			['root', ['heading', 'text:h :tabs[y z']],
+		],
+		[
+			'in a block quote',
+			'> x :tabs[y z\n',
+			['root', ['block_quote', ['paragraph', 'text:x :tabs[y z']]],
+		],
+		[
+			'in a tight list',
+			'- a :tabs[y z\n- b\n',
+			[
+				'root',
+				['list', ['list_item', 'text:a :tabs[y z'], ['list_item', 'text:b']],
+			],
+		],
+		[
+			'in table cells',
+			'| a :tabs[y z | b |\n| - | - |\n| c :t[d | e |\n',
+			[
+				'root',
+				[
+					'table',
+					[
+						'table_header',
+						['table_cell', 'text:a :tabs[y z'],
+						['table_cell', 'text:b'],
+					],
+					[
+						'table_row',
+						['table_cell', 'text:c :t[d'],
+						['table_cell', 'text:e'],
+					],
+				],
+			],
+		],
+	];
+	for (const [name, input, expected] of cases) {
+		test(`${name} every path keeps the source text`, () => {
+			expect(expect_parity(input, () => [])).toEqual(expected);
+		});
+	}
 });
 
 // ===========================================================
