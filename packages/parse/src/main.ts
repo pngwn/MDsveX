@@ -1915,6 +1915,16 @@ export class PFMParser {
 		if (id === this.spec_para) this.end_spec_para(end);
 	}
 
+	/** close of a delimiter with no closer, it stays pending until its revoke */
+	private emit_close_pending(id: number, end: number): void {
+		const info = this.id_info[id];
+		const kind = (info & ID_KIND_MASK) as NodeKind;
+		const out = this.out;
+		if (out.close_pending !== undefined) out.close_pending(id, end, kind);
+		else out.close(id, end, kind);
+		this.id_info[id] = info | ID_CLOSED;
+	}
+
 	/** open writes an id state before any read, so spare tables need no clearing */
 	private take_ids(needed: number): void {
 		const spare = spare_ids;
@@ -4630,6 +4640,8 @@ export class PFMParser {
 		}
 		this.pending_remove(id);
 		if (drop) this.out.revoke(id);
+		// no list decides on it later, so say now that it stays
+		else this.out.commit(id);
 	}
 
 	/**
@@ -6088,7 +6100,7 @@ export class PFMParser {
 			}
 		}
 		this.states.pop();
-		this.emit_close(current_node, this.cursor);
+		this.emit_close_pending(current_node, this.cursor);
 		this.out.set_value_end(current_node, this.cursor);
 		this.node_stack.pop();
 		return true;
