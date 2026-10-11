@@ -132,6 +132,80 @@ describe('an escaped pipe in a code span in a table cell', () => {
 	});
 });
 
+describe('a lone backtick in a padded two backtick span in a table cell', () => {
+	test('the cell end after it fails the span', () => {
+		both('`` a `', ['text "``"', 'text " a "', 'text "`"']);
+		both('``  `', ['text "``"', 'text "  "', 'text "`"']);
+		both(
+			'`` a `|b``',
+			['text "``"', 'text " a "', 'text "`"'],
+			['text "b"', 'text "``"']
+		);
+	});
+
+	test('after a hint too', () => {
+		both('b``#!js   `', [
+			'text "b"',
+			'text "``"',
+			'text "#"',
+			'text "!js   "',
+			'text "`"',
+		]);
+		both('``#!js  a `', [
+			'text "``"',
+			'text "#"',
+			'text "!js  a "',
+			'text "`"',
+		]);
+	});
+
+	test('an escaped pipe after it stays in the cell', () => {
+		both('`` a `\\|', ['text "``"', 'text " a "', 'text "`"', 'text "|"']);
+		both('`` a ` \\| ``', ['code_span "a ` |"']);
+		both('`` a\\|b ` ``', ['code_span "a|b `"']);
+	});
+
+	test('the span runs on to its closer and loses its padding', () => {
+		both('`` a ` ``', ['code_span "a `"']);
+		both('`` a ` b ``', ['code_span "a ` b"']);
+		both('`` ` ` ``', ['code_span "` `"']);
+		both('`` a ``` ``', ['code_span "a ```"']);
+	});
+});
+
+describe('a pipe in the hint of a code span in a table cell', () => {
+	test('ends the cell', () => {
+		both(
+			'`#!a|b c`',
+			['text "`"', 'text "#"', 'text "!a"'],
+			['text "b c"', 'text "`"']
+		);
+		both(
+			'``#!a|b c``',
+			['text "``"', 'text "#"', 'text "!a"'],
+			['text "b c"', 'text "``"']
+		);
+		both('`#!|`', ['text "`"', 'text "#"', 'text "!"'], ['text "`"']);
+		both(
+			'x `#!a|b` c',
+			['text "x "', 'text "`"', 'text "#"', 'text "!a"'],
+			['text "b"', 'text "`"', 'text " c"']
+		);
+	});
+
+	test('after a backslash that is itself escaped', () => {
+		both(
+			'`#!a\\\\|b c`',
+			['text "`"', 'text "#"', 'text "!a"', 'text "\\\\"'],
+			['text "b c"', 'text "`"']
+		);
+	});
+
+	test('an escaped one stays in the hint', () => {
+		both('`#!a\\|b c`|d', ['code_span info="a\\\\|b" "c"'], ['text "d"']);
+	});
+});
+
 /** the text of each code span, a tree built over the wire has no source to slice */
 function code_texts(nodes: NodeBuffer, source: string): string[] {
 	const out: string[] = [];
@@ -251,8 +325,6 @@ describe('random code spans in table cells', () => {
 		let tables = 0;
 		for (let i = 0; i < 250; i++) {
 			const cells = random_cells(rand);
-			// two backticks, padded, are left out, such a span reads past a cell end
-			if (/``(?:#!js )? /.test(cells)) continue;
 			const columns = 1 + Math.floor(rand() * 3);
 			const delimiters = `${'|-'.repeat(columns)}|\n`;
 			for (const source of [
