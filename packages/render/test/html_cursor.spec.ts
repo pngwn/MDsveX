@@ -348,7 +348,10 @@ describe('a delimiter that never closes', () => {
 			'| h |\n|-|\n| [\\*b |\n',
 			'<table>\n<thead>\n<tr>\n<th>h</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>[*b</td>\n</tr>\n</tbody>\n</table>',
 		],
+		['an image ![\n', '<p>an image ![</p>'],
+		['![]\n', '<p>![]</p>'],
 		['[|a\n', '<p>[a</p>'],
+		['*|\n', '<p>*</p>'],
 	];
 
 	for (const [input, expected] of cases) {

@@ -135,6 +135,26 @@ describe('the first thing after a delimiter that never closes', () => {
 		);
 	});
 
+	describe.each(DERIVED)('%s with nothing after it', (delimiter) => {
+		test('keeps its whole text', () => {
+			expect(joined(`x ${delimiter}\n`)).toEqual(
+				paragraph(`text:x ${delimiter}`)
+			);
+			expect(joined(`| h |\n|-|\n|${delimiter}|\n`)).toEqual(
+				body_cell(`text:${delimiter}`)
+			);
+			expect(joined(`|${delimiter}|\n|-|\n| b |\n`)).toEqual(
+				header_cell(`text:${delimiter}`)
+			);
+		});
+
+		test('ends before a pipe that prints nothing', () => {
+			expect(joined(`x ${delimiter}|\n`)).toEqual(
+				paragraph(`text:x ${delimiter}`)
+			);
+		});
+	});
+
 	test('an escaped & starts its own node, which keeps a reference as written', () => {
 		expect(checked_tree('[\\&amp;a')).toBe(
 			lines('root', '  paragraph', '    text "["', '    text "&amp;a"')
