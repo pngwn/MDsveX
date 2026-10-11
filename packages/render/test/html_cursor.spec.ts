@@ -362,6 +362,25 @@ describe('a delimiter that never closes', () => {
 	}
 });
 
+describe('a code span in a block quote', () => {
+	const cases: [string, string][] = [
+		[
+			'> x `a\n> b` c\n',
+			'<blockquote>\n<p>x <code>a b</code> c</p>\n</blockquote>',
+		],
+		[
+			'> `a\n> > b`\n',
+			'<blockquote>\n<p>`a</p><blockquote>\n<p>b`</p>\n</blockquote>\n</blockquote>',
+		],
+	];
+
+	for (const [input, expected] of cases) {
+		it(JSON.stringify(input), () => {
+			expect(render(input)).toBe(expected);
+		});
+	}
+});
+
 describe('a pipe outside a table', () => {
 	const cases: [string, string][] = [
 		['one | two | three\n', '<p>one | two | three</p>'],
