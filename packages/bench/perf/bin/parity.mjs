@@ -28,6 +28,7 @@ import {
 	load_arm,
 	MODES,
 	expand_modes,
+	skips_plugin_mode,
 	vite_pre,
 } from '../workloads.mjs';
 import { parse_args } from './ab.mjs';
@@ -125,10 +126,25 @@ function output(arm, mode, src, session) {
 		case 'vite-transform': {
 			return canonical_text(vite_pre(arm).transform(src, VITE_ID).code);
 		}
-		default:
+		case 'compile-plugins':
+			return compiled(
+				session.compile(
+					src,
+					arm.plugins.plugin_compile_options(compile_options(arm, src))
+				),
+				false
+			);
+		default: {
 			if (mode.startsWith('incremental-'))
 				return feed(arm, src, Number(mode.slice(12)));
-			throw new Error(`unknown mode "${mode}"`);
+			const plugged = arm.plugins.plugin_parse(mode, src, DIRECTIVE);
+			if (!plugged) throw new Error(`${mode} has no row for this document`);
+			const { nodes, errors, source } = arm.parse_markdown_svelte(
+				plugged.src,
+				plugged.options
+			);
+			return nodes_lines(nodes, errors, source);
+		}
 	}
 }
 
@@ -178,6 +194,7 @@ for (const entry of corpus({ families })) {
 		if (entry.family === 'huge' && !HUGE_MODES.includes(mode)) continue;
 		// the plugin cannot register directives, as in the workloads
 		if (mode === 'vite-transform' && DIRECTIVE.test(src)) continue;
+		if (skips_plugin_mode(mode, src)) continue;
 		const pick = mode === 'compile-reused-mapped' ? mapped_sessions : sessions;
 		const a = output(base, mode, src, pick.base);
 		const b = output(cand, mode, src, pick.cand);

@@ -30,6 +30,7 @@ const HARNESS_FILES = [
 	'lock.mjs',
 	'measure.mjs',
 	'paths.mjs',
+	'plugins.mjs',
 	'report.mjs',
 	'workloads.mjs',
 	'bin/ab.mjs',

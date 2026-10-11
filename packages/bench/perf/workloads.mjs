@@ -8,6 +8,9 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { corpus } from './corpus.mjs';
+import { perf_root } from './paths.mjs';
+// only what holds no handler, each arm runs the plugins of its own instance
+import { PLUGIN_MODES, steps_source } from './plugins.mjs';
 
 export const DIST_FILES = {
 	parse: 'packages/parse/dist/main.js',
@@ -35,6 +38,8 @@ export function missing_dist(root) {
 		.filter((p) => !existsSync(p));
 }
 
+let arms_loaded = 0;
+
 export async function load_arm(root, label) {
 	root = realpathSync(resolve(root));
 	const missing = missing_dist(root);
@@ -48,10 +53,15 @@ export async function load_arm(root, label) {
 	for (const [key, file] of Object.entries(DIST_FILES)) {
 		modules[key] = await import(pathToFileURL(join(root, file)).href);
 	}
+	// a query makes a module instance of its own, with its own handler functions
+	const plugins = await import(
+		`${pathToFileURL(join(perf_root, 'plugins.mjs')).href}?arm=${arms_loaded++}`
+	);
 	return {
 		label,
 		root,
 		modules,
+		plugins,
 		parse_markdown_svelte: modules.parse.parse_markdown_svelte,
 		PFMParser: modules.parse.PFMParser,
 		TreeBuilder: modules.tree_builder.TreeBuilder,
@@ -97,6 +107,7 @@ export const DOC_MODES = [
 	'compile-reused-mapped',
 	'sourcemap-v3',
 	'vite-transform',
+	...PLUGIN_MODES,
 ];
 
 export const SETUP_MODES = ['setup'];
@@ -123,6 +134,7 @@ export const HUGE_MODES = [
 	'compile-reused-mapped',
 	'sourcemap-v3',
 	'vite-transform',
+	...PLUGIN_MODES,
 ];
 
 export const SUITES = {
@@ -151,6 +163,11 @@ export const SUITES = {
 		families: ['micro', 'fixtures', 'real', 'sized', 'huge'],
 		modes: DOC_MODES,
 		setup: true,
+	},
+	// what parse plugins cost, apart from core so its rows and calibration stay as they were
+	plugins: {
+		families: ['real'],
+		modes: ['parse', 'compile-reused', ...PLUGIN_MODES],
 	},
 	// how cost grows with input length
 	scale: {
@@ -283,8 +300,19 @@ export function make_doc_run(arm, mode, src) {
 			const pre = vite_pre(arm);
 			return () => pre.transform(src, VITE_ID);
 		}
-		default:
-			throw new Error(`unknown mode "${mode}"`);
+		case 'compile-plugins': {
+			const session = new CompilerSession();
+			const options = arm.plugins.plugin_compile_options(
+				compile_options(arm, src, undefined)
+			);
+			return () => session.compile(src, options);
+		}
+		default: {
+			// the one shot entry, as a reused bare TreeBuilder never trims its slab
+			const plugged = arm.plugins.plugin_parse(mode, src, DIRECTIVE);
+			if (!plugged) throw new Error(`${mode} has no row for this document`);
+			return () => parse_markdown_svelte(plugged.src, plugged.options);
+		}
 	}
 }
 
@@ -296,6 +324,11 @@ export function make_setup_runs(arm) {
 		session: () => new CompilerSession(),
 		plugin: () => arm.mdsvex(),
 	};
+}
+
+/** a document a steps container would not hold whole has no plugin-steps row */
+export function skips_plugin_mode(mode, src) {
+	return mode === 'plugin-steps' && steps_source(src, DIRECTIVE) === null;
 }
 
 /** workload ids, families, modes and sources with no arm bound, both arms instantiate the same plan */
@@ -325,6 +358,7 @@ export function plan_workloads(suite_name = 'core', filter = {}) {
 				if (family === 'huge' && !HUGE_MODES.includes(mode)) continue;
 				// the plugin cannot register directives, see compile_options
 				if (mode === 'vite-transform' && DIRECTIVE.test(entry.source)) continue;
+				if (skips_plugin_mode(mode, entry.source)) continue;
 				plan.push({
 					id: `${entry.id}:${mode}`,
 					family,

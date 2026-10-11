@@ -265,12 +265,33 @@ byte-identical to the reference builds:
 
 ## Suites
 
-| suite   | workloads | for                                                                    |
-| ------- | --------: | ---------------------------------------------------------------------- |
-| `quick` |        60 | iterating. real with parse, render-mapped, vite-transform. about 2 min |
-| `core`  |       240 | the default, and what calibration measures. about 9 min                |
-| `full`  |       723 | every family and mode, before proposing a merge                        |
-| `scale` |        27 | how cost grows with input length (sized and huge)                      |
+| suite     | workloads | for                                                                               |
+| --------- | --------: | --------------------------------------------------------------------------------- |
+| `quick`   |        60 | iterating. real with parse, render-mapped, vite-transform. about 2 min            |
+| `core`    |       240 | the default, and what calibration measures. about 9 min                           |
+| `full`    |      1067 | every family and mode, before proposing a merge                                   |
+| `scale`   |        27 | how cost grows with input length (sized and huge)                                 |
+| `plugins` |       155 | what parse plugins cost. real with parse, the reused session and the plugin modes |
+
+`plugins` is for changes to the plugin dispatcher, the builders or the plugin
+api. It runs each real document through `parse` and `compile-reused` with no
+plugin, which shows what the change costs a document without one, and through
+the plugin modes below. It is not part of `core`, so `core` keeps its rows and
+`calibrate.mjs`, which measures `core` by default, says nothing about the
+plugin rows. Calibrate with `--suite plugins` before judging one.
+
+Two A/A runs of this suite (`ab.mjs --suite plugins --candidate
+.perf/baseline-mirror`, one pass each, the two builds byte identical) gave:
+
+- The rows of every mode but `plugin-steps`: p95 of |deviation| 2.7% and 2.6%,
+  worst row 3.9% and 4.5%, mode geomeans between +0.4% and -1.2%.
+- `plugin-steps`: mode geomean -4.5% and -3.3%, and the same six small
+  documents 6 to 14% slow on the second arm in both runs.
+
+So the second arm reads slow on `plugin-steps`, and a `slower` verdict there is
+not a result. Check such a row by timing each arm alone in its own process.
+Giving each arm its own instance of the handlers (see `load_arm`) did not
+remove it, and the cause is not known.
 
 `core` runs `micro` and `real` through one mode per distinct code path:
 `parse`, `incremental-64`, `render`, `render-mapped`, `compile-mapped`,
@@ -280,20 +301,26 @@ unmapped `compile`, and the reused session) only run in `full`.
 
 ## Modes
 
-| mode                    | what it runs                                                                   |
-| ----------------------- | ------------------------------------------------------------------------------ |
-| `parse`                 | `parse_markdown_svelte(src)`                                                   |
-| `parse-direct`          | `new PFMParser(new TreeBuilder(...)).parse(src)`, what compile runs            |
-| `incremental-64`/`1024` | `PFMParser` with `init`, `feed` in 64 or 1024 char chunks, then `finish`       |
-| `render`                | `new CursorHTMLRenderer({ cache: false }).update(...)` on a pre-parsed tree    |
-| `render-mapped`         | the same with `update_mapped`                                                  |
-| `compile`               | `compile(src)`                                                                 |
-| `compile-mapped`        | `compile(src, { sourcemap: true })`                                            |
-| `compile-reused`        | `CompilerSession#compile(src)`                                                 |
-| `compile-reused-mapped` | `CompilerSession#compile(src, { sourcemap: true })`                            |
-| `sourcemap-v3`          | `mappings_to_v3(...)` on a precomputed mapped compile                          |
-| `vite-transform`        | the `mdsvex()` plugin's pre transform: reused session compile plus v3 map      |
-| `setup`                 | constructing a parser, a renderer, a `CompilerSession` or the plugin, no input |
+| mode                    | what it runs                                                                               |
+| ----------------------- | ------------------------------------------------------------------------------------------ |
+| `parse`                 | `parse_markdown_svelte(src)`                                                               |
+| `parse-direct`          | `new PFMParser(new TreeBuilder(...)).parse(src)`, what compile runs                        |
+| `incremental-64`/`1024` | `PFMParser` with `init`, `feed` in 64 or 1024 char chunks, then `finish`                   |
+| `render`                | `new CursorHTMLRenderer({ cache: false }).update(...)` on a pre-parsed tree                |
+| `render-mapped`         | the same with `update_mapped`                                                              |
+| `compile`               | `compile(src)`                                                                             |
+| `compile-mapped`        | `compile(src, { sourcemap: true })`                                                        |
+| `compile-reused`        | `CompilerSession#compile(src)`                                                             |
+| `compile-reused-mapped` | `CompilerSession#compile(src, { sourcemap: true })`                                        |
+| `sourcemap-v3`          | `mappings_to_v3(...)` on a precomputed mapped compile                                      |
+| `vite-transform`        | the `mdsvex()` plugin's pre transform: reused session compile plus v3 map                  |
+| `setup`                 | constructing a parser, a renderer, a `CompilerSession` or the plugin, no input             |
+| `plugin-attr`           | `parse_markdown_svelte(src, { plugins })`, a heading handler that sets an attr             |
+| `plugin-autolink`       | the same with the autolink plugin: `wrap_inner` and a close callback per heading           |
+| `plugin-sectionize`     | the same with a `wrap_from` section per root heading, open to the next heading             |
+| `plugin-inline`         | the same with handlers on emphasis, strong and links, nodes the parser opens pending       |
+| `plugin-steps`          | `parse_markdown_svelte(wrapped, { directive_handlers })`, the document inside `:::steps[]` |
+| `compile-plugins`       | `CompilerSession#compile(src, { parse_plugins })` with autolink and sectionize             |
 
 Neither `sourcemap-v3` nor `vite-transform` is in the brief. They were added
 because the profile shows that the v3 map is where the vite plugin spends its
@@ -308,6 +335,13 @@ reports a difference until the baseline catches up. The plugin can only
 register directives from a module on disk, so `vite-transform` skips documents
 that contain one. They are `micro/directive`, `fixtures/generic_directives`,
 `real/pfm` and `huge/4m`.
+
+The plugins are in `plugins.mjs`. They are plain objects, so both arms run the
+same ones, and each stands for one shape of plugin work rather than for a
+shipped plugin. `plugin-steps` wraps the document in a `steps` container and
+skips a document that would not stay whole inside one (it has a directive, a
+line of colons or frontmatter). A reference build from before a plugin method
+existed (`wrap_from`, bound handlers) throws in the modes that use it.
 
 Parse-only modes use `@mdsvex/parse`'s `dist`, and the render modes use
 `@mdsvex/render`'s `dist`. Compile modes use `mdsvex`'s `dist`, which bundles
