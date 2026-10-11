@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'vitest';
-import { compile, compile_inputs, CompilerSession } from '../src/main';
+import {
+	compile,
+	compile_inputs,
+	CompilerSession,
+	heading_slug,
+} from '../src/main';
 import type {
 	CompileInputs,
 	CompileOptions,
@@ -40,6 +45,8 @@ const cases: Partial<CompileInputs>[] = [
 	{ directives, strict_directives: false },
 	{ strict_directives: false },
 	{ unwrap_images: true, strict_directives: false },
+	{ heading_ids: heading_slug, strict_directives: false },
+	{ heading_ids: heading_slug, parse_plugins: [slug], directives },
 	{ templates: { templates, template: false }, strict_directives: false },
 	{ frontmatter_parse: () => ({ title: 'parsed' }), strict_directives: false },
 	{},
@@ -92,6 +99,7 @@ describe('compile inputs', () => {
 			highlight: undefined,
 			filename: undefined,
 			unwrap_images: undefined,
+			heading_ids: undefined,
 		});
 		const doc = '# plain\n\ntext\n';
 		const out = target();
@@ -137,6 +145,10 @@ describe('compile inputs', () => {
 				{ unwrap_images: true, strict_directives: false },
 			],
 			[
+				{ heading_ids: heading_slug, strict_directives: false },
+				{ heading_ids: true, strict_directives: false },
+			],
+			[
 				{ frontmatter_parse: () => ({ title: 'p' }), strict_directives: false },
 				{
 					frontmatter: { parse: () => ({ title: 'p' }) },
@@ -161,6 +173,7 @@ describe('compile inputs', () => {
 		const session = new CompilerSession();
 		const full: CompileOptions = {
 			unwrap_images: true,
+			heading_ids: true,
 			components,
 			directives,
 			component_mode: 'all',

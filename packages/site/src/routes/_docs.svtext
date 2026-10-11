@@ -202,6 +202,9 @@ interface MdsvexOptions {
 	parse_plugins?: ParsePlugin[];
 	highlight?: HighlightOptions | Highlighter | false;
 	unwrap_images?: boolean;
+	heading_ids?:
+		| boolean
+		| { slug?: (text: string, heading: { depth: number }) => string };
 }
 ```
 
@@ -373,21 +376,23 @@ The node API, `wrap_from` and what happens when the parser takes a node back are
 parse_plugins: ParsePlugin[];
 ```
 
-Parse plugins change the tree as the parser builds it. A plugin is an object keyed by node type. Each `parse` function gets the node, and can return a function that runs when the node closes, once its text is known:
+Parse plugins change the tree as the parser builds it. A plugin is an object keyed by node type. Each `parse` function gets the node, and can return a function that runs when the node closes, once everything inside it is known:
 
 ```js
-const heading_ids = {
-	heading: {
+const external_links = {
+	link: {
 		parse(node) {
 			return () => {
-				node.attrs.id = node.text_content.toLowerCase().replace(/\W+/g, '-');
+				if (/^https?:/.test(node.href)) node.attrs.rel = 'noopener';
 			};
 		}
 	}
 };
 
-mdsvex({ parse_plugins: [heading_ids] });
+mdsvex({ parse_plugins: [external_links] });
 ```
+
+A plugin with `sequential: true` runs over the finished tree instead, after [`heading_ids`](docs#heading_ids) has set its ids.
 
 Elements a plugin creates count as markdown, so a [replacement](docs#custom-components) for `mark` also replaces the `<mark>` a highlight plugin adds.
 
@@ -447,6 +452,67 @@ Sales grew all year.
 Several images in one paragraph are all unwrapped, on one line or on lines of their own. So is an image inside a link, such as `[![A chart](/chart.png)](/full.png)`, where the link stays around the image. A paragraph with any text beside the image keeps its `<p>`, and so does one with a hard line break between two images. It works the same inside block quotes, list items, directives and HTML elements.
 
 `compile()` takes the option too, and the editor reads it from the manifest the plugin writes, or from `unwrap_images` in an `mdsvex.config.json`.
+
+### `heading_ids`
+
+```ts
+heading_ids: boolean | { slug?: (text: string, heading: { depth: number }) => string } = false;
+```
+
+Gives every markdown heading an `id` made from its text, so a link can point at it:
+
+```js
+mdsvex({ heading_ids: true });
+```
+
+```svx
+## Getting _started_
+
+## Getting started
+
+## The `highlight` option
+```
+
+```html
+<h2 id="getting-started">Getting <em>started</em></h2>
+<h2 id="getting-started-1">Getting started</h2>
+<h2 id="the-highlight-option">The <code>highlight</code> option</h2>
+```
+
+The id is the one GitHub makes: the text in lowercase, punctuation dropped, each space a hyphen, and letters of any script kept. A second heading with the same text gets `-1`, a third `-2`.
+
+The text is what a reader sees. Emphasis, links and code contribute their text without the markup, and an image contributes its alt text. What Svelte renders contributes nothing, because it isn't known until the page runs: an expression such as `{version}`, a component and a directive. A heading that is left with no text, such as `## {title}`, gets no `id`.
+
+A heading that already has an `id` keeps it, whether a [parse plugin](docs#parse_plugins) set it or you typed the heading as HTML, and no generated id repeats it. Headings typed as HTML are otherwise left alone.
+
+For another scheme, pass a `slug` function. It gets the text and the depth of the heading, and mdsvex numbers duplicates in what it returns. An empty string leaves the heading without an `id`. `heading_slug` is the default:
+
+```js
+import { mdsvex, heading_slug } from 'mdsvex';
+
+mdsvex({
+	heading_ids: {
+		slug: (text, { depth }) => (depth === 1 ? 'top' : heading_slug(text))
+	}
+});
+```
+
+The ids are set after the parse and before sequential parse plugins, so one can add an anchor that points at its heading:
+
+```js
+const anchors = {
+	sequential: true,
+	heading: {
+		parse(node) {
+			node.prepend('link', { href: `#${node.attrs.id}`, 'aria-hidden': 'true' });
+		}
+	}
+};
+
+mdsvex({ heading_ids: true, parse_plugins: [anchors] });
+```
+
+A [replacement](docs#custom-components) for a heading gets the `id` as a prop. `compile()` takes the option too. The ids belong to the compile, so `@mdsvex/parse` used on its own, for a streaming render, makes none. The editor reads the option from the manifest the plugin writes, or from `heading_ids: true` in an `mdsvex.config.json`, which can't hold a `slug` function.
 
 ## Frontmatter
 
@@ -1449,6 +1515,7 @@ To also convert CommonMark documents to mdsvex's markdown, use `migrate`, which 
 | `<script context="module">` exports | `<script module>` exports |
 | `{title}` in a document | `{metadata.title}` |
 | `remarkPlugins`, `rehypePlugins` | [`parse_plugins`](docs#parse_plugins) |
+| `rehype-slug` | [`heading_ids: true`](docs#heading_ids) |
 
 The migrator handles the `layout` rows and flags `<slot />` and `layoutPropForwarding`. The other rows are yours to change.
 

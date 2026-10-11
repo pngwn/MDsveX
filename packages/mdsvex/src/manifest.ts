@@ -77,6 +77,8 @@ export interface MdsvexManifest {
 	 * a manifest without it has none
 	 */
 	plugins?: ManifestPlugin[];
+	/** true when heading_ids is on in any form, a manifest without it means off */
+	heading_ids?: boolean;
 }
 
 /**

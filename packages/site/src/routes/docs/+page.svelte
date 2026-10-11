@@ -35,6 +35,7 @@ const nav = [
 			["component_mode", "docs#component_mode", true],
 			["parse_plugins", "docs#parse_plugins", true],
 			["highlight", "docs#highlight", true],
+			["heading_ids", "docs#heading_ids", true],
 		],
 	],
 	[
