@@ -10198,6 +10198,30 @@ export class PFMParser {
 		return true;
 	}
 
+	/**
+	 * a close tag at the cursor for an element still open closes it from a block state that reads no tags
+	 * @returns 1 when it closed one, 0 when the tag is not one, -1 while the tag is not all here
+	 */
+	private close_outer_tag(): number {
+		if (
+			!this.finished &&
+			string_index_of.call(
+				this.source,
+				'>',
+				this.cursor + 1 - this.source_base
+			) === -1
+		) {
+			this.wait_for('>');
+			return -1;
+		}
+		const close = this.try_parse_html_close_tag(this.cursor + 1);
+		if (close === null) return 0;
+		const opener_idx = this.find_html_opener(close.tag);
+		if (opener_idx === -1) return 0;
+		this.close_outer_html(opener_idx, close.end);
+		return 1;
+	}
+
 	private _run_html_block_element(code: number, current_node: number): boolean {
 		const source = this.source;
 		const base = this.source_base;
@@ -10427,6 +10451,15 @@ export class PFMParser {
 			const marker = this.try_parse_list_marker(this.cursor);
 			if (marker) {
 				this.start_list(marker, current_node);
+				return false;
+			}
+		}
+
+		if (code === COLON) {
+			const dir = this.try_parse_block_directive(this.cursor);
+			if (dir === false) return true;
+			if (dir !== null) {
+				this.start_block_directive(dir, current_node);
 				return false;
 			}
 		}
@@ -11706,6 +11739,10 @@ export class PFMParser {
 			}
 
 			default: {
+				if (code === OPEN_ANGLE_BRACKET && this.html_tag_stack.length !== 0) {
+					const closed = this.close_outer_tag();
+					if (closed !== 0) return closed === -1;
+				}
 				if (code === PLUS || (code >= 48 && code <= 57)) {
 					// stall only while the marker prefix is still being read
 					if (!this.finished && this.plus_marker_pending(this.cursor))
