@@ -141,8 +141,7 @@ const TAGS = ['<span>', '</span>'];
 
 const DOC_PIECES = [...INLINE, ...TAGS, '|', '\\|', '# ', '\n', '\n\n'];
 
-// a tag in a cell is revoked without its text and the wire keeps only <
-const CELL_PIECES = [...INLINE, '\\|', '|', '|'];
+const CELL_PIECES = [...INLINE, ...TAGS, '\\|', '|', '|'];
 
 const DELIMITER_ROWS = ['---', '|-|', '|-|-|', '-|-'];
 
@@ -161,17 +160,11 @@ function line(rand: () => number, pieces: string[], most: number): string {
 	return source;
 }
 
-/** no space ends a cell, the batch builder gets an empty text node for one */
-function row(rand: () => number): string {
-	return line(rand, CELL_PIECES, 7).replace(/ +(\||$)/g, '$1');
-}
-
 function table(rand: () => number): string {
-	let source = `${row(rand)}\n${pick(rand, DELIMITER_ROWS)}\n`;
+	let source = `${line(rand, CELL_PIECES, 7)}\n${pick(rand, DELIMITER_ROWS)}\n`;
 	const rows = Math.floor(rand() * 3);
-	for (let r = 0; r < rows; r++) source += `${row(rand)}\n`;
-	// a backslash ending a row keeps the table open past a blank line
-	if (rand() < 0.3) source += `\n${row(rand).replace(/\|/g, '').trimEnd()}\n`;
+	for (let r = 0; r < rows; r++) source += `${line(rand, CELL_PIECES, 7)}\n`;
+	if (rand() < 0.3) source += `\n${line(rand, DOC_PIECES, 6)}\n`;
 	return rand() < 0.3 ? source.slice(0, -1) : source;
 }
 
