@@ -46,8 +46,7 @@ delete it.
 
 ### line start element close check
 
-- **Source:** the line start element fix (branch `p/nostalgic-hugle-ee589c`,
-  not merged when this was written), `sure_to_close` in `open_spec_tag`.
+- **Source:** #961, `sure_to_close` in `open_spec_tag`.
 - **Measured:** `real/site-src-components-_cheatsheet`, against b7330075 with
   the default 3.0% floor. `parse` -6.4% (26.5us to 28.2us), `vite-transform`
   -4.7%, fed parse -4.5%. Geomean over the 59 `quick` workloads -0.16%.
