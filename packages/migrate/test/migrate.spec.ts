@@ -314,6 +314,65 @@ describe("escaping", () => {
 	});
 });
 
+describe("directive-like lines stay text", () => {
+	/** kinds in the parsed output, and the text it holds with the escapes read */
+	function parsed(out: string): { kinds: Set<string>; text: string } {
+		const { nodes } = parse_markdown_svelte(out);
+		const kinds = new Set<string>();
+		let text = "";
+		const walk = (index: number): void => {
+			const node = nodes.get_node(index);
+			kinds.add(node.kind);
+			if (node.kind === "text") text += out.slice(node.value[0], node.value[1]);
+			else if (node.kind === "soft_break") text += "\n";
+			for (const child of node.children) walk(child);
+		};
+		walk(0);
+		return { kinds, text: text.replace(/\\(?=:)/g, "") };
+	}
+
+	test("a line of two or three colons and a word is escaped", () => {
+		expect(m(":::note")).toBe("\\:::note");
+		expect(m("::word")).toBe("\\::word");
+		expect(m("::toc(depth=2)")).toBe("\\::toc(depth=2)");
+		expect(m("  :::note")).toBe("\\:::note");
+	});
+
+	const cases: Record<string, string> = {
+		"a container name": ":::note",
+		"a leaf name": "::word",
+		"a leaf name with args": "::toc(depth=2)",
+		"a container around text": ":::note\nbody\n:::",
+		"a container with args": ":::note(kind=warn)\nbody\n:::",
+		"after a paragraph line": "some text\n::word\nmore text",
+		"between paragraphs": "before\n\n:::steps\n\nafter\n\n:::",
+		"in a list item": "- ::word\n- :::note",
+		"in a blockquote": "> :::note\n> body\n> :::",
+		"nested by colon count": "::::outer\n:::inner\nx\n:::\n::::",
+	};
+	for (const [name, input] of Object.entries(cases)) {
+		test(`${name} does not become a directive`, () => {
+			const out = expect_valid_pfm(input);
+			const { kinds, text } = parsed(out);
+			expect(kinds.has("directive_leaf"), out).toBe(false);
+			expect(kinds.has("directive_container"), out).toBe(false);
+			expect(kinds.has("directive_inline"), out).toBe(false);
+			for (const line of input.split("\n")) {
+				const want = line.replace(/^(?:[->] )+/, "").trim();
+				if (want !== "") expect(text, out).toContain(want);
+			}
+		});
+	}
+
+	test("the unescaped lines are directives in PFM, the escape is what keeps them text", () => {
+		for (const raw of [":::note\nbody\n:::\n", "::word\n"]) {
+			expect([...parsed(raw).kinds].some((k) => k.startsWith("directive_"))).toBe(
+				true,
+			);
+		}
+	});
+});
+
 describe("thematic break", () => {
 	test("renders as ---", () => {
 		expect(m("***")).toBe("---");
