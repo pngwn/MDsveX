@@ -290,6 +290,7 @@ describe('a close tag in a header cell', () => {
 				'        table_cell',
 				'          html tag="b"',
 				'            text "x"',
+				'          text " "',
 				'          text "</div>"',
 				'    line_break',
 				'  line_break'

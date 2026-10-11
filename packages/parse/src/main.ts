@@ -11754,6 +11754,8 @@ export class PFMParser {
 				e = ~e;
 				// parse cell content through inline machinery, it never starts a table so bounds stay ours
 				this.node_stack.push(this.table_cell_id);
+				// the range starts past the padding, whitespace after an inline node is content
+				this.table_cell_has_content = true;
 				this.parse_inline_range(s, e);
 				this.node_stack.pop();
 			}
