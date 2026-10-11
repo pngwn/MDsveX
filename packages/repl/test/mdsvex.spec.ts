@@ -453,3 +453,34 @@ describe('pfm_ast', () => {
 		expect(() => structuredClone(root)).not.toThrow();
 	});
 });
+
+describe('heading_ids', () => {
+	const config_with = (heading_ids: unknown) =>
+		prepare(files({ 'mdsvex.config.json': JSON.stringify({ heading_ids }) }));
+
+	test('is off without the key and on when the config says so', () => {
+		const source = '# Same\n\n# Same\n';
+		const off = prepare(files({ 'mdsvex.config.json': '{}' }));
+		expect(off.config.heading_ids).toBe(false);
+		expect('heading_ids' in off.options).toBe(false);
+		expect(compile_markdown(source, 'App.svx', off.options).code).toBe(
+			'<h1>Same</h1><h1>Same</h1>'
+		);
+
+		const on = config_with(true);
+		expect(on.error).toBeNull();
+		expect(on.config.heading_ids).toBe(true);
+		expect(on.options.heading_ids).toBe(true);
+		expect(compile_markdown(source, 'App.svx', on.options).code).toBe(
+			'<h1 id="same">Same</h1><h1 id="same-1">Same</h1>'
+		);
+		expect('heading_ids' in config_with(false).options).toBe(false);
+	});
+
+	test('anything but a boolean is an error, json holds no slug function', () => {
+		for (const bad of ['yes', {}, { slug: 'github' }])
+			expect(config_with(bad).error?.message).toBe(
+				'mdsvex.config.json: heading_ids must be true or false'
+			);
+	});
+});

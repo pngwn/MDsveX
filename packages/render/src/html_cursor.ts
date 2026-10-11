@@ -37,6 +37,8 @@ import { is_entity_name } from './entities';
 export type { Mapping, CodeInformation, MappingData } from './mappings';
 export { MapSink } from './mappings';
 export { ComponentScope, component_imports } from './scope';
+/** @internal a pass over the tree reads references as the renderer does */
+export { is_entity_name } from './entities';
 export type {
 	ComponentImport,
 	ComponentSource,

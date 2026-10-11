@@ -46,6 +46,8 @@ export interface JsonConfig {
 	highlight?: boolean;
 	/** a paragraph of only images gets no <p>, as the option of the plugin does */
 	unwrap_images?: boolean;
+	/** every heading gets an id, as the option of the plugin does with true */
+	heading_ids?: boolean;
 	/** false leaves a math fence a code block, else the renderer and its options as the plugin takes them */
 	math?:
 		| false
@@ -192,6 +194,8 @@ export function document_options(
 	};
 	if (Object.keys(templates).length !== 0) compile.templates = templates;
 	if (manifest.unwrap_images === true) compile.unwrap_images = true;
+	// the id is a prop of a replaced heading, the default slug stands in for a function
+	if (manifest.heading_ids === true) compile.heading_ids = true;
 	const math = math_of(manifest);
 	if (math !== undefined) compile.math = math;
 	if (manifest.select_template) {
@@ -290,6 +294,7 @@ export function from_json(
 		highlight: config.highlight === false ? false : 'twinkleplop',
 	};
 	if (config.unwrap_images === true) manifest.unwrap_images = true;
+	if (config.heading_ids === true) manifest.heading_ids = true;
 	const math = math_from_json(config.math);
 	if (math !== undefined) manifest.math = math;
 	const from = path.join(dir, 'vite.config');

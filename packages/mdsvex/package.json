@@ -116,6 +116,7 @@
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
 		"@twinkleplop/twoslash": "^0.3.1",
 		"@twinkleplop/twoslash-svelte": "^0.3.1",
+		"github-slugger": "^2.0.0",
 		"katex": "^0.19.0",
 		"npm-run-all2": "^7.0.2",
 		"shx": "^0.3.4",

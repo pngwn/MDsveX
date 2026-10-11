@@ -400,6 +400,9 @@ importers:
       '@twinkleplop/twoslash-svelte':
         specifier: ^0.3.1
         version: 0.3.1(@typescript-eslint/types@8.57.2)
+      github-slugger:
+        specifier: ^2.0.0
+        version: 2.0.0
       katex:
         specifier: ^0.19.0
         version: 0.19.0
@@ -610,9 +613,6 @@ importers:
       '@sveltejs/vite-plugin-svelte':
         specifier: ^6.2.1
         version: 6.2.1(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.1.9(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0))
-      github-slugger:
-        specifier: ^2.0.0
-        version: 2.0.0
       npm-run-all:
         specifier: ^4.1.5
         version: 4.1.5

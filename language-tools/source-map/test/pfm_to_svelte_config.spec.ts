@@ -99,6 +99,24 @@ describe("pfmToSvelte with a config", () => {
 		expect(on.diagnostics).toEqual([]);
 	});
 
+	it("gives a replaced heading its id when the config says so", () => {
+		const source = "---\ntemplate: docs\n---\n\n## Two *b*\n\n## Two b\n";
+		const off = pfmToSvelte(source, docs);
+		expect(off.code).toContain("<H2_MDSVEX_T level={2}>Two <strong>b</strong>");
+		const on = pfmToSvelte(source, {
+			...docs,
+			compile: { ...docs.compile, heading_ids: true },
+		});
+		valid(source, on);
+		expect(on.code).toContain(
+			'<H2_MDSVEX_T id="two-b" level={2}>Two <strong>b</strong></H2_MDSVEX_T>',
+		);
+		expect(on.code).toContain(
+			'<H2_MDSVEX_T id="two-b-1" level={2}>Two b</H2_MDSVEX_T>',
+		);
+		expect(on.diagnostics).toEqual([]);
+	});
+
 	it("keeps the virtual id of an import it can not resolve", () => {
 		const source = "## Two\n\n![cat](/c.png)\n";
 		const r = pfmToSvelte(source, {

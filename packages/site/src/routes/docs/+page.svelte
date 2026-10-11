@@ -36,6 +36,7 @@ const nav = [
 			["parse_plugins", "docs#parse_plugins", true],
 			["highlight", "docs#highlight", true],
 			["math", "docs#math", true],
+			["heading_ids", "docs#heading_ids", true],
 		],
 	],
 	[
