@@ -107,7 +107,9 @@ describe('vite plugin: a dev server', () => {
 			writeFileSync(join(root, path), content);
 		}
 		const logger = createLogger('silent');
-		logger.warn = (message) => void warned.push(message);
+		// vite colours what it logs when the terminal takes colour
+		logger.warn = (message) =>
+			void warned.push(message.replace(/\u001b\[[0-9;]*m/g, ''));
 		server = await createServer({
 			root,
 			configFile: false,
