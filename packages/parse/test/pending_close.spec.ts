@@ -29,6 +29,7 @@ const enum Pending {
 class Contract implements Emitter {
 	private kinds: NodeKind[] = [NodeKind.root];
 	private state: Pending[] = [Pending.no];
+	private revoked: boolean[] = [];
 	broken: string[] = [];
 
 	private fail(what: string, id: number): void {
@@ -62,6 +63,8 @@ class Contract implements Emitter {
 		this.state[id] = Pending.held;
 	}
 	revoke(id: number): void {
+		if (this.revoked[id]) this.fail('revoked twice', id);
+		this.revoked[id] = true;
 		if (this.state[id] === Pending.closed)
 			this.fail('revoked after a close', id);
 		if (this.state[id] === Pending.committed) {

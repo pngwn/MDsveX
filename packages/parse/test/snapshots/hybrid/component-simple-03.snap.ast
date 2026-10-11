@@ -2,7 +2,7 @@ root
   paragraph
     html tag="Counter" prop="prop" self_closing=true
     soft_break
-    text tag="Counter" prop="prop/" "<Counter prop=prop/>"
+    text "<Counter prop=prop/>"
     soft_break
     html tag="Counter" prop="{prop}" self_closing=true
     soft_break
