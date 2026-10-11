@@ -695,10 +695,11 @@ describe('wrap_from: close', () => {
 		const cut = source.indexOf('---');
 		parser.feed(source.slice(0, cut));
 		expect(dispatcher.open_wants).not.toBe(handled);
-		expect(dispatcher.wants_open(NodeKind.paragraph)).toBe(true);
+		// the root has the section, only its own children go there
+		expect(dispatcher.open_wants[NodeKind.paragraph]).toBe(1);
 		parser.feed(source.slice(cut));
 		expect(dispatcher.open_wants).toBe(handled);
-		expect(dispatcher.wants_open(NodeKind.paragraph)).toBe(false);
+		expect(dispatcher.open_wants[NodeKind.paragraph]).toBe(0);
 		parser.finish();
 		expect(dispatcher.quiet()).toBe(true);
 	});
@@ -1181,7 +1182,7 @@ describe('wrap_from: a sequential pass', () => {
 			const { nodes, dispatcher } = run('one\n\ntwo', [last]);
 			const wrapper = nodes.last_child_at(0);
 			expect(nodes.end_at(wrapper), name).toBe(nodes.start_at(wrapper));
-			expect(dispatcher!.wants_open(NodeKind.heading), name).toBe(false);
+			expect(dispatcher!.open_wants[NodeKind.heading], name).toBe(0);
 		}
 	});
 });

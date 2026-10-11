@@ -818,7 +818,7 @@ describe('bound handlers: the builder fast path', () => {
 							const wants = dispatcher.open_wants;
 							const kinds: string[] = [];
 							for (let k = 0; k < 36; k++) {
-								if (wants[k] === 1) kinds.push(kind_to_string(k));
+								if (wants[k] !== 0) kinds.push(kind_to_string(k));
 							}
 							seen.push(
 								kinds.join() + (dispatcher.quiet() ? ' quiet' : ' awake')
@@ -848,7 +848,7 @@ describe('bound handlers: the builder fast path', () => {
 		}
 		expect(dispatcher.quiet()).toBe(true);
 		seen.push(
-			[...dispatcher.open_wants].filter((w) => w === 1).length + ' left'
+			[...dispatcher.open_wants].filter((w) => w !== 0).length + ' left'
 		);
 		return seen;
 	}
