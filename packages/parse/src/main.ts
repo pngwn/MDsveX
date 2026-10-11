@@ -7772,7 +7772,17 @@ export class PFMParser {
 							// try html closing tag: </tag>
 							const close = this.try_parse_html_close_tag(this.cursor + 1);
 							if (close) {
-								const opener_idx = this.find_html_opener(close.tag);
+								let opener_idx = this.find_html_opener(close.tag);
+								// a cell closes an element opened before its table only where the row ends
+								if (
+									opener_idx !== -1 &&
+									this.in_table &&
+									this.html_tag_stack[opener_idx].id < this.table_node_id
+								) {
+									const ends = this.row_ends_at(close.end);
+									if (ends === -1) break main_loop;
+									if (ends === 0) opener_idx = -1;
+								}
 								if (opener_idx !== -1) {
 									// close all intermediate unclosed html elements
 									while (this.html_tag_stack.length > opener_idx + 1) {
@@ -8682,6 +8692,14 @@ export class PFMParser {
 					if (code === CLOSE_ANGLE_BRACKET) {
 						this.end_table();
 						continue;
+					}
+					if (code === OPEN_ANGLE_BRACKET && this.html_tag_stack.length !== 0) {
+						const outer = this.row_closes_outer();
+						if (outer === -1) break main_loop;
+						if (outer === 1) {
+							this.end_table();
+							continue;
+						}
 					}
 					if (
 						(code === ASTERISK || code === DASH || code === UNDERSCORE) &&
@@ -12576,6 +12594,39 @@ export class PFMParser {
 	/**
 	 * close the current table and pop state.
 	 */
+	/**
+	 * a row line that starts at the close tag of an element opened before the table, no cell could close it
+	 * @returns 1 when it does, 0 when it does not, -1 when the tag is not all here yet
+	 */
+	private row_closes_outer(): number {
+		const from = this.cursor - this.source_base;
+		if (
+			!this.finished &&
+			string_index_of.call(this.source, '>', from) === -1 &&
+			string_index_of.call(this.source, '\n', from) === -1
+		) {
+			return -1;
+		}
+		const close = this.try_parse_html_close_tag(this.cursor + 1);
+		return close !== null && this.find_html_opener(close.tag) !== -1 ? 1 : 0;
+	}
+
+	/**
+	 * only spaces and tabs from pos to the end of the row line
+	 * @returns 1 when so, 0 when not, -1 when the line is not all here yet
+	 */
+	private row_ends_at(pos: number): number {
+		const source = this.source;
+		const base = this.source_base;
+		let code = char_code_at.call(source, pos - base);
+		while (code === SPACE || code === TAB) {
+			code = char_code_at.call(source, ++pos - base);
+		}
+		if (code === LINEFEED) return 1;
+		if (pos < this.source_end) return 0;
+		return this.finished ? 1 : -1;
+	}
+
 	private end_table(): void {
 		this.states.pop(); // pop table_body
 		this.close_table_node();
