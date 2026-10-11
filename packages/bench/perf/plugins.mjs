@@ -104,19 +104,23 @@ export const PLUGIN_MODES = [...Object.keys(PARSE_OPTIONS), 'compile-plugins'];
 // a line of colons would end the container early, frontmatter only counts at the start of a document
 const NOT_STEPS = /^:{3,}|^(?:---|\+\+\+)\r?\n/m;
 
-/** the document inside one steps container, null when it would not stay whole in there */
+/**
+ * the document inside one steps container, null when it would not stay whole in there
+ *
+ * decoded from bytes for a sequential string, a cons string that grows old unread stays one and reads slower
+ */
 export function steps_source(src, directive) {
 	if (directive.test(src) || NOT_STEPS.test(src)) return null;
-	return `:::steps[]\n\n${src.trimEnd()}\n:::\n`;
+	return Buffer.from(`:::steps[]\n\n${src.trimEnd()}\n:::\n`, 'utf8').toString(
+		'utf8'
+	);
 }
 
-/** what a plugin mode parses, the source and the options, null for a document the mode skips */
-export function plugin_parse(mode, src, directive) {
+/** the parse options of a plugin mode, with the handlers of this instance */
+export function plugin_options(mode) {
 	const options = PARSE_OPTIONS[mode];
 	if (options === undefined) throw new Error(`unknown mode "${mode}"`);
-	if (mode !== 'plugin-steps') return { src, options };
-	const wrapped = steps_source(src, directive);
-	return wrapped === null ? null : { src: wrapped, options };
+	return options;
 }
 
 /** the compile options of compile-plugins on top of the ones a document needs anyway */

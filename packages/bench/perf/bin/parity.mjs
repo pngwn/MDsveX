@@ -28,6 +28,7 @@ import {
 	load_arm,
 	MODES,
 	expand_modes,
+	plugin_source,
 	skips_plugin_mode,
 	vite_pre,
 } from '../workloads.mjs';
@@ -137,11 +138,13 @@ function output(arm, mode, src, session) {
 		default: {
 			if (mode.startsWith('incremental-'))
 				return feed(arm, src, Number(mode.slice(12)));
-			const plugged = arm.plugins.plugin_parse(mode, src, DIRECTIVE);
-			if (!plugged) throw new Error(`${mode} has no row for this document`);
+			const plugged = plugin_source(mode, src);
+			if (plugged === null) {
+				throw new Error(`${mode} has no row for this document`);
+			}
 			const { nodes, errors, source } = arm.parse_markdown_svelte(
-				plugged.src,
-				plugged.options
+				plugged,
+				arm.plugins.plugin_options(mode)
 			);
 			return nodes_lines(nodes, errors, source);
 		}

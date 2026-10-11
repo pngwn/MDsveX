@@ -308,10 +308,13 @@ export function make_doc_run(arm, mode, src) {
 			return () => session.compile(src, options);
 		}
 		default: {
+			const options = arm.plugins.plugin_options(mode);
+			const plugged = plugin_source(mode, src);
+			if (plugged === null) {
+				throw new Error(`${mode} has no row for this document`);
+			}
 			// the one shot entry, as a reused bare TreeBuilder never trims its slab
-			const plugged = arm.plugins.plugin_parse(mode, src, DIRECTIVE);
-			if (!plugged) throw new Error(`${mode} has no row for this document`);
-			return () => parse_markdown_svelte(plugged.src, plugged.options);
+			return () => parse_markdown_svelte(plugged, options);
 		}
 	}
 }
@@ -326,9 +329,26 @@ export function make_setup_runs(arm) {
 	};
 }
 
+const steps_sources = new Map();
+
+/**
+ * what a plugin mode parses, null for a document the mode skips
+ *
+ * one string per document for both arms, an arm with a string of its own can keep a slower representation of it
+ */
+export function plugin_source(mode, src) {
+	if (mode !== 'plugin-steps') return src;
+	let wrapped = steps_sources.get(src);
+	if (wrapped === undefined) {
+		wrapped = steps_source(src, DIRECTIVE);
+		steps_sources.set(src, wrapped);
+	}
+	return wrapped;
+}
+
 /** a document a steps container would not hold whole has no plugin-steps row */
 export function skips_plugin_mode(mode, src) {
-	return mode === 'plugin-steps' && steps_source(src, DIRECTIVE) === null;
+	return plugin_source(mode, src) === null;
 }
 
 /** workload ids, families, modes and sources with no arm bound, both arms instantiate the same plan */
