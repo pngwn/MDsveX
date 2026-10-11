@@ -12,7 +12,7 @@ export default defineConfig({
 		outDir: 'dist',
 		reportCompressedSize: true,
 		rollupOptions: {
-			// the user's install is the one a plugin runs against, never a copy
+			// a plugin runs against the mdsvex and svelte of the app, never a copy
 			external: [/^@mdsvex\//, /^mdsvex(\/|$)/, /^svelte(\/|$)/],
 			output: {
 				entryFileNames: '[name].js',

@@ -528,6 +528,8 @@ const anchors = {
 mdsvex({ heading_ids: true, parse_plugins: [anchors] });
 ```
 
+[`@mdsvex/plugin-anchors`](docs#anchors) is that plugin, with a choice of where the link goes.
+
 A [replacement](docs#custom-components) for a heading gets the `id` as a prop. `compile()` takes the option too. The ids belong to the compile, so `@mdsvex/parse` used on its own, for a streaming render, makes none. The editor reads the option from the manifest the plugin writes, or from `heading_ids: true` in an `mdsvex.config.json`, which can't hold a `slug` function.
 
 ## Frontmatter
@@ -1014,14 +1016,16 @@ The first-party plugins are packages of their own, named `@mdsvex/plugin-*`. Eac
 
 ```js
 import { mdsvex } from 'mdsvex';
+import { anchors } from '@mdsvex/plugin-anchors';
 import { steps } from '@mdsvex/plugin-steps';
 
-mdsvex({ plugins: [steps()] });
+mdsvex({ heading_ids: true, plugins: [steps(), anchors()] });
 ```
 
 | package | what it adds |
 | --- | --- |
 | [`@mdsvex/plugin-steps`](docs#steps) | numbered steps, one for each heading inside `:::steps[]` |
+| [`@mdsvex/plugin-anchors`](docs#anchors) | a link to itself on every heading that has an id |
 
 ### Steps
 
@@ -1073,7 +1077,7 @@ Add it to the config.
 - **Steps nest** when the outer container uses more colons, and the inner list counts from 1.
 - **A step can be written out** as `:::step[Its title]` inside the container, beside the ones headings make.
 
-The titles are still headings, so [`heading_ids`](docs#heading_ids) reaches them.
+The titles are still headings, so [`heading_ids`](docs#heading_ids) and [anchors](docs#anchors) reach them.
 
 The numbers are drawn by a small stylesheet that comes with the components, from a CSS counter. Its selectors have no specificity, so any rule of yours wins, and it reads these custom properties from `.steps`:
 
@@ -1107,6 +1111,56 @@ export { default as step } from './Step.svelte';
 ```
 
 The plugin's own components can be imported from `@mdsvex/plugin-steps/Steps.svelte` and `@mdsvex/plugin-steps/Step.svelte`, to wrap one in yours.
+
+### Anchors
+
+```bash
+pnpm add --save-dev @mdsvex/plugin-anchors@next
+```
+
+```js
+import { anchors } from '@mdsvex/plugin-anchors';
+
+mdsvex({ heading_ids: true, plugins: [anchors()] });
+```
+
+Puts a link to itself on every heading that has an id:
+
+```html
+<h2 id="getting-started"><a href="#getting-started">Getting started</a></h2>
+```
+
+**It needs [`heading_ids`](docs#heading_ids).** The plugin makes no ids of its own. It links the id each heading has once `heading_ids` has run, so with the option off no heading has one and nothing is linked. A heading left without an id, such as `## {title}`, gets no link either. An id a [parse plugin](docs#parse_plugins) set is linked like any other.
+
+```ts
+anchors({
+	position: 'wrap' | 'prepend' | 'append' = 'wrap',
+	attrs: Record<string, string>
+});
+```
+
+- **`'wrap'`** puts the content of the heading inside the link. A heading that already holds a link is left as it is, since a link can't hold another.
+- **`'prepend'`** and **`'append'`** add an empty link before or after the content, with `aria-hidden="true"` and `tabindex="-1"`, for a stylesheet to draw:
+
+```js
+anchors({ position: 'prepend', attrs: { class: 'anchor' } });
+```
+
+```html
+<h2 id="getting-started">
+	<a href="#getting-started" aria-hidden="true" tabindex="-1" class="anchor"></a>Getting started
+</h2>
+```
+
+```css
+.anchor::before {
+	content: '#';
+}
+```
+
+- **`attrs`** are more attributes for the link. One named as a default replaces it.
+
+`compile()` takes both plugins the same way, through its `plugins` option.
 
 ## Syntax highlighting
 
@@ -1806,6 +1860,7 @@ To also convert CommonMark documents to mdsvex's markdown, use `migrate`, which 
 | `{title}` in a document | `{metadata.title}` |
 | `remarkPlugins`, `rehypePlugins` | [`parse_plugins`](docs#parse_plugins) |
 | `rehype-slug` | [`heading_ids: true`](docs#heading_ids) |
+| `rehype-autolink-headings` | [`@mdsvex/plugin-anchors`](docs#anchors) |
 
 The migrator handles the `layout` rows and flags `<slot />` and `layoutPropForwarding`. The other rows are yours to change.
 

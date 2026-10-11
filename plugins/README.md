@@ -2,16 +2,16 @@
 
 Each directory here is one npm package, `@mdsvex/plugin-<name>`, that exports a function returning a plugin for the `plugins` option of `mdsvex()` and `compile()`.
 
-| package                   | directory                | what it adds                                                                                           |
-| ------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------ |
-| `@mdsvex/plugin-steps`    | [`steps`](./steps)       | numbered steps, one for each heading inside `:::steps[]`                                               |
-| `@mdsvex/plugin-autolink` | [`autolink`](./autolink) | an id and a link on every heading. Private, and older than bundles, so it still returns a parse plugin |
+| package                  | directory              | what it adds                                             |
+| ------------------------ | ---------------------- | -------------------------------------------------------- |
+| `@mdsvex/plugin-steps`   | [`steps`](./steps)     | numbered steps, one for each heading inside `:::steps[]` |
+| `@mdsvex/plugin-anchors` | [`anchors`](./anchors) | a link to itself on every heading that has an id         |
 
 The other files in this directory are the audit of the remark and rehype plugins these replace.
 
 ## Adding a plugin
 
-Copy [`autolink`](./autolink) for a plugin that is only handlers, or [`steps`](./steps) for one that ships Svelte components. Change the name, description, `repository.directory` and keywords in `package.json`, set the version to `0.0.1`, and add a row above and a section to the Plugins part of `packages/site/src/routes/_docs.svtext`. The workspace, the root build, the root test run, preview builds, dependabot and the release already cover `plugins/*`, so nothing outside the new directory needs wiring.
+Copy [`anchors`](./anchors) for a plugin that is only handlers, or [`steps`](./steps) for one that ships Svelte components. Change the name, description, `repository.directory` and keywords in `package.json`, set the version to `0.0.1`, and add a row above and a section to the Plugins part of `packages/site/src/routes/_docs.svtext`. The workspace, the root build, the root test run, preview builds, dependabot and the release already cover `plugins/*`, so nothing outside the new directory needs wiring.
 
 ### What every plugin package has
 
@@ -21,11 +21,11 @@ Copy [`autolink`](./autolink) for a plugin that is only handlers, or [`steps`](.
 - **Tests import the package by its name**, which resolves through `exports` to `dist`, so build before testing. `pnpm test:run` at the root does both. To run one package:
 
 ```bash
-pnpm --filter @mdsvex/plugin-autolink build
+pnpm --filter @mdsvex/plugin-anchors build
 ```
 
 ```bash
-pnpm --filter @mdsvex/plugin-autolink test:run
+pnpm --filter @mdsvex/plugin-anchors test:run
 ```
 
 - **`../test/app.ts`** writes a throwaway app with the package copied into its `node_modules` as npm would publish it (`package.json` and what `files` lists). Use it to check that what is published is what `exports` names, and to run a dev server against the installed package.
@@ -56,11 +56,11 @@ npm login
 ```
 
 ```bash
-node scripts/setup-trusted-publishing.mjs --dry-run @mdsvex/plugin-steps
+node scripts/setup-trusted-publishing.mjs --dry-run @mdsvex/plugin-steps @mdsvex/plugin-anchors
 ```
 
 ```bash
-node scripts/setup-trusted-publishing.mjs @mdsvex/plugin-steps
+node scripts/setup-trusted-publishing.mjs @mdsvex/plugin-steps @mdsvex/plugin-anchors
 ```
 
 The dry run lists what it would do. The real run publishes a `0.0.0` placeholder of each package that is not on npm, then registers `pngwn/MDsveX` with `release.yml` as its trusted publisher. Run it with `node`, not through `pnpm run`, so the 2FA prompt reaches the terminal. It finds packages with `pnpm -r ls`, which covers `plugins/*`, and skips private ones, so a new package must not be `private` and must have a version other than `0.0.0`.

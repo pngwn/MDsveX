@@ -193,9 +193,6 @@ importers:
       '@mdsvex/parse':
         specifier: workspace:*
         version: link:../parse
-      '@mdsvex/plugin-autolink':
-        specifier: workspace:*
-        version: link:../../plugins/autolink
       '@mdsvex/render':
         specifier: workspace:*
         version: link:../render
@@ -594,6 +591,9 @@ importers:
 
   packages/site:
     dependencies:
+      '@mdsvex/plugin-anchors':
+        specifier: workspace:*
+        version: link:../../plugins/anchors
       '@mdsvex/repl':
         specifier: workspace:*
         version: link:../repl
@@ -658,9 +658,9 @@ importers:
       '@fontsource/source-code-pro':
         specifier: ^5.2.5
         version: 5.2.5
-      '@mdsvex/plugin-autolink':
+      '@mdsvex/plugin-anchors':
         specifier: workspace:*
-        version: link:../../plugins/autolink
+        version: link:../../plugins/anchors
       '@mdsvex/plugin-steps':
         specifier: workspace:*
         version: link:../../plugins/steps
@@ -696,11 +696,8 @@ importers:
         specifier: ^8.0.5
         version: 8.0.5(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(@types/node@24.7.1)(esbuild@0.27.4)(terser@5.44.0)
 
-  plugins/autolink:
+  plugins/anchors:
     devDependencies:
-      '@mdsvex/parse':
-        specifier: workspace:*
-        version: link:../../packages/parse
       mdsvex:
         specifier: workspace:*
         version: link:../../packages/mdsvex

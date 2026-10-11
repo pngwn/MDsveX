@@ -1,5 +1,6 @@
 import { extname } from "node:path";
 import { sveltekit } from "@sveltejs/kit/vite";
+import { anchors } from "@mdsvex/plugin-anchors";
 import { compile } from "mdsvex";
 import { create_highlight, load_default_languages } from "mdsvex/highlight";
 
@@ -16,19 +17,8 @@ const highlight = create_highlight({
 	annotations: false,
 });
 
-/** the anchors scroll tracking reads, sequential so the ids heading_ids makes are set */
-const heading_anchors = {
-	sequential: true,
-	heading: {
-		parse(node) {
-			node.prepend("link", {
-				href: `#${node.attrs.id}`,
-				"aria-hidden": "true",
-				tabindex: "-1",
-			});
-		},
-	},
-};
+// the empty anchors scroll tracking reads, one array so every compile shares it
+const plugins = [anchors({ position: "prepend" })];
 
 function mdsvex_transform() {
 	return {
@@ -38,7 +28,7 @@ function mdsvex_transform() {
 
 			const { code: html } = compile(code, {
 				heading_ids: true,
-				parse_plugins: [heading_anchors],
+				plugins,
 				highlight,
 				filename: id,
 			});

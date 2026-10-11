@@ -87,6 +87,7 @@ const nav = [
 		"docs#plugins-1",
 		[
 			["steps", "docs#steps", false],
+			["anchors", "docs#anchors", false],
 		],
 	],
 	[

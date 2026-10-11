@@ -1,9 +1,8 @@
 {
-	"name": "@mdsvex/plugin-autolink",
-	"version": "0.1.0-next.1",
-	"description": "Auto-link headings with slug-based anchors",
+	"name": "@mdsvex/plugin-anchors",
+	"version": "0.0.1",
+	"description": "Heading anchors for mdsvex, a link on every heading that has an id",
 	"type": "module",
-	"private": true,
 	"scripts": {
 		"build": "run-s build:tsc build:vite build:copy-dts",
 		"build:tsc": "tsc",
@@ -26,15 +25,21 @@
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/pngwn/MDsveX.git",
-		"directory": "plugins/autolink"
+		"directory": "plugins/anchors"
 	},
+	"keywords": [
+		"mdsvex",
+		"mdsvex-plugin",
+		"markdown",
+		"headings",
+		"anchors"
+	],
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"peerDependencies": {
 		"mdsvex": "workspace:^"
 	},
 	"devDependencies": {
-		"@mdsvex/parse": "workspace:*",
 		"mdsvex": "workspace:*",
 		"npm-run-all2": "^7.0.2",
 		"shx": "^0.3.4"
