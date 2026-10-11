@@ -12125,6 +12125,11 @@ export class PFMParser {
 				if (this.kind_of(node_id) === NodeKind.directive_inline) {
 					this.directive_text_pop(node_id);
 				}
+				// left on the tag stack a close tag in a later cell matches it
+				const tags = this.html_tag_stack;
+				if (tags.length !== 0 && tags[tags.length - 1].id === node_id) {
+					tags.pop();
+				}
 				this.node_stack.pop();
 				this.states.pop();
 			}

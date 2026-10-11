@@ -113,8 +113,6 @@ function fixtures(dir: string, out: string[] = []): string[] {
 	return out;
 }
 
-// no table pieces, an html element left open in a header cell and closed in
-// a later row sends the parser down a path that closes the table twice
 const PIECES = [
 	'*',
 	'**',
@@ -156,6 +154,9 @@ const PIECES = [
 	'-->',
 	'\\',
 	'<img src="i.png">',
+	'| ',
+	' |',
+	'|-|',
 ];
 
 function random(seed: number): () => number {
