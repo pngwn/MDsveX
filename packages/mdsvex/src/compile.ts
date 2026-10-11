@@ -4,11 +4,17 @@ import {
 	PFMParser,
 	PluginDispatcher,
 	SourceTextSource,
+	has_directive_handlers,
 	normalize_newlines,
 	raw_offsets,
 	take_collapsed,
 } from '@mdsvex/parse';
-import type { ParsePlugin, SyntaxOptions } from '@mdsvex/parse';
+import type {
+	DirectiveEntry,
+	DirectiveHandlers,
+	ParsePlugin,
+	SyntaxOptions,
+} from '@mdsvex/parse';
 import { TreeBuilder } from '@mdsvex/parse/tree-builder';
 import type { NodeBuffer } from '@mdsvex/parse/utils';
 import {
@@ -36,7 +42,15 @@ import type {
 	HighlightWarning,
 } from './highlight_run';
 
-export type { ParsePlugin, SyntaxOptions } from '@mdsvex/parse';
+export type {
+	DirectiveContext,
+	DirectiveEntry,
+	DirectiveHandler,
+	NodeView,
+	ParsePlugin,
+	SyntaxOptions,
+	WrapperView,
+} from '@mdsvex/parse';
 export type { Mapping, MappingData, SourceMapV3, MapTrace };
 export type { ComponentSource };
 export type { FrontmatterOptions };
@@ -76,7 +90,47 @@ export interface CompileWarning {
 	start: { line: number; column: number };
 }
 
+/** one directive a plugin owns, its handlers run only inside that directive */
+export interface BundleDirective extends DirectiveEntry {
+	/** reserved for rendering the component at build time, nothing reads it yet */
+	static?: boolean;
+}
+
+/**
+ * a plugin, the directives it owns with the components that render them and
+ * the handlers that reshape what is written inside them
+ *
+ * @example
+ * {
+ *   name: 'steps',
+ *   module: '@acme/steps/directives',
+ *   directives: {
+ *     steps: { children: { heading(node, ctx) {} } },
+ *     step: {},
+ *   },
+ * }
+ */
+export interface Bundle {
+	name: string;
+	/**
+	 * the module that exports a component for each key of directives, under
+	 * that name, compile emits it verbatim as an import specifier
+	 */
+	module?: string;
+	/** by directive name, an entry with no handlers still names a component */
+	directives?: Record<string, BundleDirective>;
+	/** handlers for the whole document, as an entry of parse_plugins */
+	parse?: ParsePlugin;
+	/** element replacements, below those of the components option */
+	components?: ComponentSource;
+}
+
 export interface CompileOptions extends TemplateOptions, SyntaxOptions {
+	/**
+	 * plugin bundles, lowest precedence first, their directive components sit
+	 * below the directives option and their handlers run ahead of parse_plugins
+	 */
+	plugins?: Bundle[];
 	parse_plugins?: ParsePlugin[];
 	sourcemap?: boolean;
 	/** root fallback replacements, lowest precedence first, each specifier is imported as written */
@@ -175,6 +229,10 @@ export interface CompileTraceResult {
  * a compile runs
  */
 export interface CompileInputs {
+	/** unpacked into the four fields below before a compile reads them */
+	plugins: Bundle[] | undefined;
+	/** handlers bound to directive names, only ever set from plugins */
+	directive_handlers: DirectiveHandlers[] | undefined;
 	parse_plugins: ParsePlugin[] | undefined;
 	components: ComponentSource[] | undefined;
 	directives: ComponentSource[] | undefined;
@@ -192,6 +250,8 @@ export interface CompileInputs {
 /** @internal every inputs object comes from here, so they share one shape */
 export function compile_inputs(): CompileInputs {
 	return {
+		plugins: undefined,
+		directive_handlers: undefined,
 		parse_plugins: undefined,
 		components: undefined,
 		directives: undefined,
@@ -214,6 +274,7 @@ function inputs_of(options: CompileOptions): CompileInputs {
 	// a mode that is neither throws before the parse, with or without components
 	scope_of(undefined, mode);
 	const strict = options.strict_directives;
+	const bundles = options.plugins;
 	const plugins = options.parse_plugins;
 	const components = options.components;
 	const directives = options.directives;
@@ -224,6 +285,7 @@ function inputs_of(options: CompileOptions): CompileInputs {
 	const unwrap_images = options.unwrap_images;
 	// options that set none need no inputs of their own
 	if (
+		bundles === undefined &&
 		plugins === undefined &&
 		components === undefined &&
 		directives === undefined &&
@@ -237,6 +299,7 @@ function inputs_of(options: CompileOptions): CompileInputs {
 	)
 		return no_inputs;
 	const inputs = compile_inputs();
+	inputs.plugins = bundles;
 	inputs.parse_plugins = plugins;
 	inputs.components = components;
 	inputs.directives = directives;
@@ -291,6 +354,153 @@ const index_of = String.prototype.indexOf;
  */
 function normalized(raw: string): string {
 	return index_of.call(raw, '\r') === -1 ? raw : normalize_newlines(raw);
+}
+
+/**
+ * the sources or plugins of the bundles ahead of the array an option gives,
+ * so the option wins a name and its handlers run last, the result is the
+ * same array for the same given array, as every cache is keyed by it
+ */
+class Merge<T> {
+	private own: T[];
+	private given: T[] | undefined = undefined;
+	private merged: T[] | undefined = undefined;
+
+	constructor(own: T[]) {
+		this.own = own;
+	}
+
+	with(given: T[] | undefined): T[] | undefined {
+		const own = this.own;
+		if (given === undefined || given.length === 0)
+			return own.length === 0 ? given : own;
+		if (own.length === 0) return given;
+		if (this.given !== given) {
+			this.given = given;
+			this.merged = own.concat(given);
+		}
+		return this.merged;
+	}
+}
+
+/** what one plugins array holds, built once, so the arrays keep their identity */
+interface Unpacked {
+	/** the directives of each bundle, undefined when none binds a handler */
+	handlers: DirectiveHandlers[] | undefined;
+	/** the directive components of each bundle that has any */
+	directives: Merge<ComponentSource>;
+	components: Merge<ComponentSource>;
+	/** the document wide plugin of each bundle that has one */
+	parse: Merge<ParsePlugin>;
+}
+
+const unpacked = new WeakMap<Bundle[], Unpacked>();
+
+function bundle_error(i: number, bundle: unknown, message: string): Error {
+	const name =
+		typeof bundle === 'object' && bundle !== null
+			? (bundle as { name?: unknown }).name
+			: undefined;
+	return new Error(
+		`[mdsvex] plugins[${i}]` +
+			(typeof name === 'string' ? ` (${name})` : '') +
+			' ' +
+			message
+	);
+}
+
+function is_record(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * bundles are unpacked before anything reaches the parser, which skips a
+ * plugin key that is no node kind without a word
+ */
+function unpack(bundles: Bundle[]): Unpacked {
+	const hit = unpacked.get(bundles);
+	if (hit !== undefined) return hit;
+	if (!Array.isArray(bundles))
+		throw new Error('[mdsvex] plugins must be an array of plugins');
+	const tables: DirectiveHandlers[] = [];
+	const directives: ComponentSource[] = [];
+	const components: ComponentSource[] = [];
+	const parse: ParsePlugin[] = [];
+	for (let i = 0; i < bundles.length; i++) {
+		const bundle = bundles[i];
+		if (!is_record(bundle))
+			throw bundle_error(i, bundle, 'must be an object, call the plugin');
+		if (typeof bundle.name !== 'string' || bundle.name === '')
+			throw bundle_error(i, bundle, 'needs a name');
+		const own = bundle.directives;
+		if (own !== undefined) {
+			if (!is_record(own))
+				throw bundle_error(
+					i,
+					bundle,
+					'directives must be an object keyed by directive name'
+				);
+			const names = Object.keys(own);
+			for (const name of names) {
+				if (!is_record(own[name]))
+					throw bundle_error(i, bundle, `directives.${name} must be an object`);
+			}
+			if (names.length !== 0) {
+				if (typeof bundle.module !== 'string' || bundle.module === '')
+					throw bundle_error(
+						i,
+						bundle,
+						'needs a module, the specifier its directive components are exported from'
+					);
+				directives.push({ specifier: bundle.module, names });
+				// the parser reads children, descendants and parse and ignores the rest
+				tables.push(own);
+			}
+		}
+		const replaced = bundle.components;
+		if (replaced !== undefined) {
+			if (
+				!is_record(replaced) ||
+				typeof replaced.specifier !== 'string' ||
+				!Array.isArray(replaced.names)
+			)
+				throw bundle_error(
+					i,
+					bundle,
+					'components must be { specifier, names }'
+				);
+			components.push(replaced);
+		}
+		if (bundle.parse !== undefined) {
+			if (!is_record(bundle.parse))
+				throw bundle_error(i, bundle, 'parse must be a parse plugin');
+			parse.push(bundle.parse);
+		}
+	}
+	const out: Unpacked = {
+		handlers: has_directive_handlers(tables) ? tables : undefined,
+		directives: new Merge(directives),
+		components: new Merge(components),
+		parse: new Merge(parse),
+	};
+	unpacked.set(bundles, out);
+	return out;
+}
+
+/**
+ * the inputs with their plugins unpacked into the fields a compile reads, a
+ * copy as the caller keeps its own
+ */
+function unbundled(inputs: CompileInputs): CompileInputs {
+	const u = unpack(inputs.plugins!);
+	// assigned over a fresh one so the shape holds and a new field comes along
+	const out = Object.assign(compile_inputs(), inputs);
+	out.plugins = undefined;
+	out.directive_handlers = u.handlers;
+	out.directives = u.directives.with(inputs.directives);
+	out.components = u.components.with(inputs.components);
+	out.parse_plugins = u.parse.with(inputs.parse_plugins);
+	return out;
 }
 
 const directive_scopes = new WeakMap<ComponentSource[], ComponentScope>();
@@ -581,15 +791,19 @@ function give_renderer(renderer: CursorHTMLRenderer): void {
 function parse_once(
 	source: string,
 	plugins: ParsePlugin[] | undefined,
+	bound: DirectiveHandlers[] | undefined,
 	directives: ComponentScope | null,
 	syntax: SyntaxOptions | undefined
 ): NodeBuffer {
 	let dispatcher: PluginDispatcher | undefined;
-	if (plugins && plugins.length > 0) {
+	const plugged = plugins !== undefined && plugins.length > 0;
+	if (plugged || bound !== undefined) {
 		const text_source = new SourceTextSource(source);
+		// bound handlers go unguarded, they are how a plugin reaches its own directives
 		dispatcher = new PluginDispatcher(
-			guard_plugins(plugins, directives),
-			text_source
+			plugged ? guard_plugins(plugins, directives) : undefined,
+			text_source,
+			bound
 		);
 	}
 
@@ -758,7 +972,8 @@ function module_code_of(metadata: Metadata | undefined): string | undefined {
 }
 
 function render_once(raw: string, options?: CompileOptions): CompileResult {
-	const inputs = options === undefined ? no_inputs : inputs_of(options);
+	let inputs = options === undefined ? no_inputs : inputs_of(options);
+	if (inputs.plugins !== undefined) inputs = unbundled(inputs);
 	// parser offsets index the normalized string, so render and plugins read it too
 	const source = normalized(raw);
 	const scope = root_scope(inputs);
@@ -766,6 +981,7 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 	const nodes = parse_once(
 		source,
 		inputs.parse_plugins,
+		inputs.directive_handlers,
 		reserved_directives(directives, inputs.templates),
 		inputs
 	);
@@ -813,6 +1029,14 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 	return done;
 }
 
+/** true when handlers of a plugin may run, which keeps a document off a shared session */
+function has_plugins(options: CompileOptions): boolean {
+	const plugins = options.parse_plugins;
+	if (plugins !== undefined && plugins.length > 0) return true;
+	const bundles = options.plugins;
+	return bundles !== undefined && bundles.length > 0;
+}
+
 // what a session compile hands back, local so the cases of run build to literals
 const enum Kind {
 	PLAIN,
@@ -824,7 +1048,9 @@ const enum Kind {
 
 /** the tree, parser and dispatcher a session keeps for one plugins array */
 interface PluginArena {
-	plugins: ParsePlugin[];
+	plugins: ParsePlugin[] | undefined;
+	/** the bound handlers the dispatcher was built with */
+	bound: DirectiveHandlers[] | undefined;
 	/** the reserved directives the plugins were guarded with */
 	reserved: ComponentScope | null;
 	text: SourceTextSource;
@@ -876,7 +1102,8 @@ export class CompilerSession {
 	/** callers check plugin_busy first, the arena holds one document at a time */
 	private parse_plugged(
 		source: string,
-		plugins: ParsePlugin[],
+		plugins: ParsePlugin[] | undefined,
+		bound: DirectiveHandlers[] | undefined,
 		reserved: ComponentScope | null,
 		syntax: SyntaxOptions | undefined
 	): NodeBuffer {
@@ -884,12 +1111,16 @@ export class CompilerSession {
 		if (
 			arena === null ||
 			arena.plugins !== plugins ||
+			arena.bound !== bound ||
 			arena.reserved !== reserved
 		) {
 			const text = new SourceTextSource(source);
 			const dispatcher = new PluginDispatcher(
-				guard_plugins(plugins, reserved),
-				text
+				plugins !== undefined && plugins.length > 0
+					? guard_plugins(plugins, reserved)
+					: undefined,
+				text,
+				bound
 			);
 			const tree = new TreeBuilder(source.length >> 3 || 16, dispatcher);
 			// the parser outlives the plugins, options that alternate rebuild often
@@ -901,6 +1132,7 @@ export class CompilerSession {
 			}
 			arena = this.plugin_arena = {
 				plugins,
+				bound,
 				reserved,
 				text,
 				dispatcher,
@@ -931,9 +1163,8 @@ export class CompilerSession {
 	compile(raw: string, options?: CompileOptions): CompileResult {
 		if (options === undefined)
 			return this.run(raw, no_inputs, Kind.PLAIN, undefined);
-		const plugins = options.parse_plugins;
 		// started in a plugin handler, the session holds the outer document
-		if (this.plugin_busy && plugins && plugins.length > 0) {
+		if (this.plugin_busy && has_plugins(options)) {
 			return render_once(raw, options);
 		}
 		return this.run(
@@ -1102,20 +1333,24 @@ export class CompilerSession {
 		kind: Kind,
 		out: TraceTarget | undefined
 	): CompileResult | CompileV3Result | CompileTraceResult | TraceTarget {
+		if (inputs.plugins !== undefined) inputs = unbundled(inputs);
 		const scope = root_scope(inputs);
 		const directives = directive_scope_of(inputs.directives);
 		// parser offsets index the normalized string, so render and plugins read it too
 		const source = normalized(raw);
 		const plugins = inputs.parse_plugins;
+		const bound = inputs.directive_handlers;
 		let renderer = this.renderer;
 		let nodes: NodeBuffer;
-		if (plugins && plugins.length > 0) {
+		if ((plugins && plugins.length > 0) || bound !== undefined) {
 			const reserved = reserved_directives(directives, inputs.templates);
 			if (this.plugin_busy) {
 				// started in a plugin handler, the session holds the outer document
-				nodes = parse_once(source, plugins, reserved, inputs);
+				nodes = parse_once(source, plugins, bound, reserved, inputs);
 				renderer = new CursorHTMLRenderer({ cache: false });
-			} else nodes = this.parse_plugged(source, plugins, reserved, inputs);
+			} else {
+				nodes = this.parse_plugged(source, plugins, bound, reserved, inputs);
+			}
 		} else {
 			nodes = this.parse(source, inputs);
 		}
@@ -1235,7 +1470,7 @@ function render(source: string, options?: CompileOptions): CompileResult {
 	if (
 		shared_session_busy ||
 		source.length > SHARED_SOURCE_CAP ||
-		(options?.parse_plugins && options.parse_plugins.length > 0)
+		(options !== undefined && has_plugins(options))
 	) {
 		return render_once(source, options);
 	}

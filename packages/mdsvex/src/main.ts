@@ -5,7 +5,7 @@ import remapping from '@ampproject/remapping';
 import { base64_utf8, chained_base64, pfm_map } from './sourcemap_chain';
 import type { StoredDocument } from './sourcemap_chain';
 import { CompilerSession, compile_inputs } from './compile';
-import type { ComponentMode } from './compile';
+import type { Bundle, ComponentMode } from './compile';
 import type { FrontmatterOptions } from './frontmatter';
 import { MANIFEST_VERSION, manifest_writer } from './manifest';
 import type { MdsvexManifest } from './manifest';
@@ -15,6 +15,8 @@ import type { HighlightOptions } from './highlight';
 import {
 	COMPONENTS_ID,
 	DIRECTIVES_ID,
+	PLUGIN_COMPONENTS_ID,
+	PLUGIN_ID,
 	TEMPLATE_DIRECTIVES_ID,
 	TEMPLATE_ID,
 	VITE_QUERY,
@@ -23,6 +25,7 @@ import {
 } from './ids';
 import { export_tracker } from './export_tracker';
 import { component_registry } from './component_registry';
+import { plugin_registry } from './plugin_registry';
 import {
 	check_templates,
 	template_registry,
@@ -42,12 +45,23 @@ export type { ScanKind, ScannedExports } from './scan_exports';
 export { MANIFEST_PATH, MANIFEST_VERSION } from './manifest';
 export type {
 	ManifestModule,
+	ManifestPlugin,
 	ManifestTemplate,
 	MdsvexManifest,
 } from './manifest';
 
 export interface MdsvexOptions extends SyntaxOptions {
 	extensions?: string[];
+	/**
+	 * plugins, each brings directives with the components that render them and
+	 * the handlers that reshape what is written inside them, lowest precedence
+	 * first, a module resolves as an import from the vite root would, an export
+	 * of the same name from a components module replaces a plugin component
+	 *
+	 * @example
+	 * plugins: [steps()]
+	 */
+	plugins?: Bundle[];
 	/** parse plugins that hook into tree construction. */
 	parse_plugins?: ParsePlugin[];
 	/**
@@ -169,6 +183,15 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	const compiler = new CompilerSession();
 	// one for every document, only the fields a document can change are stored again
 	const inputs = compile_inputs();
+	const written_plugins = options.plugins;
+	if (written_plugins !== undefined && !Array.isArray(written_plugins))
+		throw new Error('[mdsvex] plugins must be an array of plugins');
+	const plugins =
+		written_plugins === undefined || written_plugins.length === 0
+			? null
+			: plugin_registry(written_plugins);
+	// the same array for every document, compile keys what it derives by it
+	if (plugins !== null) inputs.plugins = plugins.bundles;
 	inputs.parse_plugins = options.parse_plugins;
 	inputs.component_mode = options.component_mode;
 	inputs.frontmatter_parse = options.frontmatter?.parse;
@@ -244,7 +267,11 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		(): MdsvexManifest | null => {
 			// a process that resolves the config and never builds, such as vite
 			// preview or a test runner, must not replace a manifest with an empty one
-			if (registry?.resolved() === false || templates?.resolved() === false)
+			if (
+				registry?.resolved() === false ||
+				templates?.resolved() === false ||
+				plugins?.resolved() === false
+			)
 				return null;
 			const root_modules = registry?.describe();
 			const out: MdsvexManifest = {
@@ -253,12 +280,14 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				extensions,
 				component_mode: options.component_mode ?? 'markdown',
 				frontmatter_parse: options.frontmatter?.parse !== undefined,
-				directive_plugins: (options.parse_plugins ?? []).some(
-					(p) =>
-						p.directive_inline !== undefined ||
-						p.directive_leaf !== undefined ||
-						p.directive_container !== undefined
-				),
+				directive_plugins:
+					plugins?.handles_directives === true ||
+					(options.parse_plugins ?? []).some(
+						(p) =>
+							p.directive_inline !== undefined ||
+							p.directive_leaf !== undefined ||
+							p.directive_container !== undefined
+					),
 				select_template: select !== undefined,
 				templates: templates?.describe() ?? {},
 				components: root_modules?.components ?? [],
@@ -273,6 +302,10 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			};
 			// left out when off, as a manifest from before the option has it
 			if (options.unwrap_images === true) out.unwrap_images = true;
+			if (plugins !== null) {
+				const described = plugins.describe();
+				if (described.length !== 0) out.plugins = described;
+			}
 			return out;
 		},
 		(message) => log(message)
@@ -348,6 +381,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			configResolved(config) {
 				registry?.set_root(config.root);
 				templates?.set_root(config.root);
+				plugins?.set_root(config.root);
 				command = config.command;
 				root = config.root;
 				log = (message) => config.logger.warn('[mdsvex] ' + message);
@@ -382,6 +416,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				// one clear error at startup rather than one per document
 				if (registry !== null) await registry.ensure(this);
 				if (templates !== null) await templates.ensure(this);
+				if (plugins !== null) await plugins.ensure(this);
 				manifest.schedule();
 			},
 
@@ -401,6 +436,11 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 					return templates.resolve(this, id);
 				if (templates !== null && id.startsWith(TEMPLATE_DIRECTIVES_ID))
 					return templates.resolve_directives(this, id);
+				if (
+					plugins !== null &&
+					(id.startsWith(PLUGIN_ID) || id.startsWith(PLUGIN_COMPONENTS_ID))
+				)
+					return plugins.resolve(this, id);
 			},
 
 			load(id) {
