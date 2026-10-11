@@ -6906,6 +6906,9 @@ export class PFMParser {
 						}
 
 						this.close_strong(n_id);
+					} else if (this.in_table && (code === PIPE || code === LINEFEED)) {
+						// inline pops here in a table cell, pushing it again would ping pong
+						this.unwind_inline_for_table();
 					} else if (
 						code === LINEFEED &&
 						this._delimiter_lf_close(current_node)
@@ -9084,6 +9087,11 @@ export class PFMParser {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
+		// inline pops at a pipe or linefeed in a table cell, pushing it again would ping pong
+		if (this.in_table && (code === PIPE || code === LINEFEED)) {
+			this.unwind_inline_for_table();
+			return false;
+		}
 		if (!code) {
 			this._unwind_unterminated_delimiter();
 			return false;
@@ -9139,6 +9147,11 @@ export class PFMParser {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
+		// inline pops at a pipe or linefeed in a table cell, pushing it again would ping pong
+		if (this.in_table && (code === PIPE || code === LINEFEED)) {
+			this.unwind_inline_for_table();
+			return false;
+		}
 		if (!code) {
 			this._unwind_unterminated_delimiter();
 			return false;
@@ -9219,6 +9232,11 @@ export class PFMParser {
 	}
 
 	private _run_superscript(code: number, current_node: number): boolean {
+		// inline pops at a pipe or linefeed in a table cell, pushing it again would ping pong
+		if (this.in_table && (code === PIPE || code === LINEFEED)) {
+			this.unwind_inline_for_table();
+			return false;
+		}
 		if (!code) {
 			this._unwind_unterminated_delimiter();
 			return false;
@@ -9250,6 +9268,11 @@ export class PFMParser {
 	private _run_subscript(code: number, current_node: number): boolean {
 		const source = this.source;
 		const base = this.source_base;
+		// inline pops at a pipe or linefeed in a table cell, pushing it again would ping pong
+		if (this.in_table && (code === PIPE || code === LINEFEED)) {
+			this.unwind_inline_for_table();
+			return false;
+		}
 		if (!code) {
 			this._unwind_unterminated_delimiter();
 			return false;
