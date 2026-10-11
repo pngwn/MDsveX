@@ -2216,6 +2216,27 @@ export class PFMParser {
 		this.out.set_value_start(id, pos);
 	}
 
+	/**
+	 * the value end of a span whose closer is at the cursor, only a span that ran over a line
+	 * still starts at a space here, a space before the closer too and both are padding as on one line
+	 */
+	private span_padded_end(id: number): number {
+		const source = this.source;
+		const base = this.source_base;
+		const start = this.span_vs;
+		const end = this.cursor;
+		if (char_code_at.call(source, start - base) !== SPACE) return end;
+		let padded = char_code_at.call(source, end - 1 - base) === SPACE;
+		if (padded && this.block_quote_depth > 0) {
+			// the space after a quote marker is not code
+			const lf = string_last_index_of.call(source, '\n', end - 1 - base);
+			padded =
+				this.skip_bq_markers(lf + 1 + base, this.block_quote_depth) < end;
+		}
+		this.span_start(id, padded ? start + 1 : start);
+		return padded ? end - 1 : end;
+	}
+
 	private span_close(id: number, value_end: number, end: number): void {
 		if (this.in_table) this.cell_span_text(id, value_end);
 		else if (this.block_quote_depth > 0) this.quote_span_text(id, value_end);
@@ -8530,7 +8551,8 @@ export class PFMParser {
 						(code === PIPE && this.in_table && !this.pipe_escaped(this.cursor))
 					) {
 						// code_span_end continues the span, or fails it at a blank line, eof or the end of a cell
-						this.span_start(current_node, this.checkpoint_cursor);
+						// its closer decides the padding, so the value start waits for it
+						this.span_vs = this.checkpoint_cursor;
 						this.chomp(this.cursor, true);
 						this.states.pop();
 						this.states.push(StateKind.code_span_end);
@@ -8611,7 +8633,7 @@ export class PFMParser {
 							this.states.pop();
 							this.span_close(
 								current_node,
-								this.cursor,
+								this.span_padded_end(current_node),
 								this.cursor + this.extra
 							);
 							this.node_stack.pop();

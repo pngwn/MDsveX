@@ -8,7 +8,14 @@ import { PFMParser, parse_markdown_svelte } from '../src/main';
 import { TreeBuilder } from '../src/tree_builder';
 import { NodeKind } from '../src/utils';
 import { print_ast } from './print';
-import { checked_tree, lines } from './stream_shape';
+import {
+	checked_tree,
+	every_path,
+	lines,
+	pick,
+	problems,
+	random,
+} from './stream_shape';
 
 const this_dir = dirname(fileURLToPath(import.meta.url));
 const fixtures_root = resolve(this_dir, 'fixtures/pfm/code_spans');
@@ -921,7 +928,7 @@ describe('a lone backtick in a padded two backtick span', () => {
 
 	test('a single line end after it stays in the span', () => {
 		expect(checked_tree('`` a `\nb ``\n')).toBe(
-			lines('root', '  paragraph', '    code_span " a `\\nb "', '  line_break')
+			lines('root', '  paragraph', '    code_span "a `\\nb"', '  line_break')
 		);
 	});
 
@@ -932,5 +939,136 @@ describe('a lone backtick in a padded two backtick span', () => {
 		expect(checked_tree('`` a ` b ``\n')).toBe(
 			lines('root', '  paragraph', '    code_span "a ` b"', '  line_break')
 		);
+	});
+});
+
+describe('a padded code span that runs over a line', () => {
+	const span = (code: string, ...after: string[]) =>
+		lines('root', '  paragraph', `    code_span ${code}`, ...after);
+
+	test('loses the space on each side, as on one line', () => {
+		expect(every_path('` a b `\n')).toBe(span('"a b"', '  line_break'));
+		expect(every_path('` a\nb `\n')).toBe(span('"a\\nb"', '  line_break'));
+		expect(every_path('`` a\nb ``\n')).toBe(span('"a\\nb"', '  line_break'));
+		expect(every_path('` a\nb\nc `\n')).toBe(
+			span('"a\\nb\\nc"', '  line_break')
+		);
+		expect(every_path('` a\nb `')).toBe(span('"a\\nb"'));
+	});
+
+	test('loses one space of several', () => {
+		expect(every_path('`  a  `\n')).toBe(span('" a "', '  line_break'));
+		expect(every_path('`  a\nb  `\n')).toBe(span('" a\\nb "', '  line_break'));
+	});
+
+	test('keeps a space that has none on the other side', () => {
+		expect(every_path('` a b`\n')).toBe(span('" a b"', '  line_break'));
+		expect(every_path('` a\nb`\n')).toBe(span('" a\\nb"', '  line_break'));
+		expect(every_path('`a b `\n')).toBe(span('"a b "', '  line_break'));
+		expect(every_path('`a\nb `\n')).toBe(span('"a\\nb "', '  line_break'));
+	});
+
+	test('with the space next to the line end', () => {
+		expect(every_path('` \nb `\n')).toBe(span('"\\nb"', '  line_break'));
+		expect(every_path('` a\n `\n')).toBe(span('"a\\n"', '  line_break'));
+		expect(every_path('` a\n`\n')).toBe(span('" a\\n"', '  line_break'));
+	});
+
+	test('after a language hint', () => {
+		expect(every_path('`#!js  a b `\n')).toBe(
+			span('info="js" "a b"', '  line_break')
+		);
+		expect(every_path('`#!js  a\nb `\n')).toBe(
+			span('info="js" "a\\nb"', '  line_break')
+		);
+	});
+
+	test('in a block quote, where the space after a marker is no padding', () => {
+		const quoted = (code: string) =>
+			lines(
+				'root',
+				'  block_quote',
+				'    paragraph',
+				`      code_span ${code}`,
+				'  line_break'
+			);
+		expect(every_path('> ` a b `\n')).toBe(quoted('"a b"'));
+		expect(every_path('> ` a\n> b `\n')).toBe(quoted('"a\\nb"'));
+		expect(every_path('> ` a\n>  `\n')).toBe(quoted('"a\\n"'));
+		expect(every_path('> ` a\n> `\n')).toBe(quoted('" a\\n"'));
+		expect(every_path('> ` a\n>` b\n')).toBe(
+			lines(
+				'root',
+				'  block_quote',
+				'    paragraph',
+				'      code_span " a\\n"',
+				'      text " b"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('in a list item', () => {
+		expect(every_path('- ` a\n  b `\n')).toBe(
+			lines(
+				'root',
+				'  list ordered=false start=0 tight=true',
+				'    list_item',
+				'      code_span "a\\n  b"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('a span that fails at a blank line keeps every space', () => {
+		expect(every_path('` a\n\nb `\n')).toBe(
+			lines(
+				'root',
+				'  paragraph',
+				'    text "`"',
+				'    text " a"',
+				'  line_break',
+				'  line_break',
+				'  paragraph',
+				'    text "b "',
+				'    text "`"',
+				'  line_break'
+			)
+		);
+	});
+
+	function codes(source: string): string[] {
+		const { nodes } = parse_markdown_svelte(source);
+		return nodes.get_kinds(NodeKind.code_span).map((index) => {
+			const [start, end] = nodes.get_node(index).value;
+			return nodes._strings[index] ?? source.slice(start, end);
+		});
+	}
+
+	test('random spans hold the code they hold on one line', () => {
+		const rand = random(984);
+		const pieces = ['`', '`', '``', 'a', 'b c', ' ', ' ', '*', '\\'];
+		// stands for the line end on the one line, plain to every state
+		const JOIN = 'z';
+		for (let i = 0; i < 500; i++) {
+			const rows: string[] = [];
+			const count = 2 + Math.floor(rand() * 2);
+			for (let l = 0; l < count; l++) {
+				// a letter first, a backtick run at a line start may be a fence
+				let row = pick(rand, ['a', 'b c', 'x ']);
+				const length = Math.floor(rand() * 5);
+				for (let k = 0; k < length; k++) row += pick(rand, pieces);
+				// a line that ends in a backslash is a hard break outside a span
+				rows.push(row.replace(/\\+$/, '') + pick(rand, ['', '', ' ', 'a']));
+			}
+			const over = rows.join('\n') + '\n';
+			const one = rows.join(JOIN) + '\n';
+			const label = JSON.stringify(over);
+			expect(codes(over), label).toEqual(
+				codes(one).map((code) => code.replaceAll(JOIN, '\n'))
+			);
+			expect(problems(over, 0), label).toEqual([]);
+			expect(problems(over, 1), label).toEqual([]);
+		}
 	});
 });
