@@ -109,6 +109,10 @@ export interface StructureHost {
 	): number;
 	/** no later sibling joins the wrapper */
 	close_wrapper(buf: NodeBuffer, wrapper: number): void;
+	/** the parser may still revoke the node */
+	pending(buf: NodeBuffer, node: number): boolean;
+	/** take a node and everything in it out of the tree, throws where that is not sound */
+	remove(buf: NodeBuffer, node: number): void;
 }
 
 /** a directive arg reaches its component as a string prop, the renderer reads it as one */
@@ -135,6 +139,33 @@ function check_args(kind: NodeKind, args: unknown): void {
 			);
 		}
 	}
+}
+
+/**
+ * what prepend and append take after the type, the text of a text node, the
+ * attrs of any other, a text node with no text throws, as does text for another type
+ */
+function content_of(
+	kind: NodeKind,
+	type: string,
+	given: Record<string, any> | string | undefined
+): Record<string, any> | undefined {
+	if (kind === NodeKind.text) {
+		if (typeof given !== 'string') {
+			throw new TypeError(
+				`a text node takes its text, as in append('text', 'some text'), got ` +
+					(given === undefined ? 'none' : typeof given)
+			);
+		}
+		return undefined;
+	}
+	if (typeof given === 'string') {
+		throw new TypeError(
+			`only a text node takes text, the second argument of a ${type} node is its attrs`
+		);
+	}
+	if (given !== undefined) check_args(kind, given.args);
+	return given;
 }
 
 /**
@@ -415,7 +446,8 @@ export class NodeView {
 
 		// leaf text node
 		if (kind === NodeKind.text) {
-			const s = this._text_source.get_string(idx);
+			// the text of a wire node, of a repair, or of a node a plugin made
+			const s = buf._strings[idx];
 			if (s !== undefined) return s;
 			const vs = buf.value_start_at(idx);
 			const ve = buf.value_end_at(idx);
@@ -450,6 +482,22 @@ export class NodeView {
 		return result;
 	}
 
+	/**
+	 * true while the parser may still revoke the node, it opened it on a guess
+	 * and has not settled it, wrap_from and close throw in a handler or a
+	 * close callback of a node that is pending
+	 *
+	 * @example
+	 * if (!node.pending) node.wrap_from('html', { tag: 'span' }).close();
+	 */
+	get pending(): boolean {
+		const buf = this._live();
+		const host = this._cache.host;
+		return host === null
+			? buf.pending_at(this._index) !== 0
+			: host.pending(buf, this._index);
+	}
+
 	/** heading depth (1-6). only meaningful when type === 'heading'. */
 	get depth(): number | undefined {
 		const buf = this._live();
@@ -457,18 +505,27 @@ export class NodeView {
 		return buf.extra_at(this._index);
 	}
 
-	/** code block language/info string. */
-	get lang(): string | undefined {
+	/**
+	 * the info string of a code fence, its language and everything after it,
+	 * '' for a fence with none, whole from its open handler on, undefined for
+	 * any other node
+	 */
+	get info(): string | undefined {
 		const buf = this._live();
 		const kind = buf.kind_at(this._index);
 		if (kind !== NodeKind.code_fence) return undefined;
 		const meta = buf.metadata_at(this._index);
-		if (!meta) return undefined;
+		if (!meta) return '';
 		if (meta.info) return meta.info as string;
 		if (meta.info_start != null && meta.info_end != null) {
 			return this._text_source.slice(meta.info_start, meta.info_end);
 		}
-		return undefined;
+		return '';
+	}
+
+	/** the info string of a code fence, see info */
+	get lang(): string | undefined {
+		return this.info;
 	}
 
 	/** link/image href. */
@@ -585,50 +642,77 @@ export class NodeView {
 	}
 
 	/**
-	 * insert a new node as the first child of this node.
-	 * returns a view for the new node.
+	 * take this node and everything in it out of the tree, from its own close
+	 * callback or that of a node that holds it, once that node closed for
+	 * good, or from a sequential pass, anywhere else it throws, a node that is
+	 * already out stays out
+	 *
+	 * @example
+	 * html_comment: { parse: (node) => () => node.remove() }
 	 */
-	prepend(type: string, attrs?: Record<string, any>): NodeView {
+	remove(): void {
+		const buf = this._live();
+		const host = this._cache.host;
+		if (host === null) throw new Error('remove needs a plugin dispatcher');
+		host.remove(buf, this._index);
+	}
+
+	/**
+	 * insert a new node as the first child of this node, a text node takes
+	 * its text in place of attrs, returns a view for the new node
+	 *
+	 * @example
+	 * node.prepend('text', 'Step 1: ');
+	 */
+	prepend(type: 'text', text: string): NodeView;
+	prepend(type: string, attrs?: Record<string, any>): NodeView;
+	prepend(type: string, given?: Record<string, any> | string): NodeView {
 		const kind_num = string_to_kind(type);
 		if (kind_num === undefined) throw new Error(`Unknown node type: ${type}`);
 
 		const buf = this._live();
 		const idx = this._index;
-		if (attrs !== undefined) check_args(kind_num, attrs.args);
+		const attrs = content_of(kind_num, type, given);
 		const prior_first_child = buf.first_child_at(idx);
 
+		let new_idx: number;
 		if (prior_first_child === NONE) {
 			// no existing children: push is equivalent to prepend
-			const new_idx = buf.push_synthetic(kind_num, 0, idx, 0, attrs);
-			this._undo.record_prepend(idx, new_idx, prior_first_child);
-			return this._cache.get(new_idx)!;
+			new_idx = buf.push_synthetic(kind_num, 0, idx, 0, attrs);
+		} else {
+			// allocate unlinked and manually wire as first child
+			new_idx = buf.push_synthetic(kind_num, 0, NONE, 0, attrs);
+			buf.set_parent(new_idx, idx);
+			buf.set_next(new_idx, prior_first_child);
+			buf.set_prev(prior_first_child, new_idx);
+			buf.set_first_child(idx, new_idx);
 		}
-
-		// allocate unlinked and manually wire as first child
-		const new_idx = buf.push_synthetic(kind_num, 0, NONE, 0, attrs);
-		buf.set_parent(new_idx, idx);
-		buf.set_next(new_idx, prior_first_child);
-		buf.set_prev(prior_first_child, new_idx);
-		buf.set_first_child(idx, new_idx);
+		if (typeof given === 'string') buf.own_strings()[new_idx] = given;
 
 		this._undo.record_prepend(idx, new_idx, prior_first_child);
 		return this._cache.get(new_idx)!;
 	}
 
 	/**
-	 * insert a new node as the last child of this node.
-	 * returns a view for the new node.
+	 * insert a new node as the last child of this node, a text node takes its
+	 * text in place of attrs, returns a view for the new node
+	 *
+	 * @example
+	 * link.append('text', ' (opens in a new tab)');
 	 */
-	append(type: string, attrs?: Record<string, any>): NodeView {
+	append(type: 'text', text: string): NodeView;
+	append(type: string, attrs?: Record<string, any>): NodeView;
+	append(type: string, given?: Record<string, any> | string): NodeView {
 		const kind_num = string_to_kind(type);
 		if (kind_num === undefined) throw new Error(`Unknown node type: ${type}`);
 
 		const buf = this._live();
 		const idx = this._index;
-		if (attrs !== undefined) check_args(kind_num, attrs.args);
+		const attrs = content_of(kind_num, type, given);
 		const prior_last_child = buf.last_child_at(idx);
 
 		const new_idx = buf.push_synthetic(kind_num, 0, idx, 0, attrs);
+		if (typeof given === 'string') buf.own_strings()[new_idx] = given;
 
 		this._undo.record_append(idx, new_idx, prior_last_child);
 		return this._cache.get(new_idx)!;

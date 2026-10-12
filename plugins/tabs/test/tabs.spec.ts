@@ -49,11 +49,7 @@ function tab(index: number, label: unknown[], ...panel: unknown[]): unknown {
 }
 
 function code_tab(index: number, title: string, ...panel: unknown[]): unknown {
-	return [
-		`directive_container name="tab" args=${JSON.stringify({ index: String(index), title })}`,
-		'code_fence',
-		...panel,
-	];
+	return tab(index, ['text:' + title], 'code_fence', ...panel);
 }
 
 describe('headings', () => {
@@ -370,11 +366,7 @@ describe('warnings', () => {
 			'root',
 			[
 				TABS,
-				[
-					'directive_container name="tab" args={"index":"0","title":"1"}',
-					'directive_label',
-					['paragraph', 'text:body'],
-				],
+				tab(0, ['text:1'], ['paragraph', 'text:body']),
 				tab(1, ['text:Two']),
 			],
 		]);
@@ -613,15 +605,15 @@ describe('compile', () => {
 		'',
 	].join('\n');
 
-	test('a code group passes each title as a prop, without a highlighter', () => {
+	test('a code group gives each tab its title as a label, without a highlighter', () => {
 		expect(compile(GROUP, { plugins: [tabs()], highlight: false }).code).toBe(
 			[
 				'<script>',
 				IMPORT,
 				'</script><Tabs_MDSVEX_D_G code="true">',
-				'<Tab_MDSVEX_D_G index="0" title="npm">',
+				'<Tab_MDSVEX_D_G index="0">{#snippet label()}npm{/snippet}',
 				'<pre><code class="language-sh">npm i</code></pre>',
-				'</Tab_MDSVEX_D_G><Tab_MDSVEX_D_G index="1" title="pnpm">',
+				'</Tab_MDSVEX_D_G><Tab_MDSVEX_D_G index="1">{#snippet label()}pnpm{/snippet}',
 				'<pre><code class="language-sh">pnpm i</code></pre>',
 				'</Tab_MDSVEX_D_G>',
 				'</Tabs_MDSVEX_D_G>',
@@ -636,7 +628,7 @@ describe('compile', () => {
 		}).code;
 		expect(code).toContain(
 			[
-				'<Tab_MDSVEX_D_G index="0" title="npm">',
+				'<Tab_MDSVEX_D_G index="0">{#snippet label()}npm{/snippet}',
 				'<figure class="twinkleplop-block" data-language="sh">',
 				'<figcaption class="twinkleplop-title">npm</figcaption>',
 				'<pre class="twinkleplop language-sh" data-language="sh">',
@@ -651,8 +643,18 @@ describe('compile', () => {
 			components: [{ specifier: '#lib/markdown.js', names: ['pre'] }],
 		}).code;
 		expect(code).toContain(
-			'<Tab_MDSVEX_D_G index="1" title="pnpm">\n' +
+			'<Tab_MDSVEX_D_G index="1">{#snippet label()}pnpm{/snippet}\n' +
 				'<Pre_MDSVEX_G lang={"sh"} meta={"title=\\"pnpm\\""} title={"pnpm"} code={"pnpm i"}>'
+		);
+	});
+
+	test('the name of a fence is text in its label, markup and braces too', () => {
+		const { code } = compile(':::tabs\n```sh [a {b} <c>]\nx\n```\n:::\n', {
+			plugins: [tabs()],
+			highlight: false,
+		});
+		expect(code).toContain(
+			'<Tab_MDSVEX_D_G index="0">{#snippet label()}a &#123;b&#125; &lt;c&gt;{/snippet}'
 		);
 	});
 
@@ -668,8 +670,9 @@ describe('compile', () => {
 				warning.start?.line,
 			])
 		).toEqual([
-			['tab_without_label', 'tabs', 4],
+			// reported when the first tab opens, not when the container closes
 			['content_before_first_tab', 'tabs', 2],
+			['tab_without_label', 'tabs', 4],
 			['no_tabs', 'tabs', 9],
 		]);
 	});
@@ -684,7 +687,7 @@ describe('compile', () => {
 		const plugins = [tabs()];
 		const first = compile(SOURCE, { plugins }).code;
 		expect(compile(GROUP, { plugins, highlight: false }).code).toContain(
-			'title="npm"'
+			'{#snippet label()}npm{/snippet}'
 		);
 		expect(compile(SOURCE, { plugins }).code).toBe(first);
 	});

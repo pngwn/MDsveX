@@ -1,5 +1,5 @@
 import { writeFileSync } from 'node:fs';
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { describe, expect, test } from 'vitest';
 
 import {
 	CONTAINERS,
@@ -15,12 +15,11 @@ import type { Container, Level, Piece, Seen } from './grammar';
 import {
 	broken_by,
 	cell_mismatch,
+	container_broken,
 	container_mismatch,
-	guard_trips,
 	is_tight,
 	placed,
 	shrink,
-	watch_guard,
 } from './invariance';
 import type { Invariant, Rule, Site } from './invariance';
 
@@ -35,6 +34,8 @@ function is(seen: Seen, ...kinds: string[]): boolean {
 interface Intended extends Rule {
 	/** the PFM.md sentence or the decision that makes it intended */
 	why: string;
+	/** an invariant it breaks in an edited source, and what the smallest such source holds */
+	edited?: [Invariant, RegExp];
 }
 
 /**
@@ -58,6 +59,11 @@ const INTENDED: Intended[] = [
 			seen.before === null &&
 			is(seen, 'thematic_break') &&
 			seen.piece.form === 0,
+	},
+	{
+		what: 'a link reference definition leaves no node',
+		why: 'its destination and title are in the links that use it, and a title may run over lines, so their words are in no node',
+		edited: ['content', /^[ \t>]*\[[^\]\n]+\]:/],
 	},
 	{
 		what: 'the cells of a table row past the column count are left out of the tree',
@@ -95,96 +101,8 @@ interface Known extends Rule {
 	example: { site: Site; source: string; loose?: boolean };
 }
 
-/** the last piece a block ends with, itself when it holds no block */
-function last_leaf(piece: Piece): Piece {
-	const last = piece.kids[piece.kids.length - 1];
-	return piece.kind === 'list' || piece.kind === 'list_item'
-		? last === undefined
-			? piece
-			: last_leaf(last)
-		: piece;
-}
-
 /** every known failure, each one takes its pieces out of the documents until its issue is fixed */
-const KNOWN: Known[] = [
-	{
-		issue: 1052,
-		what: 'a comment before text on its line is a block in every container and inline in a table cell',
-		drop: (seen) =>
-			(is(seen, 'comment_inline') &&
-				seen.before === null &&
-				(seen.under.length === 0 ||
-					seen.under[seen.under.length - 1] === 'paragraph')) ||
-			(seen.piece.join === '\n' && seen.before?.kind === 'comment'),
-		example: { site: 'table_cell', source: '<!-- a --> b' },
-	},
-	{
-		issue: 1002,
-		what: 'text after a block level element that closes on its line has no paragraph',
-		drop: (seen) =>
-			// the line after it is text of the same paragraph, a list item passes it on to the line after the list
-			(seen.piece.join === '\n' &&
-				seen.before !== null &&
-				last_leaf(seen.before).kind === 'html_line') ||
-			// an element that is no block does not end a paragraph, the line in it is then inline
-			(is(seen, 'html_element') &&
-				seen.piece.join === '\n' &&
-				seen.piece.kids.some((kid) => kid.kind === 'html_line')),
-		edited: [
-			'placed',
-			/<\/(div|p|section|details)>|<(div|p|section|details)\/>/,
-		],
-		example: { site: 'root', source: '<div>a</div>\nb\n' },
-	},
-	{
-		issue: 1062,
-		what: 'an element that holds its own name again is not seen to close on its line',
-		drop: (seen) =>
-			is(seen, 'html_inline') &&
-			seen.before === null &&
-			/^<(\w+)[^\n]*<\1/.test(inline_text([seen.piece])),
-		example: { site: 'table_cell', source: '<b>`<b>`</b>' },
-	},
-	{
-		issue: 1063,
-		what: 'text after a closing fence on its line is lost',
-		edited: ['content', /\n[> ]*`{3,}[ \t]*[^\s`]/],
-		example: { site: 'root', source: '```\na\n``` q000\n' },
-	},
-	{
-		issue: 1061,
-		what: 'an open tag or a comment at the end of a table row reads into the next line, which is then lost',
-		edited: ['content', /<\w+\n>|<!--\n/],
-		example: {
-			site: 'root',
-			source: '| a | b |\n|---|---|\n| c | <i\n> | q000 |\n',
-		},
-	},
-	{
-		issue: 1076,
-		what: 'a paragraph that opens at a tag loses its wrapper when a backtick in an autolink or a link destination pairs with one after the element',
-		edited: ['placed', /`[>)]<\/\w+>`/],
-		example: { site: 'root', source: '<Badge><ht:`></Badge>`\n' },
-	},
-	{
-		issue: 1071,
-		what: 'a paragraph that opens at a tag loses its wrapper when fed, with a brace as a link destination in it',
-		edited: ['fed', /\]\(\{\)/],
-		example: { site: 'root', source: '<b>[]({)</b> a\n\nx\n' },
-	},
-	{
-		issue: 1071,
-		what: 'the same over the wire',
-		edited: ['wire', /\]\(\{\)/],
-		example: { site: 'root', source: '<b>[]({)</b> a\n\nx\n' },
-	},
-	{
-		issue: 1072,
-		what: 'a repeated attribute on a tag keeps the last value and loses the first',
-		edited: ['content', /\s(\w+)=\S*\s+\1=/],
-		example: { site: 'root', source: '<img alt=q000 alt="">\n' },
-	},
-];
+const KNOWN: Known[] = [];
 
 const RULES: Rule[] = [...INTENDED, ...KNOWN];
 
@@ -202,18 +120,15 @@ type Check = (blocks: Piece[], only?: Invariant) => Map<Invariant, string>;
 /** the container invariant, and the invariants of a file on the document inside the container */
 function check_container(site: Container, blocks: Piece[], only?: Invariant) {
 	const rows = rows_of(blocks);
-	const before = guard_trips();
 	const found =
 		only === undefined || only === 'container'
-			? container_mismatch(site, rows, is_tight(blocks), RULES)
-			: '';
+			? container_broken(site, rows, is_tight(blocks), RULES)
+			: null;
 	const out =
 		only === 'container'
 			? new Map<Invariant, string>()
 			: broken_by(`${contained(site, rows).join('\n')}\n`, only);
-	if (found !== '') out.set('container', found);
-	if (guard_trips() !== before)
-		out.set('guard', 'the loop guard stopped the parse');
+	if (found !== null) out.set(found[0], found[1]);
 	return out;
 }
 
@@ -266,21 +181,15 @@ function subjects(seed: number): Subject[] {
 	return out;
 }
 
-let unwatch: () => void;
-beforeAll(() => {
-	unwatch = watch_guard();
-});
-afterAll(() => unwatch());
-
-/** the known failure an edited source shows, read off the smallest source that still fails */
+/** the known failure or intended difference an edited source shows, read off the smallest source that still fails */
 function known_edit(
 	source: string,
 	invariant: Invariant
-): [Known | undefined, string] {
+): [Known | Intended | undefined, string] {
 	const least = shrink_text(source, (next) =>
 		broken_by(next, invariant).has(invariant)
 	);
-	const rule = KNOWN.find(
+	const rule = [...INTENDED, ...KNOWN].find(
 		(known) => known.edited?.[0] === invariant && known.edited[1].test(least)
 	);
 	return [rule, least];
@@ -346,9 +255,13 @@ describe.skipIf(census === undefined)('census', () => {
 			const [from, to] = census!.split('-').map(Number);
 			const known = new Map<string, number>();
 			const groups = new Map<string, Group>();
-			const count = (rule: Known | undefined): void => {
+			const count = (rule: Known | Intended | undefined): void => {
 				const key =
-					rule === undefined ? 'several' : `#${rule.issue} ${rule.what}`;
+					rule === undefined
+						? 'several'
+						: 'issue' in rule
+							? `#${rule.issue} ${rule.what}`
+							: `intended, ${rule.what}`;
 				known.set(key, (known.get(key) ?? 0) + 1);
 			};
 			let documents = 0;

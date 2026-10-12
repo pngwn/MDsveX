@@ -83,6 +83,11 @@ export interface MdsvexManifest {
 	/** the smart_punctuation option as written, a manifest without it means off */
 	smart_punctuation?: SmartPunctuation;
 	/**
+	 * true when a plugin could leave data, which a document then exports as
+	 * plugin_data, a manifest without it means none can
+	 */
+	plugin_data?: boolean;
+	/**
 	 * how math fences render, false leaves them code blocks, custom is a
 	 * renderer function, a manifest without it means temml with no options
 	 */

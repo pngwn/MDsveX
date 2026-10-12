@@ -777,9 +777,9 @@ describe("bound handlers: the directive's own parse", () => {
 			NAMED
 		);
 		expect(log).toEqual([
-			'global open unnamed',
+			'global open box',
 			'child of box',
-			'global open unnamed',
+			'global open tabs',
 			'tabs parse',
 			'tabs close',
 			'child of box closed',

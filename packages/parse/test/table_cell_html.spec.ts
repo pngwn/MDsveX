@@ -104,10 +104,10 @@ describe('an html element left open in a table cell', () => {
 	});
 
 	test('an element around the table still closes at the start of a row line', () => {
-		expect(checked_tree('<span> |---\n---\n<i>:::\n</span>&amp;')).toBe(
+		expect(checked_tree('<Box> |---\n---\n<i>:::\n</Box>&amp;')).toBe(
 			lines(
 				'root',
-				'  html tag="span"',
+				'  html tag="Box"',
 				'    table alignments=["none"] col_count=1',
 				'      table_header',
 				'        table_cell',
@@ -123,10 +123,10 @@ describe('an html element left open in a table cell', () => {
 	});
 
 	test('a block level tag at the start of a row line ends the table', () => {
-		expect(checked_tree('<span> |---\n---\n<div>:::\n</span>&amp;')).toBe(
+		expect(checked_tree('<Box> |---\n---\n<div>:::\n</Box>&amp;')).toBe(
 			lines(
 				'root',
-				'  html tag="span"',
+				'  html tag="Box"',
 				'    table alignments=["none"] col_count=1',
 				'      table_header',
 				'        table_cell',
@@ -231,11 +231,11 @@ describe('a close tag in a header cell', () => {
 	});
 
 	test('for an element opened on the header line before the first pipe', () => {
-		expect(checked_tree('<span>|<span>|</span>\n-|-')).toBe(
+		expect(checked_tree('<Box>|<span>|</span>\n-|-')).toBe(
 			lines(
 				'root',
 				'  paragraph',
-				'    text "<span>"',
+				'    text "<Box>"',
 				'  table alignments=["none","none"] col_count=2',
 				'    table_header',
 				'      table_cell',
@@ -272,11 +272,11 @@ describe('a close tag in a header cell', () => {
 	});
 
 	test('a body cell does not close the element either', () => {
-		expect(checked_tree('<span>|<span>|</span>\n-|-\n|</span> x\n')).toBe(
+		expect(checked_tree('<Box>|<span>|</span>\n-|-\n|</Box> x\n')).toBe(
 			lines(
 				'root',
 				'  paragraph',
-				'    text "<span>"',
+				'    text "<Box>"',
 				'  table alignments=["none","none"] col_count=2',
 				'    table_header',
 				'      table_cell',
@@ -285,7 +285,7 @@ describe('a close tag in a header cell', () => {
 				'        text "</span>"',
 				'    table_row',
 				'      table_cell',
-				'        text "</span> x"',
+				'        text "</Box> x"',
 				'      table_cell'
 			)
 		);

@@ -258,6 +258,29 @@ describe('precedence', () => {
 	});
 });
 
+describe('a handler for a child of any type', () => {
+	test('a bundle sees every child of its directive and warns where one is stray', () => {
+		const bundle = steps();
+		bundle.directives!.steps.children!['*'] = (node, ctx) => {
+			if (ctx.state.step === undefined && node.type !== 'directive_label')
+				ctx.warn('before_first_step', `a ${node.type} is in no step`, node);
+		};
+		const { code, warnings } = compile(
+			':::steps[]\nstray\n\n## One\n\nfine\n:::\n',
+			{ plugins: [bundle] }
+		);
+		expect(code).toContain('<p>stray</p><Step_MDSVEX_D_G>');
+		expect(warnings).toEqual([
+			{
+				code: 'before_first_step',
+				message: 'a paragraph is in no step',
+				plugin: 'steps',
+				start: { line: 2, column: 0 },
+			},
+		]);
+	});
+});
+
 describe('the guard', () => {
 	const watch = (seen: string[]): ParsePlugin => {
 		const handler = {
@@ -287,6 +310,28 @@ describe('the guard', () => {
 		expect(code).toContain('<Steps_MDSVEX_D_G>');
 		expect(seen).toEqual(['directive_container free']);
 		expect(inside).toEqual(['directive_container free']);
+	});
+
+	test('a global directive handler runs at the open, with the name', () => {
+		const seen: string[] = [];
+		const order: ParsePlugin = {
+			directive_container: {
+				parse(node) {
+					seen.push('open ' + node.attrs.name + ' ' + node.attrs.args?.kind);
+					return () => void seen.push('close ' + node.attrs.name);
+				},
+			},
+			paragraph: {
+				parse() {
+					seen.push('paragraph');
+				},
+			},
+		};
+		compile(':::free(kind=tip)\ny\n:::\n', {
+			parse_plugins: [order],
+			strict_directives: false,
+		});
+		expect(seen).toEqual(['open free tip', 'paragraph', 'close free']);
 	});
 
 	test('bound handlers of an outer directive do see the directives inside it', () => {

@@ -5,11 +5,10 @@
 	 * @type {{
 	 *   label?: import('svelte').Snippet,
 	 *   children?: import('svelte').Snippet,
-	 *   title?: string,
 	 *   index?: string,
 	 * }}
 	 */
-	let { label, children, title, index = '0' } = $props();
+	let { label, children, index = '0' } = $props();
 
 	/**
 	 * @type {{
@@ -29,7 +28,7 @@
 
 {#if tabs === undefined}
 	<div class="tab-panel">
-		<div class="tab-panel-label">{@render label?.()}{title}</div>
+		<div class="tab-panel-label">{@render label?.()}</div>
 		{@render children?.()}
 	</div>
 {:else if in_list}
@@ -42,7 +41,7 @@
 		aria-selected={selected}
 		tabindex={selected ? 0 : -1}
 		onclick={() => tabs.select(position)}
-		onkeydown={tabs.keydown}>{@render label?.()}{title}</button
+		onkeydown={tabs.keydown}>{@render label?.()}</button
 	>
 {:else}
 	<div
@@ -54,7 +53,7 @@
 		tabindex="0"
 	>
 		<!-- shown by the stylesheet where scripting is off and every panel is open -->
-		<div class="tab-panel-label" hidden>{@render label?.()}{title}</div>
+		<div class="tab-panel-label" hidden>{@render label?.()}</div>
 		{@render children?.()}
 	</div>
 {/if}

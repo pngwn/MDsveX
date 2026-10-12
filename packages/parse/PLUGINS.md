@@ -41,7 +41,9 @@ The view exposes:
 - `text_content` — flattened text of all descendants (populated as children arrive)
 - `parent`, `first_child`, `last_child`, `next`, `prev` — lazy traversal, each returns a view for the corresponding node or `null`
 - `position` — where the node is in the source, see [Positions](#positions)
-- Type-specific properties surfaced directly (`depth` for headings, `lang` for code blocks, etc.)
+- `pending` — `true` while the parser may still revoke the node, see [Pending nodes](#pending-nodes)
+- Type-specific properties surfaced directly (`depth` for headings, `info` for code fences, etc.)
+- `info` — the info string of a code fence, its language and everything after it, see [The info string of a fence](#the-info-string-of-a-fence). `lang` is the same string under its older name.
 
 **Writable properties**
 - `attrs` — a key-value bag for arbitrary attributes. Proxied so setter calls flow through to the SoA and trigger dirty marking.
@@ -51,7 +53,9 @@ The view exposes:
 - `wrap_inner(type, attrs?)` — inserts a new node between this node and its current children, returns the new node's view
 - `prepend(type, attrs?)` — inserts a new node as the first child, returns the new node's view
 - `append(type, attrs?)` — inserts a new node as the last child, returns the new node's view
+- `prepend('text', text)` and `append('text', text)` — the same for a text node, which takes its text in place of attrs (see [Adding text](#adding-text))
 - `wrap_from(type, attrs?)` — inserts a new node as the parent of this node and of every sibling after it, returns a view of the new node with a `close()` method (see [Grouping siblings](#grouping-siblings-wrap_from))
+- `remove()` — takes this node and everything in it out of the tree (see [Removing a node](#removing-a-node))
 
 ### Positions
 
@@ -75,6 +79,28 @@ heading: {
 
 The line table is built from the source the first time a position is read, so a plugin that reads none pays nothing.
 
+### Pending nodes
+
+The parser opens some nodes on a guess: an emphasis before it has seen the closer, a link before its destination, an inline directive before its closing bracket, an element before its close tag, the paragraph of a list item while the list can still be tight. `node.pending` is `true` for such a node until the parser settles it.
+
+```js
+link: {
+  parse(node) {
+    node.pending; // true, the destination may never come
+    return () => {
+      // false, this link closed, so it can be wrapped
+      if (!node.pending) node.wrap_from('html', { tag: 'span' }).close();
+    };
+  }
+}
+```
+
+- **`wrap_from` and `close()` throw exactly when the node whose handler or close callback is running is pending.** Read `node.pending` there to know. Every other method works on a pending node, and is undone if it is revoked.
+- **In a close callback it is `false` for a node that closed for good**, which is every close but two: a delimiter with no closer, which the parser closes where its block ends and then revokes, and a pending paragraph, which a commit or a revoke settles later. Those two still read `true`.
+- **It is the node you ask about.** `node.parent.pending` in the handler of an emphasis inside a tight list item is the paragraph's.
+- **Not pending is not never revoked.** The parser also revokes a few nodes it opened as certain: a table cell that turns out to be a merge marker, a code span that never closes, frontmatter with no closing fence.
+- **In a sequential pass nothing is pending**, and neither is a node a plugin made.
+
 ### Mutation Semantics
 
 Property mutations are **local to the node being mutated**. Setting `node.attrs.id = 'foo'` writes to that one node's slot and does nothing else. It cannot cause side effects elsewhere in the tree.
@@ -97,6 +123,59 @@ A node made by a structural method is flagged as synthetic in the buffer (`NodeB
 
 When the new node is a directive, its `args` must be an object of strings, which is how the parser sets them and how they reach a component as props. A value of any other type throws a `TypeError` where it is set, in the `attrs` passed to a structural method or in a later `node.attrs.args = ...`.
 
+### Adding text
+
+A text node takes its text as the second argument of `prepend` or `append`:
+
+```js
+link: {
+  parse(node) {
+    return () => {
+      // read out after the link text, and shown to nobody
+      const label = node.append('html', { tag: 'span', attributes: { class: 'visually-hidden' } });
+      label.append('text', ' (opens in a new tab)');
+    };
+  }
+}
+```
+
+- **The text is text, not markup.** A renderer escapes it like any other, so `<`, `&` and a `{` come out as characters.
+- **It needs the text.** `append('text')` throws a `TypeError`, and so does a string given to a node of any other type, whose second argument is its attrs.
+- **It keeps to itself.** Text the parser sends for the same parent afterwards is a node of its own on both builders, so `prepend('text', 'Step 1: ')` in a heading's open handler leaves two text nodes, the plugin's and the heading's.
+- **`text_content` reads it**, on the node and on everything that holds it.
+- **It is revoked like any node a handler made.** When the node whose handler added it is revoked, the text goes.
+
+No handler runs for a text node, the parser's or a plugin's.
+
+### Removing a node
+
+`node.remove()` takes a node out of the tree with everything it holds:
+
+```js
+// comments do not reach the page
+html_comment: {
+  parse(node) {
+    return () => node.remove();
+  }
+}
+```
+
+Nothing undoes a removal, so it is only allowed where no revoke can ask for the node back. Anywhere else it throws.
+
+- **From a close callback, once the node it runs for closed for good.** That is every close callback where `node.pending` is `false`. In the callback of a delimiter the parser gave up on, or of a pending paragraph, `remove()` throws, since a revoke may follow. Guard with `if (!node.pending)` where the node can be either.
+- **Or from a sequential pass,** in a handler or a close callback. The tree is complete there.
+- **Never from an open handler of the fused pass.** The parser has more to send for the node.
+- **The node itself, or a node inside it.** A handler removes the node it runs for or one of its descendants: a container its label, a list one of its items. A node outside it, such as an earlier sibling, may already be rendered, and removing it throws. The root is never removed.
+- **A node that is already out stays out.** A second `remove()` does nothing.
+
+What follows from it:
+
+- **The view still reads.** Its `parent`, `next` and `prev` are `null`, and its own content is as it was.
+- **A removed wrapper takes no more children.** The later children of its parent go to the parent.
+- **Its handlers have run.** A removal in a close callback comes after every handler inside the node. In a sequential pass, a node removed in its own handler is not walked: no handler runs for what it held, and the close callback it returned does not run.
+- **The parser can still revoke it.** A delimiter that never closes is revoked after its paragraph closed, by which time the paragraph's callback may have removed it. Such a revoke undoes what the node's handlers did and repairs nothing, and the node stays out.
+- **`heading_ids` in `mdsvex` runs between the two passes,** so a heading removed in a sequential pass has already taken its id, and one removed in the fused pass has not.
+
 ### Grouping siblings: `wrap_from`
 
 `wrap_inner`, `prepend` and `append` add nodes inside a node. `wrap_from` groups a node with the siblings that follow it:
@@ -112,7 +191,7 @@ wrapper.close();
 - **The node must be the last child of its parent.** A later sibling may already have been rendered, and nothing moves a node that has gone downstream, so `wrap_from` throws for a node that has one. In an open handler the node in hand always qualifies. An earlier sibling does not, and neither does an open wrapper: the node in hand sits after it until its handlers return.
 - **Nesting.** A wrapper opened while another is open goes inside it. Closing the outer one closes the inner ones. To get siblings, close the open wrapper first.
 - **With `wrap_inner`.** A `wrap_inner` wrapper of the parent holds the `wrap_from` wrappers like any other child, whichever came first.
-- **Not from the handler of a pending node.** `wrap_from` and `close()` throw when the node whose handler or close callback is running is pending (an emphasis before its closer, a tight list paragraph, an unclosed html element). Undoing them moves nodes, and pending nodes are revoked often. Headings and block directives are never pending.
+- **Not from the handler of a pending node.** `wrap_from` and `close()` throw when the node whose handler or close callback is running is pending (an emphasis before its closer, a tight list paragraph, an unclosed html element). Undoing them moves nodes, and pending nodes are revoked often. Headings and block directives are never pending. `node.pending` says which it is, see [Pending nodes](#pending-nodes).
 - **In a sequential pass** the tree is complete, so the wrapper holds that node alone and is closed at once.
 - **Spans.** The wrapper starts where the node it wrapped starts. It has no source of its own, so it ends there too once it is closed. The renderers cache a top level block once it has an end, so a closed wrapper at the root is not rendered again.
 
@@ -209,7 +288,7 @@ In `mdsvex` these join the `warnings` of the compile, with `plugin` set to the n
 - **A count kept by reassigning** (`ctx.data.n = (ctx.data.n ?? 0) + 1`) is exact when the node that is revoked wrote last. When an earlier writer is revoked and a later one stays, the later value still includes the earlier one. A sequential pass has no such case.
 - **A plugin that left nothing has no key** in the result, and a parse where no plugin left anything gives `undefined`.
 
-In `mdsvex` the objects come back as `data` on the result of a compile, keyed by plugin name: `compile(source, { plugins: [toc()] }).data.toc.headings`.
+In `mdsvex` the objects come back as `data` on the result of a compile, keyed by plugin name: `compile(source, { plugins: [toc()] }).data.toc.headings`. The compiled document exports the same object as `plugin_data`, its template takes it as a prop of that name, and a `?data` import gives it without a render. It is written into the module as JSON there, so `mdsvex` throws a `PluginDataError` for a value JSON cannot hold: keep to plain objects, arrays, strings, finite numbers, booleans and `null`.
 
 ### For whoever runs the parse
 
@@ -258,6 +337,37 @@ The `parse` function fires when the builder encounters a node's open opcode. At 
 - `text_content` is empty (or partial, if content is streaming in)
 
 This is the window for structural mutations. `wrap_inner` works because the children haven't been emitted downstream yet — the builder can inject the synthetic node's open opcode immediately, and subsequent children stream through it naturally.
+
+**A directive has its name by then.** The parser sends the name of a directive straight after its open, ahead of its label and its content, so the open handlers of a `directive_container`, `directive_leaf` or `directive_inline` node wait for it:
+
+```js
+directive_container: {
+  parse(node) {
+    if (node.attrs.name === 'note') node.wrap_inner('html', { tag: 'aside' });
+  }
+}
+```
+
+- **A block directive has its `args` too**, as the parser sends them ahead of the name. The `(key=val)` list of an inline directive follows its closing bracket, so its open handlers see no args and its close callback sees them.
+- **Nothing else changes for the node.** It has no children yet, and it is placed [as any handled node is](#where-a-node-is-placed), after its handlers ran.
+- **With an emitter of your own**, a directive that is sent no name runs its open handlers without one, before the next node opens or anything closes.
+
+### The info string of a fence
+
+The open handlers of a `code_fence` wait as well, for its info string, which the parser sends before any of its code. So `node.info` is whole in the open handler, and that is the place to read it:
+
+```js
+code_fence: {
+  parse(node) {
+    node.info; // 'ts [app.ts] {1,3}', '' for a fence with none
+    // nothing of the code has arrived, node.text_content is ''
+  }
+}
+```
+
+- **It is the whole line after the fence**, the language and what follows it. The parser does not split it. In `mdsvex`, `fence_meta(node.info)` from `mdsvex/compile` reads it the way a compile does: the language, a `[name]` or `title="..."`, a caption, `src=`, and the `key=value` pairs and flags.
+- **While the document streams**, the handlers run once the line of the opening fence is complete. Over the wire a fence with an empty info string is sent none, and its handlers run when its first text or its close arrives.
+- **Any other node has no `info`**, it reads `undefined`.
 
 ### Where a Node Is Placed
 
@@ -406,11 +516,11 @@ An entry can hold three keys. Any other key is ignored, so a layer above can kee
 
 | key | what it is |
 |---|---|
-| `children` | handlers by node type, for nodes written directly inside a container directive of this name |
+| `children` | handlers by node type, for nodes written directly inside a container directive of this name, and `'*'` for a child of any type |
 | `descendants` | the same, for nodes at any depth inside it |
 | `parse` | a handler for the directive itself |
 
-A handler is a function, not a `{ parse }` object. Like a plugin handler it may return a function, which runs when the node closes. A key that is not a node type throws when the tables are first used, and so does `text`: neither builder dispatches text nodes.
+A handler is a function, not a `{ parse }` object. Like a plugin handler it may return a function, which runs when the node closes. A key that is not a node type throws when the tables are first used, and so does `text`: neither builder dispatches text nodes. The one key of `children` that is no node type is `'*'`, see [A child of any type](#a-child-of-any-type).
 
 `directive_handlers` is an array of tables. When two tables have an entry for the same name the later one replaces the earlier one whole. The tables are read once per array, so pass the same array for every document and build a new one to change a handler.
 
@@ -433,9 +543,50 @@ A nested directive of the same name is a new scope with a new `state` and its ow
 - **The label of a container is inside it.** Its `directive_label` node is a child, and what the label holds are descendants.
 - **Only container directives have children.** The label of a leaf directive (`::name[label]`) or an inline one (`:name[text]`) is not passed to the `children` or `descendants` handlers of that name. Handlers of a container around them still see those nodes as descendants.
 
+### A child of any type
+
+`children['*']` runs for every node written directly inside the directive, whatever its type, as it opens:
+
+```js
+tabs: {
+  children: {
+    heading(node, ctx) {
+      ctx.state.tab?.close();
+      ctx.state.tab = node.wrap_from('directive_container', { name: 'tab' });
+    },
+    '*'(node, ctx) {
+      if (ctx.state.tab === undefined && node.type !== 'directive_label') {
+        ctx.warn('before_first_tab', 'content before the first tab is in no tab', node);
+      }
+    }
+  }
+}
+```
+
+- **It runs after the handler for the type of the child**, so here a heading has opened its tab by the time `'*'` sees it. The `descendants` handlers follow.
+- **`ctx.index` counts its own runs**, apart from every other handler. `ctx.index === 0` is the first child, which is the `directive_label` when the container was written with one.
+- **It is not called for a `line_break`**, the blank between two children, nor for text, which is never written directly inside a container.
+- **It has to be asked about every node.** While its directive is the innermost one open, every node that opens inside goes through the dispatcher, where one that is no child and has no handler of its own is let through at once. A handler keyed by type costs nothing for the other types, so use `'*'` when the type is not known ahead.
+- **Only `children` has it.** `descendants: { '*': ... }` throws.
+
+A child reaches its container through a repair in one case: an element alone on its line is opened in a paragraph when the document is fed in pieces, and the paragraph is revoked when it closes. `'*'` then ran for the paragraph and gave its index back, and does not run for the element. The same holds for a `children.html` handler.
+
 ### Order
 
-For one node, the innermost open directive goes first: its `children` handler when the node is a child, then its `descendants` handler, then the `descendants` handlers of each directive further out. Global plugins run after all of them, so a global `heading` handler sees the wrapper a bound handler made. Close callbacks fire in the same order.
+For one node, the innermost open directive goes first: its `children` handler when the node is a child, then its `'*'` handler, then its `descendants` handler, then the `descendants` handlers of each directive further out. Global plugins run after all of them, so a global `heading` handler sees the wrapper a bound handler made. Close callbacks fire in the same order.
+
+A handler for a directive kind reads the name of the directive it is given, so one container can tell its child directives apart:
+
+```js
+tabs: {
+  children: {
+    directive_container(node, ctx) {
+      // a written out :::tab ends the tab a heading opened
+      if (node.attrs.name === 'tab') ctx.state.tab?.close();
+    }
+  }
+}
+```
 
 ### The directive's own `parse`
 
@@ -457,7 +608,7 @@ tabs: {
 }
 ```
 
-- **It runs when the name is known**, which is after the directive's open. A global `directive_container` handler has already run by then, without a name to read. The close callback of `parse` runs ahead of the callbacks those handlers left.
+- **It runs when the name is known**, straight after the open handlers of the directive, which [wait for the name](#open-time-execution) as well. So the handlers of the directives around it and the global ones go first, and `parse` sees what they did. Its close callback runs ahead of the callbacks they left.
 - **A block directive has its args by then.** The parser emits `args` and then `name`, and the scope starts at the name.
 - **An inline directive does not.** Its `(key=val)` list follows the closing bracket, so `parse` sees no args and its close callback sees them.
 - **`node.parent` is the parent in the tree**, such as an open wrapper, since the node was placed before its name arrived.
@@ -478,6 +629,7 @@ A container with `children` or `descendants` handlers opens a scope when its nam
 
 - With no scope open, dispatch costs what it does without bound handlers.
 - While a scope is open, the builders send the dispatcher the kinds the open scopes have handlers for, on top of the kinds global plugins handle. Other kinds keep the builder's fast path, except for the direct children of a node with an open wrapper.
+- While the innermost scope has a `'*'` handler, every kind but `text` and `line_break` is sent, and the dispatcher lets a node that is not its child through at once.
 - A scope ends when its directive closes, so that close goes through the dispatcher. The closes of the nodes inside it do not, unless a handler left something on them. The wire builder asks the dispatcher at every close, which is a few compares for a node no handler touched.
 
 Bound handlers run in the fused pass only. A sequential plugin sees the tree they left.
@@ -508,17 +660,18 @@ Multiple plugins on the same node type are composed into a single function at re
 **What parse plugins can do:**
 - Read any property on any node reachable via traversal
 - Write attrs, type, and type-specific properties on any reachable node
-- Inject synthetic children via `wrap_inner`/`prepend`/`append` on any reachable node
+- Inject synthetic children via `wrap_inner`/`prepend`/`append` on any reachable node, text nodes with their text included
 - Group a node and the siblings after it under a synthetic parent via `wrap_from`
+- Remove a node that closed for good, from its close callback or a sequential pass, via `remove`
 - Register close callbacks via return value
 - Capture state in closures between open and close
 
 **What parse plugins cannot do:**
 - Walk the tree during their own handler (no `walk`, `querySelectorAll`, etc.) — they react to what the builder sends them
-- Reparent existing nodes across unrelated parts of the tree (structural methods only add, `wrap_from` puts later siblings under the wrapper as they arrive and never moves one that came before)
-- Remove nodes
+- Reparent existing nodes across unrelated parts of the tree (`wrap_from` puts later siblings under the wrapper as they arrive and never moves one that came before)
+- Remove a node that may still be revoked, or one outside the node whose handler is running (see [Removing a node](#removing-a-node))
 - Modify the parser itself or affect how tokens become nodes
-- Do work outside their registered node types — if a plugin only has a `heading` entry, it never sees other node types
+- Do work outside their registered node types — if a plugin only has a `heading` entry, it never sees other node types. The one handler for any type is `children['*']` of a directive, for the nodes written directly inside it
 
 **Guarantees:**
 - Property mutations never have non-local effects beyond dirty marking
@@ -559,6 +712,8 @@ For each mutation, the builder records enough information to reverse it:
 **`wrap_from` and `close()`.** Revoking a node whose handler called `wrap_from` removes the wrapper, and the node and any siblings that joined it return to the wrapper's parent in its place. Revoking a node whose handler called `close()` reopens the wrapper: it takes back every sibling that arrived while it was closed and keeps taking later ones. Pending nodes cannot call either (see above), but the parser also revokes a few nodes it opened as committed: a table cell that turns out to be a merge marker, a code span that never closes, frontmatter with no closing fence.
 
 Only the tree is restored. What a plugin keeps in its own variables is not, so a plugin that remembers "the wrapper I opened last" from a `table_cell` or `code_span` handler may hold a wrapper that no longer exists. Calling `close()` on it does nothing.
+
+**`remove`.** A removal is not captured, because it is only allowed where it cannot need undoing, see [Removing a node](#removing-a-node).
 
 **Bound handler state.** A write to `ctx.state` and the `index` a bound handler used are logged the same way, see [Handlers Bound to a Directive](#revocation).
 

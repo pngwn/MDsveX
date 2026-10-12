@@ -240,8 +240,10 @@ describe('rel and target', () => {
 		};
 		expect(
 			compile('[x](https://example.com)', {
-				plugins: [external_links({ target: '_blank' })],
-				parse_plugins: [earlier],
+				plugins: [
+					{ name: 'earlier', parse: earlier },
+					external_links({ target: '_blank' }),
+				],
 			}).code
 		).toBe(
 			'<p><a href="https://example.com" rel="me NoOpener noreferrer" target="docs">x</a></p>'

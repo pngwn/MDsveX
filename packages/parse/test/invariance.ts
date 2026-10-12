@@ -1,4 +1,4 @@
-import { parse_markdown_svelte } from '../src/main';
+import { ParseStallError, parse_markdown_svelte } from '../src/main';
 import type { NodeBuffer } from '../src/utils';
 import { contained, pieces_of, smaller, spaced } from './grammar';
 import type { Container, Level, Piece, Seen } from './grammar';
@@ -208,11 +208,14 @@ export function is_tight(blocks: Piece[]): boolean {
 				(block.form === last.form || (block.form > 2 && last.form > 2));
 			if (!one_list) return false;
 		}
+		// a table and a definition end no paragraph, so their lines are lines of it too
 		const lazy =
 			last !== null &&
 			last.kind === 'list' &&
 			block.join === '\n' &&
-			LINES.includes(block.kind) &&
+			(block.kind === 'table' ||
+				block.kind === 'definition' ||
+				LINES.includes(block.kind)) &&
 			LINES.includes(tail(last).kind);
 		if (!lazy) last = block;
 	}
@@ -365,25 +368,6 @@ export function lost_words(source: string): string[] {
 	return out;
 }
 
-let trips = 0;
-
-/** how often the loop guard has stopped a parse since watch_guard */
-export function guard_trips(): number {
-	return trips;
-}
-
-/** counts the message of the loop guard from here on, the returned function puts console.error back */
-export function watch_guard(): () => void {
-	const real = console.error;
-	console.error = (...args: unknown[]): void => {
-		if (String(args[0]).includes('Infinite loop')) trips++;
-		else real(...args);
-	};
-	return () => {
-		console.error = real;
-	};
-}
-
 function wire_mismatch(source: string): string {
 	let whole: string[] = [];
 	for (const [name, nodes] of every_tree(source)) {
@@ -470,17 +454,34 @@ export function broken_by(
 	const out = new Map<Invariant, string>();
 	for (const [invariant, run] of CHECKS) {
 		if (only !== undefined && only !== invariant && only !== 'guard') continue;
-		const before = trips;
 		let found: string;
 		try {
 			found = run(source);
 		} catch (error) {
 			found = `threw ${String(error)}`;
+			if (error instanceof ParseStallError) out.set('guard', GUARD);
 		}
 		if (found !== '') out.set(invariant, found);
-		if (trips !== before) out.set('guard', 'the loop guard stopped the parse');
 	}
 	return out;
+}
+
+const GUARD = 'the loop guard stopped the parse';
+
+/** container_mismatch, with a parse the loop guard stopped told apart from a different tree */
+export function container_broken(
+	site: Container,
+	rows: string[],
+	tight: boolean,
+	rules: Rule[]
+): ['container' | 'guard', string] | null {
+	try {
+		const found = container_mismatch(site, rows, tight, rules);
+		return found === '' ? null : ['container', found];
+	} catch (error) {
+		if (error instanceof ParseStallError) return ['guard', GUARD];
+		throw error;
+	}
 }
 
 /** the smallest document found that still fails, by taking one piece out or apart at a time */

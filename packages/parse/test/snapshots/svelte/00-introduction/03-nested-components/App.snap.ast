@@ -7,5 +7,5 @@ root
   line_break
   html tag="p"
     text "These styles..."
-  soft_break
+  line_break
   html tag="Nested" self_closing=true

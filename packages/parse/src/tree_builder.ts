@@ -429,20 +429,34 @@ export class TreeBuilder implements Emitter {
 				} else {
 					nodes.set_metadata(idx, make_meta(key, value));
 				}
-				if (this.dispatcher !== null && key === 'name') this.named(idx, value);
+				if (this.dispatcher !== null) {
+					if (key === 'name') this.named(idx, value);
+					// the info string of a fence is whole, its open handlers waited for it
+					else if (key === 'info_end' && this.dispatcher.holds(idx))
+						this.unheld(this.dispatcher);
+				}
 				break;
 			}
 		}
 	}
 
-	/** only a directive gets a name, the handlers bound to it start here */
+	/** only a directive gets a name, its open handlers and the handlers bound to it start here */
 	private named(idx: number, name: unknown): void {
 		const dispatcher = this.dispatcher!;
-		if (!dispatcher.binds) return;
+		if (!dispatcher.wants_name()) return;
 		const nodes = this.nodes;
 		const size = nodes._size;
 		dispatcher.dispatch_name(idx, name, nodes);
 		// a scope opened, or the parse handler of the directive made a link
+		this.refresh(dispatcher);
+		if (nodes._size !== size) this.pushed();
+	}
+
+	/** the open handlers of a held node ran, they may have pushed nodes and made links */
+	private unheld(dispatcher: PluginDispatcher): void {
+		const nodes = this.nodes;
+		const size = nodes._size;
+		dispatcher.unhold(nodes);
 		this.refresh(dispatcher);
 		if (nodes._size !== size) this.pushed();
 	}
@@ -468,6 +482,8 @@ export class TreeBuilder implements Emitter {
 			this.dispatcher.dispatch_revoke(idx, nodes);
 			// an undone close restores its link, an undone wrap may drop the last
 			this.refresh(this.dispatcher);
+			// a plugin took the node out of the tree, there is nothing to repair
+			if (nodes.parent_at(idx) === NONE) return;
 			const kind = nodes.kind_at(idx);
 			nodes.handle_repair(idx, source_text, text_start);
 			if (nodes.kind_at(idx) !== kind) this.dispatcher.log_kind(idx, kind);

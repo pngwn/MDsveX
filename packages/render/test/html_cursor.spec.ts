@@ -525,7 +525,7 @@ describe('paragraphs around tags and components', () => {
 		['<div><p>hi</p></div>\n', '<div><p>hi</p></div>'],
 		['<div>a</div>\n', '<div>a</div>'],
 		['<div>*a*</div>\n', '<div><strong>a</strong></div>'],
-		['<div>a</div> b\n', '<div>a</div> b'],
+		['<div>a</div> b\n', '<div>a</div><p>b</p>'],
 		['<div>\n# hi\n</div>\n', '<div><h1>hi</h1></div>'],
 		[
 			'<details><summary>Title</summary>\n\nBody\n\n</details>\n',

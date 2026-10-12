@@ -214,8 +214,13 @@ export class WireTreeBuilder {
 		let idx = this.id_to_index[id];
 		if (idx === undefined) return;
 
-		// text of a wrapped parent goes to its innermost open wrapper
-		if (this.dispatcher) idx = this.dispatcher.resolve(idx);
+		const dispatcher = this.dispatcher;
+		if (dispatcher !== null) {
+			// a fence with an empty info string is sent none, its text comes next
+			if (dispatcher.holding) dispatcher.unhold(this.buf);
+			// text of a wrapped parent goes to its innermost open wrapper
+			idx = dispatcher.resolve(idx);
+		}
 
 		const kind = this.buf.kind_at(idx);
 		const strings = this.buf._strings;
@@ -279,6 +284,8 @@ export class WireTreeBuilder {
 		if (this.buf.kind_at(last) !== NodeKind.text) return NONE;
 		// a repaired node is only its delimiter, as the batch builder has it
 		if (this.repaired !== null && this.repaired.has(last)) return NONE;
+		// a text node a plugin made holds its own text only
+		if (this.buf.synthetic_at(last)) return NONE;
 		return last;
 	}
 
@@ -293,10 +300,15 @@ export class WireTreeBuilder {
 			this.buf.set_metadata(idx, make_meta(key, value));
 		}
 
-		// only a directive gets a name, the handlers bound to it start here
 		const dispatcher = this.dispatcher;
-		if (dispatcher !== null && key === 'name' && dispatcher.binds) {
-			dispatcher.dispatch_name(idx, value, this.buf);
+		if (dispatcher === null) return;
+		// only a directive gets a name, its open handlers and the handlers bound to it start here
+		if (key === 'name') {
+			if (dispatcher.wants_name())
+				dispatcher.dispatch_name(idx, value, this.buf);
+		} else if (key === 'info' && dispatcher.holds(idx)) {
+			// the info string of a fence is whole, its open handlers waited for it
+			dispatcher.unhold(this.buf);
 		}
 	}
 
@@ -307,6 +319,8 @@ export class WireTreeBuilder {
 		// plugin revoke: undo mutations before handle_repair
 		if (this.dispatcher) {
 			this.dispatcher.dispatch_revoke(idx, this.buf);
+			// a plugin took the node out of the tree, there is nothing to repair
+			if (this.buf.parent_at(idx) === NONE) return;
 		}
 
 		this.buf.handle_repair(idx, delimiter || undefined);

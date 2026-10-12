@@ -1626,10 +1626,10 @@ describe('a delimiter left open in a container matches batch however it is fed',
 	const printed = (input: string) => print_ast(parse_batch(input), input);
 
 	it('keeps the blocks after it', () => {
-		expect(printed('<span>x<n>*y\n- a</span>\n')).toBe(
+		expect(printed('<p>x<n>*y\n- a</p>\n')).toBe(
 			[
 				'root',
-				'  html tag="span"',
+				'  html tag="p"',
 				'    text "x"',
 				'    text "<n>"',
 				'    text "*y"',
@@ -1640,10 +1640,10 @@ describe('a delimiter left open in a container matches batch however it is fed',
 				'  line_break',
 			].join('\n')
 		);
-		expect(printed('<span>x *y\n\nb</span>\n')).toBe(
+		expect(printed('<p>x *y\n\nb</p>\n')).toBe(
 			[
 				'root',
-				'  html tag="span"',
+				'  html tag="p"',
 				'    text "x "',
 				'    text "*y"',
 				'    line_break',

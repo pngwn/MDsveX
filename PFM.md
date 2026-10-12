@@ -17,7 +17,20 @@ A markdown variant for mdsvex. Uses CommonMark as baseline. Goals: remove ambigu
 
 ### Changes from CommonMark
 
+**Characters**, A NUL character (U+0000) in the source is ordinary text. It means nothing to the parser and is kept as written. CommonMark replaces it with U+FFFD, which would mean reading the whole source once more before every parse to look for one.
+
 **Indentation**, Indented code blocks removed. Fenced code blocks only. Indentation is now insignificant.
+
+**Fenced code**, A fence closes at a line that holds only backticks, at least as many as opened it, with spaces or tabs before and after them, as in CommonMark. A line with anything else after the backticks is code:
+
+````markdown
+```md
+```js
+let x;
+```
+````
+
+-> one fence with the info `md` whose code is the lines ` ```js ` and `let x;`.
 
 **Link references**, Shorthand references must be explicit. `[ref]` alone is ambiguous (is it a link or plain text?). Required form:
 
@@ -32,6 +45,8 @@ The definition must appear **before** the reference is used. Forward references 
 A definition may sit in any container. In a block quote or a list item it is written on one line, the destination and the title do not move to the next line there.
 
 A label cannot start with `^`. `[^note]: text` is how a footnote definition is written, so the line is never a link reference definition and stays text.
+
+**Link destinations and titles**, A backslash escape works in a link destination and a link title as it does in text, in an inline link, an image and a definition: `[a](/u\)b "t \" u")` links to `/u)b` with the title `t " u`. An escaped brace is a literal brace there, where a bare one is a Svelte expression (`[a](/docs/{slug})`).
 
 **Headings**, Only ATX style (`#` prefix). Setext style (`===`/ `---` underlines) removed. Trailing `#` characters are treated as heading text, not syntax.
 
@@ -134,7 +149,7 @@ A paragraph in a blockquote ends at a marked line that is blank or starts anothe
 
 -> a paragraph `_foo`, then a nested blockquote containing `bar_`.
 
-**Paragraphs**, A paragraph of only HTML tags, components, `{@...}` tags and whitespace gets no `<p>`, and any text outside the tags wraps the whole paragraph in one. A paragraph holding a block level element such as `<div>` is never wrapped:
+**Paragraphs**, A paragraph of only HTML tags, components, `{@...}` tags and whitespace gets no `<p>`, and any text outside the tags wraps the whole paragraph in one:
 
 ```markdown
 <Chart />
@@ -143,7 +158,30 @@ A paragraph in a blockquote ends at a marked line that is blank or starts anothe
 <Badge /> new today   -> <p><Badge /> new today</p>
 ```
 
-A tag that stays literal text counts as text here: an open tag whose element never closes, as in `<Badge /> <b>new`, and a close tag that closes nothing, as in `<Badge /></b>`. A block level tag that never closes is literal text too, so it does not unwrap the paragraph. A close tag closes the last open element of its name and every element opened inside it, so `<Badge /><b><i></b>` leaves nothing open and gets no `<p>`.
+A comment counts as a tag. One that is alone on its line is a block, with no paragraph around it, and the line after it starts a block of its own. One with text after it on its line is in the paragraph of that text:
+
+```markdown
+<!-- note --> some text   -> <p><!-- note --> some text</p>
+```
+
+A block level element such as `<div>` that starts a line is a block and is in no paragraph. What follows its close tag is read as the start of a line, so text there starts a paragraph of its own:
+
+```markdown
+<div>one</div> two    -> <div>one</div><p>two</p>
+```
+
+Later in a line a block level tag is a tag like any other.
+
+An element of phrasing content such as `<b>`, `<span>` or `<a>` that starts a line with content after its open tag is inline, and starts a paragraph, also when it closes on a later line:
+
+```markdown
+<b>bold over
+two lines</b> and text   -> <p><b>bold over\ntwo lines</b> and text</p>
+```
+
+When its open tag ends the line it holds what its lines hold, as a block level element and a component do.
+
+A tag that stays literal text counts as text here: an open tag whose element never closes, as in `<Badge /> <b>new`, and a close tag that closes nothing, as in `<Badge /></b>`. A block level tag that never closes is literal text too, so its line is a paragraph. A close tag closes the last open element of its name and every element opened inside it, so `<Badge /><b><i></b>` leaves nothing open and gets no `<p>`.
 
 An image is text by default, so a paragraph of one image is `<p><img /></p>`. The `unwrap_images` option, off by default, makes an image count as a tag does here. A paragraph of only images and whitespace then has no paragraph node, and the images are children of whatever held it: the document, a block quote, a list item, a container directive or an HTML element.
 
@@ -165,6 +203,18 @@ A link that holds only images counts as its images, so a linked image or a row o
 ```markdown
 a \{1 + 1\} b
 ```
+
+**Tags over lines**, An open tag may run over lines, and the `>` of a close tag may stand on the line after its name, which is how a formatter writes an inline element when it may add no space:
+
+```markdown
+From <a href="/projects"
+  >the projects page</a
+>. More text.
+```
+
+-> one paragraph, a link and the text `. More text.` straight after it. In a block quote or a list item the `>` comes after the line prefix. A table row and a heading are one line, so a close tag there ends on it.
+
+**Repeated attributes**, A tag that writes one attribute name more than once is still a tag. The first value is the attribute, as in HTML, and the later ones are kept beside it as written, so nothing in the source is dropped. Svelte rejects a repeated attribute when it compiles the component.
 
 **Superscript**, Added, via `^`:
 
@@ -193,6 +243,8 @@ x~1~ -> x<sub>1</sub>
 **Tables**, GFM pipe tables as base, with three extensions. Whitespace alignment is insignificant; only structure matters.
 
 A table ends where a paragraph would: at a blank line, at a line that starts a block which may interrupt a paragraph (a heading, a fence, a block quote, a thematic break, a list item, a block level HTML tag, a directive, a Svelte block), and at the line that closes the element, Svelte block or container directive the table is in.
+
+A row is one line, and nothing in a cell reads past it. An HTML tag, a comment, a Svelte expression or a `<script>` that does not end on its row is literal text.
 
 A pipe escaped with a backslash (`\|`) does not end a cell. Inside a code span in a cell the backslash is not part of the code, so `` `string \| number` `` is the code `string | number`.
 

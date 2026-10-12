@@ -192,6 +192,18 @@ describe('character references', () => {
 		expect(attr_value(img, 'src')).toBe('/i.png?a&b');
 		expect(attr_value(img, 'alt')).toBe('i ©');
 	});
+
+	test('a backslash escape in a link destination or title is the character alone', () => {
+		const raw =
+			'[a](/u\\)b "t \\" \\{u\\} \\&amp;") ![i](/i\\(1\\).png "\\{t\\}")';
+		const nodes = svelte_nodes(compile_all(raw));
+		const [a] = find_all(nodes, 'a');
+		expect(attr_value(a, 'href')).toBe('/u)b');
+		expect(attr_value(a, 'title')).toBe('t " {u} &amp;');
+		const [img] = find_all(nodes, 'img');
+		expect(attr_value(img, 'src')).toBe('/i(1).png');
+		expect(attr_value(img, 'title')).toBe('{t}');
+	});
 });
 
 describe('braces in code (#839)', () => {

@@ -703,7 +703,7 @@ export function outline(blocks: Piece[]): string {
 		.join(' ');
 }
 
-const NOISE = '*_~^`[](){}<>|\\:#-!&"$ \n';
+const NOISE = '*_~^`[](){}<>|\\:#-!&"$ \n\0';
 
 /** a source with one to four small edits, which leaves constructs open and markers stray */
 export function edited(source: string, seed: number): string {

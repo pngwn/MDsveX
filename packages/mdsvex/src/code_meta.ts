@@ -168,8 +168,12 @@ const PROP_KEY = /^[A-Za-z_][\w-]*$/;
  */
 export function read_meta(meta: string): MetaInfo {
 	const out: MetaInfo = { props: [] };
-	if (meta === '') return out;
-	for (const part of meta_parts(meta)) {
+	if (meta !== '') read_parts(meta_parts(meta), out);
+	return out;
+}
+
+function read_parts(parts: string[], out: MetaInfo): void {
+	for (const part of parts) {
 		if (claimed(part)) continue;
 		const first = part.charCodeAt(0);
 		if (first === BRACKET_OPEN) {
@@ -194,6 +198,60 @@ export function read_meta(meta: string): MetaInfo {
 		// an expression value is not a prop yet
 		else if (raw.length !== 0 && raw.charCodeAt(0) !== BRACE_OPEN)
 			out.props.push([key, raw]);
+	}
+}
+
+/** the info string of a fence as a compile reads it */
+export interface FenceMeta extends MetaInfo {
+	/** the first word of the info string, '' for a fence with none */
+	lang: string;
+	/** the info string after the language */
+	meta: string;
+	/**
+	 * every part of the meta as written, whitespace splits them except inside
+	 * quotes, brackets, braces and a /word/ pattern
+	 */
+	parts: string[];
+	/** what src= names, without quotes and with its line slice */
+	src?: string;
+}
+
+/**
+ * the language, title, caption, src and props of the info string of a fence,
+ * split the way the highlighter and a pre replacement read it
+ *
+ * @example
+ * fence_meta('ts [app.ts] {1,3} wrap tab=2 src=./app.ts#L1-L9');
+ * // {
+ * //   lang: 'ts', meta: '[app.ts] {1,3} wrap tab=2 src=./app.ts#L1-L9',
+ * //   title: 'app.ts', src: './app.ts#L1-L9',
+ * //   props: [['wrap', true], ['tab', '2']],
+ * //   parts: ['[app.ts]', '{1,3}', 'wrap', 'tab=2', 'src=./app.ts#L1-L9'],
+ * // }
+ */
+export function fence_meta(info: string | undefined): FenceMeta {
+	const out: FenceMeta = { lang: '', meta: '', props: [], parts: [] };
+	if (info === undefined || info === '') return out;
+	let space = -1;
+	for (let i = 0; i < info.length && space === -1; i++) {
+		const ch = info.charCodeAt(i);
+		if (ch === SPACE || ch === TAB) space = i;
+	}
+	const first = space === -1 ? info : info.slice(0, space);
+	// a fence that shows a file can name no language
+	if (first.startsWith('src=')) out.meta = info.trim();
+	else {
+		out.lang = first;
+		if (space !== -1) out.meta = info.slice(space).trim();
+	}
+	if (out.meta === '') return out;
+	const parts = (out.parts = meta_parts(out.meta));
+	read_parts(parts, out);
+	for (const part of parts) {
+		if (!part.startsWith('src=')) continue;
+		const written = part.slice(4);
+		out.src = unquote(written) ?? written;
+		break;
 	}
 	return out;
 }

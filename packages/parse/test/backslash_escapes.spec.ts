@@ -225,7 +225,6 @@ describe('backslash escapes', () => {
 	});
 
 	// Link syntax with backslash: [foo](/bar\* "ti\*tle")
-	// Backslashes in link URL/title are preserved
 	test('pfm example 22, escaped chars in link syntax', () => {
 		const input = load_fixture('22');
 		const { nodes } = parse_markdown_svelte(input);
@@ -236,8 +235,8 @@ describe('backslash escapes', () => {
 
 		const link = nodes.get_node(paragraph.children[0]);
 		expect(link.kind).toBe('link');
-		expect(link.metadata.href).toBe('/bar\\*');
-		expect(link.metadata.title).toBe('ti\\*tle');
+		expect(link.metadata.href).toBe('/bar*');
+		expect(link.metadata.title).toBe('ti*tle');
 	});
 
 	// Reference definition with backslash: [foo]\n\n[foo]: /bar\* "ti\*tle"

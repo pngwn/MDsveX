@@ -153,10 +153,9 @@ export function external_links(options: ExternalLinksOptions = {}): Bundle {
 	return {
 		name: 'external-links',
 		parse: {
-			// an autolink gets its href after it closes, the finished tree has every one
-			sequential: true,
 			link: {
-				parse(node) {
+				// a link has its href and its text when it closes
+				parse: (node) => () => {
 					const link = node.attrs;
 					const href = link.href;
 					if (typeof href !== 'string' || !external(href)) return;

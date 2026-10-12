@@ -8,13 +8,9 @@ root
   html tag="p"
     line_break
     text "From "
-    text "<a href=\"https://cloud.blender.org/open-projects\"\n		>"
-    text "Blender Open Projects"
-    text "</a"
-    line_break
-    block_quote
-      paragraph
-        text ". CC-BY"
+    html tag="a" href="https://cloud.blender.org/open-projects"
+      text "Blender Open Projects"
+    text ". CC-BY"
     line_break
   line_break
   line_break

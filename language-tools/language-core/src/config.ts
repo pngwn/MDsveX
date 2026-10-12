@@ -233,6 +233,7 @@ export function document_options(
 		// a parse plugin may handle a directive no component renders
 		report_directives: !manifest.directive_plugins,
 		lenient_frontmatter: manifest.frontmatter_parse,
+		declare_plugin_data: manifest.plugin_data === true,
 	};
 }
 
@@ -335,6 +336,8 @@ export function from_json(
 	if (config.heading_ids === true) manifest.heading_ids = true;
 	const smart = smart_from_json(config.smart_punctuation);
 	if (smart !== undefined) manifest.smart_punctuation = smart;
+	if (config.plugins !== undefined && config.plugins.length !== 0)
+		manifest.plugin_data = true;
 	const math = math_from_json(config.math);
 	if (math !== undefined) manifest.math = math;
 	const from = path.join(dir, 'vite.config');
