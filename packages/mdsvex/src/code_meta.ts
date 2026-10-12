@@ -1,6 +1,8 @@
 // fence meta, attributes and escaping shared by the highlighters, compile
 // imports this, so it stays free of twinkleplop
 
+import { run_flag } from './run_blocks';
+
 const SPACE = 32;
 const TAB = 9;
 const LF = 10;
@@ -214,11 +216,13 @@ export interface FenceMeta extends MetaInfo {
 	parts: string[];
 	/** what src= names, without quotes and with its line slice */
 	src?: string;
+	/** true for a fence marked run, 'client' for run=client */
+	run?: true | 'client';
 }
 
 /**
- * the language, title, caption, src and props of the info string of a fence,
- * split the way the highlighter and a pre replacement read it
+ * the language, title, caption, src, run flag and props of the info string
+ * of a fence, split the way the highlighter and a pre replacement read it
  *
  * @example
  * fence_meta('ts [app.ts] {1,3} wrap tab=2 src=./app.ts#L1-L9');
@@ -238,8 +242,8 @@ export function fence_meta(info: string | undefined): FenceMeta {
 		if (ch === SPACE || ch === TAB) space = i;
 	}
 	const first = space === -1 ? info : info.slice(0, space);
-	// a fence that shows a file can name no language
-	if (first.startsWith('src=')) out.meta = info.trim();
+	// a fence that shows a file can name no language, src= or the run flag comes first then
+	if (first.startsWith('src=') || run_flag(first) !== 0) out.meta = info.trim();
 	else {
 		out.lang = first;
 		if (space !== -1) out.meta = info.slice(space).trim();
@@ -248,10 +252,13 @@ export function fence_meta(info: string | undefined): FenceMeta {
 	const parts = (out.parts = meta_parts(out.meta));
 	read_parts(parts, out);
 	for (const part of parts) {
-		if (!part.startsWith('src=')) continue;
-		const written = part.slice(4);
-		out.src = unquote(written) ?? written;
-		break;
+		if (out.src === undefined && part.startsWith('src=')) {
+			const written = part.slice(4);
+			out.src = unquote(written) ?? written;
+		} else if (out.run === undefined) {
+			const flag = run_flag(part);
+			if (flag > 0) out.run = flag === 2 ? 'client' : true;
+		}
 	}
 	return out;
 }
@@ -263,6 +270,8 @@ function claimed(part: string): boolean {
 	if (first === SLASH) return word_group(part);
 	if (part === 'twoslash' || part === 'eval') return true;
 	if (part.startsWith('src=')) return true;
+	// run and run= with any value, a value that is not client is an error of the compile
+	if (run_flag(part) !== 0) return true;
 	if (part === ':no-line-numbers' || part === ':line-numbers') return true;
 	if (part.startsWith(':line-numbers=')) return digits(part.slice(14));
 	if (part === 'showLineNumbers') return true;
@@ -344,6 +353,8 @@ const BUILT_IN_PROPS = [
 	'class',
 	'children',
 	'src',
+	'module',
+	'load',
 ];
 
 /** the props text of a pre replacement and the messages of the meta props it drops */
