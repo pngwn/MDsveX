@@ -3,7 +3,7 @@ root
     list_item
       paragraph
         text "foo"
-      code_fence "    bar"
+      code_fence " bar"
       paragraph
         text "baz"
       block_quote

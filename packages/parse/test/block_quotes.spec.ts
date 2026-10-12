@@ -428,29 +428,21 @@ describe('Block quotes', () => {
 		expect(outer.map((n) => n.kind)).toEqual(['paragraph', 'block_quote']);
 	});
 
-	test('pfm: code fence opener without > continuation is paragraph text', () => {
+	test('pfm: a fence left open in a block quote ends with the quote', () => {
 		// > ```
 		// foo
 		// ```
-		// The fence cannot close inside the blockquote (line 2 has no `>`),
-		// so the opening backticks are treated as paragraph text.
+		// the line "foo" has no `>`, so it ends the quote and the fence in it
 		const input = '> ```\nfoo\n```\n';
 		const { nodes } = parse_markdown_svelte(input);
 		const children = non_breaks(nodes);
-
-		expect(children.length).toBeGreaterThanOrEqual(1);
-		expect(children[0].kind).toBe('block_quote');
-
-		// The blockquote should contain a paragraph (not a code_fence) with
-		// the literal backticks as text.
+		expect(children.map((n) => n.kind)).toEqual([
+			'block_quote',
+			'paragraph',
+			'code_fence',
+		]);
 		const bq_children = non_breaks(nodes, children[0].index);
-		expect(bq_children.length).toBe(1);
-		expect(bq_children[0].kind).toBe('paragraph');
-
-		const para_text_children = non_breaks(nodes, bq_children[0].index);
-		expect(para_text_children.length).toBeGreaterThan(0);
-		expect(para_text_children[0].kind).toBe('text');
-		expect(get_value(nodes, para_text_children[0].index, input)).toBe('```');
+		expect(bq_children.map((n) => n.kind)).toEqual(['code_fence']);
 	});
 
 	test('pfm: code fence with proper > continuation inside blockquote', () => {
@@ -688,7 +680,7 @@ describe('a line that ends a paragraph in a block quote, with something open', (
 
 	test('a fence line is not text of the emphasis', () => {
 		expect(checked_tree('> *a\n> ```\n> b*\n')).toBe(
-			quote('    paragraph', '      text "*a"', '    code_fence "> b*\\n"')
+			quote('    paragraph', '      text "*a"', '    code_fence "b*\\n"')
 		);
 	});
 

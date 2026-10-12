@@ -351,67 +351,17 @@ function escape_node_text(c: Cursor): string {
 	return escape_text_at(c, c.index, c.value_start, c.value_end, false);
 }
 
-function bq_depth(n: Uint32Array, i: number): number {
-	let depth = 0;
-	for (
-		let p = n[i * W.stride + W.parent];
-		p !== Slot.NONE;
-		p = n[p * W.stride + W.parent]
-	)
-		if ((n[p * W.stride] & 0xff) === K.BLOCK_QUOTE) depth++;
-	return depth;
-}
-
-/** each value line keeps its quote markers, skipped as skip_bq_markers does */
-function strip_bq(text: string, depth: number): string {
-	const len = text.length;
-	let out = '';
-	let pos = 0;
-	for (;;) {
-		let mark = pos;
-		for (let i = 0; i < depth; i++) {
-			while (
-				pos < len &&
-				(text.charCodeAt(pos) === 32 || text.charCodeAt(pos) === 9)
-			)
-				pos++;
-			if (pos >= len || text.charCodeAt(pos) !== 62) {
-				// not a marker, keep the indent
-				pos = mark;
-				break;
-			}
-			pos++;
-			if (pos < len && text.charCodeAt(pos) === 32) pos++;
-			mark = pos;
-		}
-		let eol = pos;
-		while (eol < len) {
-			const ch = text.charCodeAt(eol);
-			if (ch === 10) break;
-			if (ch === 13) {
-				if (eol + 1 < len && text.charCodeAt(eol + 1) === 10) eol++;
-				break;
-			}
-			eol++;
-		}
-		if (eol >= len) return out + text.slice(pos);
-		out += text.slice(pos, eol + 1);
-		pos = eol + 1;
-	}
-}
-
 function fence_text(c: Cursor): string {
 	if (fs !== null) return fence_text_from(c);
-	const depth = bq_depth(c.words, c.index);
-	return depth === 0 ? c.text() : strip_bq(c.text(), depth);
+	return c.text();
 }
 
 /** equals escape_code of fence_text */
 function escape_fence_text(c: Cursor): string {
 	if (fs !== null) return escape_code(fence_text_from(c));
-	const depth = bq_depth(c.words, c.index);
-	if (depth === 0) return escape_code_text(c);
-	return escape_code(strip_bq(c.text(), depth));
+	// a fence in a block quote or a list item holds its code as a string, without what they put before its lines
+	const text = c.prebuilt;
+	return text === undefined ? escape_code_text(c) : escape_code(text);
 }
 
 /** equals escape_code of c.text, reading source slices through the escape index */
@@ -5857,8 +5807,7 @@ let fs: FenceSources | null = null;
 function fence_text_from(c: Cursor): string {
 	const from = fs!.get(c.index);
 	if (from !== undefined) return from.text;
-	const depth = bq_depth(c.words, c.index);
-	return depth === 0 ? c.text() : strip_bq(c.text(), depth);
+	return c.text();
 }
 
 /** fence_info of a render with fence sources */
@@ -6138,8 +6087,7 @@ function comp_hl_code(
  */
 function hl_source(c: Cursor, text: string, at: number, len: number): number {
 	const vs = c.value_start;
-	if (c.prebuilt === undefined && bq_depth(c.words, c.index) === 0)
-		return vs + at;
+	if (c.prebuilt === undefined) return vs + at;
 	const src = c.source;
 	const ve = c.value_end;
 	let line_start = vs;

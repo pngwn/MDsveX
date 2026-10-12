@@ -8,7 +8,7 @@ root
         text "done"
       paragraph
         text "second paragraph"
-      code_fence info="js" "  let x = 1;"
+      code_fence info="js" "let x = 1;"
     list_item
       paragraph
         text "plain"

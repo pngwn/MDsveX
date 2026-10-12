@@ -841,7 +841,7 @@ describe('task lists', () => {
 		).toBe(
 			'<ul>\n' +
 				`<li><p>${ON}a</p>` +
-				'<pre><code class="language-js">  b</code></pre>' +
+				'<pre><code class="language-js">b</code></pre>' +
 				`<ul>\n<li>${OFF}c</li>\n\n</ul>` +
 				'<blockquote>\n<p>d</p>\n</blockquote></li>\n' +
 				'\n</ul>'

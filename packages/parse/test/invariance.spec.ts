@@ -22,36 +22,10 @@ import {
 	shrink,
 	watch_guard,
 } from './invariance';
-import type { Invariant, Rule, Shape, Site } from './invariance';
-
-function deep(kids: Shape[], change: (shape: Shape) => Shape): Shape[] {
-	return kids.map((kid) => change({ ...kid, kids: deep(kid.kids, change) }));
-}
-
-/** a value that runs over lines is a source range, so it holds what the container puts before each line */
-function prefixed(
-	site: Site,
-	kinds: string[],
-	from: number,
-	prefix: (row: string) => string
-): Rule['expect'] {
-	return (kids, at) =>
-		at !== site
-			? kids
-			: deep(kids, (shape) => {
-					if (shape.value === null || !kinds.includes(shape.kind)) return shape;
-					const rows = shape.value.split('\n');
-					const value = rows.map((row, i) => (i < from ? row : prefix(row)));
-					return { ...shape, value: value.join('\n') };
-				});
-}
+import type { Invariant, Rule, Site } from './invariance';
 
 function near(seen: Seen): Container {
 	return seen.inside[seen.inside.length - 1] ?? 'root';
-}
-
-function within(seen: Seen, ...sites: Container[]): boolean {
-	return sites.some((site) => seen.inside.includes(site));
 }
 
 function is(seen: Seen, ...kinds: string[]): boolean {
@@ -98,13 +72,6 @@ const INTENDED: Intended[] = [
 				: kids,
 	},
 	{
-		what: 'the value of a fence in a block quote keeps the marker of each line',
-		why: 'the value is a source range and the renderer drops the markers (strip_bq in html_cursor.ts)',
-		expect: prefixed('block_quote', ['code_fence'], 0, (row) =>
-			row === '' ? '>' : `> ${row}`
-		),
-	},
-	{
 		what: 'a list marker and a thematic break of its character are one thematic break',
 		why: 'CommonMark, the baseline: `- ---` and `* * *` are thematic breaks before they are list items (examples 60 and 61)',
 		// a rule does not see the marker of the list, so no break of dashes or asterisks opens an item
@@ -128,62 +95,37 @@ interface Known extends Rule {
 	example: { site: Site; source: string; loose?: boolean };
 }
 
-/** a paragraph that holds only tags, which the root gives no paragraph node */
-function only_tags(seen: Seen): boolean {
-	return (
-		is(seen, 'paragraph') &&
-		seen.piece.kids.every((kid) =>
-			['html_inline', 'html_void', 'comment_inline', 'mustache'].includes(
-				kid.kind
-			)
-		)
-	);
+/** the last piece a block ends with, itself when it holds no block */
+function last_leaf(piece: Piece): Piece {
+	const last = piece.kids[piece.kids.length - 1];
+	return piece.kind === 'list' || piece.kind === 'list_item'
+		? last === undefined
+			? piece
+			: last_leaf(last)
+		: piece;
 }
 
 /** every known failure, each one takes its pieces out of the documents until its issue is fixed */
 const KNOWN: Known[] = [
 	{
-		issue: 1050,
-		what: 'an html element in a block quote holds its lines as inline content, and a tag or a comment in a list item there keeps a paragraph open',
-		drop: (seen) =>
-			within(seen, 'block_quote') &&
-			(is(seen, 'html_element', 'raw_element') ||
-				(is(seen, 'comment', 'component') && within(seen, 'list_item'))),
-		example: { site: 'block_quote', source: '<div>\na\n</div>' },
-	},
-	{
-		issue: 1020,
-		what: 'an html element does not open inside a list item',
-		drop: (seen) =>
-			is(seen, 'html_element', 'raw_element', 'html_line') &&
-			within(seen, 'list_item'),
-		example: { site: 'list_item', source: '<div>\na\n</div>' },
-	},
-	{
 		issue: 1052,
-		what: 'a comment before text on its line is a block at the root and inline in a container',
+		what: 'a comment before text on its line is a block in every container and inline in a table cell',
 		drop: (seen) =>
 			(is(seen, 'comment_inline') &&
 				seen.before === null &&
 				(seen.under.length === 0 ||
 					seen.under[seen.under.length - 1] === 'paragraph')) ||
 			(seen.piece.join === '\n' && seen.before?.kind === 'comment'),
-		example: { site: 'block_quote', source: '<!-- a --> b' },
-	},
-	{
-		issue: 1058,
-		what: 'an inline element that opens a paragraph and closes on a later line splits the paragraph',
-		drop: (seen) =>
-			is(seen, 'html_inline') &&
-			seen.before === null &&
-			inline_text([seen.piece]).includes('\n'),
-		example: { site: 'block_quote', source: '<b>a\nb</b> c' },
+		example: { site: 'table_cell', source: '<!-- a --> b' },
 	},
 	{
 		issue: 1002,
 		what: 'text after a block level element that closes on its line has no paragraph',
 		drop: (seen) =>
-			(seen.piece.join === '\n' && seen.before?.kind === 'html_line') ||
+			// the line after it is text of the same paragraph, a list item passes it on to the line after the list
+			(seen.piece.join === '\n' &&
+				seen.before !== null &&
+				last_leaf(seen.before).kind === 'html_line') ||
 			// an element that is no block does not end a paragraph, the line in it is then inline
 			(is(seen, 'html_element') &&
 				seen.piece.join === '\n' &&
@@ -206,7 +148,7 @@ const KNOWN: Known[] = [
 	{
 		issue: 1063,
 		what: 'text after a closing fence on its line is lost',
-		edited: ['content', /\n`{3,}[ \t]*[^\s`]/],
+		edited: ['content', /\n[> ]*`{3,}[ \t]*[^\s`]/],
 		example: { site: 'root', source: '```\na\n``` q000\n' },
 	},
 	{
@@ -217,6 +159,12 @@ const KNOWN: Known[] = [
 			site: 'root',
 			source: '| a | b |\n|---|---|\n| c | <i\n> | q000 |\n',
 		},
+	},
+	{
+		issue: 1076,
+		what: 'a paragraph that opens at a tag loses its wrapper when a backtick in an autolink or a link destination pairs with one after the element',
+		edited: ['placed', /`[>)]<\/\w+>`/],
+		example: { site: 'root', source: '<Badge><ht:`></Badge>`\n' },
 	},
 	{
 		issue: 1071,
@@ -235,23 +183,6 @@ const KNOWN: Known[] = [
 		what: 'a repeated attribute on a tag keeps the last value and loses the first',
 		edited: ['content', /\s(\w+)=\S*\s+\1=/],
 		example: { site: 'root', source: '<img alt=q000 alt="">\n' },
-	},
-	{
-		issue: 1054,
-		what: 'a comment over lines keeps the quote marker or the indent of each line',
-		drop: (seen) =>
-			is(seen, 'comment') &&
-			seen.piece.form === 1 &&
-			within(seen, 'block_quote', 'list_item'),
-		example: { site: 'block_quote', source: '<!-- a\nb -->' },
-	},
-	{
-		issue: 1055,
-		what: 'a fence in a list item keeps the indent of each line in its code',
-		expect: prefixed('list_item', ['code_fence'], 0, (row) =>
-			row === '' ? '' : `  ${row}`
-		),
-		example: { site: 'list_item', source: '```\na\n```' },
 	},
 ];
 

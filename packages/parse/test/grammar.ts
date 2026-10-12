@@ -550,7 +550,8 @@ export function contained(container: Container, rows: string[]): string[] {
 /**
  * the document with a blank line where two blocks would read as one without it
  * two quotes are one quote, a 7. after a paragraph is its text as only 1. ends one,
- * and an element that opens under a line of only a tag is inline in that line's paragraph
+ * and an element that opens under a line of only a tag is inline in that line's paragraph,
+ * as a component is under any block that ends in a line of text
  */
 export function spaced(blocks: Piece[]): Piece[] {
 	return blocks.map((p, i) => {
@@ -561,7 +562,9 @@ export function spaced(blocks: Piece[]): Piece[] {
 				(p.kind === 'block_quote' && blocks[i - 1].kind === 'block_quote') ||
 				(p.kind === 'html_element' &&
 					(blocks[i - 1].kind === 'svelte_tag' ||
-						blocks[i - 1].kind === 'component')));
+						blocks[i - 1].kind === 'component' ||
+						// <Box> is no block level tag, it ends no paragraph, list item or table
+						HTML_BLOCKS[p.form] === '<Box>')));
 		return { ...p, kids: spaced(p.kids), join: joins ? '\n\n' : p.join };
 	});
 }
