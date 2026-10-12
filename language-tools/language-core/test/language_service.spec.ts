@@ -338,3 +338,55 @@ describe("with a mdsvex.config.json", () => {
 		expect(p.hover("src/doc.svx", "![c]")).toContain("const img: Component<");
 	});
 });
+
+describe("the plugin_data export", () => {
+	const DOC = "# One\n\n{plugin_data.toc.headings.length} {plugin_data.other}\n";
+	const USE = [
+		'import { plugin_data } from "./doc.svx";',
+		"export const n: number = plugin_data.toc.headings.length;",
+		"export const wrong: string = plugin_data.toc.headings;",
+		"",
+	].join("\n");
+	const TYPES = [
+		"export {};",
+		'declare module "mdsvex" {',
+		"\tinterface PluginData {",
+		"\t\ttoc: { headings: { depth: number; text: string }[] };",
+		"\t}",
+		"}",
+		"",
+	].join("\n");
+
+	it("resolves in the document and from an import when the config has plugins", () => {
+		const p = project({
+			"mdsvex.config.json": JSON.stringify({
+				plugins: [{ name: "toc", module: "./toc.js", directives: [] }],
+			}),
+			"src/doc.svx": DOC,
+			"src/use.ts": USE,
+			"src/types.d.ts": TYPES,
+		});
+		try {
+			expect(p.diagnostics("src/doc.svx")).toEqual([]);
+			expect(p.hover("src/doc.svx", "plugin_data.toc")).toContain("PluginData");
+			expect(p.diagnostics("src/use.ts").map((d) => d.text)).toEqual(["wrong"]);
+		} finally {
+			p.dispose();
+		}
+	});
+
+	it("is not declared without plugins", () => {
+		const p = project({
+			"mdsvex.config.json": JSON.stringify({}),
+			"src/doc.svx": DOC,
+		});
+		try {
+			expect(p.diagnostics("src/doc.svx").map((d) => d.text)).toEqual([
+				"plugin_data",
+				"plugin_data",
+			]);
+		} finally {
+			p.dispose();
+		}
+	});
+});
