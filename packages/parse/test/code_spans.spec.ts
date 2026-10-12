@@ -26,6 +26,27 @@ const load_fixture = (id: string): string =>
 	readFileSync(resolve(fixtures_root, `${id}.md`), 'utf8').trimEnd();
 
 describe('code spans', () => {
+	test.each([
+		{ delimiter: '`', spaces: ' ' },
+		{ delimiter: '`', spaces: '  ' },
+		{ delimiter: '`', spaces: '   ' },
+		{ delimiter: '`', spaces: '    ' },
+		{ delimiter: '``', spaces: '  ' },
+		{ delimiter: '``', spaces: '   ' },
+		{ delimiter: '``', spaces: '    ' },
+	])(
+		'preserves a code span containing only spaces ($spaces, $delimiter)',
+		({ delimiter, spaces }) => {
+			const input = `${delimiter}${spaces}${delimiter}`;
+			const { nodes } = parse_markdown_svelte(input);
+			const root = nodes.get_node();
+			const paragraph = nodes.get_node(root.children[0]);
+			const code_span = nodes.get_node(paragraph.children[0]);
+
+			expect(input.slice(code_span.value[0], code_span.value[1])).toBe(spaces);
+		}
+	);
+
 	test('pfm example 328', () => {
 		const input = load_fixture('328');
 		const { nodes } = parse_markdown_svelte(input);

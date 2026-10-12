@@ -2150,6 +2150,15 @@ export class PFMParser {
 		this.out.set_value_start(id, pos);
 	}
 
+	private span_is_only_spaces(start: number, end: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		for (let pos = start; pos < end; pos++) {
+			if (char_code_at.call(source, pos - base) !== SPACE) return false;
+		}
+		return true;
+	}
+
 	/**
 	 * the value end of a span whose closer is at the cursor, only a span that ran over a line
 	 * still starts at a space here, a space before the closer too and both are padding as on one line
@@ -8191,11 +8200,18 @@ export class PFMParser {
 						code === BACKTICK &&
 						char_code_at.call(source, this.cursor + 1 - base) !== BACKTICK
 					) {
+						const only_spaces = this.span_is_only_spaces(
+							this.checkpoint_cursor,
+							this.cursor
+						);
 						this.states.pop();
-						this.span_start(current_node, this.checkpoint_cursor + 1);
+						this.span_start(
+							current_node,
+							this.checkpoint_cursor + (only_spaces ? 0 : 1)
+						);
 						this.span_close(
 							current_node,
-							this.cursor - 1,
+							this.cursor - (only_spaces ? 0 : 1),
 							this.cursor + this.extra
 						);
 						this.node_stack.pop();
@@ -8205,11 +8221,18 @@ export class PFMParser {
 						char_code_at.call(source, this.cursor + 1 - base) === BACKTICK &&
 						char_code_at.call(source, this.cursor + 2 - base) !== BACKTICK
 					) {
+						const only_spaces = this.span_is_only_spaces(
+							this.checkpoint_cursor,
+							this.cursor
+						);
 						this.states.pop();
-						this.span_start(current_node, this.checkpoint_cursor + 1);
+						this.span_start(
+							current_node,
+							this.checkpoint_cursor + (only_spaces ? 0 : 1)
+						);
 						this.span_close(
 							current_node,
-							this.cursor - 1,
+							this.cursor - (only_spaces ? 0 : 1),
 							this.cursor + this.extra
 						);
 						this.node_stack.pop();
