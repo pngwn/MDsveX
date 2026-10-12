@@ -906,6 +906,157 @@ describe('a block directive inside an html element', () => {
 			'',
 			'- d',
 			'# h',
+			'> q',
+			'> - r',
+			'>',
+		];
+		for (let i = 0; i < 400; i++) {
+			const picked: string[] = [];
+			const count = 1 + Math.floor(rand() * 6);
+			for (let k = 0; k < count; k++) picked.push(pick(rand, rows));
+			inside(pick(rand, ['div', 'div', 'section']), ...picked);
+		}
+	}, 30_000);
+});
+
+describe('a block quote inside an html element', () => {
+	const blocks = (tree: string) =>
+		tree.split('\n').filter((row) => row.trim() !== 'line_break');
+
+	/** the tree of the lines in an element, its blocks are those of the lines alone one level down */
+	function inside(tag: string, ...rows: string[]): string {
+		const plain = rows.map((row) => row + '\n').join('');
+		const source = `<${tag}>\n${plain}</${tag}>\n`;
+		const outside = blocks(every_path(plain))
+			.slice(1)
+			.map((row) => '  ' + row);
+		const tree = every_path(source);
+		expect(blocks(tree).join('\n'), JSON.stringify(source)).toBe(
+			lines('root', `  html tag="${tag}"`, ...outside)
+		);
+		return tree;
+	}
+
+	test('a quote opens and ends at the close tag line', () => {
+		expect(inside('div', '> q')).toBe(
+			lines(
+				'root',
+				'  html tag="div"',
+				'    line_break',
+				'    block_quote',
+				'      paragraph',
+				'        text "q"',
+				'    line_break',
+				'  line_break'
+			)
+		);
+	});
+
+	test('over lines, nested, and with blocks in it', () => {
+		inside('div', '> q', '> r');
+		inside('div', '> > n', '> m');
+		inside('div', '> # h', '>', '> - a', '> - b');
+		inside('div', '> ```', '> c', '> ```');
+		inside('div', '> :::y[]', '> a', '> :::');
+		inside('div', '>');
+		inside('div', '>q');
+		inside('div', '  > q');
+	});
+
+	test('after a paragraph and before one', () => {
+		inside('div', 'a', '', '> q', '', 'b');
+		inside('div', '> q', 'b');
+	});
+
+	test('in a nested and a phrasing element', () => {
+		inside('span', '> q');
+		expect(every_path('<div>\n<section>\n> q\n</section>\n</div>\n')).toBe(
+			lines(
+				'root',
+				'  html tag="div"',
+				'    line_break',
+				'    html tag="section"',
+				'      line_break',
+				'      block_quote',
+				'        paragraph',
+				'          text "q"',
+				'      line_break',
+				'    line_break',
+				'  line_break'
+			)
+		);
+	});
+
+	test('in an element in a container directive and in a svelte block', () => {
+		expect(every_path(':::x[]\n<div>\n> q\n</div>\n:::\n')).toContain(
+			lines(
+				'    html tag="div"',
+				'      line_break',
+				'      block_quote',
+				'        paragraph',
+				'          text "q"'
+			)
+		);
+		expect(every_path('{#if x}\n<div>\n> q\n</div>\n{/if}\n')).toContain(
+			lines(
+				'      html tag="div"',
+				'        line_break',
+				'        block_quote',
+				'          paragraph',
+				'            text "q"'
+			)
+		);
+	});
+
+	test('a close tag at the end of a quoted line closes the element', () => {
+		expect(every_path('<div>\n> q</div>\nafter\n')).toBe(
+			lines(
+				'root',
+				'  html tag="div"',
+				'    line_break',
+				'    block_quote',
+				'      paragraph',
+				'        text "q"',
+				'  line_break',
+				'  paragraph',
+				'    text "after"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('a quote in an element that never closes is a quote at the root', () => {
+		expect(every_path('<div>\n> q\n')).toBe(
+			lines(
+				'root',
+				'  paragraph',
+				'    text "<div>"',
+				'  line_break',
+				'  block_quote',
+				'    paragraph',
+				'      text "q"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('random quoted lines build the blocks they build outside the element', () => {
+		const rand = random(1001);
+		const rows = [
+			'> q',
+			'> q',
+			'> r *s*',
+			'> > n',
+			'>',
+			'> - i',
+			'> # h',
+			'> ---',
+			'> `c`',
+			'a',
+			'',
+			'- d',
+			'# h',
+			'  > t',
 		];
 		for (let i = 0; i < 400; i++) {
 			const picked: string[] = [];

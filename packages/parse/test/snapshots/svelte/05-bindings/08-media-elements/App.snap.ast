@@ -12,7 +12,9 @@ root
     text "Blender Open Projects"
     text "</a"
     line_break
-    text ">. CC-BY"
+    block_quote
+      paragraph
+        text ". CC-BY"
     line_break
   line_break
   line_break

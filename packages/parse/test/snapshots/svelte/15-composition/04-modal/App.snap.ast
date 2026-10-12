@@ -60,7 +60,7 @@ root
           text "merriam-webster.com"
           text "</a"
           line_break
-          text ">"
+          block_quote
           line_break
       line_break
   line_break

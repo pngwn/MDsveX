@@ -10468,6 +10468,21 @@ export class PFMParser {
 			return false;
 		}
 
+		if (code === CLOSE_ANGLE_BRACKET) {
+			let p = this.cursor + 1;
+			if (p < length && char_code_at.call(source, p - base) === SPACE) p++;
+			this.block_quote_depth++;
+			const bq_id = this.emit_open(
+				NodeKind.block_quote,
+				this.cursor,
+				current_node
+			);
+			this.node_stack.push(bq_id);
+			this.states.push(StateKind.block_quote);
+			this.chomp(p, true);
+			return false;
+		}
+
 		if (code === OPEN_ANGLE_BRACKET) {
 			// nested html at block level
 			const blk_comment = this.try_parse_html_comment(this.cursor + 1);
