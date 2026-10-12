@@ -170,3 +170,52 @@ describe('footnotes in the cached render', () => {
 		expect(r.blocks).toHaveLength(1);
 	});
 });
+
+describe('footnote replacements', () => {
+	const scope = (...names: string[]) =>
+		new ComponentScope([{ specifier: 'm', names }], 'G');
+	const SUP =
+		'<sup><a href="#fn-a" id="fnref-1" role="doc-noteref">1</a></sup>';
+
+	it('a footnote replacement takes the reference, with the note as a snippet', () => {
+		const html = render_all('x[^a]\n\n[^a]: *y*\n', {
+			scope: scope('footnote'),
+		});
+		expect(html).toBe(
+			"<script>\nimport { footnote as Footnote_MDSVEX_G } from 'm';\n</script>" +
+				'<p>x<Footnote_MDSVEX_G label={"a"} number={1} href={"#fn-a"} id={"fnref-1"}>' +
+				'{#snippet note()}<p><strong>y</strong></p>{/snippet}' +
+				SUP +
+				'</Footnote_MDSVEX_G></p>' +
+				`${OPEN}<li id="fn-a"><p><strong>y</strong>${BACK}</p></li>\n${CLOSE}`
+		);
+	});
+
+	it('a footnotes replacement takes the section, with the list as its children', () => {
+		const html = render_all('x[^a]\n\n[^a]: y\n', {
+			scope: scope('footnotes'),
+		});
+		expect(html).toBe(
+			"<script>\nimport { footnotes as Footnotes_MDSVEX_G } from 'm';\n</script>" +
+				`<p>x${SUP}</p>` +
+				`<Footnotes_MDSVEX_G>\n<ol>\n<li id="fn-a"><p>y${BACK}</p></li>\n</ol>\n</Footnotes_MDSVEX_G>`
+		);
+	});
+
+	it('a note that refers to itself or to the note that holds it ends', () => {
+		const html = render_all('x[^a]\n\n[^a]: y[^a] z[^b]\n[^b]: w[^a]\n', {
+			scope: scope('footnote'),
+		});
+		// each reference outside a snippet has one, the ones inside a snippet have none
+		expect(html.split('{#snippet note()}')).toHaveLength(5);
+		expect(html).not.toMatch(
+			/\{#snippet note\(\)\}(?:(?!\{\/snippet\})[^])*\{#snippet/
+		);
+	});
+
+	it('a document with no footnote imports neither', () => {
+		expect(render_all('x\n', { scope: scope('footnote', 'footnotes') })).toBe(
+			'<p>x</p>'
+		);
+	});
+});

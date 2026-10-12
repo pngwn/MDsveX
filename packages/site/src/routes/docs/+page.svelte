@@ -130,6 +130,7 @@ const nav = [
 		[
 			["errors", "docs#footnote-errors", false],
 			["options", "docs#footnote-options", false],
+			["footnote components", "docs#footnote-components", false],
 			["while streaming", "docs#footnotes-while-streaming", false],
 		],
 	],
