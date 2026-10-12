@@ -345,9 +345,10 @@ MARK[UNDERSCORE] = 1;
 MARK[TILDE] = 1;
 
 // the first characters block_start has an arm for, any other opens a paragraph
+// 2 marks those whose block may end a paragraph, a table, a definition and an image do not
 const BLOCK_START = new Uint8Array(128);
-for (const char of '#`*-_<>|{[:!+0123456789')
-	BLOCK_START[char.charCodeAt(0)] = 1;
+for (const char of '|[!') BLOCK_START[char.charCodeAt(0)] = 1;
+for (const char of '#`*-_<>{:+0123456789') BLOCK_START[char.charCodeAt(0)] = 3;
 const TEXT_BREAK = new Uint8Array(128);
 TEXT_BREAK[LINEFEED] = 1;
 TEXT_BREAK[BACKSLASH] = 1;
@@ -3583,95 +3584,50 @@ export class PFMParser {
 	}
 
 	/**
-	 * single-pass lookahead: does a block-level construct start at `pos`?
-	 * skips whitespace once, checks the first meaningful character, then
-	 * dispatches to the specific predicate only when the char could start
-	 * a block construct. for continuation lines (most common case) this
-	 * returns false after one whitespace scan + one char check.
+	 * whether the line at pos ends a paragraph, it is blank or starts a block that may interrupt one
+	 * a line of plain text answers after one whitespace scan and one table read
 	 */
-	private is_block_interrupt(pos: number): boolean {
+	private line_interrupts(pos: number): boolean {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
 		let p = pos;
-
-		// skip leading whitespace once
 		while (p < length) {
 			const ch = char_code_at.call(source, p - base);
 			if (ch !== SPACE && ch !== TAB) break;
 			p++;
 		}
-
-		// end of buffer -> blank line only if finished
+		// the end of the input is a blank line once it is all here
 		if (p >= length) return this.finished;
-
 		const ch = char_code_at.call(source, p - base);
-
-		// blank line
 		if (ch === LINEFEED) return true;
+		if (ch >= 128 || (BLOCK_START[ch] & 2) === 0) return false;
+		return this.block_start(ch, 0, pos) === 1;
+	}
 
-		// svelte block boundary ({: or {/) interrupts paragraphs
-		if (ch === OPEN_BRACE && this.is_svelte_block_boundary(p)) return true;
+	/** a block level tag at pos or the close tag of a container ends a paragraph, an inline tag or a component does not */
+	private tag_interrupts(pos: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		let q = pos + 1;
+		const closing = q < length && char_code_at.call(source, q - base) === SLASH;
+		if (closing) q++;
 		if (
-			ch === OPEN_BRACE &&
-			char_code_at.call(source, p + 1 - base) === OCTOTHERP &&
-			is_ascii_letter(char_code_at.call(source, p + 2 - base))
-		)
-			return true;
-
-		// fast exit: first non-ws char can't start any block construct
-		switch (ch) {
-			case OCTOTHERP:
-				return this.is_heading_start(pos);
-			case CLOSE_ANGLE_BRACKET:
-				return true;
-			case BACKTICK:
-				return (
-					p + 2 < length &&
-					char_code_at.call(source, p + 1 - base) === BACKTICK &&
-					char_code_at.call(source, p + 2 - base) === BACKTICK
-				);
-			case ASTERISK:
-			case DASH:
-			case UNDERSCORE:
-				return (
-					this.is_thematic_break_start(pos) ||
-					(ch !== UNDERSCORE && this.is_list_item_start_interrupt(pos))
-				);
-			case PLUS:
-				return this.is_list_item_start_interrupt(pos);
-			case OPEN_ANGLE_BRACKET: {
-				// block-level html tag (`<ul>`, `</p>`, etc.) at line start
-				// interrupts an open paragraph.
-				let q = p + 1;
-				const closing =
-					q < length && char_code_at.call(source, q - base) === SLASH;
-				if (closing) q++;
-				if (
-					q >= length ||
-					!this.is_tag_name_start(char_code_at.call(source, q - base))
-				) {
-					return false;
-				}
-				const name_start = q;
-				while (
-					q < length &&
-					this.is_tag_name_char(char_code_at.call(source, q - base))
-				)
-					q++;
-				const name = string_slice.call(source, name_start - base, q - base);
-				if (this.is_block_html_tag(name)) return true;
-				return closing && this.closes_container(name);
-			}
-			case COLON:
-				// :: or ::: starts a block directive
-				return (
-					p + 1 < length && char_code_at.call(source, p + 1 - base) === COLON
-				);
-			default:
-				if (ch >= 48 && ch <= 57) return this.is_list_item_start_interrupt(pos);
-				return false;
+			q >= length ||
+			!this.is_tag_name_start(char_code_at.call(source, q - base))
+		) {
+			return false;
 		}
+		const name_start = q;
+		while (
+			q < length &&
+			this.is_tag_name_char(char_code_at.call(source, q - base))
+		)
+			q++;
+		const name = string_slice.call(source, name_start - base, q - base);
+		if (this.is_block_html_tag(name)) return true;
+		return closing && this.closes_container(name);
 	}
 
 	/**
@@ -4991,7 +4947,7 @@ export class PFMParser {
 			(p >= length || string_index_of.call(source, '\n', p - base) === -1)
 		)
 			return false;
-		return this.is_block_interrupt(p);
+		return this.line_interrupts(p);
 	}
 
 	/** the paragraph keeps its wrapper only with text outside tags and no block level tag */
@@ -6437,7 +6393,7 @@ export class PFMParser {
 	// delimiter states must close wherever inline pops or the two ping pong
 	private lf_ends_inline(lf: number): boolean {
 		const np = lf + 1;
-		if (this.is_block_interrupt(np)) {
+		if (this.line_interrupts(np)) {
 			this.interrupt_pos = np;
 			this.interrupt_list_depth = this.list_depth;
 			this.interrupt_svelte_depth = this.svelte_block_depth;
@@ -6480,7 +6436,7 @@ export class PFMParser {
 					return true;
 				}
 			} else if (!this.lf_ends_inline(this.cursor)) {
-				// is_block_interrupt in lf_ends_inline covers blank lines, headings and thematic breaks as above
+				// line_interrupts in lf_ends_inline covers blank lines, headings and thematic breaks as above
 				return false;
 			}
 		}
@@ -6702,7 +6658,7 @@ export class PFMParser {
 
 						default: {
 							if (code < 128 && BLOCK_START[code] !== 0) {
-								const started = this.block_start(code, current_node);
+								const started = this.block_start(code, current_node, -1);
 								if (started === -1) break main_loop;
 								if (started === 1) continue;
 							}
@@ -6792,12 +6748,12 @@ export class PFMParser {
 							continue;
 						}
 
-						// not in block quote - use is_block_interrupt for the common case
+						// not in block quote, the probe answers for the common case
 						if (
 							(this.interrupt_pos === next_pos &&
 								this.interrupt_list_depth === this.list_depth &&
 								this.interrupt_svelte_depth === this.svelte_block_depth) ||
-							this.is_block_interrupt(next_pos)
+							this.line_interrupts(next_pos)
 						) {
 							this.emit_close(current_node, this.cursor);
 							this.states.pop();
@@ -8505,51 +8461,14 @@ export class PFMParser {
 						continue;
 					}
 
-					// in feed mode a heading, fence or thematic break needs its whole line, a row taken early could not become one
-					if (
-						!this.finished &&
-						(code === ASTERISK ||
-							code === DASH ||
-							code === UNDERSCORE ||
-							code === OCTOTHERP ||
-							code === BACKTICK) &&
-						string_index_of.call(source, '\n', this.cursor - base) === -1
-					) {
-						break main_loop;
-					}
-
-					// block-level interrupts end the table
-					if (code === OCTOTHERP && this.is_heading_start(this.cursor)) {
-						this.end_table();
-						continue;
-					}
-					if (
-						code === BACKTICK &&
-						this.cursor + 2 < length &&
-						char_code_at.call(source, this.cursor + 1 - base) === BACKTICK &&
-						char_code_at.call(source, this.cursor + 2 - base) === BACKTICK
-					) {
-						this.end_table();
-						continue;
-					}
-					if (code === CLOSE_ANGLE_BRACKET) {
-						this.end_table();
-						continue;
-					}
-					if (code === OPEN_ANGLE_BRACKET && this.html_tag_stack.length !== 0) {
-						const outer = this.row_closes_outer();
-						if (outer === -1) break main_loop;
-						if (outer === 1) {
+					// a row that opens with a pipe is the common one and never ends the table
+					if (code !== PIPE) {
+						const ends = this.table_line_ends();
+						if (ends === -1) break main_loop;
+						if (ends === 1) {
 							this.end_table();
 							continue;
 						}
-					}
-					if (
-						(code === ASTERISK || code === DASH || code === UNDERSCORE) &&
-						this.is_thematic_break_start(this.cursor)
-					) {
-						this.end_table();
-						continue;
 					}
 
 					// start a new data row eagerly
@@ -10182,7 +10101,7 @@ export class PFMParser {
 			const ended = this.branch_token_ends();
 			if (ended !== 0) return ended === -1;
 		}
-		const started = this.block_start(code, current_node);
+		const started = this.block_start(code, current_node, -1);
 		if (started !== 0) return started === -1;
 		if (code === COLON && this.directive_colon_counts.length !== 0) {
 			const ended = this.fence_ends_elements();
@@ -10308,7 +10227,7 @@ export class PFMParser {
 			return false;
 		}
 
-		const started = this.block_start(code, current_node);
+		const started = this.block_start(code, current_node, -1);
 		if (started !== 0) return started === -1;
 		if (code === OPEN_ANGLE_BRACKET) {
 			const close = this.try_parse_html_close_tag(this.cursor + 1);
@@ -11053,22 +10972,41 @@ export class PFMParser {
 	}
 
 	/**
-	 * the block a line starts at the cursor, one dispatch for every container
+	 * the block a line starts, one dispatch for every container
+	 * with line below 0 it opens the block at the cursor, code is the char there
+	 * with a line start it is a probe, code is the first char of that line past its
+	 * whitespace, nothing is emitted and it answers whether a block that may end a paragraph starts there
 	 * @returns 1 when a block opened, -1 while it is not all here, 0 when the line is a plain paragraph
 	 */
-	private block_start(code: number, current_node: number): number {
+	private block_start(
+		code: number,
+		current_node: number,
+		line: number
+	): number {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
+		const probe = line >= 0;
+		let pos = this.cursor;
+		if (probe) {
+			pos = line;
+			let ch = char_code_at.call(source, pos - base);
+			while (ch === SPACE || ch === TAB) {
+				ch = char_code_at.call(source, ++pos - base);
+			}
+		}
 		switch (code) {
 			case OCTOTHERP:
+				if (probe) return this.is_heading_start(pos) ? 1 : 0;
 				return this.start_heading(current_node) ? 1 : -1;
 
 			case BACKTICK:
+				if (probe) return this.is_fence_start(pos) ? 1 : 0;
 				this.start_fence(current_node);
 				return 1;
 
 			case CLOSE_ANGLE_BRACKET: {
+				if (probe) return 1;
 				let p = this.cursor + 1;
 				if (p < length && char_code_at.call(source, p - base) === SPACE) p++;
 				this.block_quote_depth++;
@@ -11084,6 +11022,7 @@ export class PFMParser {
 			}
 
 			case OPEN_ANGLE_BRACKET: {
+				if (probe) return this.tag_interrupts(pos) ? 1 : 0;
 				if (
 					!this.finished &&
 					string_index_of.call(source, '>', this.cursor + 1 - base) === -1
@@ -11119,6 +11058,12 @@ export class PFMParser {
 			case ASTERISK:
 			case DASH:
 			case UNDERSCORE: {
+				if (probe) {
+					return this.is_thematic_break_start(line) ||
+						(code !== UNDERSCORE && this.is_list_item_start_interrupt(line))
+						? 1
+						: 0;
+				}
 				if (this.could_be_thematic_break(this.cursor, code)) return -1;
 				if (this.is_thematic_break_start(this.cursor)) {
 					let line_end = this.cursor;
@@ -11149,12 +11094,25 @@ export class PFMParser {
 			}
 
 			case PIPE: {
+				if (probe) return 0;
 				const result = this.try_start_table(current_node);
 				if (result === false) return -1;
 				return result === true ? 1 : 0;
 			}
 
 			case OPEN_BRACE: {
+				if (probe) {
+					// a branch or close token of an open block, or a block token
+					const next = char_code_at.call(source, pos + 1 - base);
+					if (next === OCTOTHERP)
+						return is_ascii_letter(char_code_at.call(source, pos + 2 - base))
+							? 1
+							: 0;
+					return this.svelte_block_depth !== 0 &&
+						(next === COLON || next === SLASH)
+						? 1
+						: 0;
+				}
 				if (!this.finished && this.probe_matching_brace(this.cursor + 1) === -1)
 					return -1;
 				const token = this.try_parse_svelte_block_token(this.cursor);
@@ -11170,6 +11128,7 @@ export class PFMParser {
 			}
 
 			case OPEN_SQUARE_BRACKET: {
+				if (probe) return 0;
 				if (
 					!this.finished &&
 					string_index_of.call(source, '\n', this.cursor - base) === -1
@@ -11187,6 +11146,9 @@ export class PFMParser {
 			}
 
 			case COLON: {
+				// two colons open a directive or close one
+				if (probe)
+					return char_code_at.call(source, pos + 1 - base) === COLON ? 1 : 0;
 				const dir = this.try_parse_block_directive(this.cursor);
 				if (dir === false) return -1;
 				if (dir !== null) {
@@ -11197,11 +11159,13 @@ export class PFMParser {
 			}
 
 			case EXCLAMATION_MARK:
+				if (probe) return 0;
 				if (this.unwrap_images)
 					return this.open_image_para(current_node, false);
 				return 0;
 
 			default: {
+				if (probe) return this.is_list_item_start_interrupt(line) ? 1 : 0;
 				if (code === PLUS || (code >= 48 && code <= 57)) {
 					if (!this.finished && this.plus_marker_pending(this.cursor))
 						return -1;
@@ -11363,7 +11327,7 @@ export class PFMParser {
 			(code !== OPEN_ANGLE_BRACKET &&
 				(code !== OPEN_BRACE || this.at_svelte_tag(code)))
 		) {
-			const started = this.block_start(code, current_node);
+			const started = this.block_start(code, current_node, -1);
 			if (started !== 0) return started === -1;
 		}
 		this.states.push(StateKind.paragraph);
@@ -12393,20 +12357,29 @@ export class PFMParser {
 	 * close the current table and pop state.
 	 */
 	/**
-	 * a row line that starts at the close tag of an element opened before the table, no cell could close it
-	 * @returns 1 when it does, 0 when it does not, -1 when the tag is not all here yet
+	 * the line at the cursor ends the table, as it would end a paragraph
+	 * @returns 1 when it does, 0 when it is a row, -1 while a feed cannot tell yet
 	 */
-	private row_closes_outer(): number {
-		const from = this.cursor - this.source_base;
-		if (
-			!this.finished &&
-			string_index_of.call(this.source, '>', from) === -1 &&
-			string_index_of.call(this.source, '\n', from) === -1
-		) {
-			return -1;
+	private table_line_ends(): number {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		if (!this.finished) {
+			let p = this.cursor;
+			let ch = char_code_at.call(source, p - base);
+			while (ch === SPACE || ch === TAB) {
+				ch = char_code_at.call(source, ++p - base);
+			}
+			if (p >= length) return -1;
+			// a block needs its whole line, a row taken early could not become one
+			if (
+				ch < 128 &&
+				(BLOCK_START[ch] & 2) !== 0 &&
+				string_index_of.call(source, '\n', p - base) === -1
+			)
+				return -1;
 		}
-		const close = this.try_parse_html_close_tag(this.cursor + 1);
-		return close !== null && this.find_html_opener(close.tag) !== -1 ? 1 : 0;
+		return this.line_interrupts(this.cursor) ? 1 : 0;
 	}
 
 	/**

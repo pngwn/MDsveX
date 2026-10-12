@@ -7,6 +7,7 @@ import { WireEmitter } from '../src/wire_emitter';
 import { WireTreeBuilder } from '../src/wire_tree_builder';
 import { Cursor } from '../src/cursor';
 import { print_ast } from './print';
+import { fed_mismatch } from './stream_shape';
 
 function non_breaks(nodes: NodeBuffer, parent: number = 0) {
 	return nodes
@@ -1006,5 +1007,67 @@ describe('unclosed delimiters revoked at a cell boundary', () => {
 			expect(print_ast(inc, input)).toBe(batch_ast);
 		}
 		expect(data_cell_texts(parse_over_wire(input, 1), input)).toEqual(expected);
+	});
+});
+
+describe('a table ends where a paragraph would', () => {
+	const T = '| a |\n|---|\n| b |\n';
+	const kinds = (source: string, parent = 0): string[] => {
+		const { nodes } = parse_markdown_svelte(source);
+		return non_breaks(nodes, parent).map((n) => n.kind);
+	};
+	const rows = (source: string): number =>
+		(
+			print_ast(parse_markdown_svelte(source).nodes, source).match(
+				/table_row/g
+			) ?? []
+		).length;
+
+	test.each([
+		['a leaf directive', '::toc\n', ['table', 'directive_leaf']],
+		[
+			'a container directive',
+			':::box\nc\n:::\n',
+			['table', 'directive_container'],
+		],
+		['a list item', '- c\n', ['table', 'list']],
+		['an ordered list item', '1. c\n', ['table', 'list']],
+		['a svelte block', '{#if c}\nd\n{/if}\n', ['table', 'svelte_block']],
+		['a block level element', '<div>\nc\n</div>\n', ['table', 'html']],
+		['a heading', '# c\n', ['table', 'heading']],
+		['a fence', '```\nc\n```\n', ['table', 'code_fence']],
+		['a block quote', '> c\n', ['table', 'block_quote']],
+		['a thematic break', '***\n', ['table', 'thematic_break']],
+		['a line of spaces', '  \nc\n', ['table', 'paragraph']],
+	])('%s on the next line is no row', (_, after, expected) => {
+		const source = T + after;
+		expect(kinds(source)).toEqual(expected);
+		expect(rows(source)).toBe(1);
+		expect(fed_mismatch(source)).toBe('');
+	});
+
+	test.each([
+		['an inline element', '<b>c</b> | d\n'],
+		['a component', '<Chart /> | d\n'],
+		['a number that is no 1.', '7. c\n'],
+		['a link', '[c](d)\n'],
+		['a single colon', ':c\n'],
+		['an expression', '{c}\n'],
+	])('%s on the next line is a row', (_, after) => {
+		const source = T + after;
+		expect(kinds(source)).toEqual(['table']);
+		expect(rows(source)).toBe(2);
+		expect(fed_mismatch(source)).toBe('');
+	});
+
+	test.each([
+		['a svelte block', '{#if x}\n' + T + '{/if}\n', 'svelte_block'],
+		['a branch', '{#if x}\n' + T + '{:else}\nc\n{/if}\n', 'svelte_block'],
+		['a container directive', ':::box\n' + T + ':::\n', 'directive_container'],
+		['an element', '<div>\n' + T + '</div>\n', 'html'],
+	])('the line that closes %s is no row', (_, source, kind) => {
+		expect(kinds(source)).toEqual([kind]);
+		expect(rows(source)).toBe(1);
+		expect(fed_mismatch(source)).toBe('');
 	});
 });
