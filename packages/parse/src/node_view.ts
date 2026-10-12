@@ -109,6 +109,8 @@ export interface StructureHost {
 	): number;
 	/** no later sibling joins the wrapper */
 	close_wrapper(buf: NodeBuffer, wrapper: number): void;
+	/** the parser may still revoke the node */
+	pending(buf: NodeBuffer, node: number): boolean;
 }
 
 /** a directive arg reaches its component as a string prop, the renderer reads it as one */
@@ -476,6 +478,22 @@ export class NodeView {
 			child = buf.next_at(child);
 		}
 		return result;
+	}
+
+	/**
+	 * true while the parser may still revoke the node, it opened it on a guess
+	 * and has not settled it, wrap_from and close throw in a handler or a
+	 * close callback of a node that is pending
+	 *
+	 * @example
+	 * if (!node.pending) node.wrap_from('html', { tag: 'span' }).close();
+	 */
+	get pending(): boolean {
+		const buf = this._live();
+		const host = this._cache.host;
+		return host === null
+			? buf.pending_at(this._index) !== 0
+			: host.pending(buf, this._index);
 	}
 
 	/** heading depth (1-6). only meaningful when type === 'heading'. */

@@ -777,6 +777,9 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	/** the node whose handler or close callback is running */
 	private running = NONE;
 
+	/** the callbacks of a close that is final are running, their node is settled */
+	private final_close = false;
+
 	/**
 	 * a node whose open handlers wait for what the parser sends next, a
 	 * directive for its name, a code fence for its info string
@@ -1120,10 +1123,19 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		if (inner !== 0) this.set_link(wrapper, inner);
 	}
 
+	/**
+	 * the parser may still revoke the node, a close it did not give up on
+	 * settles a node before its flag is cleared, and a finished tree has none
+	 */
+	pending(buf: NodeBuffer, node: number): boolean {
+		if (this.sequential_pass || buf.pending_at(node) === 0) return false;
+		return !(this.final_close && node === this.running);
+	}
+
 	/** wrap_from and close move nodes when undone, a pending node is revoked often */
 	private refuse_pending(buf: NodeBuffer, method: string): void {
 		const running = this.running;
-		if (running !== NONE && buf.pending_at(running) !== 0) {
+		if (running !== NONE && this.pending(buf, running)) {
 			throw new Error(
 				`${method} was called from the handler of a pending ` +
 					`${kind_to_string(buf.kind_at(running))} node, which may still be ` +
@@ -1729,11 +1741,13 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 			// recorded would be dropped unread
 			if (pending) undo.set_active_node(buf_idx);
 			this.running = buf_idx;
+			this.final_close = !pending;
 			for (let i = 0; i < cbs.length; i++) {
 				cbs[i]();
 			}
 			undo.clear_active_node();
 			this.running = NONE;
+			this.final_close = false;
 		}
 
 		// after the callbacks, which may still wrap, no child comes after the
@@ -1902,6 +1916,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		this.close_with = null;
 		// a throw in a handler leaves these set
 		this.running = NONE;
+		this.final_close = false;
 		this.held = NONE;
 		this.sequential_pass = false;
 		// a document that ended whole closed every scope
