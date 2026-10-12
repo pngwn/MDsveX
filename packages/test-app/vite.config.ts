@@ -4,6 +4,7 @@ import { mdsvex } from "mdsvex";
 import { anchors } from "@mdsvex/plugin-anchors";
 import { external_links } from "@mdsvex/plugin-external-links";
 import { steps } from "@mdsvex/plugin-steps";
+import { tabs } from "@mdsvex/plugin-tabs";
 
 export default defineConfig({
 	plugins: [
@@ -12,6 +13,7 @@ export default defineConfig({
 			heading_ids: true,
 			plugins: [
 				steps(),
+				tabs(),
 				anchors(),
 				external_links({
 					target: "_blank",
