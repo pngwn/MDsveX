@@ -205,6 +205,32 @@ delete it.
   hot callers, giving those two their loop back would cost about 20 lines and
   need an invariant against `text_run`.
 
+### tag paragraph marks and line start tag checks
+
+- **Source:** the parser bug stack after the restructure (#1046, #1058,
+  #1062, #1071 and #1076). Three places: `closes_on_line` and
+  `inline_past_line` for a tag that starts a line, the `spec_watch` compare
+  in the four emit functions, and the NUL compare at the top of the loop in
+  `_run`.
+- **Measured:** two `quick` passes of the top of the stack against 5087db10
+  with the default 3.0% floor. `parse` -1.40% and -1.37%, `vite-transform`
+  -1.68% and -0.91%, `render-mapped` -0.49% and +0.03%. One row is slower
+  past the floor in both passes, `real/site-src-components-_cheatsheet:parse`
+  at -4.2% and -4.0%. `core --modes incremental`, one pass: -0.65%, with
+  `micro/directive:incremental-64` at -3.7%.
+- **Cause:** not isolated in the harness. A timing loop over one frozen build
+  per commit puts about 2% on the two documents that are mostly tags
+  (`bench-benchmarks-fixture-html`, `_cheatsheet`) at the commits for #1058
+  and #1062, where a tag at a line start is checked for content after it and
+  the "closes on its line" scan learned code spans, autolinks and self
+  closing tags. The same loop reads three prose documents as level at every
+  commit, so the 1.4% over all twenty is spread thin. A first version of the
+  NUL fix scanned the source for one before every parse and cost 7 to 8% on
+  `parse`, which is why a NUL is now only looked at under the cursor.
+- **Ideas:** `closes_on_line` looks for a backtick and tries an autolink at
+  every `<` of the line, both could wait until the element's own name shows
+  up again. Guess, not measured.
+
 ### attrs on pending emphasis
 
 - **Source:** #950 and #956.
