@@ -1237,15 +1237,17 @@ The first-party plugins are packages of their own, named `@mdsvex/plugin-*`. Eac
 ```js
 import { mdsvex } from 'mdsvex';
 import { anchors } from '@mdsvex/plugin-anchors';
+import { external_links } from '@mdsvex/plugin-external-links';
 import { steps } from '@mdsvex/plugin-steps';
 
-mdsvex({ heading_ids: true, plugins: [steps(), anchors()] });
+mdsvex({ heading_ids: true, plugins: [steps(), anchors(), external_links()] });
 ```
 
 | package | what it adds |
 | --- | --- |
 | [`@mdsvex/plugin-steps`](docs#steps) | numbered steps, one for each heading inside `:::steps` |
 | [`@mdsvex/plugin-anchors`](docs#anchors) | a link to itself on every heading that has an id |
+| [`@mdsvex/plugin-external-links`](docs#external-links) | `rel` and `target` on every link that leaves the site |
 
 ### Steps
 
@@ -1380,7 +1382,74 @@ anchors({ position: 'prepend', attrs: { class: 'anchor' } });
 
 - **`attrs`** are more attributes for the link. One named as a default replaces it.
 
-`compile()` takes both plugins the same way, through its `plugins` option.
+### External links
+
+```bash
+pnpm add --save-dev @mdsvex/plugin-external-links@next
+```
+
+```js
+import { external_links } from '@mdsvex/plugin-external-links';
+
+mdsvex({ plugins: [external_links()] });
+```
+
+Sets `rel`, and `target` when you ask for one, on every markdown link that leaves the site:
+
+```svx
+Read [the spec](https://example.com/spec), then [the guide](/guide).
+```
+
+```html
+<p>
+	Read <a href="https://example.com/spec" rel="noopener noreferrer">the spec</a>,
+	then <a href="/guide">the guide</a>.
+</p>
+```
+
+A link is external when its url is absolute, with an `http:` or `https:` scheme, or protocol relative (`//cdn.example.com/x`), and its host is not one of `internal_hosts`. Autolinks count. Everything else is left as it was written: relative urls, `#fragments`, `mailto:` and other schemes, and a url whose host comes from an expression, such as `{url}` or `{base}/docs`, since the plugin can't know at build time where it goes. An expression after the host is fine: `https://example.com/{slug}` is external.
+
+**It sees markdown links only.** An `<a href>` you typed as HTML is an element, not a link, and is rendered as you wrote it. A link a component renders is not seen either.
+
+```ts
+external_links({
+	target: string,
+	rel: string | string[] = ['noopener', 'noreferrer'],
+	internal_hosts: string[],
+	is_external: (href: string, external: boolean) => boolean,
+	attrs: Record<string, string>,
+	icon: boolean | Record<string, string>,
+	new_tab_label: string
+});
+```
+
+- **`target`** is not set by default, so an external link opens where the reader chooses. `target: '_blank'` opens a new tab.
+- **`rel`** tokens are added to the ones a link already has. `noreferrer` keeps the address of your page out of the request to the other site. `noopener` is implied by it and by `target="_blank"` in current browsers, and is written out for older ones. `nofollow` is left out because it suits links your users wrote, not your own. `rel: []` adds none.
+- **`internal_hosts`** are the hosts of your own site, such as `['example.com', 'www.example.com']`. A host is compared whole, without its port.
+- **`is_external`** decides for each link in place of the built in test, whose answer is its second argument: `(href, external) => external || href.endsWith('.pdf')`.
+- **`attrs`** are more attributes for an external link, such as a class.
+- **`icon`** appends an empty `<span class="external-link-icon" aria-hidden="true">` to each external link for a stylesheet to draw. An object is the attributes of the span.
+- **`new_tab_label`** is what a screen reader says after a link that opens a new tab. It needs a `target` that opens one:
+
+```js
+external_links({
+	target: '_blank',
+	icon: true,
+	new_tab_label: 'opens in a new tab'
+});
+```
+
+```html
+<a href="https://example.com/spec" rel="noopener noreferrer" target="_blank">
+	the spec<span class="external-link-icon" role="img" aria-label="opens in a new tab"></span>
+</a>
+```
+
+The label is the name of the span, read out as part of the link the way the `alt` of an icon would be. There is no default, since the plugin can't know the language of the page.
+
+The plugin reads the finished tree, so its place in `plugins` doesn't matter, and a [replaced `a`](docs#custom-components) gets `rel` and `target` as props.
+
+`compile()` takes every plugin the same way, through its `plugins` option.
 
 ## Syntax highlighting
 
@@ -2126,6 +2195,7 @@ To also convert CommonMark documents to mdsvex's markdown, use `migrate`, which 
 | `remarkPlugins`, `rehypePlugins` | [`parse_plugins`](docs#parse_plugins) |
 | `rehype-slug` | [`heading_ids: true`](docs#heading_ids) |
 | `rehype-autolink-headings` | [`@mdsvex/plugin-anchors`](docs#anchors) |
+| `rehype-external-links` | [`@mdsvex/plugin-external-links`](docs#external-links) |
 | `mdsvex-relative-images` | built in, see [`import_images`](docs#import_images) |
 | `remark-link-rewrite`, `rehype-urls`, `remark-prepend-url` | [`rewrite`](docs#rewrite), or [`links`](docs#links) for routes and the base path |
 | `remark-code-import`, ```` ```js file=./a.js#L1-L5 ```` | built in as [`src=`](docs#code-from-a-file), the migrator renames `file=` on a fence with no code |
