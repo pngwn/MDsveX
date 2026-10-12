@@ -4584,6 +4584,7 @@ export class PFMParser {
 	 * try to parse an html closing tag starting at pos (the char after `<`).
 	 * pos should point to the `/` in `</tag>`.
 	 * returns the tag name and end position, or null.
+	 * tag_wait is set with a null while a feed has not shown enough of the line its bracket is on
 	 */
 	private try_parse_html_close_tag(
 		pos: number
@@ -4592,6 +4593,7 @@ export class PFMParser {
 		const base = this.source_base;
 		const length = this.source_end;
 		let p = pos;
+		this.tag_wait = false;
 
 		// must start with /
 		if (p >= length || char_code_at.call(source, p - base) !== SLASH)
@@ -4622,19 +4624,32 @@ export class PFMParser {
 		const tag = string_slice.call(source, tag_start - base, p - base);
 
 		// optional whitespace before >
-		while (
-			p < length &&
-			(char_code_at.call(source, p - base) === SPACE ||
-				char_code_at.call(source, p - base) === TAB)
-		)
+		let ch = char_code_at.call(source, p - base);
+		while (ch === SPACE || ch === TAB)
+			ch = char_code_at.call(source, ++p - base);
+		// the close bracket may stand on the next line, where a formatter puts it to add no space
+		// a table row and a heading are one line
+		if (ch === LINEFEED && !this.in_table && !this.in_heading) {
 			p++;
+			if (this.frames.length !== 0) {
+				const kept = this.line_start(p);
+				if (kept < 0) {
+					this.tag_wait = true;
+					return null;
+				}
+				if (kept < this.frames.length) return null;
+				p = this.line_pos;
+			}
+			ch = char_code_at.call(source, p - base);
+			while (ch === SPACE || ch === TAB) {
+				ch = char_code_at.call(source, ++p - base);
+			}
+			// a quote marker passes for the bracket a caller waits for
+			if (p >= length && !this.finished) this.tag_wait = true;
+		}
 
 		// must end with >
-		if (
-			p >= length ||
-			char_code_at.call(source, p - base) !== CLOSE_ANGLE_BRACKET
-		)
-			return null;
+		if (p >= length || ch !== CLOSE_ANGLE_BRACKET) return null;
 		return { tag, end: p + 1 };
 	}
 
@@ -5078,7 +5093,7 @@ export class PFMParser {
 		}
 		if (c1 === SLASH) {
 			const close = this.try_parse_html_close_tag(p + 1);
-			if (close === null) return -2;
+			if (close === null) return this.tag_wait ? -1 : -2;
 			if (close.end > limit) return -1;
 			// one that closes nothing is text
 			if (this.spec_depth === 0) this.spec_text = true;
@@ -7527,6 +7542,7 @@ export class PFMParser {
 
 							// try html closing tag: </tag>
 							const close = this.try_parse_html_close_tag(this.cursor + 1);
+							if (close === null && this.tag_wait) break main_loop;
 							if (close) {
 								let opener_idx = this.find_html_opener(close.tag);
 								// a cell closes an element opened before its table only where the row ends
@@ -9744,6 +9760,7 @@ export class PFMParser {
 				return true;
 			}
 			const close = this.try_parse_html_close_tag(this.cursor + 1);
+			if (close === null && this.tag_wait) return true;
 			if (close) {
 				const opener_idx = this.find_html_opener(close.tag);
 				if (
@@ -9901,7 +9918,7 @@ export class PFMParser {
 			return -1;
 		}
 		const close = this.try_parse_html_close_tag(this.cursor + 1);
-		if (close === null) return 0;
+		if (close === null) return this.tag_wait ? -1 : 0;
 		const opener_idx = this.find_html_opener(close.tag);
 		if (opener_idx === -1) return 0;
 		this.close_outer_html(opener_idx, close.end);
@@ -10023,6 +10040,7 @@ export class PFMParser {
 				return true;
 			}
 			const close = this.try_parse_html_close_tag(this.cursor + 1);
+			if (close === null && this.tag_wait) return true;
 			if (close) {
 				const opener_idx = this.find_html_opener(close.tag);
 				if (
@@ -10237,6 +10255,7 @@ export class PFMParser {
 		if (started !== 0) return started === -1;
 		if (code === OPEN_ANGLE_BRACKET) {
 			const close = this.try_parse_html_close_tag(this.cursor + 1);
+			if (close === null && this.tag_wait) return true;
 			if (close) {
 				const opener_idx = this.find_html_opener(close.tag);
 				if (opener_idx !== -1) {

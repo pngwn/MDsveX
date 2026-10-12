@@ -181,6 +181,16 @@ A link that holds only images counts as its images, so a linked image or a row o
 a \{1 + 1\} b
 ```
 
+**Tags over lines**, An open tag may run over lines, and the `>` of a close tag may stand on the line after its name, which is how a formatter writes an inline element when it may add no space:
+
+```markdown
+From <a href="/projects"
+  >the projects page</a
+>. More text.
+```
+
+-> one paragraph, a link and the text `. More text.` straight after it. In a block quote or a list item the `>` comes after the line prefix. A table row and a heading are one line, so a close tag there ends on it.
+
 **Repeated attributes**, A tag that writes one attribute name more than once is still a tag. The first value is the attribute, as in HTML, and the later ones are kept beside it as written, so nothing in the source is dropped. Svelte rejects a repeated attribute when it compiles the component.
 
 **Superscript**, Added, via `^`:
