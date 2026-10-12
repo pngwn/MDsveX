@@ -32,6 +32,7 @@
 		"@mdsvex/plugin-external-links": "workspace:*",
 		"@mdsvex/plugin-steps": "workspace:*",
 		"@mdsvex/plugin-tabs": "workspace:*",
+		"@mdsvex/plugin-toc": "workspace:*",
 		"mdsvex": "workspace:*"
 	}
 }
