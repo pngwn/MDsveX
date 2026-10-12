@@ -9,6 +9,7 @@ import { TreeBuilder } from '../src/tree_builder';
 import { NodeKind } from '../src/utils';
 import { print_ast } from './print';
 import {
+	both,
 	checked_tree,
 	every_path,
 	fed_mismatch,
@@ -1297,5 +1298,136 @@ describe('a code span ends where its paragraph ends', () => {
 			}
 		}
 		expect(differ).toEqual([]);
+	});
+});
+
+describe('a code span of one space', () => {
+	const span = (...rows: string[]) => lines('root', '  paragraph', ...rows);
+
+	test('closes at the backtick after the space', () => {
+		expect(every_path('a ` ` b\n')).toBe(
+			span(
+				'    text "a "',
+				'    code_span " "',
+				'    text " b"',
+				'  line_break'
+			)
+		);
+		expect(every_path('` `\n')).toBe(span('    code_span " "', '  line_break'));
+		expect(every_path('` `')).toBe(span('    code_span " "'));
+		expect(every_path('`` ``\n')).toBe(
+			span('    code_span " "', '  line_break')
+		);
+		expect(every_path('`` ``')).toBe(span('    code_span " "'));
+	});
+
+	test('leaves a later backtick to open a span of its own', () => {
+		expect(every_path('` `x`\n')).toBe(
+			span('    code_span " "', '    text "x"', '    text "`"', '  line_break')
+		);
+		expect(every_path('` `x` `\n')).toBe(
+			span(
+				'    code_span " "',
+				'    text "x"',
+				'    code_span " "',
+				'  line_break'
+			)
+		);
+	});
+
+	test('does not close at a run of another length', () => {
+		expect(every_path('` `` `\n')).toBe(
+			span('    code_span "``"', '  line_break')
+		);
+		expect(every_path('`` ` ``\n')).toBe(
+			span('    code_span "`"', '  line_break')
+		);
+		expect(every_path('` ``\n')).toBe(
+			span('    text "`"', '    text " "', '    text "``"', '  line_break')
+		);
+		expect(every_path('`` `\n')).toBe(
+			span('    text "``"', '    text " "', '    text "`"', '  line_break')
+		);
+	});
+
+	test('in a heading, a list item, a block quote and a strong emphasis', () => {
+		expect(every_path('# ` `\n')).toContain('    code_span " "');
+		expect(every_path('- ` `\n')).toContain('      code_span " "');
+		expect(every_path('> ` `\n')).toContain('      code_span " "');
+		expect(every_path('*` `*\n')).toContain('      code_span " "');
+	});
+
+	test('in a table cell', () => {
+		both(' ` ` ', ['code_span " "']);
+		both('` `', ['code_span " "']);
+		both(' `` `` ', ['code_span " "']);
+		both(' a ` ` b ', ['text "a "', 'code_span " "', 'text " b"']);
+	});
+
+	function codes(source: string): string[] {
+		const { nodes } = parse_markdown_svelte(source);
+		return nodes.get_kinds(NodeKind.code_span).map((index) => {
+			const [start, end] = nodes.get_node(index).value;
+			return nodes._strings[index] ?? source.slice(start, end);
+		});
+	}
+
+	function run_at(row: string, at: number): number {
+		let length = 0;
+		while (row[at + length] === '`') length++;
+		return length;
+	}
+
+	/** the code of each span of a line, a run closes at the next run of its length */
+	function scanned(row: string): string[] | null {
+		const out: string[] = [];
+		let at = 0;
+		while (at < row.length) {
+			const run = run_at(row, at);
+			if (run === 0) {
+				at++;
+				continue;
+			}
+			let close = at + run;
+			while (close < row.length) {
+				const next = run_at(row, close);
+				if (next === run) break;
+				close += next === 0 ? 1 : next;
+			}
+			if (close >= row.length) {
+				at += run;
+				continue;
+			}
+			let code = row.slice(at + run, close);
+			// what three or more spaces alone hold is not pinned here
+			if (code.length > 2 && code.trim() === '') return null;
+			if (code.length > 2 && code.startsWith(' ') && code.endsWith(' '))
+				code = code.slice(1, -1);
+			out.push(code);
+			at = close + run;
+		}
+		return out;
+	}
+
+	test('random lines of backticks and spaces hold the spans a scan finds', () => {
+		const rand = random(1003);
+		const pieces = ['`', '`', '``', 'a', ' ', ' ', 'b c'];
+		for (let i = 0; i < 3000; i++) {
+			// a letter first, a backtick run at a line start may be a fence
+			let row = pick(rand, ['a', 'x ', 'a ']);
+			const length = 1 + Math.floor(rand() * 7);
+			for (let k = 0; k < length; k++) row += pick(rand, pieces);
+			if (row.includes('```')) continue;
+			const want = scanned(row);
+			if (want === null) continue;
+			const source = row + '\n';
+			const label = JSON.stringify(source);
+			expect(codes(source), label).toEqual(want);
+			if (i % 5 === 0) {
+				expect(problems(source, 0), label).toEqual([]);
+				expect(problems(source, 1), label).toEqual([]);
+				expect(fed_mismatch(source), label).toBe('');
+			}
+		}
 	});
 });
