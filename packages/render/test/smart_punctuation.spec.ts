@@ -459,6 +459,13 @@ describe('smart punctuation, what is never touched', () => {
 		);
 	});
 
+	it('a nul character stays, reads as space and ends nothing', () => {
+		const nul = String.fromCharCode(0);
+		expect(line(`a${nul} "b" c${nul}"d" -- e${nul}...`)).toBe(
+			`a${nul} “b” c${nul}“d” – e${nul}…`
+		);
+	});
+
 	it('a typed curly quote, dash or ellipsis', () => {
 		expect(line('“a” ‘b’ – — … "c"')).toBe('“a” ‘b’ – — … “c”');
 	});

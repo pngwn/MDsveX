@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { CompilerSession, compile, compile_inputs } from '../src/compile';
 import type { TraceTarget } from '../src/compile';
 import { smart_of } from '../src/smart_punctuation';
+import { toc } from './toc_plugin';
 
 function target(): TraceTarget {
 	return {
@@ -106,6 +107,43 @@ describe('smart_punctuation', () => {
 			templates: { default: { specifier: './T.svelte' } },
 		});
 		expect(code).toContain('<p>“a” – b</p>');
+	});
+
+	it('a document with plugin data renders both', () => {
+		const options = {
+			heading_ids: true,
+			plugins: [toc()],
+			smart_punctuation: true,
+		} as const;
+		const data =
+			'export const plugin_data = {"toc":{"headings":[{"depth":1,"text":"\\"One\\" -- it\'s","id":"one----its"}]}};\n';
+		const body = '<h1 id="one----its">“One” – it’s</h1><p>“Words” here…</p>';
+		const source = '# "One" -- it\'s\n\n"Words" here...\n';
+		const { code } = compile(source, options);
+		expect(code).toBe('<script module>\n' + data + '</script>' + body);
+		expect(compile(source, { ...options, sourcemap: true }).code).toBe(code);
+		expect(new CompilerSession().compile(source, options).code).toBe(code);
+		expect(
+			compile(source, {
+				...options,
+				templates: { default: { specifier: './T.svelte' } },
+			}).code
+		).toContain(
+			data +
+				'</script><Template_MDSVEX {plugin_data} {...__mdsvex_props}>' +
+				body
+		);
+	});
+
+	it('plugin data joins a module script the document wrote, which stays as written', () => {
+		const { code } = compile(
+			'<script module>\n\texport const a = "x--y";\n</script>\n\n# "One"\n',
+			{ heading_ids: true, plugins: [toc()], smart_punctuation: true }
+		);
+		expect(code).toBe(
+			'<script module>\nexport const plugin_data = {"toc":{"headings":[{"depth":1,"text":"\\"One\\"","id":"one"}]}};\n' +
+				'\n\texport const a = "x--y";\n</script><h1 id="one">“One”</h1>'
+		);
 	});
 
 	it('a heading id is made from the text as written', () => {
