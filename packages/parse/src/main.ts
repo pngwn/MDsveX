@@ -910,6 +910,9 @@ export class PFMParser {
 	// set by line_start, where the line goes on after the prefixes it continues and after its last quote marker
 	private line_pos: number = 0;
 	private line_quote: number = 0;
+	// the line line_start last read and its answer, a paragraph and the container around it ask about the same line
+	private line_at: number = -1;
+	private line_kept: number = 0;
 	private emphasis_has_content: boolean = false;
 	// set by try_parse_html_open_tag in feed mode when the tag may still close and a wait for its end is set
 	private tag_wait: boolean = false;
@@ -1851,6 +1854,7 @@ export class PFMParser {
 		this.range_next_class = 0;
 		this.block_quote_depth = 0;
 		if (this.frames.length !== 0) this.frames = NO_STACK;
+		this.line_at = -1;
 		this.emphasis_has_content = false;
 		this.in_heading = false;
 		this.list_depth = 0;
@@ -3449,6 +3453,12 @@ export class PFMParser {
 		const frames = this.frames;
 		if (frames === NO_STACK) this.frames = [column];
 		else frames.push(column);
+		this.line_at = -1;
+	}
+
+	private pop_frame(): void {
+		this.frames.pop();
+		this.line_at = -1;
 	}
 
 	/**
@@ -3458,6 +3468,7 @@ export class PFMParser {
 	 * @returns how many frames the line continues, -1 while a feed cannot tell yet
 	 */
 	private line_start(pos: number): number {
+		if (pos === this.line_at) return this.line_kept;
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
@@ -3508,6 +3519,8 @@ export class PFMParser {
 		}
 		this.line_pos = p;
 		this.line_quote = origin;
+		this.line_at = pos;
+		this.line_kept = i;
 		return i;
 	}
 
@@ -4054,7 +4067,7 @@ export class PFMParser {
 		this.node_stack.pop();
 
 		this.list_depth--;
-		this.frames.pop();
+		this.pop_frame();
 
 		// restore outer list state if nested
 		if (this.list_depth > 0 && this.list_state_stack.length > 0) {
@@ -5399,7 +5412,7 @@ export class PFMParser {
 				this.emit_close(id, this.cursor);
 				this.node_stack.pop();
 				this.block_quote_depth--;
-				this.frames.pop();
+				this.pop_frame();
 				return;
 			case NodeKind.svelte_branch:
 				this.emit_close(id, this.cursor);
@@ -6462,23 +6475,21 @@ export class PFMParser {
 			this.interrupt_svelte_depth === this.svelte_block_depth
 		)
 			return 1;
+		let ends: boolean;
 		if (this.frames.length !== 0) {
 			const kept = this.line_start(p);
 			if (kept < 0) return -1;
 			p = this.line_pos;
 			// a line that leaves a quote ends what is in it, a line that only leaves
 			// list items goes on with a paragraph that is right under an item
-			if (
-				kept < this.frames.length &&
-				(this.quote_ends(kept) || !this.under_item())
-			) {
-				this.interrupt_pos = lf + 1;
-				this.interrupt_frames = this.frames.length;
-				this.interrupt_svelte_depth = this.svelte_block_depth;
-				return 1;
-			}
-		} else this.line_pos = p;
-		const ends = this.line_interrupts(p);
+			ends =
+				this.line_interrupts(p) ||
+				(kept < this.frames.length &&
+					(this.quote_ends(kept) || !this.under_item()));
+		} else {
+			this.line_pos = p;
+			ends = this.line_interrupts(p);
+		}
 		if (!ends) return 0;
 		this.interrupt_pos = lf + 1;
 		this.interrupt_frames = this.frames.length;
@@ -10268,7 +10279,7 @@ export class PFMParser {
 			this.states.pop();
 			this.node_stack.pop();
 			this.block_quote_depth--;
-			this.frames.pop();
+			this.pop_frame();
 			return false;
 		}
 
@@ -10301,7 +10312,7 @@ export class PFMParser {
 				this.states.pop();
 				this.node_stack.pop();
 				this.block_quote_depth--;
-				this.frames.pop();
+				this.pop_frame();
 				return false;
 			}
 
@@ -10461,6 +10472,7 @@ export class PFMParser {
 		this.node_stack.push(item_id);
 		this.list_content_offset = marker.content_offset;
 		this.frames[this.frames.length - 1] = marker.content_offset;
+		this.line_at = -1;
 		this.chomp(marker.content_start, true);
 		this.cold.task_pos = marker.content_start;
 		if (!loose) this.item_para(item_id);
