@@ -461,6 +461,9 @@ importers:
       '@mdsvex/parse':
         specifier: workspace:^
         version: link:../parse
+      mdsvex:
+        specifier: workspace:^
+        version: link:../mdsvex
       npm-run-all2:
         specifier: ^7.0.2
         version: 7.0.2

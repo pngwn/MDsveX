@@ -45,6 +45,7 @@
 	},
 	"devDependencies": {
 		"@mdsvex/parse": "workspace:^",
+		"mdsvex": "workspace:^",
 		"npm-run-all2": "^7.0.2",
 		"shx": "^0.3.4"
 	}
