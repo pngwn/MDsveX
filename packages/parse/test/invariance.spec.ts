@@ -178,12 +178,12 @@ const KNOWN: Known[] = [
 	},
 	{
 		issue: 1022,
-		what: 'an html comment on its own line gets a paragraph in some containers',
+		what: 'an html comment on its own line gets a paragraph in a list item',
 		drop: (seen) =>
 			(is(seen, 'comment', 'comment_inline') ||
 				(only_tags(seen) && seen.piece.kids[0].kind === 'comment_inline')) &&
-			within(seen, 'svelte_branch', 'list_item'),
-		example: { site: 'svelte_branch', source: '<!-- a -->' },
+			within(seen, 'list_item'),
+		example: { site: 'list_item', source: '<!-- a -->', loose: true },
 	},
 	{
 		issue: 1049,
