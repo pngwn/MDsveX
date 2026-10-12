@@ -113,7 +113,7 @@ const KNOWN: Known[] = [
 			is(seen, 'html_inline') &&
 			seen.before === null &&
 			/^<(\w+)[^\n]*<\1/.test(inline_text([seen.piece])),
-		example: { site: 'table_cell', source: '<b>`<b>`</b>' },
+		example: { site: 'table_cell', source: '<Badge><Badge /></Badge> x' },
 	},
 ];
 
