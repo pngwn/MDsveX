@@ -104,7 +104,7 @@ describe('an html element left open in a table cell', () => {
 	});
 
 	test('an element around the table still closes at the start of a row line', () => {
-		expect(checked_tree('<span> |---\n---\n<div>:::\n</span>&amp;')).toBe(
+		expect(checked_tree('<span> |---\n---\n<i>:::\n</span>&amp;')).toBe(
 			lines(
 				'root',
 				'  html tag="span"',
@@ -114,8 +114,27 @@ describe('an html element left open in a table cell', () => {
 				'          text "---"',
 				'      table_row',
 				'        table_cell',
-				'          text "<div>"',
+				'          text "<i>"',
 				'          text ":::"',
+				'  paragraph',
+				'    text "&amp;"'
+			)
+		);
+	});
+
+	test('a block level tag at the start of a row line ends the table', () => {
+		expect(checked_tree('<span> |---\n---\n<div>:::\n</span>&amp;')).toBe(
+			lines(
+				'root',
+				'  html tag="span"',
+				'    table alignments=["none"] col_count=1',
+				'      table_header',
+				'        table_cell',
+				'          text "---"',
+				'    html tag="div"',
+				'      paragraph',
+				'        text ":::"',
+				'      line_break',
 				'  paragraph',
 				'    text "&amp;"'
 			)

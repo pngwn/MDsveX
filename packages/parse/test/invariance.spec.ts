@@ -169,17 +169,10 @@ const KNOWN: Known[] = [
 	},
 	{
 		issue: 1047,
-		what: 'a table in a list item loses its body rows',
+		what: 'a table row that is indented loses its first cell, so a table in a list item loses its body rows',
 		drop: (seen) => is(seen, 'table') && within(seen, 'list_item'),
+		edited: ['content', /\n[ \t]+\|/],
 		example: { site: 'list_item', source: '| a |\n|---|\n| b |' },
-	},
-	{
-		issue: 1048,
-		what: 'the line that closes a svelte block or a container directive is read as a table row',
-		drop: (seen) =>
-			(is(seen, 'table') || makes_table(seen)) &&
-			within(seen, 'svelte_branch', 'directive_container'),
-		example: { site: 'svelte_branch', source: '| a |\n|---|' },
 	},
 	{
 		issue: 1021,
@@ -312,25 +305,11 @@ const KNOWN: Known[] = [
 			(is(seen, 'html_element') &&
 				seen.piece.join === '\n' &&
 				seen.piece.kids.some((kid) => kid.kind === 'html_line')),
-		edited: ['placed', /<\/(div|p|section|details)>/],
+		edited: [
+			'placed',
+			/<\/(div|p|section|details)>|<(div|p|section|details)\/>/,
+		],
 		example: { site: 'root', source: '<div>a</div>\nb\n' },
-	},
-	{
-		issue: 1060,
-		what: 'a directive, a list item or an html element straight after a table is read as a row',
-		drop: (seen) =>
-			seen.piece.join === '\n' &&
-			seen.before?.kind === 'table' &&
-			is(
-				seen,
-				'directive_leaf',
-				'directive_container',
-				'html_element',
-				'html_line',
-				'list',
-				'svelte_block'
-			),
-		example: { site: 'html_element', source: '| a |\n|---|\n<div>\nb\n</div>' },
 	},
 	{
 		issue: 1062,
