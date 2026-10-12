@@ -463,11 +463,11 @@ An entry can hold three keys. Any other key is ignored, so a layer above can kee
 
 | key | what it is |
 |---|---|
-| `children` | handlers by node type, for nodes written directly inside a container directive of this name |
+| `children` | handlers by node type, for nodes written directly inside a container directive of this name, and `'*'` for a child of any type |
 | `descendants` | the same, for nodes at any depth inside it |
 | `parse` | a handler for the directive itself |
 
-A handler is a function, not a `{ parse }` object. Like a plugin handler it may return a function, which runs when the node closes. A key that is not a node type throws when the tables are first used, and so does `text`: neither builder dispatches text nodes.
+A handler is a function, not a `{ parse }` object. Like a plugin handler it may return a function, which runs when the node closes. A key that is not a node type throws when the tables are first used, and so does `text`: neither builder dispatches text nodes. The one key of `children` that is no node type is `'*'`, see [A child of any type](#a-child-of-any-type).
 
 `directive_handlers` is an array of tables. When two tables have an entry for the same name the later one replaces the earlier one whole. The tables are read once per array, so pass the same array for every document and build a new one to change a handler.
 
@@ -490,9 +490,37 @@ A nested directive of the same name is a new scope with a new `state` and its ow
 - **The label of a container is inside it.** Its `directive_label` node is a child, and what the label holds are descendants.
 - **Only container directives have children.** The label of a leaf directive (`::name[label]`) or an inline one (`:name[text]`) is not passed to the `children` or `descendants` handlers of that name. Handlers of a container around them still see those nodes as descendants.
 
+### A child of any type
+
+`children['*']` runs for every node written directly inside the directive, whatever its type, as it opens:
+
+```js
+tabs: {
+  children: {
+    heading(node, ctx) {
+      ctx.state.tab?.close();
+      ctx.state.tab = node.wrap_from('directive_container', { name: 'tab' });
+    },
+    '*'(node, ctx) {
+      if (ctx.state.tab === undefined && node.type !== 'directive_label') {
+        ctx.warn('before_first_tab', 'content before the first tab is in no tab', node);
+      }
+    }
+  }
+}
+```
+
+- **It runs after the handler for the type of the child**, so here a heading has opened its tab by the time `'*'` sees it. The `descendants` handlers follow.
+- **`ctx.index` counts its own runs**, apart from every other handler. `ctx.index === 0` is the first child, which is the `directive_label` when the container was written with one.
+- **It is not called for a `line_break`**, the blank between two children, nor for text, which is never written directly inside a container.
+- **It has to be asked about every node.** While its directive is the innermost one open, every node that opens inside goes through the dispatcher, where one that is no child and has no handler of its own is let through at once. A handler keyed by type costs nothing for the other types, so use `'*'` when the type is not known ahead.
+- **Only `children` has it.** `descendants: { '*': ... }` throws.
+
+A child reaches its container through a repair in one case: an element alone on its line is opened in a paragraph when the document is fed in pieces, and the paragraph is revoked when it closes. `'*'` then ran for the paragraph and gave its index back, and does not run for the element. The same holds for a `children.html` handler.
+
 ### Order
 
-For one node, the innermost open directive goes first: its `children` handler when the node is a child, then its `descendants` handler, then the `descendants` handlers of each directive further out. Global plugins run after all of them, so a global `heading` handler sees the wrapper a bound handler made. Close callbacks fire in the same order.
+For one node, the innermost open directive goes first: its `children` handler when the node is a child, then its `'*'` handler, then its `descendants` handler, then the `descendants` handlers of each directive further out. Global plugins run after all of them, so a global `heading` handler sees the wrapper a bound handler made. Close callbacks fire in the same order.
 
 A handler for a directive kind reads the name of the directive it is given, so one container can tell its child directives apart:
 
@@ -548,6 +576,7 @@ A container with `children` or `descendants` handlers opens a scope when its nam
 
 - With no scope open, dispatch costs what it does without bound handlers.
 - While a scope is open, the builders send the dispatcher the kinds the open scopes have handlers for, on top of the kinds global plugins handle. Other kinds keep the builder's fast path, except for the direct children of a node with an open wrapper.
+- While the innermost scope has a `'*'` handler, every kind but `text` and `line_break` is sent, and the dispatcher lets a node that is not its child through at once.
 - A scope ends when its directive closes, so that close goes through the dispatcher. The closes of the nodes inside it do not, unless a handler left something on them. The wire builder asks the dispatcher at every close, which is a few compares for a node no handler touched.
 
 Bound handlers run in the fused pass only. A sequential plugin sees the tree they left.
@@ -588,7 +617,7 @@ Multiple plugins on the same node type are composed into a single function at re
 - Reparent existing nodes across unrelated parts of the tree (structural methods only add, `wrap_from` puts later siblings under the wrapper as they arrive and never moves one that came before)
 - Remove nodes
 - Modify the parser itself or affect how tokens become nodes
-- Do work outside their registered node types — if a plugin only has a `heading` entry, it never sees other node types
+- Do work outside their registered node types — if a plugin only has a `heading` entry, it never sees other node types. The one handler for any type is `children['*']` of a directive, for the nodes written directly inside it
 
 **Guarantees:**
 - Property mutations never have non-local effects beyond dirty marking

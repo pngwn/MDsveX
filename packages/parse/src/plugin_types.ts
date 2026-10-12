@@ -108,7 +108,10 @@ export type DirectiveHandler = (
 
 /** the handlers of one directive name, any other key is ignored */
 export interface DirectiveEntry {
-	/** by node type, for nodes written directly inside a container of this name */
+	/**
+	 * by node type, for nodes written directly inside a container of this
+	 * name, the '*' handler takes a child of any type, after the one for its type
+	 */
 	children?: { [node_type: string]: DirectiveHandler };
 	/** by node type, for nodes at any depth inside a container of this name */
 	descendants?: { [node_type: string]: DirectiveHandler };
