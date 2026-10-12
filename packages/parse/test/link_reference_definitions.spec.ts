@@ -7,6 +7,14 @@ import { describe, expect, test } from 'vitest';
 import { get_all_child_kinds, get_child_range, get_content } from './utils';
 
 import { parse_markdown_svelte } from '../src/main';
+import {
+	every_path,
+	fed_mismatch,
+	lines,
+	pick,
+	problems,
+	random,
+} from './stream_shape';
 
 const this_dir = dirname(fileURLToPath(import.meta.url));
 const fixtures_root = resolve(
@@ -418,5 +426,145 @@ describe('link reference definitions', () => {
 			}
 		}
 		expect(found_link).toBe(true);
+	});
+});
+
+describe('a line that looks like a footnote definition', () => {
+	const literal = (label: string, rest: string) => [
+		'    text "["',
+		'    text "^"',
+		`    text "${label}"`,
+		`    text "]${rest}"`,
+	];
+
+	test('is a paragraph of its text, whatever follows the colon', () => {
+		expect(every_path('[^note]: Word\n')).toBe(
+			lines('root', '  paragraph', ...literal('note', ': Word'), '  line_break')
+		);
+		expect(every_path('[^note]: https://example.com\n')).toBe(
+			lines(
+				'root',
+				'  paragraph',
+				...literal('note', ': https://example.com'),
+				'  line_break'
+			)
+		);
+		expect(every_path('[^1]: The source.\n')).toBe(
+			lines(
+				'root',
+				'  paragraph',
+				...literal('1', ': The source.'),
+				'  line_break'
+			)
+		);
+		expect(every_path('[^n]: <u> "t"\n')).toContain('text "<u>"');
+	});
+
+	test('with no final line end, an indent or its text on the next line', () => {
+		expect(every_path('[^a]: b')).toBe(
+			lines('root', '  paragraph', ...literal('a', ': b'))
+		);
+		expect(every_path('  [^a]: b\n')).toBe(
+			lines('root', '  paragraph', ...literal('a', ': b'), '  line_break')
+		);
+		expect(every_path('[^a]:\nb\n')).toBe(
+			lines(
+				'root',
+				'  paragraph',
+				...literal('a', ':'),
+				'    soft_break',
+				'    text "b"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('two of them are lines of one paragraph', () => {
+		expect(every_path('[^a]: b\n[^c]: d\n')).toBe(
+			lines(
+				'root',
+				'  paragraph',
+				...literal('a', ': b'),
+				'    soft_break',
+				...literal('c', ': d'),
+				'  line_break'
+			)
+		);
+	});
+
+	test('defines no link reference', () => {
+		expect(every_path('[^a]: /u\n\n[x][^a]\n')).not.toContain('link');
+	});
+
+	test('leaves the definitions around it alone', () => {
+		expect(every_path('[a]: /u\n[^c]: d\n\n[x][a]\n')).toBe(
+			lines(
+				'root',
+				'  paragraph',
+				...literal('c', ': d'),
+				'  line_break',
+				'  line_break',
+				'  paragraph',
+				'    link href="/u"',
+				'      text "x"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('a caret that is escaped or not first is still a label', () => {
+		expect(every_path('[a^]: /u\n\n[x][a^]\n')).toContain('link href="/u"');
+		expect(every_path('[\\^a]: /u\n\n[x][\\^a]\n')).toContain('link href="/u"');
+	});
+
+	/** the text of every text node of the tree, in order */
+	function text_of(source: string): string {
+		const { nodes } = parse_markdown_svelte(source);
+		let out = '';
+		const walk = (index: number): void => {
+			const node = nodes.get_node(index);
+			if (node.kind === 'text')
+				out += source.slice(node.value[0], node.value[1]);
+			for (const child of node.children) walk(child);
+		};
+		walk(0);
+		return out;
+	}
+
+	test('random definition lines lose no text when the label starts with a caret', () => {
+		const rand = random(1015);
+		const labels = ['a', 'note', '1', 'a b', 'a^', '\\^a'];
+		const rests = [
+			': b',
+			': /u',
+			': https://example.com',
+			': <u>',
+			': /u "t"',
+			':',
+			': two words',
+			'',
+			':b',
+		];
+		for (let i = 0; i < 400; i++) {
+			let source = '';
+			const count = 1 + Math.floor(rand() * 3);
+			for (let l = 0; l < count; l++) {
+				const caret = rand() < 0.6;
+				// a definition with nothing after its colon takes the next line as its destination
+				const rest = pick(rand, rests);
+				// a second caret would close a superscript, an escape leaves its backslash out of the text
+				const name = pick(rand, caret ? labels.slice(0, 4) : labels);
+				source += `[${caret ? '^' : ''}${name}]${caret || rest !== ':' ? rest : ': /u'}\n`;
+				if (rand() < 0.4) source += '\n';
+			}
+			const label = JSON.stringify(source);
+			const text = text_of(source);
+			for (const row of source.split('\n')) {
+				if (row.startsWith('[^')) expect(text, label).toContain(row.trim());
+			}
+			expect(problems(source, 0), label).toEqual([]);
+			expect(problems(source, 1), label).toEqual([]);
+			expect(fed_mismatch(source), label).toBe('');
+		}
 	});
 });
