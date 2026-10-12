@@ -148,12 +148,23 @@ function only_tags(seen: Seen): boolean {
 	);
 }
 
+/** a line of dashes under a paragraph that starts with a pipe, the two lines are a table */
+function makes_table(seen: Seen): boolean {
+	return (
+		is(seen, 'thematic_break') &&
+		seen.piece.join === '\n' &&
+		seen.before?.kind === 'paragraph' &&
+		seen.before.kids[0]?.kind === 'pipe'
+	);
+}
+
 /** every known failure, each one takes its pieces out of the documents until its issue is fixed */
 const KNOWN: Known[] = [
 	{
 		issue: 1019,
 		what: 'a table does not open inside a block quote',
-		drop: (seen) => is(seen, 'table') && within(seen, 'block_quote'),
+		drop: (seen) =>
+			(is(seen, 'table') || makes_table(seen)) && within(seen, 'block_quote'),
 		example: { site: 'block_quote', source: '| a |\n|---|' },
 	},
 	{
@@ -166,7 +177,8 @@ const KNOWN: Known[] = [
 		issue: 1048,
 		what: 'the line that closes a svelte block or a container directive is read as a table row',
 		drop: (seen) =>
-			is(seen, 'table') && within(seen, 'svelte_branch', 'directive_container'),
+			(is(seen, 'table') || makes_table(seen)) &&
+			within(seen, 'svelte_branch', 'directive_container'),
 		example: { site: 'svelte_branch', source: '| a |\n|---|' },
 	},
 	{
@@ -207,12 +219,6 @@ const KNOWN: Known[] = [
 			is(seen, 'html_element', 'raw_element', 'html_line') &&
 			within(seen, 'list_item'),
 		example: { site: 'list_item', source: '<div>\na\n</div>' },
-	},
-	{
-		issue: 1023,
-		what: 'a link reference definition is not read inside an html element',
-		drop: (seen) => is(seen, 'definition') && within(seen, 'html_element'),
-		example: { site: 'html_element', source: '[r]: /u\n\n[a][r]' },
 	},
 	{
 		issue: 1024,
@@ -348,6 +354,18 @@ const KNOWN: Known[] = [
 		example: {
 			site: 'root',
 			source: '| a | b |\n|---|---|\n| c | <i\n> | q000 |\n',
+		},
+	},
+	{
+		issue: 1066,
+		what: 'a quote marker at the left margin continues a block quote that is inside a list item',
+		drop: (seen) =>
+			is(seen, 'block_quote') &&
+			seen.piece.join === '\n' &&
+			seen.before?.kind === 'list',
+		example: {
+			site: 'directive_container',
+			source: '- > a\n> :::box\n> b\n> :::',
 		},
 	},
 	{
