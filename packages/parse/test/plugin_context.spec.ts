@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import { PFMParser } from '../src/main';
+import { PFMParser, parse_markdown_svelte } from '../src/main';
+import type {
+	DirectiveTable as RootDirectiveTable,
+	DocumentContext,
+	NamedDirectiveHandlers,
+	PluginData as RootPluginData,
+	PluginDocument,
+	PluginWarning as RootPluginWarning,
+	Point,
+	Position,
+} from '../src/main';
 import { SourceTextSource } from '../src/node_view';
 import type { NodeView } from '../src/node_view';
 import { PluginDispatcher } from '../src/plugin_dispatch';
@@ -770,5 +780,118 @@ describe('node view: position', () => {
 			]);
 			expect(seen, name).toEqual([{ offset: 20, line: 4, column: 8 }]);
 		}
+	});
+});
+
+describe('parse_markdown_svelte: the plugin context', () => {
+	const doc = '---\ntitle: t\n---\n\n# a\n\n## b\n';
+
+	it('gives handlers the filename option', () => {
+		const seen: unknown[] = [];
+		parse_markdown_svelte('# a\n', {
+			filename: '/docs/a.svx',
+			plugins: [
+				{ heading: { parse: (_n, ctx) => void seen.push(ctx.filename) } },
+			],
+			directive_handlers: [],
+		});
+		expect(seen).toEqual(['/docs/a.svx']);
+	});
+
+	it('parses the frontmatter once, when a handler first reads it', () => {
+		const texts: string[] = [];
+		const seen: unknown[] = [];
+		parse_markdown_svelte(doc, {
+			frontmatter(text) {
+				texts.push(text);
+				return { title: text.trim().slice(7) };
+			},
+			plugins: [
+				{
+					frontmatter: { parse: (_n, ctx) => void seen.push(ctx.frontmatter) },
+					heading: { parse: (_n, ctx) => void seen.push(ctx.frontmatter) },
+				},
+			],
+		});
+		expect(texts).toEqual(['title: t\n']);
+		expect(seen).toEqual([undefined, { title: 't' }, { title: 't' }]);
+	});
+
+	it('never calls the frontmatter option when no handler reads it', () => {
+		let calls = 0;
+		parse_markdown_svelte(doc, {
+			frontmatter: () => void calls++,
+			plugins: [{ heading: { parse() {} } }],
+		});
+		parse_markdown_svelte(doc, { frontmatter: () => void calls++ });
+		expect(calls).toBe(0);
+	});
+
+	it('gives undefined for a document with no frontmatter', () => {
+		const seen: unknown[] = [];
+		parse_markdown_svelte('# a\n', {
+			frontmatter: () => ({ never: true }),
+			plugins: [
+				{ heading: { parse: (_n, ctx) => void seen.push(ctx.frontmatter) } },
+			],
+		});
+		expect(seen).toEqual([undefined]);
+	});
+
+	it('returns the warnings and the data the handlers left', () => {
+		const toc: ParsePlugin = {
+			name: 'toc',
+			heading: {
+				parse(node, ctx) {
+					ctx.data.count = (ctx.data.count ?? 0) + 1;
+					if (ctx.data.count === 2)
+						ctx.warn('second', 'a second heading', node);
+				},
+			},
+		};
+		const seq: ParsePlugin = {
+			name: 'seq',
+			sequential: true,
+			heading: { parse: (_n, ctx) => void (ctx.data.ran = true) },
+		};
+		const result = parse_markdown_svelte(doc, { plugins: [toc, seq] });
+		const warnings: RootPluginWarning[] | undefined = result.warnings;
+		const data: RootPluginData | undefined = result.data;
+		expect(warnings).toEqual([
+			{
+				plugin: 'toc',
+				code: 'second',
+				message: 'a second heading',
+				start: 23,
+				end: undefined,
+			},
+		]);
+		expect(data).toEqual({ toc: { count: 2 }, seq: { ran: true } });
+	});
+
+	it('returns undefined for both when there is nothing', () => {
+		const plain = parse_markdown_svelte('# a\n');
+		expect(plain.warnings).toBeUndefined();
+		expect(plain.data).toBeUndefined();
+		const plugged = parse_markdown_svelte('# a\n', {
+			plugins: [{ name: 'quiet', heading: { parse() {} } }],
+		});
+		expect(plugged.warnings).toBeUndefined();
+		expect(plugged.data).toBeUndefined();
+	});
+
+	it('exports the context types from the package root', () => {
+		const table: RootDirectiveTable = { name: 'x', directives: {} };
+		const named: NamedDirectiveHandlers = { name: 'x', directives: {} };
+		const document: PluginDocument = { filename: 'a' };
+		const point: Point = { offset: 0, line: 1, column: 0 };
+		const position: Position = { start: point, end: undefined };
+		const members: (keyof DocumentContext)[] = [
+			'filename',
+			'frontmatter',
+			'warn',
+			'data',
+		];
+		expect([table, named, document, position, members]).toHaveLength(5);
 	});
 });
