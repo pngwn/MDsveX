@@ -54,6 +54,8 @@
 	const K_TABLE_CELL = 25;
 	const K_HTML_COMMENT = 26;
 	const K_DIRECTIVE_LABEL = 35;
+	const K_FOOTNOTE_REFERENCE = 36;
+	const K_FOOTNOTE_DEFINITION = 37;
 
 	const NEWLINE = '\n';
 
@@ -336,6 +338,14 @@
 	{@render table_body(idx)}
 {:else if kind === K_DIRECTIVE_LABEL}
 	<!-- a directive renders as its children, its label is not one of them -->
+{:else if kind === K_FOOTNOTE_REFERENCE}
+	<!-- a stream has no number for it yet, so the label stands in -->
+	<sup class="footnote-reference">{meta?.label}</sup>
+{:else if kind === K_FOOTNOTE_DEFINITION}
+	<div class="footnote">
+		<sup class="footnote-reference">{meta?.label}</sup>
+		{@render child_nodes(idx)}
+	</div>
 {:else}
 	{@render child_nodes(idx)}
 {/if}

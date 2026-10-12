@@ -13,6 +13,12 @@
 
 import { Cursor } from '@mdsvex/parse/cursor';
 import { is_raw_text_tag } from '@mdsvex/parse/utils';
+import {
+	footnote_id,
+	footnote_index,
+	footnote_ref_id,
+} from '@mdsvex/parse/buf-utils';
+import type { FootnoteIndex } from '@mdsvex/parse/buf-utils';
 import type { NodeBuffer } from '@mdsvex/parse/utils';
 import {
 	MapSink,
@@ -607,6 +613,8 @@ const enum K {
 	FRONTMATTER = 33,
 	IMPORT_STATEMENT = 34,
 	DIRECTIVE_LABEL = 35,
+	FOOTNOTE_REFERENCE = 36,
+	FOOTNOTE_DEFINITION = 37,
 }
 
 export const K_ROOT = K.ROOT;
@@ -1862,8 +1870,14 @@ function render_node(c: Cursor, sink?: MapSink): void {
 			break;
 
 		default:
-			// a label renders only as the snippet of a replaced directive
-			if (c.kind !== K.DIRECTIVE_LABEL) render_children(c, sink);
+			// a label renders only as the snippet of a replaced directive, and a
+			// footnote definition in the section at the end
+			if (c.kind < K.DIRECTIVE_LABEL) render_children(c, sink);
+			else if (c.kind === K.FOOTNOTE_REFERENCE) {
+				const pre = mo.length;
+				mo += fn_reference(c);
+				if (sink) put_record(sink, pre, mo.length, c.start, c.end, c.index, 0);
+			}
 			break;
 	}
 }
@@ -2480,8 +2494,12 @@ function fold_node(c: Cursor, p: number): number {
 			return push_dyn(p, module_script());
 
 		default:
-			// a label renders only as the snippet of a replaced directive
-			if (c.kind === K.DIRECTIVE_LABEL) return p;
+			// a label renders only as the snippet of a replaced directive, and a
+			// footnote definition in the section at the end
+			if (c.kind >= K.DIRECTIVE_LABEL)
+				return c.kind === K.FOOTNOTE_REFERENCE
+					? push_dyn(p, fn_reference(c))
+					: p;
 			// a replaced directive never gets here, see comp_ref
 			if (dir_strict) dir_check(c);
 			return fold_children(c, p);
@@ -3145,8 +3163,12 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			return 0;
 
 		default:
-			// a label renders only as the snippet of a replaced directive
-			if (c.kind === K.DIRECTIVE_LABEL) return p;
+			// a label renders only as the snippet of a replaced directive, and a
+			// footnote definition in the section at the end
+			if (c.kind >= K.DIRECTIVE_LABEL)
+				return c.kind === K.FOOTNOTE_REFERENCE
+					? fn_reference_mapped(c, sink, p, true)
+					: p;
 			// a replaced directive never gets here, see comp_ref
 			if (dir_strict) dir_check(c);
 			return tr_children(c, sink, p);
@@ -3695,8 +3717,12 @@ function mp_node(c: Cursor, sink: MapSink, p: number): number {
 			return 0;
 
 		default:
-			// a label renders only as the snippet of a replaced directive
-			if (c.kind === K.DIRECTIVE_LABEL) return p;
+			// a label renders only as the snippet of a replaced directive, and a
+			// footnote definition in the section at the end
+			if (c.kind >= K.DIRECTIVE_LABEL)
+				return c.kind === K.FOOTNOTE_REFERENCE
+					? fn_reference_mapped(c, sink, p, false)
+					: p;
 			// a replaced directive never gets here, see comp_ref
 			if (dir_strict) dir_check(c);
 			return mp_children(c, sink, p);
@@ -5298,34 +5324,8 @@ function wrap_pass(
 		const k = n[b] & 0xff;
 		if (k !== K.LINE_BREAK) {
 			c.move_to(child);
-			if (wrap_hoists(c, k) === hoisted) {
-				if (wrap_mode === CM.FOLD) p = fold_node(c, p);
-				else if (k === K.TEXT) {
-					// the mapped walks render text in their children loops
-					const vs = n[b + W.value_start];
-					const ve = n[b + W.value_end];
-					const t = escape_text_at(c, child, vs, ve, false);
-					if (p !== 0) mo += FOLD_STR[p];
-					p = 0;
-					if (vs !== Slot.NONE && ve > vs) {
-						const at = mo.length;
-						if (wrap_mode === CM.TRACE)
-							tr_run(sink!, at, at + t.length, vs, ve);
-						else
-							put_record(
-								sink!,
-								at,
-								at + t.length,
-								vs,
-								ve,
-								child,
-								Code.TEXT_CONTENT
-							);
-					}
-					mo += t;
-				} else if (wrap_mode === CM.TRACE) p = tr_node(c, sink!, p);
-				else p = mp_node(c, sink!, p);
-			}
+			if (wrap_hoists(c, k) === hoisted)
+				p = walk_child(c, sink, p, wrap_mode, child, k);
 		}
 		child = n[b + W.next];
 	}
@@ -5333,11 +5333,42 @@ function wrap_pass(
 	return p;
 }
 
+/** the child of kind k the cursor is at, through the walk of mode */
+function walk_child(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	mode: number,
+	child: number,
+	k: number
+): number {
+	if (mode === CM.FOLD) return fold_node(c, p);
+	if (k === K.TEXT) {
+		// the mapped walks render text in their children loops
+		const n = c.words;
+		const b = child * W.stride;
+		const vs = n[b + W.value_start];
+		const ve = n[b + W.value_end];
+		const t = escape_text_at(c, child, vs, ve, false);
+		if (p !== 0) mo += FOLD_STR[p];
+		if (vs !== Slot.NONE && ve > vs) {
+			const at = mo.length;
+			if (mode === CM.TRACE) tr_run(sink!, at, at + t.length, vs, ve);
+			else
+				put_record(sink!, at, at + t.length, vs, ve, child, Code.TEXT_CONTENT);
+		}
+		mo += t;
+		return 0;
+	}
+	return mode === CM.TRACE ? tr_node(c, sink!, p) : mp_node(c, sink!, p);
+}
+
 /** c is at the root, the hoisted children then the rest inside the wrapper */
 function wrap_root(c: Cursor, sink: MapSink | undefined, p: number): number {
 	p = wrap_pass(c, sink, p, true);
 	p = cm_wrap(p, wrap_open);
 	p = wrap_pass(c, sink, p, false);
+	if (fn !== null) p = fn_section(c, sink, p, wrap_mode);
 	return cm_wrap(p, '</' + WRAP_LOCAL + '>');
 }
 
@@ -5357,8 +5388,11 @@ function _render_block(cursor: Cursor): string {
 
 //  block entry
 
+/** the idx of the block that holds the footnotes section, which is no node */
+export const FOOTNOTES_BLOCK = -1;
+
 export interface CursorBlockEntry {
-	/** node buffer index, use as keyed each key. */
+	/** node buffer index, use as keyed each key, FOOTNOTES_BLOCK for the footnotes section */
 	idx: number;
 	/** rendered html string. */
 	html: string;
@@ -5439,6 +5473,13 @@ export class CursorHTMLRenderer {
 	 * leaves text as written, as does a text node that holds a stored string
 	 */
 	declare smart_punctuation?: SmartPunctuation;
+	/**
+	 * the footnotes of the next renders with their numbers, unset numbers the
+	 * references of a document as its labels are first met
+	 */
+	declare footnotes?: FootnoteRender;
+	/** the cached render met a footnote, so each update numbers them again */
+	private noted = false;
 
 	constructor(opts?: { cache?: boolean }) {
 		this.cache = opts?.cache ?? true;
@@ -5468,6 +5509,8 @@ export class CursorHTMLRenderer {
 		if (urls !== undefined) ul = urls;
 		const fences = this.fences;
 		if (fences !== undefined) fs = fences;
+		const notes = this.footnotes;
+		if (notes !== undefined) fn = notes;
 
 		// no caching, single-pass full render
 		if (!this.cache) {
@@ -5497,7 +5540,9 @@ export class CursorHTMLRenderer {
 				if (code) module_begin_fold(buf, code);
 				prebuilt_begin(buf);
 				this.html = render_folded(c);
+				if (fn !== null) this.html += fn_section_folded(c);
 			} finally {
+				fn = null;
 				hl = null;
 				pm = null;
 				if (urls !== undefined) ul = null;
@@ -5516,8 +5561,10 @@ export class CursorHTMLRenderer {
 		try {
 			hoist_begin(c, buf, false);
 			if (code) module_begin(buf, code);
+			if (this.noted && fn === null) fn = footnote_index(buf, true);
 			this.update_blocks(c);
 		} finally {
+			fn = null;
 			hl = null;
 			pm = null;
 			if (urls !== undefined) ul = null;
@@ -5532,6 +5579,13 @@ export class CursorHTMLRenderer {
 	private update_blocks(c: Cursor): void {
 		if (!c.goto_first_child()) return;
 
+		// the section of the last update is no child of the root
+		const blocks = this.blocks;
+		if (
+			blocks.length !== 0 &&
+			blocks[blocks.length - 1].idx === FOOTNOTES_BLOCK
+		)
+			blocks.pop();
 		let block_idx = 0;
 		do {
 			if (c.kind === K.LINE_BREAK) continue;
@@ -5557,6 +5611,12 @@ export class CursorHTMLRenderer {
 		} while (c.goto_next_sibling());
 
 		c.goto_parent();
+		// a block may have met the first footnote of the document
+		if (fn !== null) {
+			this.noted = true;
+			const html = fn_section_folded(c);
+			if (html !== '') blocks.push({ idx: FOOTNOTES_BLOCK, html });
+		}
 		this.html = this.blocks.map((b) => b.html).join('');
 	}
 
@@ -5585,6 +5645,8 @@ export class CursorHTMLRenderer {
 		if (urls !== undefined) ul = urls;
 		const fences = this.fences;
 		if (fences !== undefined) fs = fences;
+		const notes = this.footnotes;
+		if (notes !== undefined) fn = notes;
 
 		if (this.template !== undefined) {
 			this.html = this.render_wrapped(c, buf, sink, trace, code);
@@ -5619,7 +5681,9 @@ export class CursorHTMLRenderer {
 			prebuilt_begin(buf);
 			if (trace) p = tr_node(c, sink, 0);
 			else p = mp_node(c, sink, 0);
+			if (fn !== null) p = fn_section(c, sink, p, trace ? CM.TRACE : CM.MAPPED);
 		} finally {
+			fn = null;
 			hl = null;
 			pm = null;
 			if (urls !== undefined) ul = null;
@@ -5689,6 +5753,7 @@ export class CursorHTMLRenderer {
 				if (p !== 0) html += FOLD_STR[p];
 			}
 		} finally {
+			fn = null;
 			hl = null;
 			pm = null;
 			ul = null;
@@ -5800,6 +5865,7 @@ export class CursorHTMLRenderer {
 		this.blocks.length = 0;
 		this.closed?.clear();
 		this.html = '';
+		this.noted = false;
 	}
 
 	/** drop every reference to the last render so a kept renderer holds no document */
@@ -5823,6 +5889,8 @@ export class CursorHTMLRenderer {
 		if (this.fences !== undefined) this.fences = undefined;
 		if (this.smart_punctuation !== undefined)
 			this.smart_punctuation = undefined;
+		if (this.footnotes !== undefined) this.footnotes = undefined;
+		this.noted = false;
 		// the escape index is module state and would keep the source alive,
 		// every render resets it, a zero length clamps any text of '' to empty
 		esc_src = '';
@@ -6914,4 +6982,222 @@ function sp_plain(c: Cursor, i: number): boolean {
 	}
 	c.move_to(at);
 	return (sp_parent_plain = plain);
+}
+
+// footnotes are cold beside the walks too, so their bindings follow
+
+/** how the footnotes of a render are numbered and what its section says */
+export interface FootnoteRender extends FootnoteIndex {
+	/** the accessible name of the section, Footnotes when unset */
+	label?: string;
+	/** the accessible name of a link back to a reference, {n} is its number, Back to reference {n} when unset */
+	back_label?: string;
+}
+
+/**
+ * the footnotes of the render in progress, null until a walk meets one, a
+ * render that was given none then numbers them itself, every reference as
+ * its label is first met, which suits a document that is still arriving
+ */
+let fn: FootnoteRender | null = null;
+
+function fn_get(c: Cursor): FootnoteRender {
+	if (fn !== null) return fn;
+	const made: FootnoteRender = footnote_index(c.buffer, true)!;
+	fn = made;
+	return made;
+}
+
+/** an id as the fragment of a url */
+function fn_href(id: string): string {
+	return escape_code(encodeURIComponent(id));
+}
+
+/** the link a reference renders as, '' for one in a definition that is not rendered */
+function fn_reference(c: Cursor): string {
+	const at = fn_get(c).references.get(c.index);
+	if (at === undefined) return '';
+	const number = Math.floor(at / 65536);
+	return (
+		'<sup><a href="#' +
+		fn_href(footnote_id(fn!.labels[number - 1])) +
+		'" id="' +
+		escape_code(footnote_ref_id(number, at % 65536)) +
+		'" role="doc-noteref">' +
+		number +
+		'</a></sup>'
+	);
+}
+
+/** fn_reference for the trace and the mapped walk, the node is one record */
+function fn_reference_mapped(
+	c: Cursor,
+	sink: MapSink,
+	p: number,
+	trace: boolean
+): number {
+	const s = fn_reference(c);
+	if (p !== 0) mo += FOLD_STR[p];
+	const pre = mo.length;
+	mo += s;
+	if (trace) tr_point(sink, pre, c.start);
+	else put_record(sink, pre, mo.length, c.start, c.end, c.index, 0);
+	return 0;
+}
+
+/** appends s in the walk of mode, returns the register */
+function fn_put(p: number, s: string, mode: number): number {
+	if (mode === CM.FOLD) return push_dyn(p, s);
+	if (p !== 0) mo += FOLD_STR[p];
+	mo += s;
+	return 0;
+}
+
+/** the links from footnote number back to each of its count references */
+function fn_back(notes: FootnoteRender, number: number, count: number): string {
+	const label = escape_code(notes.back_label ?? 'Back to reference {n}');
+	let s = '';
+	for (let nth = 1; nth <= count; nth++) {
+		const name = nth === 1 ? '' + number : number + '-' + nth;
+		s +=
+			' <a href="#' +
+			fn_href(footnote_ref_id(number, nth)) +
+			'" role="doc-backlink" aria-label="' +
+			label.replace('&#123;n&#125;', name) +
+			// the selector keeps the arrow from being drawn as an emoji
+			'">\u21a9\ufe0e' +
+			(nth === 1 ? '' : '<sup>' + nth + '</sup>') +
+			'</a>';
+	}
+	return s;
+}
+
+/**
+ * the paragraph the cursor is at with links before its close tag, what the
+ * paragraph case of each walk writes for one outside a tight list
+ */
+function fn_paragraph(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	mode: number,
+	links: string
+): number {
+	if (mode === CM.FOLD) {
+		p = fold_open(c, p, S_P, S_P_OPEN, S_GT);
+		p = fold_children(c, p);
+		return push_static(push_dyn(p, links), S_P_CLOSE);
+	}
+	const pre = mo.length + FOLD_LEN[p];
+	const start = c.start;
+	p = tr_open(c, p, S_P, S_P_OPEN, S_GT);
+	if (mode === CM.TRACE) {
+		p = tr_children(c, sink!, p);
+		if (p !== 0) mo += FOLD_STR[p];
+		mo += links;
+		tr_point(sink!, pre, start);
+		return S_P_CLOSE;
+	}
+	const ao = mo.length + FOLD_LEN[p];
+	p = mp_children(c, sink!, p);
+	if (p !== 0) mo += FOLD_STR[p];
+	mo += links;
+	const bc = mo.length;
+	_spans(sink!, pre, ao, bc, bc + FOLD_LEN[S_P_CLOSE], c, Preset.TEXT);
+	return S_P_CLOSE;
+}
+
+/**
+ * the blocks of the definition node with its back links, inside its last
+ * paragraph when the walk writes that one itself, after its last block otherwise
+ */
+function fn_definition(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	mode: number,
+	node: number,
+	links: string
+): number {
+	const n = c.words;
+	const first = n[node * W.stride + W.first_child];
+	let last: number = Slot.NONE;
+	for (
+		let child = first;
+		child !== Slot.NONE && n[child * W.stride + W.parent] === node;
+		child = n[child * W.stride + W.next]
+	) {
+		if ((n[child * W.stride] & 0xff) !== K.LINE_BREAK) last = child;
+	}
+	let placed = false;
+	for (
+		let child = first;
+		child !== Slot.NONE && n[child * W.stride + W.parent] === node;
+		child = n[child * W.stride + W.next]
+	) {
+		const k = n[child * W.stride] & 0xff;
+		if (k === K.LINE_BREAK) continue;
+		c.move_to(child);
+		if (
+			child === last &&
+			k === K.PARAGRAPH &&
+			!(has_components && comp_ref(c) !== null)
+		) {
+			p = fn_paragraph(c, sink, p, mode, links);
+			placed = true;
+		} else p = walk_child(c, sink, p, mode, child, k);
+	}
+	return placed ? p : fn_put(p, links, mode);
+}
+
+/**
+ * the section that holds every footnote a reference reached, in number
+ * order, after the content of the root, nothing when no definition renders
+ */
+function fn_section(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	mode: number
+): number {
+	const notes = fn!;
+	const definitions = notes.definitions;
+	let open =
+		'<section class="footnotes" role="doc-endnotes" aria-label="' +
+		escape_code(notes.label ?? 'Footnotes') +
+		'">\n<ol>\n';
+	// the number an item gets with no value of its own
+	let next = 1;
+	for (let i = 0; i < definitions.length; i++) {
+		const node = definitions[i];
+		if (node === Slot.NONE) continue;
+		let item =
+			open + '<li id="' + escape_code(footnote_id(notes.labels[i])) + '"';
+		open = '';
+		// a reference with no definition took a number, so the list skips it
+		if (i + 1 !== next) item += ' value="' + (i + 1) + '"';
+		next = i + 2;
+		p = fn_put(p, item + '>', mode);
+		p = fn_definition(
+			c,
+			sink,
+			p,
+			mode,
+			node,
+			fn_back(notes, i + 1, notes.counts[i])
+		);
+		p = fn_put(p, '</li>\n', mode);
+	}
+	c.move_to(0);
+	return open === '' ? fn_put(p, '</ol>\n</section>', mode) : p;
+}
+
+/** fn_section as the html of the fold walk */
+function fn_section_folded(c: Cursor): string {
+	fold_out = '';
+	const p = fn_section(c, undefined, 0, CM.FOLD);
+	let html = fold_out;
+	fold_out = '';
+	if (p !== 0) html += FOLD_STR[p];
+	return html;
 }
