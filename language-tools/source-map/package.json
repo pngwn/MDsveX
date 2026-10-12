@@ -8,6 +8,9 @@
 	},
 	"description": "PFM to Svelte source map pipeline for language tooling",
 	"type": "module",
+	"files": [
+		"src"
+	],
 	"scripts": {
 		"test": "vitest --disableConsoleIntercept",
 		"test:run": "vitest run --silent"
