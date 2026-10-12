@@ -413,6 +413,72 @@ A plugin with `sequential: true` runs over the finished tree instead, after [`he
 
 Elements a plugin creates count as markdown, so a [replacement](docs#custom-components) for `mark` also replaces the `<mark>` a highlight plugin adds.
 
+### Plugin data
+
+A plugin can hand something back from the parse of a document, such as a table of contents or a reading time, by writing to `ctx.data`:
+
+```js
+const reading_time = {
+	name: 'reading_time',
+	parse: {
+		sequential: true,
+		paragraph: {
+			parse(node, ctx) {
+				const words = (ctx.data.words ?? 0) + node.text_content.split(/\s+/).length;
+				ctx.data.words = words;
+				ctx.data.minutes = Math.ceil(words / 200);
+			}
+		}
+	}
+};
+
+mdsvex({ plugins: [reading_time] });
+```
+
+The document exports what its plugins left as `plugin_data`, beside `metadata`, keyed by plugin name:
+
+```js
+import Article, { metadata, plugin_data } from './article.svx';
+
+plugin_data.reading_time; // { words: 420, minutes: 3 }
+```
+
+- **The document can read it too**, as `{plugin_data.reading_time.minutes}` in its own markup.
+- **A [template](docs#template-props) gets it as its `plugin_data` prop.**
+- **A document whose plugins left nothing has no such export**, and compiles exactly as it does without plugins. Import it from a document you know has some, or use `?data` below, which always has the export.
+- **The values are JSON**: plain objects, arrays, strings, finite numbers, booleans and `null`. Anything else, such as a `Date`, a `Map`, `NaN` or a function, fails the compile with a `PluginDataError` that names the plugin and the path of the value, `headings[2].id`. A key that holds `undefined` is left out.
+
+To list documents with what their plugins left, import them with the `?data` query:
+
+```js
+// src/routes/blog/+page.js
+const posts = import.meta.glob('./*/+page.svx', { query: '?data', eager: true });
+
+export function load() {
+	return {
+		posts: Object.entries(posts).map(([path, { metadata, plugin_data }]) => ({
+			slug: path.split('/')[1],
+			title: metadata?.title,
+			minutes: plugin_data?.reading_time.minutes
+		}))
+	};
+}
+```
+
+A `?data` import parses the document and runs its plugins, and renders nothing, so the list does not load the component of every page. Its module exports `metadata` and `plugin_data`, each `undefined` when the document has none, and both in one object as its default export.
+
+**`?data` or [`?metadata`](docs#frontmatter)?** A `?metadata` import reads the frontmatter alone, so only an edit of the frontmatter reloads the pages that import it. A `?data` import depends on the whole document: an edit of the body that changes what a plugin left reloads them, and a plugin that throws fails the import. Use `?metadata` for a list of titles and dates, and `?data` when the list shows something a plugin worked out.
+
+For TypeScript, a plugin types its own key by adding to the `PluginData` interface, and `mdsvex/globals` in `compilerOptions.types` types direct `?data` imports:
+
+```ts
+declare module 'mdsvex' {
+	interface PluginData {
+		reading_time: { words: number; minutes: number };
+	}
+}
+```
+
 ### `highlight`
 
 ```ts
@@ -953,10 +1019,11 @@ To choose for one import only, add `?template=` to it. `?template=false` unwraps
 A template gets:
 
 - every frontmatter key as its own prop, so `let { title } = $props()` reads `title`;
+- `plugin_data`, what the plugins left for the document, when they left any (see [plugin data](docs#plugin-data));
 - `children`, a snippet that renders the document;
 - the props passed to the document, so `<Post featured />` reaches the template as `featured`.
 
-The frontmatter can't have a `children` key when the document has a template. It is an error that points at the line.
+The frontmatter can't have a `children` key when the document has a template, nor a `plugin_data` key when its plugins left data. Each is an error that points at the line.
 
 A document that reads its own props with `let props = $props()` still forwards them all to its template. If it destructures them, `let { featured } = $props()`, it forwards none, as `$props()` can only be called once.
 
