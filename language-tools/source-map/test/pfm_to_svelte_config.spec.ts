@@ -373,6 +373,55 @@ describe("pfmToSvelte compile diagnostics", () => {
 		expect(pfmToSvelte(source, { resolve: (id) => FILES[id] }).diagnostics).toEqual([]);
 	});
 
+	it("reports a block that can not run at its fence", () => {
+		const options = {
+			compile: {
+				components: [{ specifier: "mdsvex:components", names: ["pre"] }],
+			},
+			resolve: (id: string) => FILES[id],
+		};
+		const cases: [string, string][] = [
+			["```py run\nprint(1)\n```\n", "A py block can not run"],
+			["```run\nlet a;\n```\n", "needs a language"],
+			["```js run eval\nlet a = {b};\n```\n", "not both"],
+			["```js run=server\nlet a;\n```\n", "run= takes client"],
+		];
+		for (const [fence, message] of cases) {
+			const source = "# t\n\n" + fence + "\n## after\n";
+			const r = pfmToSvelte(source, options);
+			expect(r.diagnostics).toHaveLength(1);
+			const [d] = r.diagnostics;
+			expect(d.severity).toBe("error");
+			expect(d.message).toContain(message);
+			expect(source.slice(d.start, d.end)).toBe(fence.slice(0, fence.indexOf("\n")));
+			expect(r.code).not.toContain("snippet");
+			expect(r.code).toContain("<h2>after</h2>");
+		}
+	});
+
+	it("reports a block that runs with no component for pre, when the config is known", () => {
+		const source = "# t\n\n```svelte run\n<b>hi</b>\n```\n\n## after\n";
+		const known = pfmToSvelte(source, {
+			compile: {},
+			resolve: (id) => FILES[id],
+			report_missing_pre: true,
+		});
+		expect(known.diagnostics).toHaveLength(1);
+		expect(known.diagnostics[0].message).toContain("no component does");
+		expect(source.slice(known.diagnostics[0].start, known.diagnostics[0].end)).toBe(
+			"```svelte run",
+		);
+		expect(known.code).toContain("<h2>after</h2>");
+		const replaced = pfmToSvelte(source, {
+			compile: {
+				components: [{ specifier: "mdsvex:components", names: ["pre"] }],
+			},
+			resolve: (id) => FILES[id],
+			report_missing_pre: true,
+		});
+		expect(replaced.diagnostics).toEqual([]);
+	});
+
 	it("reports a fence with src= and code of its own at the fence", () => {
 		const source = "# t\n\n```ts src=./math.ts\nlet mine;\n```\n\n## after\n";
 		const r = pfmToSvelte(source, { resolve: (id) => FILES[id] });

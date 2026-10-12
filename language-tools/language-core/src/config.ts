@@ -234,6 +234,7 @@ export function document_options(
 		report_directives: !manifest.directive_plugins,
 		lenient_frontmatter: manifest.frontmatter_parse,
 		declare_plugin_data: manifest.plugin_data === true,
+		report_missing_pre: true,
 	};
 }
 
