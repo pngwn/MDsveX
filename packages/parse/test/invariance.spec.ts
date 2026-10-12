@@ -328,23 +328,11 @@ const KNOWN: Known[] = [
 	},
 	{
 		issue: 1061,
-		what: 'an open tag at the end of a table row reads into the next line, which is then lost',
-		edited: ['content', /<\w+\n>/],
+		what: 'an open tag or a comment at the end of a table row reads into the next line, which is then lost',
+		edited: ['content', /<\w+\n>|<!--\n/],
 		example: {
 			site: 'root',
 			source: '| a | b |\n|---|---|\n| c | <i\n> | q000 |\n',
-		},
-	},
-	{
-		issue: 1066,
-		what: 'a quote marker at the left margin continues a block quote that is inside a list item',
-		drop: (seen) =>
-			is(seen, 'block_quote') &&
-			seen.piece.join === '\n' &&
-			seen.before?.kind === 'list',
-		example: {
-			site: 'directive_container',
-			source: '- > a\n> :::box\n> b\n> :::',
 		},
 	},
 	{

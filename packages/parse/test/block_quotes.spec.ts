@@ -9,7 +9,14 @@ import type { NodeBuffer } from '../src/utils';
 import { print_ast } from './print';
 import { NodeKind } from '../src/utils';
 import { run_batch, run_wire } from './plugin_harness';
-import { checked_tree, every_path, lines, pick, random } from './stream_shape';
+import {
+	checked_tree,
+	every_path,
+	fed_mismatch,
+	lines,
+	pick,
+	random,
+} from './stream_shape';
 
 const this_dir = dirname(fileURLToPath(import.meta.url));
 const fixtures_root = resolve(this_dir, 'fixtures/pfm/block_quotes');
@@ -1133,5 +1140,81 @@ describe('a thematic break in a quoted list item', () => {
 				'        thematic_break'
 			)
 		);
+	});
+});
+
+describe('a block quote inside a list item', () => {
+	const tree = (input: string): string =>
+		print_ast(parse_markdown_svelte(input).nodes, input);
+	const kinds = (input: string): string[] =>
+		tree(input)
+			.split('\n')
+			.map((line) => line.trim().split(' ')[0])
+			.filter((kind) => kind !== 'line_break' && kind !== '');
+
+	test.each([
+		[
+			'a marker at the left margin starts a new quote after the list',
+			'- > a\n> b\n',
+			[
+				'root',
+				'list',
+				'list_item',
+				'block_quote',
+				'paragraph',
+				'text',
+				'block_quote',
+				'paragraph',
+				'text',
+			],
+		],
+		[
+			'a marker indented to the item continues the quote',
+			'- > a\n  > b\n',
+			[
+				'root',
+				'list',
+				'list_item',
+				'block_quote',
+				'paragraph',
+				'text',
+				'soft_break',
+				'text',
+			],
+		],
+		[
+			'an outer marker alone does not continue the inner quote',
+			'> - > a\n> > b\n',
+			[
+				'root',
+				'block_quote',
+				'list',
+				'list_item',
+				'block_quote',
+				'paragraph',
+				'text',
+				'block_quote',
+				'paragraph',
+				'text',
+			],
+		],
+		[
+			'an outer marker and the indent continue the inner quote',
+			'> - > a\n>   > b\n',
+			[
+				'root',
+				'block_quote',
+				'list',
+				'list_item',
+				'block_quote',
+				'paragraph',
+				'text',
+				'soft_break',
+				'text',
+			],
+		],
+	])('%s: %j', (_, input, expected) => {
+		expect(kinds(input)).toEqual(expected);
+		expect(fed_mismatch(input)).toBe('');
 	});
 });

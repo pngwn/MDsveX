@@ -905,6 +905,11 @@ export class PFMParser {
 
 	// block state
 	private block_quote_depth: number = 0;
+	// the open block quotes and list items from the outside in, 0 for a quote and the content column for an item
+	private frames: number[] = NO_STACK;
+	// set by line_start, where the line goes on after the prefixes it continues and after its last quote marker
+	private line_pos: number = 0;
+	private line_quote: number = 0;
 	private emphasis_has_content: boolean = false;
 	// set by try_parse_html_open_tag in feed mode when the tag may still close and a wait for its end is set
 	private tag_wait: boolean = false;
@@ -1845,6 +1850,7 @@ export class PFMParser {
 		this.class_floor = 0;
 		this.range_next_class = 0;
 		this.block_quote_depth = 0;
+		if (this.frames.length !== 0) this.frames = NO_STACK;
 		this.emphasis_has_content = false;
 		this.in_heading = false;
 		this.list_depth = 0;
@@ -3256,20 +3262,13 @@ export class PFMParser {
 
 		let p = pos + 1;
 		const depth = this.block_quote_depth;
-		// skip_bq_markers reads a marker and its space, both must be visible or it strips short
-		for (let i = 0; i < depth; i++) {
-			while (p < length) {
-				const ch = char_code_at.call(source, p - base);
-				if (ch !== SPACE && ch !== TAB) break;
-				p++;
-			}
-			if (p >= length) return this.finished;
-			// an unmarked line ends the quote whatever it holds
-			if (char_code_at.call(source, p - base) !== CLOSE_ANGLE_BRACKET)
-				return true;
-			p++;
+		if (depth > 0) {
+			const kept = this.line_start(p);
+			if (kept < 0) return false;
+			// a line that leaves a quote ends it whatever it holds
+			if (kept < this.frames.length && this.quote_ends(kept)) return true;
+			p = this.line_quote;
 		}
-		// the space of the last marker goes with the leading whitespace
 		while (p < length) {
 			const ch = char_code_at.call(source, p - base);
 			if (ch !== SPACE && ch !== TAB) break;
@@ -3463,6 +3462,89 @@ export class PFMParser {
 		while (pos < length && char_code_at.call(source, pos - base) === SPACE)
 			pos++;
 		return pos;
+	}
+
+	private push_frame(column: number): void {
+		const frames = this.frames;
+		if (frames === NO_STACK) this.frames = [column];
+		else frames.push(column);
+	}
+
+	/**
+	 * reads what the open block quotes and list items put before the line at pos, from the outside in
+	 * a quote takes its marker and one space, an item its indent or a blank line
+	 * line_pos is left after the prefixes the line continues and line_quote after its last quote marker
+	 * @returns how many frames the line continues, -1 while a feed cannot tell yet
+	 */
+	private line_start(pos: number): number {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		const frames = this.frames;
+		const count = frames.length;
+		// the columns of an item count from the line start or from the last quote marker
+		let origin = pos;
+		let p = pos;
+		let i = 0;
+		for (; i < count; i++) {
+			const column = frames[i];
+			let q = column === 0 ? p : origin;
+			let ch = char_code_at.call(source, q - base);
+			if (column === 0) {
+				while (ch === SPACE || ch === TAB) {
+					ch = char_code_at.call(source, ++q - base);
+				}
+				if (q >= length) {
+					if (!this.finished) return -1;
+					break;
+				}
+				if (ch !== CLOSE_ANGLE_BRACKET) break;
+				// the space of the marker may still arrive
+				if (++q >= length) {
+					if (!this.finished) return -1;
+				} else if (char_code_at.call(source, q - base) === SPACE) q++;
+				origin = p = q;
+				continue;
+			}
+			let columns = 0;
+			while (columns < column) {
+				if (ch === SPACE) columns++;
+				else if (ch === TAB) columns += this.tab_size;
+				else break;
+				ch = char_code_at.call(source, ++q - base);
+			}
+			if (columns >= column) {
+				p = q;
+				continue;
+			}
+			// a blank line is inside every item
+			while (ch === SPACE || ch === TAB) {
+				ch = char_code_at.call(source, ++q - base);
+			}
+			if (q >= length) {
+				if (!this.finished) return -1;
+			} else if (ch !== LINEFEED) break;
+		}
+		this.line_pos = p;
+		this.line_quote = origin;
+		return i;
+	}
+
+	/** a block quote is among the frames from kept on, a line that continues only kept frames ends it */
+	private quote_ends(kept: number): boolean {
+		const frames = this.frames;
+		for (let i = kept; i < frames.length; i++) {
+			if (frames[i] === 0) return true;
+		}
+		return false;
+	}
+
+	/** where the line after the linefeed at lf goes on past its quote markers, -1 when it leaves a block quote */
+	private quote_line(lf: number): number {
+		const kept = this.line_start(lf + 1);
+		return kept < 0 || (kept < this.frames.length && this.quote_ends(kept))
+			? -1
+			: this.line_quote;
 	}
 
 	private skip_bq_markers(pos: number, depth: number): number {
@@ -3856,6 +3938,7 @@ export class PFMParser {
 		this.list_is_loose = false;
 		this.list_content_offset = marker.content_offset;
 		this.list_marker_indent = marker.indent;
+		this.push_frame(marker.content_offset);
 		this.list_pending_paras = NO_STACK;
 
 		const list_id = this.emit_open(NodeKind.list, this.cursor, parent);
@@ -4015,6 +4098,7 @@ export class PFMParser {
 		this.node_stack.pop();
 
 		this.list_depth--;
+		this.frames.pop();
 
 		// restore outer list state if nested
 		if (this.list_depth > 0 && this.list_state_stack.length > 0) {
@@ -5351,6 +5435,7 @@ export class PFMParser {
 				this.emit_close(id, this.cursor);
 				this.node_stack.pop();
 				this.block_quote_depth--;
+				this.frames.pop();
 				return;
 			case NodeKind.svelte_branch:
 				this.emit_close(id, this.cursor);
@@ -6414,9 +6499,8 @@ export class PFMParser {
 		// a directive label ends at its bracket, no line in it ends a block
 		if (this.inline_range_parse) return true;
 		if (this.in_heading || this.in_table) return false;
-		const depth = this.block_quote_depth;
-		if (depth === 0) return !this.lf_ends_inline(lf);
-		const stripped = this.skip_bq_markers(lf + 1, depth);
+		if (this.block_quote_depth === 0) return !this.lf_ends_inline(lf);
+		const stripped = this.quote_line(lf);
 		return stripped !== -1 && !this.bq_line_ends_para(stripped);
 	}
 
@@ -6711,23 +6795,10 @@ export class PFMParser {
 						// must have a `>` prefix; a line without one terminates
 						// the blockquote.
 						if (this.block_quote_depth > 0) {
-							const stripped = this.skip_bq_markers(
-								next_pos,
-								this.block_quote_depth
-							);
-
-							if (stripped === -1) {
-								// unmarked line - close the paragraph. cursor stays
-								// on lf so enclosing block_quote state frames will
-								// cascade-close themselves via their own linefeed
-								// handlers, each strips block_quote_depth markers
-								this.emit_close(current_node, this.cursor);
-								this.states.pop();
-								truncate_stack(this.node_stack, node_stack_base);
-								continue;
-							}
-
-							if (this.bq_line_ends_para(stripped)) {
+							const stripped = this.quote_line(this.cursor);
+							// a line that leaves a quote closes the paragraph, the cursor stays
+							// on the lf and each frame the line leaves closes at its own linefeed
+							if (stripped === -1 || this.bq_line_ends_para(stripped)) {
 								this.emit_close(current_node, this.cursor);
 								this.states.pop();
 								truncate_stack(this.node_stack, node_stack_base);
@@ -7361,14 +7432,9 @@ export class PFMParser {
 										this.cursor + 2
 									);
 									this.chomp(2);
-									// strip block quote markers
-									if (this.block_quote_depth > 0) {
-										const stripped = this.skip_bq_markers(
-											this.cursor,
-											this.block_quote_depth
-										);
-										if (stripped !== -1) this.chomp(stripped, true);
-									}
+									// lf_continues left line_quote past the markers of this line
+									if (this.block_quote_depth > 0)
+										this.chomp(this.line_quote, true);
 									// skip leading spaces
 									while (
 										this.cursor < length &&
@@ -7921,14 +7987,9 @@ export class PFMParser {
 									this.cursor + 2
 								);
 								this.chomp(2);
-								// strip block quote markers
-								if (this.block_quote_depth > 0) {
-									const stripped = this.skip_bq_markers(
-										this.cursor,
-										this.block_quote_depth
-									);
-									if (stripped !== -1) this.chomp(stripped, true);
-								}
+								// lf_continues left line_quote past the markers of this line
+								if (this.block_quote_depth > 0)
+									this.chomp(this.line_quote, true);
 								// skip leading spaces
 								while (
 									this.cursor < length &&
@@ -9707,10 +9768,7 @@ export class PFMParser {
 	 * line ends the paragraph, the caller pushes inline
 	 */
 	private bq_soft_break(current_node: number): boolean {
-		const stripped = this.skip_bq_markers(
-			this.cursor + 1,
-			this.block_quote_depth
-		);
+		const stripped = this.quote_line(this.cursor);
 		if (stripped === -1 || this.bq_line_ends_para(stripped)) return false;
 		this.emit_bare_leaf(
 			NodeKind.soft_break,
@@ -10263,6 +10321,7 @@ export class PFMParser {
 			this.states.pop();
 			this.node_stack.pop();
 			this.block_quote_depth--;
+			this.frames.pop();
 			return false;
 		}
 
@@ -10271,11 +10330,12 @@ export class PFMParser {
 				if (!this.finished && !this.can_decide_after_lf(this.cursor)) {
 					return true;
 				}
-				// strip all enclosing markers, too few closes this frame and the outer one retries
-				const next_pos = this.cursor + 1;
-				const stripped = this.skip_bq_markers(next_pos, this.block_quote_depth);
+				// a line that does not continue every frame closes this one, and the next frame out retries
+				const kept = this.line_start(this.cursor + 1);
+				if (kept < 0) return true;
+				const stripped = this.line_pos;
 
-				if (stripped !== -1) {
+				if (kept === this.frames.length) {
 					if (this.is_blank_at_pos(stripped)) {
 						this.emit_bare_leaf(
 							NodeKind.line_break,
@@ -10294,6 +10354,7 @@ export class PFMParser {
 				this.states.pop();
 				this.node_stack.pop();
 				this.block_quote_depth--;
+				this.frames.pop();
 				return false;
 			}
 
@@ -10359,6 +10420,7 @@ export class PFMParser {
 				if (p < length && char_code_at.call(source, p - base) === SPACE) p++;
 
 				this.block_quote_depth++;
+				this.push_frame(0);
 				const bq_id = this.emit_open(
 					NodeKind.block_quote,
 					this.cursor,
@@ -10630,6 +10692,8 @@ export class PFMParser {
 								);
 								this.node_stack.push(new_item_id);
 								this.list_content_offset = marker_after.content_offset;
+								this.frames[this.frames.length - 1] =
+									marker_after.content_offset;
 								this.chomp(marker_after.content_start, true);
 								this.cold.task_pos = marker_after.content_start;
 								return false;
@@ -10686,6 +10750,7 @@ export class PFMParser {
 						);
 						this.node_stack.push(new_item_id);
 						this.list_content_offset = marker.content_offset;
+						this.frames[this.frames.length - 1] = marker.content_offset;
 						this.chomp(marker.content_start, true);
 						this.cold.task_pos = marker.content_start;
 						this.item_para(new_item_id);
@@ -10797,6 +10862,7 @@ export class PFMParser {
 							);
 							this.node_stack.push(new_item_id);
 							this.list_content_offset = nested.content_offset;
+							this.frames[this.frames.length - 1] = nested.content_offset;
 							this.chomp(nested.content_start, true);
 							this.cold.task_pos = nested.content_start;
 						} else {
@@ -10821,6 +10887,7 @@ export class PFMParser {
 				let p = this.cursor + 1;
 				if (p < length && char_code_at.call(source, p - base) === SPACE) p++;
 				this.block_quote_depth++;
+				this.push_frame(0);
 				const bq_id = this.emit_open(
 					NodeKind.block_quote,
 					this.cursor,
@@ -10944,6 +11011,7 @@ export class PFMParser {
 						);
 						this.node_stack.push(new_item_id);
 						this.list_content_offset = nested.content_offset;
+						this.frames[this.frames.length - 1] = nested.content_offset;
 						this.chomp(nested.content_start, true);
 						this.cold.task_pos = nested.content_start;
 					} else {
@@ -11010,6 +11078,7 @@ export class PFMParser {
 				let p = this.cursor + 1;
 				if (p < length && char_code_at.call(source, p - base) === SPACE) p++;
 				this.block_quote_depth++;
+				this.push_frame(0);
 				const bq_id = this.emit_open(
 					NodeKind.block_quote,
 					this.cursor,
