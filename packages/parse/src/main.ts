@@ -6190,6 +6190,7 @@ export class PFMParser {
 				const title = string_slice.call(source, title_start - base, p - base);
 				return { title, end: p + 1 };
 			}
+			if (ch === OPEN_PAREN && tc === OPEN_PAREN) return null;
 			if (ch === LINEFEED) {
 				if (!lines) return null;
 				// check for blank line - that terminates the title (invalid)
