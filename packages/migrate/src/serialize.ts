@@ -367,12 +367,20 @@ function serialize_phrasing(node: PhrasingContent, ctx: Context): string {
 	}
 }
 
+const CODE_SPECIAL = /[\\`*_~^[\]{}<>&|]/g;
+
+/**
+ * a pfm span has one or two backticks and holds any run but one of its own
+ * length, code with a run of each is a code element of character references
+ */
 function serialize_inline_code(node: InlineCode): string {
 	const value = node.value ?? "";
-	const runs = value.match(/`+/g);
-	let len = 1;
-	if (runs) for (const r of runs) len = Math.max(len, r.length + 1);
-	const ticks = "`".repeat(len);
+	const runs: string[] = value.match(/`+/g) ?? [];
+	const ticks = !runs.includes("`") ? "`" : !runs.includes("``") ? "``" : "";
+	if (ticks === "")
+		return (
+			"<code>" + value.replace(CODE_SPECIAL, (ch) => "&#" + ch.charCodeAt(0) + ";") + "</code>"
+		);
 	// Pad when the content touches a backtick or begins/ends with a space.
 	const pad =
 		value.startsWith("`") || value.endsWith("`") || /^\s|\s$/.test(value)
