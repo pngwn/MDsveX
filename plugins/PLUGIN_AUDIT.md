@@ -188,10 +188,10 @@ Facts about a page, for templates, listings and `<svelte:head>`. **Shared state:
 
 | Feature | Plugins | Delivery | Notes |
 | --- | --- | --- | --- |
-| **Reading time and word count** | remark-reading-time (1M), rehype-infer-reading-time-meta (3k) | `plugin+API` (write metadata) | |
-| **Excerpt and description** | rehype-infer-description-meta (64k), rehype-truncate (7k) | `plugin+API` (write metadata) | First paragraph, or text up to `<!-- more -->`. |
-| **Inferred title** | rehype-infer-title-meta, remark-title | `plugin+API` (write metadata) | The first `h1` when frontmatter has no `title`. |
-| **Source info** | not on the lists (Astro's last-modified recipe is the reference) | `plugin+API` (file path) | Last modified from git, and the source path for an "Edit this page" link. |
+| **Reading time and word count** | remark-reading-time (1M), rehype-infer-reading-time-meta (3k) | `plugin`, exists (`@mdsvex/plugin-page-data`) | `plugin_data.page.words` and `minutes`. Prose only, counted as `reading-time` counts. |
+| **Excerpt and description** | rehype-infer-description-meta (64k), rehype-truncate (7k) | `plugin`, exists (`@mdsvex/plugin-page-data`) | First paragraph, or text up to `<!-- more -->`. Plain text only, a parse plugin has no rendered HTML. |
+| **Inferred title** | rehype-infer-title-meta, remark-title | `plugin`, exists (`@mdsvex/plugin-page-data`) | The first `h1` when frontmatter has no `title`. It goes in `plugin_data`, never in `metadata`. |
+| **Source info** | not on the lists (Astro's last-modified recipe is the reference) | `plugin`, the edit url exists (`@mdsvex/plugin-page-data`), last modified does not | Last modified from git, and the source path for an "Edit this page" link. Last modified needs git or the file system, which a synchronous handler can't read. |
 | **Frontmatter transforms** | issue #831 | `core` hook | Defaults and derived fields. The hook the features above write through. |
 | **Head tags** | rehype-meta (7k) | `component` (template) | The template renders `<svelte:head>` from `metadata`. |
 
@@ -251,7 +251,7 @@ Ranked on usefulness to mdsvex users × popularity × cost. Items tagged `core` 
 | 10 | Callouts and GitHub alerts | Presentation | component + core | ~4.2M combined |
 | 11 | Emoji shortcodes | Typography | plugin+API | 9.7M |
 | 12 | Styling hooks | Presentation | plugin | 1.4M |
-| 13 | Reading time | Document data | plugin+API | 1M |
+| 13 | Reading time | Document data | plugin, exists | 1M |
 | 14 | Links to routes and the base path | Resolution | vite | ~150k combined; issue #389 |
 | 15 | Metadata-only imports | Collections | vite | every blog and docs listing |
 | 16 | Component starter kit (details, kbd, ruby, badges, embeds; steps and tabs exist as plugins, accordions do not) | Presentation | component + plugin+API | replaces ~10 plugins |
@@ -259,7 +259,7 @@ Ranked on usefulness to mdsvex users × popularity × cost. Items tagged `core` 
 | 18 | Unwrap lone images (core option), then figure and caption | Presentation | core + component | 540k + 90k |
 | 19 | Code from a file (`src=`) | Code | vite | 156k |
 | 20 | Runnable blocks (`run`) | Code | vite | issue #832 |
-| 21 | Excerpt, inferred title, source info | Document data | plugin+API | 64k+ |
+| 21 | Excerpt, inferred title, source info (all exist but last modified) | Document data | plugin, exists | 64k+ |
 | 22 | Copy button and code tabs (code tabs exist, `@mdsvex/plugin-tabs`) | Code | component + plugin+API | expressive-code 5.4M |
 | 23 | Definition lists | Presentation | core / component | 818k |
 | 24 | Link validation | Quality | plugin+API | 639k |

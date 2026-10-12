@@ -1,0 +1,20 @@
+---
+template: post
+---
+
+# A post with no title in its frontmatter
+
+Its title in the list of posts is read from the heading above.
+
+The excerpt runs up to the comment below, so it holds this paragraph too.
+
+<!-- more -->
+
+## After the fold
+
+This paragraph is counted, and is no part of the excerpt.
+
+```js
+// code is not counted
+const words = 0;
+```
