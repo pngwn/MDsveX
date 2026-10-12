@@ -163,7 +163,7 @@ There is no default label, since the plugin can't know the language of the page.
 
 ## With other plugins
 
-The plugin reads the finished tree, so it sees every link whatever the order of `plugins`, and it works beside [`@mdsvex/plugin-anchors`](../anchors) and [`@mdsvex/plugin-steps`](../steps) in any order. A heading anchor links to a fragment, so it is never external.
+The plugin reads each link as it closes, so `rel` and `target` are there while a document is still streaming. It keeps a `target` the link already has and adds to its `rel`, so a plugin that sets either has to come before it in `plugins`. It works beside [`@mdsvex/plugin-anchors`](../anchors) and [`@mdsvex/plugin-steps`](../steps) in any order. A heading anchor links to a fragment, so it is never external.
 
 A [replaced `a`](https://mdsvex.pngwn.io/docs#custom-components) gets `rel` and `target` as props.
 
