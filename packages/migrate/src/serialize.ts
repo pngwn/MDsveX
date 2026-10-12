@@ -123,7 +123,11 @@ function serialize_code(node: Code): string {
 		for (const r of runs) fence_len = Math.max(fence_len, r.length + 1);
 	}
 	const fence = "`".repeat(fence_len);
-	const info = node.lang ? node.lang + (node.meta ? " " + node.meta : "") : "";
+	let meta = node.meta ?? "";
+	// remark-code-import names the file with file=, mdsvex with src=, which
+	// takes no code of its own, so a fence that has some is left alone
+	if (value.trim() === "") meta = meta.replace(/(^|\s)file=/, "$1src=");
+	const info = node.lang ? node.lang + (meta ? " " + meta : "") : "";
 	return fence + info + "\n" + value + "\n" + fence;
 }
 

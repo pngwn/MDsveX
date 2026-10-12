@@ -9,6 +9,7 @@ import {
 	FrontmatterError,
 	highlight_error_at,
 	MathError,
+	SourceError,
 } from 'mdsvex';
 import { source_math } from 'mdsvex/math';
 import type { CompileOptions, CompileResult, TemplateEntry } from 'mdsvex';
@@ -288,6 +289,21 @@ function compile_leniently(
 					severity: 'error',
 				});
 				opts = { ...opts, math: source_math };
+				continue;
+			}
+			if (e instanceof SourceError && opts.sources !== false) {
+				// the editor reads no file, so a file it has no text for is no
+				// error, the fence then renders as written
+				if (e.code !== 'src_missing') {
+					const start = offset_of(source, e.line, e.column);
+					diagnostics.push({
+						start,
+						end: Math.min(start + 1, source.length),
+						message: e.message,
+						severity: 'error',
+					});
+				}
+				opts = { ...opts, sources: false };
 				continue;
 			}
 			const at = highlight_error_at(e);

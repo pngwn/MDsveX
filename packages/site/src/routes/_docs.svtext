@@ -1540,6 +1540,7 @@ The info string after the language takes the conventions of Shiki, VitePress and
 | `[math.ts]`, `title="math.ts"` | a title |
 | `caption="…"` | a caption |
 | `twoslash` | uses [twoslash](docs#twoslash) |
+| `src=./math.ts`, `src=./math.ts#L5-L20` | shows [a file](docs#code-from-a-file), or some of its lines |
 
 ````md
 ```ts title="math.ts" {2} :line-numbers
@@ -1552,6 +1553,49 @@ export function add(a: number, b: number) {
 A fence with a title or caption renders inside a `<figure class="twinkleplop-block">`, with a `<figcaption class="twinkleplop-title">` above the code and a `<figcaption class="twinkleplop-caption">` below it. A [replaced `pre`](docs#code-block-components) gets them as props instead. With `highlight: false` there's no figure, and the fence renders as a plain `<pre><code>`.
 
 A line range past the end of the fence fails the build, so a stale range doesn't silently highlight nothing. The `language-` class carries only the language, never the rest of the meta.
+
+### Code from a file
+
+`src=` in the meta of a fence shows a file in place of code written in the document, so the docs never drift from the code they describe. The fence itself stays empty.
+
+````md
+```ts src=./math.ts
+```
+
+```src=#lib/math.ts#L5-L20 title="math.ts"
+```
+````
+
+The path resolves as an import from the document would: a relative path, a Vite alias, or a `#lib/…` subpath import. Write `./math.ts`, since a bare `math.ts` is a package name to an import. Quote a path with spaces, `src="./my file.ts"`.
+
+A slice after the path shows some of the lines, counted from 1:
+
+| slice | lines |
+| --- | --- |
+| `#L5` | line 5 |
+| `#L5-L20` | lines 5 to 20 |
+| `#L5-` | line 5 to the end |
+| `#-L20` | the start to line 20 |
+
+A fence with no language takes it from the file name, so `src=./math.ts` is highlighted as `ts` and `src=./Dockerfile` as `dockerfile`. A language you write wins. Everything else in the meta works as it does on any fence: line highlights count the lines shown, a title is still `[math.ts]` or `title=`, and `src=` sets none.
+
+The file is highlighted like code written in the fence, and a [replaced `pre`](docs#code-block-components) gets `src` as a prop, as written. In dev, saving the file updates every page that shows it, and a watch build compiles those documents again.
+
+These fail the build, each at the fence:
+
+- the file does not resolve or cannot be read;
+- the slice asks for lines the file does not have, so a stale range never silently shows the wrong code;
+- the fence has code of its own, which would otherwise go missing.
+
+`compile()` reads no files. Give it the text of each file in `sources`, keyed by the path as the fence has it, without the slice:
+
+```js
+compile(source, {
+	sources: { './math.ts': 'export const a = 1;\n' }
+});
+```
+
+A fence whose file is not in `sources` throws a `SourceError`, which has a `code` (`src_missing`, `src_slice`, `src_body` or `src_spec`), the `spec`, and a `line` and `column`. `sources: false` leaves `src=` unread, and the fence renders as written. The editor reads no files either, so it shows such a fence empty and reports only a fence that has code of its own.
 
 ### Code directives
 
@@ -1612,6 +1656,7 @@ A [`pre` replacement](docs#custom-components) wraps the highlighted block. It ge
 | `meta` | the rest of the info string, raw |
 | `code` | the text a reader sees, without directive markers, with [live values](docs#live-code) in place |
 | `title`, `caption` | from the [fence meta](docs#fence-meta), when it has them |
+| `src` | the path a fence [takes its code from](docs#code-from-a-file), as written, slice included |
 | meta props | each part of the meta that no convention claims |
 
 `children` is the `<pre>` itself, not its `<code>`, because Svelte only keeps whitespace inside a `<pre>` it can see. Render it with `{@render children()}` inside your own markup, never inside another `<pre>`. A replaced `pre` gets no `<figure>`, so the title, caption and anything else around the code are up to the component.
@@ -1654,7 +1699,7 @@ Meta that no convention claims becomes props. `key="value"`, `key='value'` and `
 ```
 ````
 
-That fence gives `playground={true}` and `height="300"`, as well as `title`. Expression values, `key={…}`, aren't read. A meta prop named `lang`, `meta`, `code`, `title`, `caption`, `class` or `children` is dropped with a warning. Meta props, `title` and `caption` don't depend on the highlighter, so a `pre` gets them with `highlight: false` too.
+That fence gives `playground={true}` and `height="300"`, as well as `title`. Expression values, `key={…}`, aren't read. A meta prop named `lang`, `meta`, `code`, `title`, `caption`, `class`, `children` or `src` is dropped with a warning. Meta props, `title` and `caption` don't depend on the highlighter, so a `pre` gets them with `highlight: false` too.
 
 See the [code blocks playground example](/playground/code).
 
@@ -2083,6 +2128,7 @@ To also convert CommonMark documents to mdsvex's markdown, use `migrate`, which 
 | `rehype-autolink-headings` | [`@mdsvex/plugin-anchors`](docs#anchors) |
 | `mdsvex-relative-images` | built in, see [`import_images`](docs#import_images) |
 | `remark-link-rewrite`, `rehype-urls`, `remark-prepend-url` | [`rewrite`](docs#rewrite), or [`links`](docs#links) for routes and the base path |
+| `remark-code-import`, ```` ```js file=./a.js#L1-L5 ```` | built in as [`src=`](docs#code-from-a-file), the migrator renames `file=` on a fence with no code |
 | `![alt](./a.png)` served from the page's url | imported from beside the document, write `/a.png` for a file in `static`, or set [`import_images: false`](docs#import_images) |
 
 The migrator handles the `layout` rows and flags `<slot />` and `layoutPropForwarding`. The other rows are yours to change.
