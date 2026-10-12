@@ -1,0 +1,48 @@
+{
+	"name": "@mdsvex/plugin-page-data",
+	"version": "0.0.1",
+	"description": "Page data for mdsvex, the reading time, excerpt, inferred title and edit url of a document",
+	"type": "module",
+	"scripts": {
+		"build": "run-s build:tsc build:vite build:copy-dts",
+		"build:tsc": "tsc",
+		"build:vite": "vite build --config vite.config.build.ts",
+		"build:copy-dts": "shx cp tsc/*.d.ts dist/",
+		"test": "vitest --disableConsoleIntercept",
+		"test:run": "vitest run"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		},
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"dist"
+	],
+	"sideEffects": false,
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pngwn/MDsveX.git",
+		"directory": "plugins/page-data"
+	},
+	"keywords": [
+		"mdsvex",
+		"mdsvex-plugin",
+		"markdown",
+		"reading-time",
+		"excerpt",
+		"title"
+	],
+	"author": "pngwn <hello@pngwn.io>",
+	"license": "MIT",
+	"peerDependencies": {
+		"mdsvex": "^1.0.0-next.2"
+	},
+	"devDependencies": {
+		"mdsvex": "workspace:^",
+		"npm-run-all2": "^7.0.2",
+		"shx": "^0.3.4"
+	}
+}
