@@ -3,6 +3,7 @@ import {
 	compile,
 	SourceError,
 	type CompileOptions,
+	type Snippet,
 	type ComponentMode,
 	type SmartPunctuation,
 } from 'mdsvex/compile';
@@ -683,9 +684,23 @@ export function scan_exports(
 export interface MarkdownResult {
 	code: string;
 	map: SourceMapV3;
+	/** the modules of the fences that run, by the specifier the document imports each by */
+	snippets?: Map<string, string>;
 }
 
-/** files is the workspace a fence with src= reads a relative path from */
+/** the specifier of the module of a fence that runs, a fake sibling of the document */
+const SNIPPET = /^\.\/[^/]+\.snippet-[0-9a-f]{10}\.(?:js|ts|jsx|tsx|svelte)$/;
+
+/** true for the specifier a document imports the module of a fence that runs by */
+export function is_snippet(importee: string): boolean {
+	return SNIPPET.test(importee);
+}
+
+/**
+ * files is the workspace a fence with src= reads a relative path from, a
+ * fence that runs is imported as a sibling of the document, which the
+ * bundler serves from the snippets of the result
+ */
 export function compile_markdown(
 	source: string,
 	filename: string,
@@ -694,9 +709,17 @@ export function compile_markdown(
 ): MarkdownResult {
 	let sources: Record<string, string> | undefined;
 	let result;
+	const name = filename.slice(filename.lastIndexOf('/') + 1);
+	const specifier = (snippet: Snippet) =>
+		`./${name}.snippet-${snippet.hash}.${snippet.extension}`;
 	for (;;) {
 		try {
-			result = compile(source, { ...options, sources, sourcemap: true });
+			result = compile(source, {
+				...options,
+				sources,
+				snippets: specifier,
+				sourcemap: true,
+			});
 			break;
 		} catch (e) {
 			// compile names one file it has no text for, each try adds that one
@@ -716,5 +739,13 @@ export function compile_markdown(
 	);
 	map.file = filename;
 	map.sources = [filename];
-	return { code: result.code, map };
+	if (result.snippets === undefined) return { code: result.code, map };
+	const snippets = new Map<string, string>();
+	// on the lines it has in the document, so an error names a line of it
+	for (const snippet of result.snippets)
+		snippets.set(
+			specifier(snippet),
+			'\n'.repeat(snippet.line - 1) + snippet.code
+		);
+	return { code: result.code, map, snippets };
 }
