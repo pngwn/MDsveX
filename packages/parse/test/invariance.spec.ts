@@ -107,17 +107,6 @@ function last_leaf(piece: Piece): Piece {
 /** every known failure, each one takes its pieces out of the documents until its issue is fixed */
 const KNOWN: Known[] = [
 	{
-		issue: 1052,
-		what: 'a comment before text on its line is a block in every container and inline in a table cell',
-		drop: (seen) =>
-			(is(seen, 'comment_inline') &&
-				seen.before === null &&
-				(seen.under.length === 0 ||
-					seen.under[seen.under.length - 1] === 'paragraph')) ||
-			(seen.piece.join === '\n' && seen.before?.kind === 'comment'),
-		example: { site: 'table_cell', source: '<!-- a --> b' },
-	},
-	{
 		issue: 1062,
 		what: 'an element that holds its own name again is not seen to close on its line',
 		drop: (seen) =>

@@ -158,6 +158,12 @@ A paragraph in a blockquote ends at a marked line that is blank or starts anothe
 <Badge /> new today   -> <p><Badge /> new today</p>
 ```
 
+A comment counts as a tag. One that is alone on its line is a block, with no paragraph around it, and the line after it starts a block of its own. One with text after it on its line is in the paragraph of that text:
+
+```markdown
+<!-- note --> some text   -> <p><!-- note --> some text</p>
+```
+
 A block level element such as `<div>` that starts a line is a block and is in no paragraph. What follows its close tag is read as the start of a line, so text there starts a paragraph of its own:
 
 ```markdown
