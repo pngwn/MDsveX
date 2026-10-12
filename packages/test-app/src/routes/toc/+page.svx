@@ -1,0 +1,41 @@
+# Table of contents
+
+::toc[On this page]
+
+## Install
+
+The list above holds the headings of this page, the ones after it included.
+
+### With `pnpm`
+
+### With npm
+
+## Set up
+
+:::steps
+
+### Add the plugin
+
+### Turn on `heading_ids`
+
+:::
+
+## Pick a system
+
+:::tabs
+
+### macOS
+
+A tab label is not a heading, so it is not in the list.
+
+### Windows
+
+:::
+
+## Changelog <!-- no-toc -->
+
+This heading is left out.
+
+## Only the top level
+
+::toc(max_depth=2, class=short)

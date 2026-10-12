@@ -82,7 +82,7 @@ Getting around within a page. **Shared state:** one slug registry, so ids, ancho
 | --- | --- | --- | --- |
 | **Heading ids** | rehype-slug (17.6M) | `core` option | Decided: a core option, off by default. The slug code lives inside the private `@mdsvex/plugin-autolink` today. |
 | **Heading anchors** | rehype-autolink-headings (9.9M) | `plugin` (exists) | Two styles: wrap the content (autolink today), or prepend an `aria-hidden` anchor (the site's `heading_anchors`). |
-| **TOC as data** | remark-toc (1.4M), @stefanprobst/rehype-extract-toc (287k), @vcarl/remark-headings (123k), rehype-toc (44k), remark-flexible-toc (15k) | `plugin+API` (write metadata) | Exports `metadata.headings` as a tree for a template to render. Don't inject HTML. |
+| **TOC as data** | remark-toc (1.4M), @stefanprobst/rehype-extract-toc (287k), @vcarl/remark-headings (123k), rehype-toc (44k), remark-flexible-toc (15k) | `plugin`, exists (`@mdsvex/plugin-toc`) | Leaves the headings in `plugin_data.toc.headings` as a flat list, with a helper that nests it, a component and a `::toc` directive. `metadata` stays the frontmatter. |
 | **Sectionize** | remark-sectionize (184k), rehype-section(ize) | `plugin+API` (`wrap_from`) | Wraps each heading and the content after it in `<section>`, for scroll-spy and CSS. |
 | **Custom heading ids** | remark-heading-id (229k), remark-custom-header-id (42k), rehype-slug-custom-id (35k) | `core`, deferred | `{#id}` is out because `{}` belongs to Svelte. Deferred until it's clearly needed. It would use square brackets, like directives. |
 
@@ -245,7 +245,7 @@ Ranked on usefulness to mdsvex users × popularity × cost. Items tagged `core` 
 | 4 | Footnotes | Reference apparatus | core | remark-gfm 181M; migration blocker |
 | 5 | Task lists | Presentation | core | remark-gfm 181M |
 | 6 | Math | Reference apparatus | core | 36M + 32M; issue #302 |
-| 7 | TOC as data | Navigation | plugin+API | ~1.9M combined |
+| 7 | TOC as data | Navigation | plugin, exists | ~1.9M combined |
 | 8 | Relative images as imports, with size and loading | Resolution | vite | Svelte-specific; #611 |
 | 9 | Smart punctuation | Typography | core option | 17.7M; issue #825 |
 | 10 | Callouts and GitHub alerts | Presentation | component + core | ~4.2M combined |

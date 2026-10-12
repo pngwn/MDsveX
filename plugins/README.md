@@ -8,6 +8,7 @@ Each directory here is one npm package, `@mdsvex/plugin-<name>`, that exports a 
 | `@mdsvex/plugin-tabs`           | [`tabs`](./tabs)                     | tabs and code groups, one tab for each heading or fence inside `:::tabs` |
 | `@mdsvex/plugin-anchors`        | [`anchors`](./anchors)               | a link to itself on every heading that has an id                         |
 | `@mdsvex/plugin-external-links` | [`external-links`](./external-links) | `rel` and `target` on every link that leaves the site                    |
+| `@mdsvex/plugin-toc`            | [`toc`](./toc)                       | the headings of a document as data, and a `::toc` that lists them        |
 
 The other files in this directory are the audit of the remark and rehype plugins these replace.
 

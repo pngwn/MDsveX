@@ -5,8 +5,8 @@ import { anchors } from "@mdsvex/plugin-anchors";
 import { external_links } from "@mdsvex/plugin-external-links";
 import { steps } from "@mdsvex/plugin-steps";
 import { tabs } from "@mdsvex/plugin-tabs";
+import { toc } from "@mdsvex/plugin-toc";
 import { reading_time } from "./src/lib/plugins/reading_time.js";
-import { toc } from "./src/lib/plugins/toc.js";
 
 export default defineConfig({
 	plugins: [
