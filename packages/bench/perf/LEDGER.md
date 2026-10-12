@@ -136,6 +136,25 @@ delete it.
   back because the wrapper closes with the heading.
 - **Ideas:** none yet.
 
+### block start call at the root
+
+- **Source:** the shared block dispatch (steps 1 to 4 of
+  `design/parser-structure.md`), the call to `block_start` from the root case
+  of `_run`.
+- **Measured:** `core --repeat 2` against edeaa909 with the default 3.0%
+  floor. Geomean over 238 workloads +0.24%, `parse` +0.84%, every other mode
+  within 0.3%. Five rows are faster past the floor (the paragraph, soft break,
+  blank line, import and frontmatter fixtures, +3.6% to +9.0%) and none is
+  slower past it. Slower in both passes and under the floor:
+  `micro/heading:parse` -3.1%, `fixtures/html:parse` -2.7%,
+  `micro/heading:incremental-64` -2.2%, `fixtures/links:parse` -1.9%,
+  `micro/list:parse` -1.5%.
+- **Cause:** a line that starts a block at the root used to dispatch inside
+  `_run` and now pays one call. `_run` is 13% smaller in bytecode (36,231 to
+  31,393), which is where the prose rows gain. Not isolated with a stub.
+- **Ideas:** keep the two most common arms, the heading and the list marker,
+  in front of the call in the root. Guess, not measured.
+
 ### attrs on pending emphasis
 
 - **Source:** #950 and #956.
