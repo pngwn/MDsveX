@@ -7414,10 +7414,8 @@ export class PFMParser {
 									current_node
 								);
 								this.out.set_value_start(link_id, this.cursor + 1);
-								this.out.set_value_end(link_id, uri_end - 1);
-								this.emit_close(link_id, uri_end);
+								// a handler that reads the link when it closes sees its href and its text
 								this.out.attr(link_id, 'href', uri_text);
-
 								this.emit_leaf(
 									NodeKind.text,
 									this.cursor + 1,
@@ -7426,6 +7424,8 @@ export class PFMParser {
 									uri_end - 1,
 									uri_end - 1
 								);
+								this.out.set_value_end(link_id, uri_end - 1);
+								this.emit_close(link_id, uri_end);
 
 								this.chomp(uri_end, true);
 								this.states.pop();
