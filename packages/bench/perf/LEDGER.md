@@ -155,6 +155,38 @@ delete it.
 - **Ideas:** keep the two most common arms, the heading and the list marker,
   in front of the call in the root. Guess, not measured.
 
+### list and quote lines read through line start
+
+- **Source:** the container stack (steps 5 to 7 of
+  `design/parser-structure.md`): `line_start`, `para_line` and `item_lf` in
+  `packages/parse/src/main.ts`.
+- **Measured:** `core --repeat 2` against edeaa909 with the default 3.0%
+  floor, steps 1 to 7 together. Geomean over 238 workloads -0.61%, `parse`
+  -0.66%, `incremental-64` -1.40%, `vite-transform` -1.14%, `compile-mapped`
+  -0.97%, the render modes level. 21 rows are slower past the floor and 7
+  faster. The slower rows are documents made of list lines:
+  `fixtures/lists:parse` -12.2%, `micro/list:parse` -8.9%,
+  `fixtures/tabs:parse` -7.4%, `real/plugins-remark_plugins:parse` -6.3%,
+  `fixtures/list_items:parse` -5.9%, `real/readme:parse` -4.6%,
+  `real/bench-readme:parse` -4.4%, `fixtures/block_quotes:parse` -3.8%. The
+  prose fixtures keep the gain of the dispatcher (`paragraphs` +10.1%,
+  `soft_line_breaks` +10.5%, `frontmatter` +13.8%). Step 5 on its own, against
+  the step below, read -0.09% with one row past the floor,
+  `fixtures/block_quotes:parse` -8.8%, before `line_start` kept its last
+  answer.
+- **Cause:** about 10ns a list line, not isolated with a stub. A line that
+  ends an item's paragraph and opens the next item used to cost one probe and
+  one marker parse. It now goes through `para_line`, `line_start`, the probe in
+  `block_start` and `item_lf`, three more calls, none of them small enough to
+  inline. The work is the same, the marker is still parsed once.
+- **Ideas:** guesses, none measured.
+  - Put `item_lf` back inside `_run_list_item`, one call less a line.
+  - Have the probe take the first character's position, it scans the leading
+    whitespace that `line_interrupts` just scanned.
+  - A sibling marker at the margin is by far the common list line. `para_line`
+    could ask the probe about the raw line before it calls `line_start`, and
+    hand `item_lf` the answer with the marker.
+
 ### attrs on pending emphasis
 
 - **Source:** #950 and #956.
