@@ -2161,6 +2161,19 @@ export class PFMParser {
 		return true;
 	}
 
+	/**
+	 * the padding of a span that starts at a space, with its closer at the cursor after another
+	 * @returns 1 for the space each side loses, 0 for a span of only spaces, which keeps them all
+	 */
+	private span_pad(): number {
+		const source = this.source;
+		const base = this.source_base;
+		for (let p = this.checkpoint_cursor; p < this.cursor; p++) {
+			if (char_code_at.call(source, p - base) !== SPACE) return 1;
+		}
+		return 0;
+	}
+
 	/** the value start of a code span the states read, kept for cell_span_text */
 	private span_start(id: number, pos: number): void {
 		this.span_vs = pos;
@@ -8229,10 +8242,11 @@ export class PFMParser {
 						char_code_at.call(source, this.cursor + 1 - base) !== BACKTICK
 					) {
 						this.states.pop();
-						this.span_start(current_node, this.checkpoint_cursor + 1);
+						const pad = this.span_pad();
+						this.span_start(current_node, this.checkpoint_cursor + pad);
 						this.span_close(
 							current_node,
-							this.cursor - 1,
+							this.cursor - pad,
 							this.cursor + this.extra
 						);
 						this.node_stack.pop();
@@ -8243,10 +8257,11 @@ export class PFMParser {
 						char_code_at.call(source, this.cursor + 2 - base) !== BACKTICK
 					) {
 						this.states.pop();
-						this.span_start(current_node, this.checkpoint_cursor + 1);
+						const pad = this.span_pad();
+						this.span_start(current_node, this.checkpoint_cursor + pad);
 						this.span_close(
 							current_node,
-							this.cursor - 1,
+							this.cursor - pad,
 							this.cursor + this.extra
 						);
 						this.node_stack.pop();
