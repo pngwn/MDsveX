@@ -696,10 +696,7 @@ const guarded = new WeakMap<
 	{ scope: ComponentScope; plugins: ParsePlugin[] }
 >();
 
-/**
- * a directive a component replaces never reaches the directive handlers of
- * a plugin, which then run at the close where the parser has set the name
- */
+/** a directive a component replaces never reaches the directive handlers of a plugin */
 function guard_plugins(
 	plugins: ParsePlugin[],
 	scope: ComponentScope | null
@@ -719,15 +716,11 @@ function guard_plugins(
 			copy ??= { ...plugin };
 			copy[kind] = {
 				parse(node, ctx) {
+					// the open handlers of a directive run once it has its name
 					const name = node.attrs.name;
-					if (typeof name === 'string')
-						return scope.get(name) === undefined ? parse(node, ctx) : undefined;
-					// the parser sets the name after the open, the close sees it
-					return () => {
-						if (scope.get(node.attrs.name) !== undefined) return;
-						const close = parse(node, ctx);
-						if (close) close();
-					};
+					return typeof name === 'string' && scope.get(name) !== undefined
+						? undefined
+						: parse(node, ctx);
 				},
 			};
 		}

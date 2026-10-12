@@ -289,6 +289,28 @@ describe('the guard', () => {
 		expect(inside).toEqual(['directive_container free']);
 	});
 
+	test('a global directive handler runs at the open, with the name', () => {
+		const seen: string[] = [];
+		const order: ParsePlugin = {
+			directive_container: {
+				parse(node) {
+					seen.push('open ' + node.attrs.name + ' ' + node.attrs.args?.kind);
+					return () => void seen.push('close ' + node.attrs.name);
+				},
+			},
+			paragraph: {
+				parse() {
+					seen.push('paragraph');
+				},
+			},
+		};
+		compile(':::free(kind=tip)\ny\n:::\n', {
+			parse_plugins: [order],
+			strict_directives: false,
+		});
+		expect(seen).toEqual(['open free tip', 'paragraph', 'close free']);
+	});
+
 	test('bound handlers of an outer directive do see the directives inside it', () => {
 		const seen: string[] = [];
 		const tabs: Bundle = {
