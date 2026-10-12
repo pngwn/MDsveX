@@ -410,9 +410,16 @@ describe('smart punctuation, what is never touched', () => {
 	});
 
 	it('typed html that holds code', () => {
-		for (const tag of ['code', 'kbd', 'pre', 'samp', 'var', 'tt', 'textarea'])
+		for (const tag of ['code', 'kbd', 'samp', 'var', 'tt'])
 			expect(line(`x <${tag}>"a" -- b...</${tag}> "c"`)).toBe(
 				`x <${tag}>&quot;a&quot; -- b...</${tag}> “c”`
+			);
+	});
+
+	it('typed html that holds text as written', () => {
+		for (const tag of ['pre', 'textarea'])
+			expect(line(`x <${tag}>"a" -- b...</${tag}> "c"`)).toBe(
+				`x <${tag}>"a" -- b...</${tag}> “c”`
 			);
 	});
 
@@ -421,7 +428,7 @@ describe('smart punctuation, what is never touched', () => {
 			'x <code>a <b>&quot;b&quot; <em>--</em></b></code> “c”'
 		);
 		expect(every_walk('<pre>\n"a" -- b...\n</pre>\n\n"c"\n', true)).toBe(
-			'<pre><p>&quot;a&quot; -- b...</p></pre><p>“c”</p>'
+			'<pre>\n"a" -- b...\n</pre><p>“c”</p>'
 		);
 	});
 

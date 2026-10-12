@@ -110,11 +110,11 @@ The exceptions:
 - Frontmatter and imports belong to the file, so they are read at the top of a document only.
 - A tight list item holds the content of a paragraph with no paragraph around it.
 - A list item may start with a task marker, and the rest of that line never opens a block. Any ordered marker ends a paragraph in a list item, where elsewhere only `1.` does. `- ---` is a thematic break, as in CommonMark.
-- An element whose content is phrasing only (`<span>`, `<b>`, `<p>`) holds inline content, and `<script>` and `<style>` hold text.
+- An element whose content is phrasing only (`<span>`, `<b>`, `<p>`) holds inline content, and `<script>`, `<style>`, `<pre>` and `<textarea>` hold text, kept as written up to the close tag.
 - A table cell is not a container. It holds inline content only.
 - A block quote has no lazy continuation, and a paragraph in a list item still continues onto a line that is not indented.
 
-A leaf that runs over lines (the code of a fence, a comment, the content of `<script>` or `<style>`, a code span) does not hold what the containers put before its lines: the `>` markers and the indent of a list item are not part of its text. A fence, a comment or an element left open ends where its container ends.
+A leaf that runs over lines (the code of a fence, a comment, the content of `<script>`, `<style>`, `<pre>` or `<textarea>`, a code span) does not hold what the containers put before its lines: the `>` markers and the indent of a list item are not part of its text. A fence, a comment or an element left open ends where its container ends.
 
 **Blockquotes**, No lazy continuation. Every line inside a blockquote must be explicitly prefixed with `>`. The first line without a `>` prefix terminates the blockquote; there is no implicit inheritance of blockquote context from a previous line. This enables line-local parsing decisions without tracking open paragraphs in parent containers.
 
