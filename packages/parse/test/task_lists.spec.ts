@@ -204,7 +204,8 @@ describe('task lists', () => {
 			['two spaces inside', '- [  ] a', '[  ] a'],
 			['nothing inside', '- [] a', '[] a'],
 			['an escaped bracket', '- \\[x] a', '[x] a'],
-			['a colon after the marker', '- [x]: /url', '[x]: /url'],
+			// a link reference definition, which makes no node
+			['a colon after the marker', '- [x]: /url', ''],
 		])('%s', (_name, input, text) => {
 			expect(items(input)).toEqual([[undefined, text]]);
 		});

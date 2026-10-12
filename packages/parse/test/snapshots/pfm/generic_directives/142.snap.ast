@@ -7,3 +7,4 @@ root
         paragraph
           text "body"
         line_break
+  line_break

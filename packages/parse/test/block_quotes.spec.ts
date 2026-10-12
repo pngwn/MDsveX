@@ -1048,8 +1048,20 @@ describe('a thematic break in a quoted list item', () => {
 		);
 	});
 
-	test('text on the next line is text of the item', () => {
+	test('text on the next line is outside the item unless it is indented to it', () => {
 		expect(quoted('+ ***', 'b c')).toBe(
+			lines(
+				'root',
+				'  block_quote',
+				'    list ordered=false start=0 tight=true',
+				'      list_item',
+				'        thematic_break',
+				'    paragraph',
+				'      text "b c"',
+				'  line_break'
+			)
+		);
+		expect(quoted('+ ***', '  b c')).toBe(
 			lines(
 				'root',
 				'  block_quote',
@@ -1107,6 +1119,19 @@ describe('a thematic break in a quoted list item', () => {
 	test('a marked blank line and a nested quote after it', () => {
 		quoted('* ---', '', 'b');
 		expect(every_path('> * ---\n> > b\n')).toBe(
+			lines(
+				'root',
+				'  block_quote',
+				'    list ordered=false start=0 tight=true',
+				'      list_item',
+				'        thematic_break',
+				'    block_quote',
+				'      paragraph',
+				'        text "b"',
+				'  line_break'
+			)
+		);
+		expect(every_path('> * ---\n>   > b\n')).toBe(
 			lines(
 				'root',
 				'  block_quote',

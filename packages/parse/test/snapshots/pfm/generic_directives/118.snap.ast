@@ -5,6 +5,7 @@ root
         paragraph
           text "x"
         line_break
+      line_break
     paragraph
       text "tail"
   line_break

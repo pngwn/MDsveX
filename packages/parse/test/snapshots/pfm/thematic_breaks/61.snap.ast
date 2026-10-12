@@ -4,3 +4,4 @@ root
       text "Foo"
     list_item
       thematic_break
+  line_break
