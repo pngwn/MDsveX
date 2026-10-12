@@ -6,13 +6,17 @@ import type {
 } from 'vite';
 import { metadata_export, parse_frontmatter } from './frontmatter';
 import type { FrontmatterOptions } from './frontmatter';
-import { METADATA_ID, clean_id } from './ids';
+import { DATA_ID, METADATA_ID, clean_id } from './ids';
+import { PLUGIN_DATA_EXPORT, plugin_data_export } from './plugin_data';
+import type { PluginData } from './plugin_data';
 
-const VIRTUAL = '\0' + METADATA_ID;
 // vite-plugin-svelte compiles any id that ends in a document extension, even after
 // \0, and the dep scanner reads an id that looks like a path from disk
 const SUFFIX = '.js';
-const QUERY = /[?&]metadata(?:&|$)/;
+const METADATA_QUERY = /[?&]metadata(?:&|$)/;
+/** the query of an import that parses a document for what its plugins left */
+export const DATA_QUERY = 'data';
+const DATA_QUERY_TEST = new RegExp(`[?&]${DATA_QUERY}(?:&|$)`);
 
 /** vite sets environment, the rollup type has none */
 type Context = Rollup.PluginContext & {
@@ -52,6 +56,19 @@ export function frontmatter_bounds(source: string): [number, number] | null {
 	return null;
 }
 
+/** the frontmatter of a document without a parse of its body, undefined when it has none */
+export function read_metadata(
+	raw: string,
+	parse: FrontmatterOptions['parse']
+): Record<string, unknown> | undefined {
+	// the parser reads \r\n and a lone \r as \n, and so do its offsets
+	const source = raw.indexOf('\r') === -1 ? raw : raw.replace(/\r\n?/g, '\n');
+	const bounds = frontmatter_bounds(source);
+	return bounds === null
+		? undefined
+		: parse_frontmatter(source, bounds[0], bounds[1], parse);
+}
+
 /**
  * the module a ?metadata import loads, its metadata is the export of the
  * compiled document, undefined when the document has no frontmatter
@@ -60,15 +77,33 @@ export function metadata_module(
 	raw: string,
 	parse: FrontmatterOptions['parse']
 ): string {
-	// the parser reads \r\n and a lone \r as \n, and so do its offsets
-	const source = raw.indexOf('\r') === -1 ? raw : raw.replace(/\r\n?/g, '\n');
-	const bounds = frontmatter_bounds(source);
+	const metadata = read_metadata(raw, parse);
 	// a compiled document has no export then, this one stays so a named import links
 	const named =
-		bounds === null
+		metadata === undefined
 			? 'export const metadata = undefined;'
-			: metadata_export(parse_frontmatter(source, bounds[0], bounds[1], parse));
+			: metadata_export(metadata);
 	return named + '\nexport default metadata;\n';
+}
+
+/**
+ * the module a ?data import loads, the metadata and what plugins left as the
+ * compiled document exports them, both undefined when it exports neither
+ */
+export function data_module(
+	metadata: Record<string, unknown> | undefined,
+	data: PluginData | undefined
+): string {
+	return (
+		(metadata === undefined
+			? 'export const metadata = undefined;'
+			: metadata_export(metadata)) +
+		'\n' +
+		(data === undefined
+			? `export const ${PLUGIN_DATA_EXPORT} = undefined;`
+			: plugin_data_export(data)) +
+		`\nexport default { metadata, ${PLUGIN_DATA_EXPORT} };\n`
+	);
 }
 
 /** documents imported with ?metadata, which load their frontmatter and compile nothing */
@@ -76,6 +111,37 @@ export function metadata_query(
 	extensions: string[],
 	parse: FrontmatterOptions['parse']
 ) {
+	return document_query(extensions, METADATA_ID, METADATA_QUERY, {
+		module: (raw) => metadata_module(raw, parse),
+	});
+}
+
+/** how a query turns a document into its module */
+export interface QueryModule {
+	/** file is the path of the document */
+	module(raw: string, file: string): string;
+	/** awaited before module in a load */
+	ready?(ctx: Rollup.PluginContext): Promise<unknown> | undefined;
+	/** false when module can not run outside a load, an edit then reloads unasked */
+	settled?(): boolean;
+}
+
+/**
+ * documents imported with ?data, which parse without a render and load their
+ * metadata and what their plugins left
+ */
+export function data_query(extensions: string[], build: QueryModule) {
+	return document_query(extensions, DATA_ID, DATA_QUERY_TEST, build);
+}
+
+/** documents imported with a query that loads a module made from their source */
+function document_query(
+	extensions: string[],
+	virtual_id: string,
+	QUERY: RegExp,
+	build: QueryModule
+) {
+	const VIRTUAL = '\0' + virtual_id;
 	/** the module each dev environment last loaded for a document */
 	const loaded = new Map<string, string>();
 	const key_of = (environment: string | undefined, file: string) =>
@@ -100,7 +166,7 @@ export function metadata_query(
 	}
 
 	return {
-		/** undefined unless id is a document imported with ?metadata */
+		/** undefined unless id is a document imported with the query */
 		resolve(
 			ctx: Rollup.PluginContext,
 			id: string,
@@ -140,9 +206,10 @@ export function metadata_query(
 			const fs = await import('node:fs/promises');
 			const raw = await fs.readFile(file, 'utf8');
 			const key = key_of(ctx.environment?.name, file);
+			await build.ready?.(ctx);
 			let code: string;
 			try {
-				code = metadata_module(raw, parse);
+				code = build.module(raw, file);
 			} catch (e: any) {
 				loaded.delete(key);
 				// vite adds these to what a transform throws, a load has no file of its own
@@ -157,7 +224,7 @@ export function metadata_query(
 			return code;
 		},
 
-		/** the metadata module of an edited document, invalidated, when its metadata changed */
+		/** the module of an edited document, invalidated, when the edit changed it */
 		async hot(
 			environment: { name: string; moduleGraph: EnvironmentModuleGraph },
 			update: {
@@ -172,17 +239,17 @@ export function metadata_query(
 			if (mod === undefined) return;
 			const key = key_of(environment.name, update.file);
 			const before = loaded.get(key);
-			if (before !== undefined) {
+			if (before !== undefined && build.settled?.() !== false) {
 				let now: string | undefined;
 				try {
-					now = metadata_module(await update.read(), parse);
+					now = build.module(await update.read(), update.file);
 				} catch {
 					// the load reports it
 				}
-				// an edit below the frontmatter leaves the importers alone
+				// an edit that leaves the module as it was leaves the importers alone
 				if (now === before) return;
-				loaded.delete(key);
 			}
+			loaded.delete(key);
 			graph.invalidateModule(mod, new Set(), update.timestamp, true);
 			return mod;
 		},

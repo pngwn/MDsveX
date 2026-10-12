@@ -42,7 +42,12 @@ import {
 } from './template_registry';
 import { has_code, plugin_highlight } from './plugin_highlight';
 import { check_math, manifest_math } from './plugin_math';
-import { metadata_query } from './metadata_query';
+import {
+	data_module,
+	data_query,
+	metadata_query,
+	read_metadata,
+} from './metadata_query';
 import type { MetadataDev } from './metadata_query';
 import { links_of } from './link_urls';
 import type { BaseImport, Rewrite } from './link_urls';
@@ -432,9 +437,48 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		? template_registry(written_templates!, tracker!, matches)
 		: null;
 	let command: 'build' | 'serve' = 'serve';
+	/** true when the handlers of a plugin run for a document */
+	const can_plug =
+		plugins !== null ||
+		(options.parse_plugins !== undefined && options.parse_plugins.length !== 0);
 
 	const no_templates = templates === null && select === undefined;
 	const metadata = metadata_query(extensions, options.frontmatter?.parse);
+	const queried_data = data_query(extensions, {
+		// the handlers of a plugin are guarded by the directives the config registers
+		ready(ctx) {
+			const waits: Promise<unknown>[] = [];
+			if (registry !== null && !registry.ready())
+				waits.push(registry.ensure(ctx));
+			if (templates !== null && !templates.ready())
+				waits.push(templates.ensure(ctx));
+			return waits.length === 0 ? undefined : Promise.all(waits);
+		},
+		settled: () =>
+			(registry === null || registry.ready()) &&
+			(templates === null || templates.ready()),
+		module(raw, file) {
+			// no handler can run, so the frontmatter is all there is
+			if (!can_plug)
+				return data_module(
+					read_metadata(raw, options.frontmatter?.parse),
+					undefined
+				);
+			const parsing = Object.assign(compile_inputs(), inputs);
+			parsing.filename = file;
+			if (!no_templates)
+				parsing.templates = templates_for(templates, select, file);
+			parsing.directives = registry?.directive_sources();
+			// a parse for its data asks for nothing a render would need
+			parsing.import_images = false;
+			parsing.sources = false;
+			parsing.await_sources = false;
+			parsing.links = undefined;
+			const parsed = compiler.parse(raw, parsing);
+			compiler.drop(parsed);
+			return data_module(parsed.metadata, parsed.data);
+		},
+	});
 	let dev: MetadataDev | null = null;
 
 	// what select_template picked, only it can not be worked out from the source
@@ -726,7 +770,9 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			},
 
 			resolveId(id, importer) {
-				const queried = metadata.resolve(this, id, importer);
+				const queried =
+					metadata.resolve(this, id, importer) ??
+					queried_data.resolve(this, id, importer);
 				if (queried !== undefined) return queried;
 				if (
 					registry !== null &&
@@ -746,6 +792,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 
 			load(id) {
 				if (metadata.is(id)) return metadata.load(this, id, dev);
+				if (queried_data.is(id)) return queried_data.load(this, id, dev);
 				// only templates with extra replacements load a module
 				if (templates !== null && id.startsWith('\0' + TEMPLATE_ID))
 					return templates.load(this, id);
@@ -837,6 +884,9 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				const queried = await metadata.hot(this.environment, update);
 				let with_queried =
 					queried === undefined ? undefined : [...update.modules, queried];
+				const parsed_again = await queried_data.hot(this.environment, update);
+				if (parsed_again !== undefined)
+					(with_queried ??= update.modules.slice()).push(parsed_again);
 				// a file a fence shows is no module of the document, so nothing else compiles it again
 				const showing = shown.docs_showing(file);
 				if (showing.length !== 0) {

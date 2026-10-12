@@ -11,6 +11,8 @@ export const PLUGIN_ID = 'mdsvex:plugin/';
 export const PLUGIN_COMPONENTS_ID = 'mdsvex:plugin-components/';
 /** a document imported with ?metadata, the path of the document and .js follow */
 export const METADATA_ID = 'mdsvex:metadata:';
+/** a document imported with ?data, the path of the document and .js follow */
+export const DATA_ID = 'mdsvex:data:';
 
 /** a URL as a path, a string as written */
 export async function spec_of(entry: string | URL): Promise<string> {
