@@ -121,7 +121,7 @@ emoji({ attrs: { class: 'emoji' } });
 
 ## With other plugins
 
-The plugin reads the finished tree, so text another plugin wrote is seen too. Put it after a plugin that turns urls into links, so a url that holds a shortcode is a link before this plugin looks.
+The plugin reads the finished tree, so text another plugin wrote is seen too. Put it after a plugin that turns urls into links, such as [`@mdsvex/plugin-references`](../references) with `linkify`, so a url that holds a shortcode is a link before this plugin looks.
 
 `smart_punctuation` still curls the quotes around an emoji.
 

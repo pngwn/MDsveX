@@ -166,8 +166,8 @@ Text that becomes a link to something else. **Shared state:** a table of pattern
 
 | Feature | Plugins | Delivery | Notes |
 | --- | --- | --- | --- |
-| **GitHub references** | remark-github (3.2M) | `plugin+API` (text rewrite) | `#123`, `@user`, commit SHAs. |
-| **Mentions and regex linkify** | remark-mentions, remark-ping, remark-linkify-regex (9k), remark-truncate-links | `plugin+API` (text rewrite) | One pattern table covers these and remark-github. |
+| **GitHub references** | remark-github (3.2M) | `plugin`, exists (`@mdsvex/plugin-references`) | `#123`, `owner/repo#123`, `@user`, commit SHAs. The urls are templates, GitHub's by default. No `GH-123`, no `user@sha`, and nothing is checked against the host. |
+| **Mentions and regex linkify** | remark-mentions, remark-ping, remark-linkify-regex (9k), remark-truncate-links | `plugin`, exists (`@mdsvex/plugin-references`) for mentions and bare urls | The `mention` template covers remark-mentions and remark-ping. `linkify` makes links of bare `https://` and `www.` urls, which the parser never does. A pattern table of the user's own (remark-linkify-regex) and truncated link text are not built. |
 | **Wiki links** | remark-wiki-link (108k), remark-obsidian | `core` + resolver option | `[[Page]]`. The resolver is shared with Resolution's route rewriting. Decided: last, with transclusion. |
 
 ### 3.9 Reference apparatus
@@ -263,7 +263,7 @@ Ranked on usefulness to mdsvex users × popularity × cost. Items tagged `core` 
 | 22 | Copy button and code tabs (code tabs exist, `@mdsvex/plugin-tabs`) | Code | component + plugin+API | expressive-code 5.4M |
 | 23 | Definition lists | Presentation | core / component | 818k |
 | 24 | Link validation | Quality | plugin+API | 639k |
-| 25 | GitHub refs, mentions, linkify | Cross-references | plugin+API | 3.2M |
+| 25 | GitHub refs, mentions, linkify | Cross-references | plugin, exists | 3.2M |
 | 26 | CJK check | Typography | core | 12.8M + 10.5M (inflated) |
 | 27 | Transclusion with heading shift (last) | Composition | vite + core | low downloads, structural gap |
 | 28 | PFM lint | Quality | tooling | remark-lint 1.5M |
