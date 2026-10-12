@@ -1575,9 +1575,20 @@ describe('a tag at the start of a line matches batch however it is fed', () => {
 		const opened = () =>
 			rec.ops.filter((o) => o.op === 'open').map((o) => (o as any).kind);
 		expect(opened()).toEqual(['root', 'block_quote']);
+		// as at the root, the tag waits for its closing brace
 		p.feed('h');
-		expect(opened()).toEqual(['root', 'block_quote', 'paragraph']);
-		expect((rec.ops[rec.ops.length - 1] as any).pending).toBe(true);
+		expect(opened()).toEqual(['root', 'block_quote']);
+		p.feed('tml a}');
+		expect(opened()).toEqual([
+			'root',
+			'block_quote',
+			'paragraph',
+			'svelte_tag',
+		]);
+		const para = rec.ops.find(
+			(o) => o.op === 'open' && (o as any).kind === 'paragraph'
+		);
+		expect((para as any).pending).toBe(true);
 	});
 });
 

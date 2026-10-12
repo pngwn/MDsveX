@@ -1,13 +1,8 @@
 root
   block_quote
-    paragraph
-      text "[foo"
-      text "]: /url"
   line_break
   line_break
   paragraph
-    text "[foo"
-    text "]"
-    text "["
-    text "]"
+    link href="/url"
+      text "foo"
   line_break

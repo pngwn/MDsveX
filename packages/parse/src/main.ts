@@ -829,10 +829,10 @@ export class PFMParser {
 	private trim_point: number = 0;
 	// next line start to check for a closing fence, earlier lines cannot close it
 	private fence_scan: number = 0;
-	// a line start lf_ends_inline found to interrupt, so the paragraph close on that linefeed skips a rescan
-	// valid within one _run while the list and svelte depths it was taken under hold
+	// a line start para_line found to end a paragraph, so the next state down that asks skips a rescan
+	// valid within one _run while the frames and the svelte depth it was taken under hold
 	private interrupt_pos: number = -1;
-	private interrupt_list_depth: number = 0;
+	private interrupt_frames: number = 0;
 	// the list marker an interrupt check parsed at this position, only valid within one _run
 	private interrupt_marker_pos: number = -1;
 	private interrupt_marker: MarkerResult | null = null;
@@ -3054,29 +3054,31 @@ export class PFMParser {
 		}
 	}
 
-	/** start of the line after a fence lf inside a block quote, or the lf itself when that line is unmarked */
+	/** start of the line after a fence lf inside a block quote, or the lf itself when that line leaves a quote */
 	private bq_line_start(lf_end: number): number {
-		const stripped = this.skip_bq_markers(lf_end, this.block_quote_depth);
-		return stripped === -1 ? lf_end - 1 : stripped;
+		const kept = this.line_start(lf_end);
+		return kept < 0 || (kept < this.frames.length && this.quote_ends(kept))
+			? lf_end - 1
+			: this.line_quote;
 	}
 
-	private is_directive_close_line(pos: number): boolean {
-		const source = this.source;
-		const base = this.source_base;
-		const length = this.source_end;
-		let p = pos;
-		while (
-			p < length &&
-			(char_code_at.call(source, p - base) === SPACE ||
-				char_code_at.call(source, p - base) === TAB)
-		)
-			p++;
-		const counts = this.directive_colon_counts;
-		return (
-			p < length &&
-			char_code_at.call(source, p - base) === COLON &&
-			this.try_parse_directive_close(p, counts[counts.length - 1]) >= 0
+	/**
+	 * the linefeed at the cursor inside a svelte branch or a container directive in a block quote
+	 * @returns 1 when the next line stays in the quote, the cursor is then past its markers,
+	 * 0 when it leaves a quote and so ends the container, -1 while a feed cannot tell yet
+	 */
+	private container_lf(current_node: number): number {
+		const kept = this.line_start(this.cursor + 1);
+		if (kept < 0) return -1;
+		if (kept < this.frames.length && this.quote_ends(kept)) return 0;
+		this.emit_bare_leaf(
+			NodeKind.line_break,
+			this.cursor,
+			current_node,
+			this.cursor + 1
 		);
+		this.chomp(this.line_quote, true);
+		return 1;
 	}
 
 	/**
@@ -3537,14 +3539,6 @@ export class PFMParser {
 			if (frames[i] === 0) return true;
 		}
 		return false;
-	}
-
-	/** where the line after the linefeed at lf goes on past its quote markers, -1 when it leaves a block quote */
-	private quote_line(lf: number): number {
-		const kept = this.line_start(lf + 1);
-		return kept < 0 || (kept < this.frames.length && this.quote_ends(kept))
-			? -1
-			: this.line_quote;
 	}
 
 	private skip_bq_markers(pos: number, depth: number): number {
@@ -4114,6 +4108,16 @@ export class PFMParser {
 		} else {
 			this.list_pending_paras = NO_STACK;
 		}
+	}
+
+	/** closes the open branch at the cursor and its block at end, from the branch state */
+	private close_svelte_block(end: number): void {
+		this.emit_close(this.svelte_branch_id, this.cursor);
+		this.node_stack.pop();
+		this.emit_close(this.svelte_block_id, end);
+		this.node_stack.pop();
+		this.states.pop();
+		this.leave_svelte_block();
 	}
 
 	private leave_svelte_block(): void {
@@ -5081,8 +5085,8 @@ export class PFMParser {
 				case LINEFEED: {
 					p++;
 					if (this.block_quote_depth > 0 && p < limit) {
-						const q = this.skip_bq_markers(p, this.block_quote_depth);
-						if (q !== -1 && q <= limit) p = q;
+						const q = this.bq_line_start(p);
+						if (q >= p && q <= limit) p = q;
 					}
 					break;
 				}
@@ -6068,8 +6072,9 @@ export class PFMParser {
 	 * on success, stores the definition in this.ref_map.
 	 */
 	private try_parse_link_ref_definition(pos: number): number {
-		// in pfm link reference definitions are only valid at root level
-		if (this.block_quote_depth > 0 || this.list_depth > 0) return -1;
+		if (this.list_depth > 0) return -1;
+		// in a block quote a definition is one line, its lf stays for the quote
+		const lines = this.frames.length === 0;
 
 		const source = this.source;
 		const base = this.source_base;
@@ -6129,7 +6134,11 @@ export class PFMParser {
 				char_code_at.call(source, p - base) === TAB)
 		)
 			p++;
-		if (p < length && char_code_at.call(source, p - base) === LINEFEED) {
+		if (
+			lines &&
+			p < length &&
+			char_code_at.call(source, p - base) === LINEFEED
+		) {
 			saw_newline = true;
 			p++;
 			while (
@@ -6205,7 +6214,9 @@ export class PFMParser {
 		let title = '';
 		if (p < length) {
 			const tc = char_code_at.call(source, p - base);
-			if (tc === LINEFEED) {
+			if (tc === LINEFEED && !lines) {
+				// the title of a definition in a block quote is on its line
+			} else if (tc === LINEFEED) {
 				// newline after url - check if next line has a title
 				const nl_p = p;
 				p++;
@@ -6219,7 +6230,7 @@ export class PFMParser {
 					const ntc = char_code_at.call(source, p - base);
 					if (ntc === 34 || ntc === 39 || ntc === OPEN_PAREN) {
 						// try title on next line
-						const title_result = this.parse_ref_title(p);
+						const title_result = this.parse_ref_title(p, lines);
 						if (title_result === -2) {
 							return -2; // need more input to complete title
 						} else if (title_result) {
@@ -6243,7 +6254,7 @@ export class PFMParser {
 				had_title_ws
 			) {
 				// title on same line (whitespace required between destination and title)
-				const title_result = this.parse_ref_title(p);
+				const title_result = this.parse_ref_title(p, lines);
 				if (title_result === -2) {
 					return -2; // need more input to complete title
 				} else if (title_result) {
@@ -6269,7 +6280,7 @@ export class PFMParser {
 		if (p >= length && !this.finished) return -2; // need to see end of line
 		if (p < length && char_code_at.call(source, p - base) !== LINEFEED)
 			return -1;
-		if (p < length) p++; // skip newline
+		if (p < length && lines) p++; // skip newline
 
 		// store definition - first one wins
 		const normalized = normalize_label(label);
@@ -6288,7 +6299,8 @@ export class PFMParser {
 	 * returns { title, end } or null on failure.
 	 */
 	private parse_ref_title(
-		pos: number
+		pos: number,
+		lines: boolean
 	): { title: string; end: number } | null | -2 {
 		const source = this.source;
 		const base = this.source_base;
@@ -6308,6 +6320,7 @@ export class PFMParser {
 				return { title, end: p + 1 };
 			}
 			if (ch === LINEFEED) {
+				if (!lines) return null;
 				// check for blank line - that terminates the title (invalid)
 				let q = p + 1;
 				while (
@@ -6475,23 +6488,64 @@ export class PFMParser {
 		}
 	}
 
-	// delimiter states must close wherever inline pops or the two ping pong
-	private lf_ends_inline(lf: number): boolean {
-		const np = lf + 1;
-		if (this.line_interrupts(np)) {
-			this.interrupt_pos = np;
-			this.interrupt_list_depth = this.list_depth;
-			this.interrupt_svelte_depth = this.svelte_block_depth;
-			return true;
+	/**
+	 * what the line after the linefeed at lf does to an open paragraph, every state that
+	 * runs over lines asks here so they all end where the paragraph does
+	 * line_pos is left where the line goes on, past what its block quotes put before it
+	 * @returns 1 when the line ends the paragraph, 0 when it goes on, -1 while a feed cannot tell yet
+	 */
+	private para_line(lf: number): number {
+		let p = lf + 1;
+		// the answer the state above just got
+		if (
+			this.interrupt_pos === p &&
+			this.interrupt_frames === this.frames.length &&
+			this.interrupt_svelte_depth === this.svelte_block_depth
+		)
+			return 1;
+		let ends: boolean;
+		if (this.block_quote_depth > 0) {
+			const kept = this.line_start(p);
+			if (kept < 0) return -1;
+			p = this.line_pos;
+			// a line that leaves a quote ends what is in it
+			ends =
+				(kept < this.frames.length && this.quote_ends(kept)) ||
+				this.line_interrupts(p);
+		} else {
+			this.line_pos = p;
+			ends = this.line_interrupts(p);
+			if (!ends && this.list_depth > 0) {
+				const { columns: ind } = this.count_indent(p);
+				if (ind >= this.list_content_offset) {
+					const stripped = this.skip_columns(p, this.list_content_offset);
+					ends =
+						stripped < this.source_end &&
+						this.try_parse_list_marker(stripped) !== null;
+				}
+			}
 		}
-		if (this.list_depth === 0) return false;
-		const { columns: ind } = this.count_indent(np);
-		if (ind < this.list_content_offset) return false;
-		const stripped = this.skip_columns(np, this.list_content_offset);
-		return (
-			stripped < this.source_end &&
-			this.try_parse_list_marker(stripped) !== null
+		if (!ends) return 0;
+		this.interrupt_pos = lf + 1;
+		this.interrupt_frames = this.frames.length;
+		this.interrupt_svelte_depth = this.svelte_block_depth;
+		return 1;
+	}
+
+	/**
+	 * takes the line after the linefeed at the cursor as a soft break of current_node
+	 * @returns false when that line ends the paragraph, nothing is emitted then
+	 */
+	private soft_break(current_node: number): boolean {
+		if (this.para_line(this.cursor) !== 0) return false;
+		this.emit_bare_leaf(
+			NodeKind.soft_break,
+			this.cursor,
+			current_node,
+			this.cursor + 1
 		);
+		this.chomp(this.skip_spaces(this.line_pos), true);
+		return true;
 	}
 
 	/** true when the next line goes on with the block, a backslash before any other linefeed is text */
@@ -6499,9 +6553,7 @@ export class PFMParser {
 		// a directive label ends at its bracket, no line in it ends a block
 		if (this.inline_range_parse) return true;
 		if (this.in_heading || this.in_table) return false;
-		if (this.block_quote_depth === 0) return !this.lf_ends_inline(lf);
-		const stripped = this.quote_line(lf);
-		return stripped !== -1 && !this.bq_line_ends_para(stripped);
+		return this.para_line(lf) === 0;
 	}
 
 	// returns true when a linefeed inside a delimiter state (emphasis,
@@ -6515,12 +6567,12 @@ export class PFMParser {
 			if (!this.finished && !this.can_decide_after_lf(this.cursor))
 				return false;
 			if (this.block_quote_depth > 0) {
-				if (this.bq_soft_break(current_node)) {
+				if (this.soft_break(current_node)) {
 					this.states.push(StateKind.inline);
 					return true;
 				}
-			} else if (!this.lf_ends_inline(this.cursor)) {
-				// line_interrupts in lf_ends_inline covers blank lines, headings and thematic breaks as above
+			} else if (this.para_line(this.cursor) !== 1) {
+				// para_line covers blank lines, headings and thematic breaks as above
 				return false;
 			}
 		}
@@ -6532,7 +6584,7 @@ export class PFMParser {
 	}
 
 	/**
-	 * outside block quotes, pop inline at a linefeed lf_ends_inline ends and close a paragraph
+	 * outside block quotes, pop inline at a linefeed para_line ends and close a paragraph
 	 * under it here, its own interrupt check would reach the same answer
 	 */
 	private inline_lf_end(): void {
@@ -6789,21 +6841,16 @@ export class PFMParser {
 					}
 
 					if (code === LINEFEED) {
-						const next_pos = this.cursor + 1;
-
-						// pfm: no lazy continuation. every line in a blockquote
-						// must have a `>` prefix; a line without one terminates
-						// the blockquote.
+						// the cursor stays on the lf when the paragraph ends, each frame the line leaves closes there
+						const ends = this.para_line(this.cursor);
+						if (ends < 0) break main_loop;
+						if (ends === 1) {
+							this.emit_close(current_node, this.cursor);
+							this.states.pop();
+							truncate_stack(this.node_stack, node_stack_base);
+							continue;
+						}
 						if (this.block_quote_depth > 0) {
-							const stripped = this.quote_line(this.cursor);
-							// a line that leaves a quote closes the paragraph, the cursor stays
-							// on the lf and each frame the line leaves closes at its own linefeed
-							if (stripped === -1 || this.bq_line_ends_para(stripped)) {
-								this.emit_close(current_node, this.cursor);
-								this.states.pop();
-								truncate_stack(this.node_stack, node_stack_base);
-								continue;
-							}
 							// continuation line inside block quote - emit soft break
 							this.emit_bare_leaf(
 								NodeKind.soft_break,
@@ -6811,45 +6858,12 @@ export class PFMParser {
 								current_node,
 								this.cursor + 1
 							);
-							this.chomp(this.skip_spaces(stripped), true);
+							this.chomp(this.skip_spaces(this.line_pos), true);
 							const bq_c = char_code_at.call(source, this.cursor - base);
 							if (bq_c >= 128 || (bq_c !== 0 && TEXT_BREAK[bq_c] === 0))
 								this.para_text(current_node);
 							else this.states.push(StateKind.inline);
 							continue;
-						}
-
-						// not in block quote, the probe answers for the common case
-						if (
-							(this.interrupt_pos === next_pos &&
-								this.interrupt_list_depth === this.list_depth &&
-								this.interrupt_svelte_depth === this.svelte_block_depth) ||
-							this.line_interrupts(next_pos)
-						) {
-							this.emit_close(current_node, this.cursor);
-							this.states.pop();
-							truncate_stack(this.node_stack, node_stack_base);
-							continue;
-						}
-
-						// check for list item start within a list
-						if (this.list_depth > 0) {
-							const { columns: ind } = this.count_indent(next_pos);
-							if (ind >= this.list_content_offset) {
-								const stripped = this.skip_columns(
-									next_pos,
-									this.list_content_offset
-								);
-								if (
-									stripped < length &&
-									this.try_parse_list_marker(stripped) !== null
-								) {
-									this.emit_close(current_node, this.cursor);
-									this.states.pop();
-									truncate_stack(this.node_stack, node_stack_base);
-									continue;
-								}
-							}
 						}
 						// continuation line - emit soft break
 						this.emit_bare_leaf(
@@ -7120,7 +7134,7 @@ export class PFMParser {
 								this.states.pop();
 								continue;
 							}
-							if (this.lf_ends_inline(this.cursor)) {
+							if (this.para_line(this.cursor) === 1) {
 								this.inline_lf_end();
 								continue;
 							} else {
@@ -7432,9 +7446,9 @@ export class PFMParser {
 										this.cursor + 2
 									);
 									this.chomp(2);
-									// lf_continues left line_quote past the markers of this line
+									// lf_continues left line_pos past the markers of this line
 									if (this.block_quote_depth > 0)
-										this.chomp(this.line_quote, true);
+										this.chomp(this.line_pos, true);
 									// skip leading spaces
 									while (
 										this.cursor < length &&
@@ -7987,9 +8001,8 @@ export class PFMParser {
 									this.cursor + 2
 								);
 								this.chomp(2);
-								// lf_continues left line_quote past the markers of this line
-								if (this.block_quote_depth > 0)
-									this.chomp(this.line_quote, true);
+								// lf_continues left line_pos past the markers of this line
+								if (this.block_quote_depth > 0) this.chomp(this.line_pos, true);
 								// skip leading spaces
 								while (
 									this.cursor < length &&
@@ -8050,7 +8063,7 @@ export class PFMParser {
 							(this.finished || this.can_decide_after_lf(this.cursor))
 						) {
 							// make the inline linefeed call here, an interrupting line pops inline, anything else is a soft break
-							if (this.lf_ends_inline(this.cursor)) {
+							if (this.para_line(this.cursor) === 1) {
 								this.inline_lf_end();
 								continue;
 							}
@@ -8517,6 +8530,11 @@ export class PFMParser {
 					}
 
 					if (code === LINEFEED) {
+						if (this.frames.length !== 0) {
+							const next = this.table_next_line();
+							if (next < 0) break main_loop;
+							if (next === 1) continue;
+						}
 						// blank line -> end table
 						this.end_table();
 						continue;
@@ -8541,9 +8559,8 @@ export class PFMParser {
 					this.table_cell_col = 0;
 
 					// skip leading pipe
-					if (code === PIPE) {
-						this.cursor++;
-					}
+					if (code === PIPE) this.cursor++;
+					else this.cursor = this.line_pos;
 
 					// open first cell and push onto node_stack for inline content
 					this.table_cell_id = this.emit_open(
@@ -8595,7 +8612,8 @@ export class PFMParser {
 						}
 						this.pad_and_close_row();
 						this.states.pop();
-						this.cursor++;
+						// in a block quote or a list item the lf stays for table_next_line
+						if (this.frames.length === 0) this.cursor++;
 						continue;
 					}
 
@@ -9730,9 +9748,9 @@ export class PFMParser {
 	 */
 	private link_text_lf_ends(current_node: number): boolean {
 		if (this.in_heading) return true;
-		if (this.block_quote_depth > 0) return !this.bq_soft_break(current_node);
+		if (this.block_quote_depth > 0) return !this.soft_break(current_node);
 		return (
-			this.is_blank_line_after(this.cursor) || this.lf_ends_inline(this.cursor)
+			this.is_blank_line_after(this.cursor) || this.para_line(this.cursor) === 1
 		);
 	}
 
@@ -9744,52 +9762,6 @@ export class PFMParser {
 			char_code_at.call(source, pos - base) === BACKTICK &&
 			char_code_at.call(source, pos + 1 - base) === BACKTICK &&
 			char_code_at.call(source, pos + 2 - base) === BACKTICK
-		);
-	}
-
-	/** true when the marked line at `stripped` ends a paragraph in a block quote */
-	private bq_line_ends_para(stripped: number): boolean {
-		return (
-			this.is_blank_at_pos(stripped) ||
-			this.is_block_quote_start(stripped) ||
-			this.is_heading_start(stripped) ||
-			this.is_thematic_break_start(stripped) ||
-			this.is_fence_start(stripped) ||
-			(this.directive_colon_counts.length !== 0 &&
-				this.is_directive_close_line(stripped)) ||
-			(this.list_depth > 0
-				? this.bq_list_marker(stripped)
-				: this.is_list_item_start_interrupt(stripped))
-		);
-	}
-
-	/**
-	 * takes the marked line after the linefeed at the cursor as a soft break, false when that
-	 * line ends the paragraph, the caller pushes inline
-	 */
-	private bq_soft_break(current_node: number): boolean {
-		const stripped = this.quote_line(this.cursor);
-		if (stripped === -1 || this.bq_line_ends_para(stripped)) return false;
-		this.emit_bare_leaf(
-			NodeKind.soft_break,
-			this.cursor,
-			current_node,
-			this.cursor + 1
-		);
-		this.chomp(this.skip_spaces(stripped), true);
-		return true;
-	}
-
-	/** a list marker on a marked continuation line inside a list in a quote */
-	private bq_list_marker(stripped: number): boolean {
-		const { columns: ind } = this.count_indent(stripped);
-		const marker_pos =
-			ind >= this.list_content_offset
-				? this.skip_columns(stripped, this.list_content_offset)
-				: stripped;
-		return (
-			marker_pos < this.source_end &&
-			this.try_parse_list_marker(marker_pos) !== null
 		);
 	}
 
@@ -9853,8 +9825,8 @@ export class PFMParser {
 			// inline always pops so a line that goes on with the paragraph is taken here
 			(this.in_heading ||
 				(this.block_quote_depth > 0
-					? !this.bq_soft_break(current_node)
-					: this.lf_ends_inline(this.cursor)))
+					? !this.soft_break(current_node)
+					: this.para_line(this.cursor) === 1))
 		) {
 			// block interrupt after newline - close unclosed inline html element
 			if (
@@ -10189,13 +10161,7 @@ export class PFMParser {
 
 		if (!code) {
 			if (!this.finished) return true;
-			// eof: close branch + block
-			this.emit_close(this.svelte_branch_id, this.cursor);
-			this.node_stack.pop(); // branch
-			this.emit_close(this.svelte_block_id, this.cursor);
-			this.node_stack.pop(); // block
-			this.states.pop();
-			this.leave_svelte_block();
+			this.close_svelte_block(this.cursor);
 			return false;
 		}
 
@@ -10228,13 +10194,7 @@ export class PFMParser {
 					return false;
 				}
 				if (token.kind === '/') {
-					// close branch + block
-					this.emit_close(this.svelte_branch_id, this.cursor);
-					this.node_stack.pop(); // branch
-					this.emit_close(this.svelte_block_id, token.end);
-					this.node_stack.pop(); // block
-					this.states.pop();
-					this.leave_svelte_block();
+					this.close_svelte_block(token.end);
 					this.chomp(token.end, true);
 					return false;
 				}
@@ -10248,6 +10208,13 @@ export class PFMParser {
 
 		// skip linefeeds
 		if (code === LINEFEED) {
+			if (this.block_quote_depth > 0) {
+				const stays = this.container_lf(current_node);
+				if (stays < 0) return true;
+				// a line that leaves the quote ends the block where the input would
+				if (stays === 0) this.close_svelte_block(this.cursor);
+				return false;
+			}
 			this.emit_bare_leaf(
 				NodeKind.line_break,
 				this.cursor,
@@ -10270,7 +10237,11 @@ export class PFMParser {
 			}
 			// a chunk end inside the run may still be followed by a linefeed
 			if (pos >= length && !this.finished) return true;
-			if (pos < length && char_code_at.call(source, pos - base) === LINEFEED) {
+			if (
+				pos < length &&
+				char_code_at.call(source, pos - base) === LINEFEED &&
+				this.block_quote_depth === 0
+			) {
 				this.emit_bare_leaf(
 					NodeKind.line_break,
 					this.cursor,
@@ -10363,178 +10334,19 @@ export class PFMParser {
 				this.cursor++;
 				return false;
 			}
-
-			case OCTOTHERP: {
-				if (!this.start_heading(current_node)) return true;
-				return false;
-			}
-
-			case BACKTICK: {
-				this.start_fence(current_node);
-				return false;
-			}
-
-			case ASTERISK:
-			case DASH:
-			case UNDERSCORE: {
-				if (this.could_be_thematic_break(this.cursor, code)) return true;
-				if (this.is_thematic_break_start(this.cursor)) {
-					let line_end = this.cursor;
-					while (
-						line_end < length &&
-						char_code_at.call(source, line_end - base) !== LINEFEED
-					) {
-						line_end++;
-					}
-					const break_end = line_end < length ? line_end : line_end;
-
-					this.emit_bare_leaf(
-						NodeKind.thematic_break,
-						this.cursor,
-						current_node,
-						break_end
-					);
-
-					this.chomp(break_end, true);
-					return false;
-				}
-				if (code !== UNDERSCORE) {
-					const marker = this.try_parse_list_marker(this.cursor);
-					if (marker) {
-						this.start_list(marker, current_node);
-						return false;
-					}
-				}
-				this.states.push(StateKind.paragraph);
-				const para_id = this.emit_open(
-					NodeKind.paragraph,
-					this.cursor,
-					current_node
-				);
-				this.node_stack.push(para_id);
-				return false;
-			}
-
-			case CLOSE_ANGLE_BRACKET: {
-				let p = this.cursor + 1;
-				if (p < length && char_code_at.call(source, p - base) === SPACE) p++;
-
-				this.block_quote_depth++;
-				this.push_frame(0);
-				const bq_id = this.emit_open(
-					NodeKind.block_quote,
-					this.cursor,
-					current_node
-				);
-				this.node_stack.push(bq_id);
-				this.states.push(StateKind.block_quote);
-				this.chomp(p, true);
-				return false;
-			}
-
-			case PIPE: {
-				const result = this.try_start_table(current_node);
-				if (result === false) return true;
-				if (result === true) return false;
-				this.states.push(StateKind.paragraph);
-				const para_id = this.emit_open(
-					NodeKind.paragraph,
-					this.cursor,
-					current_node
-				);
-				this.node_stack.push(para_id);
-				return false;
-			}
-
-			case OPEN_SQUARE_BRACKET: {
-				const def_end = this.try_parse_link_ref_definition(this.cursor);
-				if (def_end === -2) return true;
-				if (def_end >= 0) {
-					this.chomp(def_end, true);
-					return false;
-				}
-				if (this.unwrap_images) {
-					const image = this.open_image_para(current_node, false);
-					if (image < 0) return true;
-					if (image > 0) return false;
-				}
-				this.states.push(StateKind.paragraph);
-				const bq_ref_para = this.emit_open(
-					NodeKind.paragraph,
-					this.cursor,
-					current_node
-				);
-				this.node_stack.push(bq_ref_para);
-				return false;
-			}
-
-			case COLON: {
-				// try_parse_block_directive stalls internally while the
-				// prefix is still consistent with a directive opener, so
-				// non-directive lines dispatch to paragraph eagerly
-				const dir = this.try_parse_block_directive(this.cursor);
-				if (dir === false) return true;
-				if (dir !== null) {
-					this.start_block_directive(dir, current_node);
-					return false;
-				}
-				this.states.push(StateKind.paragraph);
-				const bq_colon_para = this.emit_open(
-					NodeKind.paragraph,
-					this.cursor,
-					current_node
-				);
-				this.node_stack.push(bq_colon_para);
-				return false;
-			}
-
-			case EXCLAMATION_MARK: {
-				if (this.unwrap_images) {
-					const image = this.open_image_para(current_node, false);
-					if (image < 0) return true;
-					if (image > 0) return false;
-				}
-				this.states.push(StateKind.paragraph);
-				const bq_bang_para = this.emit_open(
-					NodeKind.paragraph,
-					this.cursor,
-					current_node
-				);
-				this.node_stack.push(bq_bang_para);
-				return false;
-			}
-
-			default: {
-				if (code === PLUS || (code >= 48 && code <= 57)) {
-					// stall only while the marker prefix is still being
-					// read - same logic as the top-level block dispatch.
-					if (!this.finished && this.plus_marker_pending(this.cursor))
-						return true;
-					const marker = this.try_parse_list_marker(this.cursor);
-					if (marker) {
-						this.start_list(marker, current_node);
-						return false;
-					}
-				}
-				// the two chars after a { tell a {@tag from an expression
-				if (code === OPEN_BRACE && !this.finished && this.cursor + 2 >= length)
-					return true;
-				if (code === OPEN_ANGLE_BRACKET || this.at_svelte_tag(code)) {
-					this.open_spec_para(current_node, false);
-					return false;
-				}
-				this.states.push(StateKind.paragraph);
-				const para_id = this.emit_open(
-					NodeKind.paragraph,
-					this.cursor,
-					current_node
-				);
-				this.node_stack.push(para_id);
-				if (code >= 128 || (code !== 0 && TEXT_BREAK[code] === 0))
-					this.para_text(para_id);
-				return false;
-			}
 		}
+		const started = this.block_start(code, current_node, -1);
+		if (started !== 0) return started === -1;
+		this.states.push(StateKind.paragraph);
+		const para_id = this.emit_open(
+			NodeKind.paragraph,
+			this.cursor,
+			current_node
+		);
+		this.node_stack.push(para_id);
+		if (code >= 128 || (code !== 0 && TEXT_BREAK[code] === 0))
+			this.para_text(para_id);
+		return false;
 	}
 
 	private _run_list_item(code: number, current_node: number): boolean {
@@ -11092,6 +10904,11 @@ export class PFMParser {
 
 			case OPEN_ANGLE_BRACKET: {
 				if (probe) return this.tag_interrupts(pos) ? 1 : 0;
+				// the element state reads whole lines, in a block quote a tag stays inline in a paragraph
+				if (this.block_quote_depth > 0) {
+					this.open_spec_para(current_node, false);
+					return 1;
+				}
 				if (
 					!this.finished &&
 					string_index_of.call(source, '>', this.cursor + 1 - base) === -1
@@ -11287,24 +11104,14 @@ export class PFMParser {
 				}
 				// an unmarked line ends the quote, the lf stays for the enclosing block_quote frames
 				if (this.block_quote_depth > 0) {
-					const stripped = this.skip_bq_markers(
-						this.cursor + 1,
-						this.block_quote_depth
-					);
-					if (stripped === -1) {
+					const stays = this.container_lf(current_node);
+					if (stays < 0) return true;
+					if (stays === 0) {
 						this.emit_close(current_node, this.cursor);
 						this.node_stack.pop();
 						this.states.pop();
 						this.directive_colon_counts.pop();
-						return false;
 					}
-					this.emit_bare_leaf(
-						NodeKind.line_break,
-						this.cursor,
-						current_node,
-						this.cursor + 1
-					);
-					this.chomp(stripped, true);
 					return false;
 				}
 				this.emit_bare_leaf(
@@ -11390,15 +11197,8 @@ export class PFMParser {
 				break;
 			}
 		}
-		// the element and branch states read whole lines, in a block quote a tag or a block token stays in a paragraph
-		if (
-			this.block_quote_depth === 0 ||
-			(code !== OPEN_ANGLE_BRACKET &&
-				(code !== OPEN_BRACE || this.at_svelte_tag(code)))
-		) {
-			const started = this.block_start(code, current_node, -1);
-			if (started !== 0) return started === -1;
-		}
+		const started = this.block_start(code, current_node, -1);
+		if (started !== 0) return started === -1;
 		this.states.push(StateKind.paragraph);
 		const para_id = this.emit_open(
 			NodeKind.paragraph,
@@ -11543,8 +11343,16 @@ export class PFMParser {
 		const cell_count = n >> 2;
 
 		// find delimiter row
-		const delim_start = header_end + 1;
+		let delim_start = header_end + 1;
 		if (delim_start >= length && !this.finished) return false; // hold back
+		const framed = this.frames.length !== 0;
+		if (framed && delim_start < length) {
+			// the row sits past what the block quotes and list items put before its line
+			const kept = this.line_start(delim_start);
+			if (kept < 0) return false;
+			if (kept < this.frames.length) return null;
+			delim_start = this.line_pos;
+		}
 
 		let delim_end = length;
 		if (delim_start < length) {
@@ -11686,8 +11494,9 @@ export class PFMParser {
 		this.node_stack.push(table_id);
 		this.states.push(StateKind.table_body);
 
-		// advance cursor past delimiter row
-		const after_delim = delim_end < length ? delim_end + 1 : delim_end;
+		// past the delimiter row, in a block quote or a list item its lf stays for table_next_line
+		const after_delim =
+			delim_end < length && !framed ? delim_end + 1 : delim_end;
 		this.chomp(after_delim, true);
 		return true;
 	}
@@ -11755,7 +11564,7 @@ export class PFMParser {
 						this.cursor = p;
 						return;
 					}
-					if (this.lf_ends_inline(p)) {
+					if (this.para_line(p) === 1) {
 						this.emit_close(para_id, p);
 						this.states.pop();
 						this.node_stack.pop();
@@ -12426,20 +12235,42 @@ export class PFMParser {
 	 * close the current table and pop state.
 	 */
 	/**
+	 * the linefeed at the cursor ended a row inside a block quote or a list item
+	 * @returns 1 when the next line may hold a row, the cursor is then past what the containers put before it,
+	 * 0 when it is blank or leaves a container, the linefeed stays for them, -1 while a feed cannot tell yet
+	 */
+	private table_next_line(): number {
+		const kept = this.line_start(this.cursor + 1);
+		if (kept < 0) return -1;
+		if (kept < this.frames.length) return 0;
+		const source = this.source;
+		const base = this.source_base;
+		const p = this.line_pos;
+		let q = p;
+		let ch = char_code_at.call(source, q - base);
+		while (ch === SPACE || ch === TAB) {
+			ch = char_code_at.call(source, ++q - base);
+		}
+		if (q >= this.source_end) return this.finished ? 0 : -1;
+		if (ch === LINEFEED) return 0;
+		this.chomp(p, true);
+		return 1;
+	}
+
+	/**
 	 * the line at the cursor ends the table, as it would end a paragraph
-	 * @returns 1 when it does, 0 when it is a row, -1 while a feed cannot tell yet
+	 * @returns 1 when it does, 0 when it is a row whose first cell starts at line_pos, -1 while a feed cannot tell yet
 	 */
 	private table_line_ends(): number {
 		const source = this.source;
 		const base = this.source_base;
-		const length = this.source_end;
+		let p = this.cursor;
+		let ch = char_code_at.call(source, p - base);
+		while (ch === SPACE || ch === TAB) {
+			ch = char_code_at.call(source, ++p - base);
+		}
 		if (!this.finished) {
-			let p = this.cursor;
-			let ch = char_code_at.call(source, p - base);
-			while (ch === SPACE || ch === TAB) {
-				ch = char_code_at.call(source, ++p - base);
-			}
-			if (p >= length) return -1;
+			if (p >= this.source_end) return -1;
 			// a block needs its whole line, a row taken early could not become one
 			if (
 				ch < 128 &&
@@ -12448,7 +12279,10 @@ export class PFMParser {
 			)
 				return -1;
 		}
-		return this.line_interrupts(this.cursor) ? 1 : 0;
+		if (this.line_interrupts(this.cursor)) return 1;
+		// the pipe that opens an indented row is no cell
+		this.line_pos = ch === PIPE ? p + 1 : this.cursor;
+		return 0;
 	}
 
 	/**

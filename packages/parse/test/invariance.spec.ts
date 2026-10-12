@@ -119,12 +119,10 @@ const INTENDED: Intended[] = [
 		why: 'PFM.md, Blockquotes: "a bullet or `1.` with text after it, and any marker when the paragraph is in a list", so the generator writes no `7.` list straight after a block',
 	},
 	{
-		what: 'a link reference definition is a paragraph in a block quote and in a list item',
-		why: 'try_parse_link_ref_definition returns at once inside either, and design/footnotes.md calls definitions root only',
+		what: 'a link reference definition is a paragraph in a list item',
+		why: 'try_parse_link_ref_definition returns at once inside one, until the list item state reads its lines through line_start',
 		drop: (seen) =>
-			seen.piece.kind === 'definition' &&
-			(seen.inside.includes('block_quote') ||
-				seen.inside.includes('list_item')),
+			seen.piece.kind === 'definition' && seen.inside.includes('list_item'),
 	},
 ];
 
@@ -148,38 +146,13 @@ function only_tags(seen: Seen): boolean {
 	);
 }
 
-/** a line of dashes under a paragraph that starts with a pipe, the two lines are a table */
-function makes_table(seen: Seen): boolean {
-	return (
-		is(seen, 'thematic_break') &&
-		seen.piece.join === '\n' &&
-		seen.before?.kind === 'paragraph' &&
-		seen.before.kids[0]?.kind === 'pipe'
-	);
-}
-
 /** every known failure, each one takes its pieces out of the documents until its issue is fixed */
 const KNOWN: Known[] = [
 	{
-		issue: 1019,
-		what: 'a table does not open inside a block quote',
-		drop: (seen) =>
-			(is(seen, 'table') || makes_table(seen)) && within(seen, 'block_quote'),
-		example: { site: 'block_quote', source: '| a |\n|---|' },
-	},
-	{
-		issue: 1047,
-		what: 'a table row that is indented loses its first cell, so a table in a list item loses its body rows',
-		drop: (seen) => is(seen, 'table') && within(seen, 'list_item'),
-		edited: ['content', /\n[ \t]+\|/],
-		example: { site: 'list_item', source: '| a |\n|---|\n| b |' },
-	},
-	{
 		issue: 1021,
-		what: 'a svelte block does not open inside a block quote or a list item',
-		drop: (seen) =>
-			is(seen, 'svelte_block') && within(seen, 'block_quote', 'list_item'),
-		example: { site: 'block_quote', source: '{#if a}\nb\n{/if}' },
+		what: 'a svelte block does not open inside a list item',
+		drop: (seen) => is(seen, 'svelte_block') && within(seen, 'list_item'),
+		example: { site: 'list_item', source: '{#if a}\nb\n{/if}' },
 	},
 	{
 		issue: 1022,
@@ -214,15 +187,6 @@ const KNOWN: Known[] = [
 		example: { site: 'list_item', source: '<div>\na\n</div>' },
 	},
 	{
-		issue: 1024,
-		what: 'a tag or a comment in a container directive in a block quote keeps a paragraph',
-		drop: (seen) =>
-			(is(seen, 'html_line', 'component', 'comment') || only_tags(seen)) &&
-			within(seen, 'block_quote') &&
-			within(seen, 'directive_container'),
-		example: { site: 'block_quote', source: ':::box\n<div>a</div>\n:::' },
-	},
-	{
 		issue: 1025,
 		what: 'a container directive left open in a list item runs past the item',
 		drop: (seen) =>
@@ -248,21 +212,6 @@ const KNOWN: Known[] = [
 		example: { site: 'block_quote', source: '<!-- a --> b' },
 	},
 	{
-		issue: 1053,
-		what: 'a directive or an html element does not end a paragraph in a block quote',
-		drop: (seen) =>
-			is(
-				seen,
-				'directive_leaf',
-				'directive_container',
-				'html_line',
-				'html_element'
-			) &&
-			seen.piece.join === '\n' &&
-			within(seen, 'block_quote'),
-		example: { site: 'block_quote', source: 'a\n::leaf' },
-	},
-	{
 		issue: 1056,
 		what: 'a thematic break in a list item ends the list or takes the next line into the item',
 		drop: (seen) => is(seen, 'thematic_break') && within(seen, 'list_item'),
@@ -276,16 +225,6 @@ const KNOWN: Known[] = [
 			near(seen) === 'list_item' &&
 			seen.after === null,
 		example: { site: 'svelte_branch', source: '- ```\n  a\n  ```' },
-	},
-	{
-		issue: 1057,
-		what: 'a fence does not end a paragraph of a list item in a block quote',
-		drop: (seen) =>
-			is(seen, 'code_fence') &&
-			seen.piece.join === '\n' &&
-			within(seen, 'block_quote') &&
-			within(seen, 'list_item'),
-		example: { site: 'block_quote', source: '- a\n  ```\n  b\n  ```' },
 	},
 	{
 		issue: 1058,

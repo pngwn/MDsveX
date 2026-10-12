@@ -8,6 +8,7 @@ import { WireTreeBuilder } from '../src/wire_tree_builder';
 import { Cursor } from '../src/cursor';
 import { print_ast } from './print';
 import { fed_mismatch } from './stream_shape';
+import { container_mismatch } from './invariance';
 
 function non_breaks(nodes: NodeBuffer, parent: number = 0) {
 	return nodes
@@ -1069,5 +1070,35 @@ describe('a table ends where a paragraph would', () => {
 		expect(kinds(source)).toEqual([kind]);
 		expect(rows(source)).toBe(1);
 		expect(fed_mismatch(source)).toBe('');
+	});
+});
+
+describe('a table in a list item', () => {
+	test.each([
+		['keeps its body rows', '| a |\n|---|\n| b |\n| c |'],
+		['ends at a blank line', '| a |\n|---|\n| b |\n\nc'],
+		['ends at a heading', '| a |\n|---|\n| b |\n# c'],
+	])('%s: %j', (_, source) => {
+		const rows = source.split('\n');
+		const tight = !source.includes('\n\n');
+		expect(container_mismatch('list_item', rows, tight, [])).toBe('');
+		const item = rows
+			.map((row, i) => (i === 0 ? `- ${row}` : row === '' ? '' : `  ${row}`))
+			.join('\n');
+		expect(fed_mismatch(`${item}\n`)).toBe('');
+	});
+
+	test('a row that is not indented to the item is outside the table', () => {
+		const input = '- | a |\n  |---|\n  | b |\n| c |\n';
+		const { nodes } = parse_markdown_svelte(input);
+		expect(non_breaks(nodes).map((n) => n.kind)).toEqual(['list', 'paragraph']);
+		expect(print_ast(nodes, input).match(/table_row/g)).toHaveLength(1);
+		expect(fed_mismatch(input)).toBe('');
+	});
+
+	test('an indented row at the root keeps its first cell', () => {
+		const input = '| a |\n|---|\n  | b |\n';
+		const { nodes } = parse_markdown_svelte(input);
+		expect(print_ast(nodes, input)).toContain('text "b"');
 	});
 });

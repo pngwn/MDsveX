@@ -217,8 +217,7 @@ describe('link reference definitions', () => {
 		expect(kinds).not.toContain('link');
 	});
 
-	// [foo][] in blockquote before definition, forward, no link
-	test('218, forward reference across blockquote does not resolve (PFM)', () => {
+	test('218, a definition in a block quote resolves a later reference', () => {
 		const input = load_fixture('218');
 		const { nodes } = parse_markdown_svelte(input);
 
@@ -226,7 +225,7 @@ describe('link reference definitions', () => {
 		const paragraph = find_child(nodes, root.index, 'paragraph');
 		expect(paragraph).not.toBeNull();
 		const kinds = get_all_child_kinds(nodes, paragraph!.index);
-		expect(kinds).not.toContain('link');
+		expect(kinds).toEqual(['link']);
 	});
 
 	// PFM-specific: no setext headings, no indented code blocks

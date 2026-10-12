@@ -9,6 +9,7 @@ import type { NodeBuffer } from '../src/utils';
 import { print_ast } from './print';
 import { NodeKind } from '../src/utils';
 import { run_batch, run_wire } from './plugin_harness';
+import { container_mismatch } from './invariance';
 import {
 	checked_tree,
 	every_path,
@@ -1001,8 +1002,12 @@ describe('a line that ends a paragraph in a block quote, with something open', (
 	test('an inline element ends at the same line after a hard break and a linefeed', () => {
 		const hard = '> - ::toc[]<span>`a``\\\n> </div></b>|</span>\n';
 		const soft = hard.replace('\\\n', '\n');
+		// the block level close tag ends the paragraph, so the backslash is text
 		expect(checked_tree(hard)).toBe(
-			checked_tree(soft).replace('soft_break', 'hard_break')
+			checked_tree(soft).replace(
+				'        text "``"',
+				'        text "``"\n        text "\\\\"'
+			)
 		);
 		expect(checked_tree('> x <b>a\\\n> > b</b>\n')).toBe(
 			checked_tree('> x <b>a\n> > b</b>\n').replace('"a"', '"a\\\\"')
@@ -1216,5 +1221,78 @@ describe('a block quote inside a list item', () => {
 	])('%s: %j', (_, input, expected) => {
 		expect(kinds(input)).toEqual(expected);
 		expect(fed_mismatch(input)).toBe('');
+	});
+});
+
+describe('a block quote holds the blocks the document does', () => {
+	const quoted = (source: string): string =>
+		source
+			.split('\n')
+			.map((row) => (row === '' ? '>' : `> ${row}`))
+			.join('\n') + '\n';
+
+	test.each([
+		['a table', '| a |\n|---|\n| b |\n| c |'],
+		['a table before a paragraph', '| a |\n|---|\n| b |\n\nc'],
+		['a table that a heading ends', '| a |\n|---|\n| b |\n# c'],
+		['a svelte block', '{#if a}\nb\n{/if}'],
+		['a svelte block with a branch', '{#if a}\nb\n{:else}\n# c\n{/if}\nd'],
+		['a list in a svelte block', '{#each a as b}\n- c\n- d\n{/each}'],
+		['a definition', '[r]: /u\n\n[a][r]'],
+		['a definition with a title', '[r]: /u "t"\n\n[a][r]'],
+		['a leaf directive under a paragraph', 'a\n::leaf'],
+		['a container directive under a paragraph', 'a\n:::box\nb\n:::'],
+		['a block level tag under a paragraph', 'a\n<div>b</div>'],
+		['a svelte block under a paragraph', 'a\n{#if b}\nc\n{/if}'],
+		['a tag in a container directive', ':::box\n<Chart />\n:::'],
+		['a comment in a container directive', ':::box\n<!-- a -->\n:::'],
+	])('%s: %j', (_, source) => {
+		expect(
+			container_mismatch('block_quote', source.split('\n'), true, [])
+		).toBe('');
+		expect(fed_mismatch(quoted(source))).toBe('');
+	});
+
+	test('a block that leaves the quote ends at the unmarked line', () => {
+		const kinds = (input: string): string[] =>
+			print_ast(parse_markdown_svelte(input).nodes, input)
+				.split('\n')
+				.map((line) => line.trim().split(' ')[0])
+				.filter((kind) => kind !== 'line_break' && kind !== 'text');
+		expect(kinds('> | a |\n> |---|\n> | b |\n| c |\n')).toEqual([
+			'root',
+			'block_quote',
+			'table',
+			'table_header',
+			'table_cell',
+			'table_row',
+			'table_cell',
+			'paragraph',
+		]);
+		expect(kinds('> {#if a}\n> b\nc\n')).toEqual([
+			'root',
+			'block_quote',
+			'svelte_block',
+			'svelte_branch',
+			'paragraph',
+			'paragraph',
+		]);
+		expect(fed_mismatch('> | a |\n> |---|\n> | b |\n| c |\n')).toBe('');
+		expect(fed_mismatch('> {#if a}\n> b\nc\n')).toBe('');
+	});
+
+	test('a fence ends the paragraph of a list item', () => {
+		const input = '> - a\n>   ```\n>   b\n>   ```\n';
+		expect(print_ast(parse_markdown_svelte(input).nodes, input)).toContain(
+			'code_fence'
+		);
+		expect(fed_mismatch(input)).toBe('');
+	});
+
+	test('a definition in a block quote is one line', () => {
+		const input = '> [r]:\n> /u\n\n[a][r]\n';
+		expect(print_ast(parse_markdown_svelte(input).nodes, input)).not.toContain(
+			'link'
+		);
 	});
 });
