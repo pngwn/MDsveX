@@ -49,6 +49,8 @@ import { assign_heading_ids, slug_of } from './heading_ids';
 import type { HeadingOptions, HeadingSlug } from './heading_ids';
 import { image_imports } from './image_imports';
 import type { ImageImports, ImageNeed } from './image_imports';
+import { link_urls, links_of, with_images } from './link_urls';
+import type { LinkOptions, Links, Rewrite } from './link_urls';
 
 export type {
 	DirectiveContext,
@@ -77,6 +79,12 @@ export type {
 } from './highlight_run';
 export { heading_slug } from './heading_ids';
 export type { ImageNeed } from './image_imports';
+export type {
+	BaseImport,
+	LinkOptions,
+	Rewrite,
+	RewriteContext,
+} from './link_urls';
 export type {
 	HeadingIdsOptions,
 	HeadingInfo,
@@ -200,9 +208,30 @@ export interface CompileOptions
 	 * that imports images, the vite plugin has it on
 	 */
 	import_images?: boolean;
+	/**
+	 * called for the url of every markdown link and of every markdown image
+	 * that is not imported, after links.routes and before links.base, a string
+	 * replaces the url and nothing keeps it, a url with a svelte expression is
+	 * never offered, nor is the href or src of an element typed as html
+	 *
+	 * @example
+	 * rewrite: (url) => (url.startsWith('gh:') ? 'https://github.com/' + url.slice(3) : undefined)
+	 */
+	rewrite?: Rewrite;
+	/**
+	 * turns relative links to documents into routes and puts the base path in
+	 * front of root urls, without a function
+	 *
+	 * @example
+	 * links: { routes: 'src/routes', base: '/docs' }
+	 */
+	links?: LinkOptions;
 	/** the document, highlighters, math renderers and their errors see it */
 	filename?: string;
 }
+
+/** the import lines and url lookup a render is given, from image imports, rewritten urls or both */
+type UrlSwaps = NonNullable<ReturnType<typeof with_images>>;
 
 /**
  * something a parsed document asks for before it renders, a render answers
@@ -309,6 +338,8 @@ export interface CompileInputs {
 	math: MathOption | undefined;
 	/** true imports relative images, anything else leaves every url */
 	import_images: boolean | undefined;
+	/** the rewrite and links options, links_of prepares them, undefined when no url changes */
+	links: Links | undefined;
 }
 
 /** @internal every inputs object comes from here, so they share one shape */
@@ -329,6 +360,7 @@ export function compile_inputs(): CompileInputs {
 		heading_ids: undefined,
 		math: undefined,
 		import_images: undefined,
+		links: undefined,
 	};
 }
 
@@ -353,6 +385,8 @@ function inputs_of(options: CompileOptions): CompileInputs {
 	const heading_ids = options.heading_ids;
 	const math = options.math;
 	const import_images = options.import_images;
+	const rewrite = options.rewrite;
+	const links = options.links;
 	// options that set none need no inputs of their own
 	if (
 		bundles === undefined &&
@@ -368,7 +402,9 @@ function inputs_of(options: CompileOptions): CompileInputs {
 		unwrap_images === undefined &&
 		heading_ids === undefined &&
 		math === undefined &&
-		import_images === undefined
+		import_images === undefined &&
+		rewrite === undefined &&
+		links === undefined
 	)
 		return no_inputs;
 	const inputs = compile_inputs();
@@ -386,6 +422,8 @@ function inputs_of(options: CompileOptions): CompileInputs {
 	if (heading_ids !== undefined) inputs.heading_ids = slug_of(heading_ids);
 	inputs.math = math;
 	inputs.import_images = import_images;
+	if (rewrite !== undefined || links !== undefined)
+		inputs.links = links_of(rewrite, links);
 	return inputs;
 }
 
@@ -1204,13 +1242,25 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 		host === null
 			? metadata_of(nodes, source, inputs.frontmatter_parse)
 			: host.frontmatter();
-	const images =
+	let images: UrlSwaps | null =
 		inputs.import_images === true &&
 		(take_src() ||
 			inputs.parse_plugins !== undefined ||
 			inputs.directive_handlers !== undefined)
 			? image_imports(nodes, source)
 			: null;
+	const linked = inputs.links;
+	if (linked !== undefined)
+		images = with_images(
+			images,
+			link_urls(
+				linked,
+				nodes,
+				source,
+				inputs.filename,
+				images === null ? null : images.lookup
+			)
+		);
 	const renderer = take_renderer();
 	const math = inputs.math;
 	const mathy = math !== undefined && math !== false;
@@ -1851,6 +1901,20 @@ export class CompilerSession {
 			// a plugin handler renders it, the session renderer has the outer document to come
 			if (this.plugin_busy) renderer = new CursorHTMLRenderer({ cache: false });
 		}
+		let swaps: UrlSwaps | null = images;
+		const linked = inputs.links;
+		// after the parse of both halves, the filename is that of the render
+		if (linked !== undefined)
+			swaps = with_images(
+				images,
+				link_urls(
+					linked,
+					nodes,
+					source,
+					inputs.filename,
+					images === null ? null : images.lookup
+				)
+			);
 		if (out !== undefined) out.metadata = metadata;
 		const template = bind(
 			renderer,
@@ -1873,9 +1937,9 @@ export class CompilerSession {
 			| CompileV3Result
 			| CompileTraceResult
 			| TraceTarget;
-		if (images !== null) {
-			renderer.imports = images.lines;
-			renderer.urls = images.lookup;
+		if (swaps !== null) {
+			renderer.imports = swaps.lines;
+			renderer.urls = swaps.lookup;
 		}
 		// the session keeps its renderer, a render that throws must not leave
 		// the imports of this document for the next
@@ -1963,7 +2027,7 @@ export class CompilerSession {
 				math_run(renderer, math, inputs.filename, source)
 			);
 		} finally {
-			if (images !== null) {
+			if (swaps !== null) {
 				renderer.imports = undefined;
 				renderer.urls = undefined;
 			}
