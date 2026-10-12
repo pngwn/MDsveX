@@ -291,9 +291,17 @@ function registration_for(plugins: ParsePlugin[]): RegistrationResult {
 /** a handler by node kind, null for none */
 type BoundTable = (DirectiveHandler | null)[];
 
+/** the key of the children handler that takes a child of any type */
+const ANY = '*';
+
+/** the count of the any child handler, after those of each kind for children and descendants */
+const ANY_SLOT = NODE_KIND_COUNT * 2;
+
 /** the handlers of one directive name, built once per array of tables */
 interface BoundEntry {
 	children: BoundTable | null;
+	/** the children handler for a child of any type, it runs after the one for its type */
+	any_child: DirectiveHandler | null;
 	descendants: BoundTable | null;
 	parse: DirectiveHandler | null;
 	/** the kinds children and descendants hold a handler for */
@@ -321,6 +329,12 @@ function bound_table(
 	for (const type of Object.keys(handlers)) {
 		const handler = handlers[type];
 		if (handler == null) continue;
+		if (type === ANY) {
+			if (key === 'children') continue;
+			throw new Error(
+				`only the children handlers of a directive take "${ANY}", directive "${name}" has it in its ${key} handlers`
+			);
+		}
 		const kind = string_to_kind(type);
 		// neither builder dispatches a text node, and a typo would never run
 		if (
@@ -389,14 +403,27 @@ function register_bound(tables: DirectiveTable[]): BoundRegistration | null {
 					`the parse handler of directive "${name}" must be a function`
 				);
 			}
+			// bound_table checked that children is an object
+			const any_child = entry.children?.[ANY] ?? null;
+			if (any_child !== null && typeof any_child !== 'function') {
+				throw new TypeError(
+					`the children.${ANY} handler of directive "${name}" must be a function`
+				);
+			}
 			if (bound === null) bound = new Map();
 			// a later table takes the name whole, as its component does
-			if (children === null && descendants === null && parse === null) {
+			if (
+				children === null &&
+				any_child === null &&
+				descendants === null &&
+				parse === null
+			) {
 				bound.delete(name);
 				continue;
 			}
 			bound.set(name, {
 				children,
+				any_child,
 				descendants,
 				parse,
 				child_kinds,
@@ -708,6 +735,11 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	private scope: Scope | null = null;
 	/** handled and the kinds the open scopes take, rewritten in place as they change */
 	private scope_wants: Int32Array | null = null;
+	/**
+	 * scope_wants before the any child handler of the innermost scope took
+	 * every kind, null when that scope has none
+	 */
+	private narrow: Int32Array | null = null;
 	/** traps of every state proxy, they log to the undo log of this dispatcher */
 	private state_traps: ProxyHandler<Record<string | symbol, any>> | null = null;
 	private undo: UndoLog = NO_UNDO;
@@ -1342,6 +1374,17 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	 */
 	dispatch_open(buf_idx: number, kind: NodeKind, buf: NodeBuffer): void {
 		if (this.held !== NONE) this.unhold(buf);
+		// only the any child handler asked for this kind, and the node is no
+		// child of its directive, so it is placed as a node no handler takes
+		const narrow = this.narrow;
+		if (
+			narrow !== null &&
+			narrow[kind] === 0 &&
+			buf.parent_at(buf_idx) !== this.scope!.directive
+		) {
+			this.adopt(buf_idx, buf);
+			return;
+		}
 		if (
 			kind === NodeKind.directive_container ||
 			kind === NodeKind.directive_leaf ||
@@ -1444,10 +1487,17 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		for (let i = scopes.length - 1; i >= 0; i--) {
 			const scope = scopes[i];
 			const entry = scope.entry;
-			if (parent === scope.directive && entry.children !== null) {
-				const handler = entry.children[kind];
-				if (handler != null) {
-					callbacks = this.call_bound(handler, view, scope, kind, callbacks);
+			if (parent === scope.directive) {
+				if (entry.children !== null) {
+					const handler = entry.children[kind];
+					if (handler != null) {
+						callbacks = this.call_bound(handler, view, scope, kind, callbacks);
+					}
+				}
+				const any = entry.any_child;
+				// a line break is the blank between two children, not one of them
+				if (any !== null && kind !== NodeKind.line_break) {
+					callbacks = this.call_bound(any, view, scope, ANY_SLOT, callbacks);
 				}
 			}
 			if (entry.descendants !== null) {
@@ -1475,7 +1525,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	): (() => void)[] | null {
 		let counts = scope.counts;
 		if (counts === null) {
-			counts = scope.counts = new Int32Array(NODE_KIND_COUNT * 2);
+			counts = scope.counts = new Int32Array(NODE_KIND_COUNT * 2 + 1);
 		}
 		const index = counts[slot]++;
 		// the index goes back with the node, as the state it wrote does
@@ -1547,7 +1597,11 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		const kind = buf.kind_at(buf_idx);
 		let scope: Scope | null = null;
 		if (kind === NodeKind.directive_container) {
-			if (entry.children !== null || entry.descendants !== null) {
+			if (
+				entry.children !== null ||
+				entry.any_child !== null ||
+				entry.descendants !== null
+			) {
 				scope = new Scope(buf_idx, entry);
 				let scopes = this.scopes;
 				if (scopes === null) scopes = this.scopes = [];
@@ -1603,6 +1657,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 			// a batch builder still holds it, and rereads before its next open
 			spare_masks.push(this.scope_wants!);
 			this.scope_wants = null;
+			this.drop_narrow();
 		} else {
 			const top = (this.scope = scopes[depth - 1]);
 			let wants = this.scope_wants;
@@ -1615,9 +1670,32 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 			// only the innermost scope can have a new child
 			const kinds = top.entry.child_kinds;
 			for (let k = 0; k < kinds.length; k++) wants[kinds[k]] = PAST_END;
+			if (top.entry.any_child === null) this.drop_narrow();
+			else {
+				// its child can be of any kind, dispatch_open lets the rest through
+				let narrow = this.narrow;
+				if (narrow === null) narrow = this.narrow = take_mask();
+				narrow.set(wants);
+				for (let k = 0; k < NODE_KIND_COUNT; k++) {
+					// neither builder dispatches text, and see run_bound for a line break
+					if (
+						k !== NodeKind.root &&
+						k !== NodeKind.text &&
+						k !== NodeKind.line_break
+					)
+						wants[k] = PAST_END;
+				}
+			}
 			this.handles = wants;
 		}
 		this.wants_floor = -1;
+	}
+
+	private drop_narrow(): void {
+		const narrow = this.narrow;
+		if (narrow === null) return;
+		spare_masks.push(narrow);
+		this.narrow = null;
 	}
 
 	/** the scope of a revoked directive ends, wherever it sits */
@@ -1831,6 +1909,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 			this.scopes!.length = 0;
 			this.scope = null;
 		}
+		this.drop_narrow();
 		// a scope switched these to its own kinds
 		this.handles = this.handled;
 		this.wants_floor = -1;

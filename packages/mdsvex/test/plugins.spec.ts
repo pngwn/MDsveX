@@ -258,6 +258,29 @@ describe('precedence', () => {
 	});
 });
 
+describe('a handler for a child of any type', () => {
+	test('a bundle sees every child of its directive and warns where one is stray', () => {
+		const bundle = steps();
+		bundle.directives!.steps.children!['*'] = (node, ctx) => {
+			if (ctx.state.step === undefined && node.type !== 'directive_label')
+				ctx.warn('before_first_step', `a ${node.type} is in no step`, node);
+		};
+		const { code, warnings } = compile(
+			':::steps[]\nstray\n\n## One\n\nfine\n:::\n',
+			{ plugins: [bundle] }
+		);
+		expect(code).toContain('<p>stray</p><Step_MDSVEX_D_G>');
+		expect(warnings).toEqual([
+			{
+				code: 'before_first_step',
+				message: 'a paragraph is in no step',
+				plugin: 'steps',
+				start: { line: 2, column: 0 },
+			},
+		]);
+	});
+});
+
 describe('the guard', () => {
 	const watch = (seen: string[]): ParsePlugin => {
 		const handler = {
