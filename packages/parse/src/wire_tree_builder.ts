@@ -319,6 +319,8 @@ export class WireTreeBuilder {
 		// plugin revoke: undo mutations before handle_repair
 		if (this.dispatcher) {
 			this.dispatcher.dispatch_revoke(idx, this.buf);
+			// a plugin took the node out of the tree, there is nothing to repair
+			if (this.buf.parent_at(idx) === NONE) return;
 		}
 
 		this.buf.handle_repair(idx, delimiter || undefined);

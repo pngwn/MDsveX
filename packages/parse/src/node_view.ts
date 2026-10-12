@@ -111,6 +111,8 @@ export interface StructureHost {
 	close_wrapper(buf: NodeBuffer, wrapper: number): void;
 	/** the parser may still revoke the node */
 	pending(buf: NodeBuffer, node: number): boolean;
+	/** take a node and everything in it out of the tree, throws where that is not sound */
+	remove(buf: NodeBuffer, node: number): void;
 }
 
 /** a directive arg reaches its component as a string prop, the renderer reads it as one */
@@ -637,6 +639,22 @@ export class NodeView {
 		if (host === null) throw new Error('wrap_from needs a plugin dispatcher');
 		const wrapper_idx = host.wrap_from(buf, this._index, kind_num, attrs);
 		return this._cache.wrapper(wrapper_idx);
+	}
+
+	/**
+	 * take this node and everything in it out of the tree, from its own close
+	 * callback or that of a node that holds it, once that node closed for
+	 * good, or from a sequential pass, anywhere else it throws, a node that is
+	 * already out stays out
+	 *
+	 * @example
+	 * html_comment: { parse: (node) => () => node.remove() }
+	 */
+	remove(): void {
+		const buf = this._live();
+		const host = this._cache.host;
+		if (host === null) throw new Error('remove needs a plugin dispatcher');
+		host.remove(buf, this._index);
 	}
 
 	/**
