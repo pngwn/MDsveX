@@ -93,8 +93,8 @@ phase 2, sync    render with sources: Map<spec, { id, text }>
   - **Public `compile()` is unchanged.** It has no two-phase form yet. The REPL can use a `CompilerSession` directly when it implements `sources`.
 - **A document with no `src=` stays synchronous.** The plugin's unit tests assert that `transform` returns no promise when nothing is async.
 - **`sources` is plain data.** Outside Vite, the REPL fills it from its in-memory files, and anyone calling `compile()` directly fills it themselves.
-- **The text is substituted at the renderer's `fence_text`,** which all five render walks and the highlighter read. Substituting inside the highlighter would miss the plain, unhighlighted paths.
-- **Source mappings need care.** A fence with `src=` has an empty source range for its body.
+- **The text is substituted at the renderer's `fence_text`,** which all five render walks and the highlighter read. Substituting inside the highlighter would miss the plain, unhighlighted paths. The seam is `renderer.fences`, a map from the node index of a fence to `{ text, info?, props? }`. `text` replaces the body, `info` replaces the info string (so a fence with no language can take one, and a claimed key can be kept from the highlighter), and `props` is props text a replaced `pre` gets after its own. Unset, every fence reads the source as before.
+- **Source mappings need care.** A fence with `src=` has an empty source range for its body. The code maps to that empty range as one span, so nothing points past the fence. Live `{…}` groups in code from the map get no records of their own, since they have no source text to map to.
 - **The highlighter sees the meta too.** twinkleplop's own meta parser receives the whole string. How it treats `src=…#L5-L20` and `run` is unchecked (Q8).
 
 ### 3.3 HMR
@@ -225,7 +225,7 @@ Q2 is how the directive component gets at the module. The simplest answer is tha
 
 | phase | work | depends on |
 |---|---|---|
-| 0 | groundwork: an extra-imports path in the renderer (done), fence text and `pre` props from a per-document map, one compile-inputs object (done), two-phase compile (done) | — |
+| 0 | groundwork: an extra-imports path in the renderer (done), fence text and `pre` props from a per-document map (done), one compile-inputs object (done), two-phase compile (done) | — |
 | 1 | `src=`: claimed key, slice syntax, `sources` compile option, the phase-1 scan with `this.resolve`, the document-to-files map and `hotUpdate` branch, `src` prop, errors | 0 |
 | 2 | `run`: claimed flag, language-to-extension table, hashed sibling ids, plugin `resolveId`/`load` with a snippet map and disk fallback, source maps, `module` prop | 0; 1 for `src=… run` |
 | 3 | `run=client` lazy form, REPL resolve/load, docs (demo `Pre` recipe, `:::example` recipe) | 2 |
