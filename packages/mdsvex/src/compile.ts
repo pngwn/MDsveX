@@ -17,7 +17,7 @@ import type {
 	SyntaxOptions,
 } from '@mdsvex/parse';
 import { TreeBuilder } from '@mdsvex/parse/tree-builder';
-import { take_info } from '@mdsvex/parse/utils';
+import { take_info, take_math } from '@mdsvex/parse/utils';
 import type { NodeBuffer } from '@mdsvex/parse/utils';
 import {
 	ComponentScope,
@@ -1284,7 +1284,9 @@ function warnings_of(
 /**
  * with no run a document renders plain first, a math fence that came out
  * as code says it has math, so one without math pays for neither a run nor
- * a search, this gives the renderer a run for math to render again with
+ * a search, this gives the renderer a run for math to render again with,
+ * a document with inline math gets it before the first render as the parser
+ * noted the span
  */
 function math_run(
 	renderer: CursorHTMLRenderer,
@@ -1320,6 +1322,7 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 		reserved_directives(directives, inputs.templates)
 	);
 	const nodes = parse_once(source, host, inputs);
+	const spans = take_math();
 	// a handler that read the frontmatter already parsed it
 	const metadata =
 		host === null
@@ -1375,8 +1378,11 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 		give_renderer(renderer);
 		throw e;
 	}
-	if (mathy && renderer.highlight !== null)
-		(renderer.highlight as HighlightRun).with_math(math);
+	if (mathy) {
+		if (renderer.highlight !== null)
+			(renderer.highlight as HighlightRun).with_math(math);
+		else if (spans) math_run(renderer, math, inputs.filename, source);
+	}
 	// give_renderer clears these, a throw drops the renderer
 	if (images !== null) {
 		renderer.imports = images.lines;
@@ -1483,8 +1489,10 @@ export class Parsed {
 	_images: ImageImports | null = null;
 	/** @internal the fences the needs of type source are for */
 	_sources: SourceFences | null = null;
-	/** true when the document shows a file and has a math fence, a caller that loads the math renderer late loads it first */
+	/** true when the document has inline math, or shows a file and has a math fence, a caller that loads the math renderer late loads it first */
 	math = false;
+	/** @internal the parser noted inline math, so the render starts with a math run */
+	_spans = false;
 	/** @internal null once a render took them */
 	_nodes: NodeBuffer | null;
 	/** @internal the plain arena of the session, lent until the render */
@@ -1528,6 +1536,8 @@ export class CompilerSession {
 	private renderer = new CursorHTMLRenderer({ cache: false });
 	// release already reset the arena, so the next compile can skip it
 	private released = false;
+	/** the parser noted inline math in the document the session parsed last */
+	private spans = false;
 	// apart from the plain arena, so a compile without plugins started in a
 	// plugin handler never meets a parser that is mid document
 	private plugin_arena: PluginArena | null = null;
@@ -1708,6 +1718,7 @@ export class CompilerSession {
 		const source = normalized(raw);
 		const nodes = tree.get_buffer();
 		const parsed = new Parsed(raw, source, metadata, nodes);
+		parsed.math = parsed._spans = this.spans;
 		if (plugged) this.plugin_arena!.host.wait(parsed);
 		if (inputs.import_images === true)
 			this.need_images(parsed, image_imports(nodes, source));
@@ -1725,7 +1736,7 @@ export class CompilerSession {
 	private need_sources(parsed: Parsed, shown: SourceFences | null): void {
 		if (shown === null) return;
 		parsed._sources = shown;
-		parsed.math = shown.math;
+		if (shown.math) parsed.math = true;
 		const needs = parsed.needs;
 		parsed.needs =
 			needs === undefined ? shown.needs : [...needs, ...shown.needs];
@@ -1962,6 +1973,7 @@ export class CompilerSession {
 		let metadata: Metadata | undefined;
 		let images: ImageImports | null = null;
 		let shown: SourceFences | null = null;
+		let spans = false;
 		// set when plugin handlers could run, a document without plugins never has one
 		let host: PluginHost | null = null;
 		if (parsed === undefined) {
@@ -1993,6 +2005,7 @@ export class CompilerSession {
 						? undefined
 						: metadata_of(nodes, source, inputs.frontmatter_parse);
 			}
+			spans = this.spans = take_math();
 			// the parser notes each image it makes, so only a document with one
 			// is walked, with plugins the walk decides, they make images unseen
 			// and a compile a handler starts takes the note
@@ -2011,6 +2024,7 @@ export class CompilerSession {
 					!sources_met(shown, given as Sources))
 			) {
 				const waiting = new Parsed(raw, source, metadata, nodes);
+				waiting.math = waiting._spans = spans;
 				if (host !== null) host.wait(waiting);
 				this.need_images(waiting, images);
 				this.need_sources(waiting, shown);
@@ -2031,6 +2045,7 @@ export class CompilerSession {
 			metadata = parsed.metadata;
 			images = parsed._images;
 			shown = parsed._sources;
+			spans = parsed._spans;
 			// the next document of the session resets it
 			host = parsed._host;
 			parsed._host = null;
@@ -2075,9 +2090,13 @@ export class CompilerSession {
 
 		const math = inputs.math;
 		const mathy = math !== undefined && math !== false;
-		// the run of a highlighter renders math fences too
-		if (mathy && renderer.highlight !== null)
-			(renderer.highlight as HighlightRun).with_math(math);
+		// the run of a highlighter renders math too, with none a document the
+		// parser noted inline math in gets one, a fence alone renders first
+		if (mathy) {
+			if (renderer.highlight !== null)
+				(renderer.highlight as HighlightRun).with_math(math);
+			else if (spans) math_run(renderer, math, inputs.filename, source);
+		}
 
 		let done:
 			| CompileResult

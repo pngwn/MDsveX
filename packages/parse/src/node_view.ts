@@ -506,6 +506,16 @@ export class NodeView {
 	}
 
 	/**
+	 * true for a code span written as inline math, a code span in dollars, its
+	 * text is the latex, false for any other code span, undefined for any other node
+	 */
+	get math(): boolean | undefined {
+		const buf = this._live();
+		if (buf.kind_at(this._index) !== NodeKind.code_span) return undefined;
+		return buf.extra_at(this._index) === 1;
+	}
+
+	/**
 	 * the info string of a code fence, its language and everything after it,
 	 * '' for a fence with none, whole from its open handler on, undefined for
 	 * any other node

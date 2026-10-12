@@ -82,9 +82,9 @@ export type HighlightOption = HighlightConfig | Highlighter | false;
 
 /** what a math renderer knows about the latex it renders */
 export interface MathInfo {
-	/** display math, a math fence, always true until inline math exists */
+	/** true for display math, a math fence, false for inline math, a code span in dollars */
 	display: boolean;
-	/** the info string of the fence after math, raw, reserved for labels */
+	/** the info string of the fence after math, raw, reserved for labels, '' for inline math */
 	meta: string;
 	/** the compile filename option, the module id in the vite plugin */
 	filename?: string;
@@ -125,6 +125,8 @@ export class MathError extends Error {
 // attribute of its own so an html element carries it
 const MATH_OPEN = '<div class="math math-display" translate="no">';
 const MATH_CLOSE = '</div>';
+const MATH_INLINE_OPEN = '<span class="math math-inline" translate="no">';
+const MATH_INLINE_CLOSE = '</span>';
 
 const custom_configs = new WeakMap<Highlighter, HighlightConfig>();
 
@@ -295,9 +297,35 @@ export class HighlightRun
 		};
 	}
 
+	/** inline math as a span with no <code>, the same markup is the children of a math replacement */
+	inline_math(code: string, start: number): HighlightedCode {
+		this.at = start;
+		let html: unknown;
+		try {
+			html = this.render_math!(code, {
+				display: false,
+				meta: '',
+				filename: this.filename,
+			});
+		} catch (e) {
+			throw this.inline_math_error(e, code);
+		}
+		if (typeof html !== 'string')
+			throw this.located(
+				new TypeError(
+					`[mdsvex] a math renderer must return a string, it returned ${html === null ? 'null' : typeof html}`
+				),
+				'inline math'
+			);
+		return {
+			attributes: null,
+			body: MATH_INLINE_OPEN + escape_braces(html) + MATH_INLINE_CLOSE,
+		};
+	}
+
 	inline(code: string, lang: string, start: number): HighlightedCode | null {
 		// a math hint is no language to highlight and no math either, inline
-		// math is a later syntax, so the span is plain code and nothing warns
+		// math is a code span in dollars, so the span is plain code and nothing warns
 		if (lang === 'math' && this.math) return null;
 		this.at = start;
 		try {
@@ -384,6 +412,27 @@ export class HighlightRun
 			`${said.trim()} (\`math\` fence at ${this.where(line)})`,
 			at.line,
 			at.column,
+			e
+		);
+	}
+	/**
+	 * whatever a math renderer threw for inline math as a MathError, at the
+	 * latex when the error has a position in it, else at the first dollar
+	 */
+	private inline_math_error(e: unknown, code: string): MathError {
+		const { line, line_start } = this.line_at();
+		const offset = (e as { position?: unknown } | null)?.position;
+		let at = this.at;
+		if (typeof offset === 'number' && offset >= 0 && offset <= code.length) {
+			// the latex is on the line of its dollar, as written unless a table cell escaped a pipe in it
+			const found = this.source.indexOf(code, at);
+			if (found !== -1) at = found + offset;
+		}
+		const said = e instanceof Error ? e.message : String(e);
+		return new MathError(
+			`${said.trim()} (inline math at ${this.where(line)})`,
+			line,
+			at - line_start + 1,
 			e
 		);
 	}

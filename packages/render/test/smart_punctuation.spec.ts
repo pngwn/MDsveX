@@ -358,6 +358,9 @@ describe('smart punctuation, what is never touched', () => {
 		expect(every_walk('```math\na -- "b" ...\n```\n', true)).toBe(
 			'<pre><code class="language-math">a -- &quot;b&quot; ...</code></pre>'
 		);
+		expect(every_walk('"a" $`b -- "c" ...`$ "d"\n', true)).toBe(
+			'<p>“a” <code>b -- &quot;c&quot; ...</code> “d”</p>'
+		);
 	});
 
 	it('a string in a svelte expression (#83), the tree has no text there', () => {

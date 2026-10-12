@@ -267,6 +267,13 @@ describe('highlighting', () => {
 						dropped: null,
 					};
 				},
+				inline_math(code: string, start: number) {
+					h.calls.push(`inline math ${code}|${start}`);
+					return {
+						attributes: null,
+						body: `<span><math>${code}</math></span>`,
+					};
+				},
 			});
 		}
 		const scope = (...names: string[]) =>
@@ -311,6 +318,47 @@ describe('highlighting', () => {
 		it('a document of only math uses no pre replacement', () => {
 			expect(render_all('```math\nx\n```\n', math_stub(), scope('pre'))).toBe(
 				'<div><math>x</math></div>'
+			);
+		});
+
+		it('inline math renders its body alone, in every walk', () => {
+			const h = math_stub();
+			expect(render_all('a $`x`$ and `#!ts y` and `z`\n', h)).toBe(
+				'<p>a <span><math>x</math></span> and <code class="i ts">y</code> and <code>z</code></p>'
+			);
+			expect(h.calls).toContain('inline math x|2');
+			expect(
+				h.calls.filter((call) => call.startsWith('inline ts'))
+			).not.toEqual([]);
+		});
+
+		it('inline math is a code span for a highlighter with no math, in every walk', () => {
+			const h = math_stub(false);
+			expect(render_all('a $`x {y}`$\n', h)).toBe(
+				'<p>a <code>x &#123;y&#125;</code></p>'
+			);
+			expect(h.calls).toEqual([]);
+			expect(render_all('a $`#!ts x`$\n', h)).toBe(
+				'<p>a <code>#!ts x</code></p>'
+			);
+		});
+
+		it('the math replacement takes inline math, with code and no display', () => {
+			expect(
+				render_all('a $`x`$ and `y`\n', math_stub(), scope('math', 'code'))
+			).toBe(
+				"<script>\nimport { math as Math_MDSVEX_G, code as Code_MDSVEX_G } from 'm';\n</script>" +
+					'<p>a <Math_MDSVEX_G code={"x"}><span><math>x</math></span></Math_MDSVEX_G> and <Code_MDSVEX_G>y</Code_MDSVEX_G></p>'
+			);
+		});
+
+		it('code never takes inline math, and takes it with math off', () => {
+			expect(render_all('$`x`$\n', math_stub(), scope('code'))).toBe(
+				'<p><span><math>x</math></span></p>'
+			);
+			expect(render_all('$`x`$\n', math_stub(false), scope('code'))).toBe(
+				"<script>\nimport { code as Code_MDSVEX_G } from 'm';\n</script>" +
+					'<p><Code_MDSVEX_G>x</Code_MDSVEX_G></p>'
 			);
 		});
 
