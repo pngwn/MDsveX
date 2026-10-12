@@ -138,7 +138,11 @@ export type UndoEntry =
  * unlike unwrap_node, this does NOT reparent the child's own children,
  * the entire subtree is detached.
  */
-function _unlink_child(buf: NodeBuffer, parent: number, child: number): void {
+export function unlink_child(
+	buf: NodeBuffer,
+	parent: number,
+	child: number
+): void {
 	const prev = buf.prev_at(child);
 	const next = buf.next_at(child);
 
@@ -480,7 +484,7 @@ export class UndoLog {
 					// blindly restore snapshot pointers.
 					const parent = entry.parent;
 					const created = entry.created;
-					_unlink_child(buf, parent, created);
+					unlink_child(buf, parent, created);
 					break;
 				}
 			}

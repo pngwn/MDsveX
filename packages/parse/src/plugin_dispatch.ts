@@ -5,7 +5,12 @@ import {
 	kind_to_string,
 	string_to_kind,
 } from './utils';
-import { UndoLog, ATTR_DID_NOT_EXIST, type RedirectHost } from './undo_log';
+import {
+	UndoLog,
+	ATTR_DID_NOT_EXIST,
+	unlink_child,
+	type RedirectHost,
+} from './undo_log';
 import {
 	NodeView,
 	ViewCache,
@@ -780,6 +785,9 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	/** the callbacks of a close that is final are running, their node is settled */
 	private final_close = false;
 
+	/** close callbacks are running, not open handlers */
+	private closing = false;
+
 	/**
 	 * a node whose open handlers wait for what the parser sends next, a
 	 * directive for its name, a code fence for its info string
@@ -1130,6 +1138,52 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	pending(buf: NodeBuffer, node: number): boolean {
 		if (this.sequential_pass || buf.pending_at(node) === 0) return false;
 		return !(this.final_close && node === this.running);
+	}
+
+	/**
+	 * nothing undoes a removal, so it waits until no revoke can ask for the
+	 * node back, the node whose callbacks run closed for good or the tree is
+	 * complete, and it stays inside that node, what came before it may have
+	 * gone downstream
+	 */
+	remove(buf: NodeBuffer, node: number): void {
+		const kind = kind_to_string(buf.kind_at(node));
+		if (buf.kind_at(node) === NodeKind.root) {
+			throw new Error('remove: the root can not be removed');
+		}
+		const parent = buf.parent_at(node);
+		if (parent === NONE) return;
+		const running = this.running;
+		if (running === NONE) {
+			throw new Error(
+				`remove: the ${kind} node can only be removed while a handler runs`
+			);
+		}
+		const by = kind_to_string(buf.kind_at(running));
+		if (!this.sequential_pass && !this.final_close) {
+			throw new Error(
+				this.closing
+					? `remove was called from the close callback of a pending ${by} node, ` +
+							`which may still be revoked, check node.pending first`
+					: `remove was called from the open handler of a ${by} node, the parser ` +
+							`has more to send, call it from the close callback or a sequential pass`
+			);
+		}
+		let at = node;
+		while (at !== running) {
+			at = buf.parent_at(at);
+			if (at === NONE) {
+				throw new Error(
+					`remove: the ${kind} node is not inside the ${by} node whose ` +
+						`handler is running, a handler removes its own node or one inside it`
+				);
+			}
+		}
+		// an open wrapper stops taking the later children of its parent
+		if (this.links !== 0 && this.slot(parent) === node) {
+			this.drop_chain(buf, parent);
+		}
+		unlink_child(buf, parent, node);
 	}
 
 	/** wrap_from and close move nodes when undone, a pending node is revoked often */
@@ -1741,12 +1795,14 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 			// recorded would be dropped unread
 			if (pending) undo.set_active_node(buf_idx);
 			this.running = buf_idx;
+			this.closing = true;
 			this.final_close = !pending;
 			for (let i = 0; i < cbs.length; i++) {
 				cbs[i]();
 			}
 			undo.clear_active_node();
 			this.running = NONE;
+			this.closing = false;
 			this.final_close = false;
 		}
 
@@ -1847,45 +1903,60 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 			while (true) {
 				const b = idx * NodeField.stride;
 				const handler = handlers[n[b] & 0xff];
+				// where the walk goes on if the handler removes its node
+				let next = n[b + NodeField.next];
+				let parent = n[b + NodeField.parent];
+				let removed = false;
 				if (handler != null) {
 					const cache = this.views(buf);
 					const view = cache.get(idx)!;
 					// the tree is complete so nothing revokes a sequential write, no
 					// active node means none is recorded
+					this.running = idx;
 					const callbacks = handler(view, ctx);
-					if (callbacks) close_store.set(idx, callbacks);
+					this.running = NONE;
 					cache.clear();
 					n = buf._n;
+					removed = n[b + NodeField.parent] === NONE;
+					// a node that is out of the tree has no close to wait for
+					if (callbacks && !removed) close_store.set(idx, callbacks);
 				}
 
-				const child = n[b + NodeField.first_child];
-				if (child !== NONE) {
-					stack.push(idx);
-					idx = child;
-					continue;
+				if (!removed) {
+					const child = n[b + NodeField.first_child];
+					if (child !== NONE) {
+						stack.push(idx);
+						idx = child;
+						continue;
+					}
+					if (close_store.live !== 0 && this.fire_sequential(close_store, idx))
+						n = buf._n;
+					// read after the handler and the callbacks, which may relink the
+					// node, one that removed it leaves the walk where it was
+					if (n[b + NodeField.parent] !== NONE) {
+						next = n[b + NodeField.next];
+						parent = n[b + NodeField.parent];
+					}
 				}
-
-				if (close_store.live !== 0) {
-					close_store.fire(idx);
-					n = buf._n;
-				}
-
-				// read after the callbacks, which may relink the node
-				let next = n[b + NodeField.next];
-				let parent = n[b + NodeField.parent];
 				while (
 					(next === NONE ||
 						n[next * NodeField.stride + NodeField.parent] !== parent) &&
 					stack.length > 0
 				) {
 					idx = stack.pop()!;
-					if (close_store.live !== 0) {
-						close_store.fire(idx);
-						n = buf._n;
-					}
 					const bi = idx * NodeField.stride;
 					next = n[bi + NodeField.next];
 					parent = n[bi + NodeField.parent];
+					if (
+						close_store.live !== 0 &&
+						this.fire_sequential(close_store, idx)
+					) {
+						n = buf._n;
+						if (n[bi + NodeField.parent] !== NONE) {
+							next = n[bi + NodeField.next];
+							parent = n[bi + NodeField.parent];
+						}
+					}
 				}
 
 				if (
@@ -1897,6 +1968,18 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 			}
 		}
 		this.sequential_pass = false;
+	}
+
+	/** the close callbacks of a node in a sequential pass, false when it has none */
+	private fire_sequential(store: CloseCallbackStore, idx: number): boolean {
+		const cbs = store.take(idx);
+		if (cbs === undefined) return false;
+		this.running = idx;
+		this.closing = true;
+		for (let i = 0; i < cbs.length; i++) cbs[i]();
+		this.running = NONE;
+		this.closing = false;
+		return true;
 	}
 
 	/**
@@ -1916,6 +1999,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		this.close_with = null;
 		// a throw in a handler leaves these set
 		this.running = NONE;
+		this.closing = false;
 		this.final_close = false;
 		this.held = NONE;
 		this.sequential_pass = false;

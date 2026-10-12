@@ -482,6 +482,8 @@ export class TreeBuilder implements Emitter {
 			this.dispatcher.dispatch_revoke(idx, nodes);
 			// an undone close restores its link, an undone wrap may drop the last
 			this.refresh(this.dispatcher);
+			// a plugin took the node out of the tree, there is nothing to repair
+			if (nodes.parent_at(idx) === NONE) return;
 			const kind = nodes.kind_at(idx);
 			nodes.handle_repair(idx, source_text, text_start);
 			if (nodes.kind_at(idx) !== kind) this.dispatcher.log_kind(idx, kind);

@@ -55,6 +55,7 @@ The view exposes:
 - `append(type, attrs?)` — inserts a new node as the last child, returns the new node's view
 - `prepend('text', text)` and `append('text', text)` — the same for a text node, which takes its text in place of attrs (see [Adding text](#adding-text))
 - `wrap_from(type, attrs?)` — inserts a new node as the parent of this node and of every sibling after it, returns a view of the new node with a `close()` method (see [Grouping siblings](#grouping-siblings-wrap_from))
+- `remove()` — takes this node and everything in it out of the tree (see [Removing a node](#removing-a-node))
 
 ### Positions
 
@@ -145,6 +146,35 @@ link: {
 - **It is revoked like any node a handler made.** When the node whose handler added it is revoked, the text goes.
 
 No handler runs for a text node, the parser's or a plugin's.
+
+### Removing a node
+
+`node.remove()` takes a node out of the tree with everything it holds:
+
+```js
+// comments do not reach the page
+html_comment: {
+  parse(node) {
+    return () => node.remove();
+  }
+}
+```
+
+Nothing undoes a removal, so it is only allowed where no revoke can ask for the node back. Anywhere else it throws.
+
+- **From a close callback, once the node it runs for closed for good.** That is every close callback where `node.pending` is `false`. In the callback of a delimiter the parser gave up on, or of a pending paragraph, `remove()` throws, since a revoke may follow. Guard with `if (!node.pending)` where the node can be either.
+- **Or from a sequential pass,** in a handler or a close callback. The tree is complete there.
+- **Never from an open handler of the fused pass.** The parser has more to send for the node.
+- **The node itself, or a node inside it.** A handler removes the node it runs for or one of its descendants: a container its label, a list one of its items. A node outside it, such as an earlier sibling, may already be rendered, and removing it throws. The root is never removed.
+- **A node that is already out stays out.** A second `remove()` does nothing.
+
+What follows from it:
+
+- **The view still reads.** Its `parent`, `next` and `prev` are `null`, and its own content is as it was.
+- **A removed wrapper takes no more children.** The later children of its parent go to the parent.
+- **Its handlers have run.** A removal in a close callback comes after every handler inside the node. In a sequential pass, a node removed in its own handler is not walked: no handler runs for what it held, and the close callback it returned does not run.
+- **The parser can still revoke it.** A delimiter that never closes is revoked after its paragraph closed, by which time the paragraph's callback may have removed it. Such a revoke undoes what the node's handlers did and repairs nothing, and the node stays out.
+- **`heading_ids` in `mdsvex` runs between the two passes,** so a heading removed in a sequential pass has already taken its id, and one removed in the fused pass has not.
 
 ### Grouping siblings: `wrap_from`
 
@@ -632,13 +662,14 @@ Multiple plugins on the same node type are composed into a single function at re
 - Write attrs, type, and type-specific properties on any reachable node
 - Inject synthetic children via `wrap_inner`/`prepend`/`append` on any reachable node, text nodes with their text included
 - Group a node and the siblings after it under a synthetic parent via `wrap_from`
+- Remove a node that closed for good, from its close callback or a sequential pass, via `remove`
 - Register close callbacks via return value
 - Capture state in closures between open and close
 
 **What parse plugins cannot do:**
 - Walk the tree during their own handler (no `walk`, `querySelectorAll`, etc.) — they react to what the builder sends them
-- Reparent existing nodes across unrelated parts of the tree (structural methods only add, `wrap_from` puts later siblings under the wrapper as they arrive and never moves one that came before)
-- Remove nodes
+- Reparent existing nodes across unrelated parts of the tree (`wrap_from` puts later siblings under the wrapper as they arrive and never moves one that came before)
+- Remove a node that may still be revoked, or one outside the node whose handler is running (see [Removing a node](#removing-a-node))
 - Modify the parser itself or affect how tokens become nodes
 - Do work outside their registered node types — if a plugin only has a `heading` entry, it never sees other node types. The one handler for any type is `children['*']` of a directive, for the nodes written directly inside it
 
@@ -681,6 +712,8 @@ For each mutation, the builder records enough information to reverse it:
 **`wrap_from` and `close()`.** Revoking a node whose handler called `wrap_from` removes the wrapper, and the node and any siblings that joined it return to the wrapper's parent in its place. Revoking a node whose handler called `close()` reopens the wrapper: it takes back every sibling that arrived while it was closed and keeps taking later ones. Pending nodes cannot call either (see above), but the parser also revokes a few nodes it opened as committed: a table cell that turns out to be a merge marker, a code span that never closes, frontmatter with no closing fence.
 
 Only the tree is restored. What a plugin keeps in its own variables is not, so a plugin that remembers "the wrapper I opened last" from a `table_cell` or `code_span` handler may hold a wrapper that no longer exists. Calling `close()` on it does nothing.
+
+**`remove`.** A removal is not captured, because it is only allowed where it cannot need undoing, see [Removing a node](#removing-a-node).
 
 **Bound handler state.** A write to `ctx.state` and the `index` a bound handler used are logged the same way, see [Handlers Bound to a Directive](#revocation).
 
