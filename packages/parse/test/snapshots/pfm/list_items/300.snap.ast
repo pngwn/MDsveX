@@ -5,8 +5,6 @@ root
         text "Foo"
     list_item
       text "Bar"
-  line_break
-  thematic_break
-  paragraph
-    text "baz"
+      thematic_break
+      text "baz"
   line_break

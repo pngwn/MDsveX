@@ -188,10 +188,11 @@ export function is_tight(blocks: Piece[]): boolean {
 	return blocks.every((block, i) => {
 		if (i === 0 || block.join === '\n') return true;
 		const before = blocks[i - 1];
+		// the ordered markers are the two last forms, 1. and 7. are one list
 		return (
 			block.kind === 'list' &&
 			before.kind === 'list' &&
-			block.form === before.form
+			(block.form === before.form || (block.form > 2 && before.form > 2))
 		);
 	});
 }

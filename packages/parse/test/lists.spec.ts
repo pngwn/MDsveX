@@ -5,6 +5,10 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 
 import { PFMParser, parse_markdown_svelte } from '../src/main';
+import { container_mismatch } from './invariance';
+import type { Rule } from './invariance';
+import { print_ast } from './print';
+import { fed_mismatch } from './stream_shape';
 import { TreeBuilder } from '../src/tree_builder';
 import type { NodeBuffer } from '../src/utils';
 
@@ -690,5 +694,120 @@ describe('indented lists', () => {
 		for (const size of [1, 5, 64]) {
 			expect(incremental_shape(input, size)).toEqual(expected);
 		}
+	});
+});
+
+describe('a list item holds the blocks the document does', () => {
+	// a tight item holds the content of a paragraph with no paragraph around it
+	const TIGHT: Rule[] = [
+		{
+			what: 'tight',
+			expect: (kids) =>
+				kids.flatMap((kid) => (kid.kind === 'paragraph' ? kid.kids : [kid])),
+		},
+	];
+	const item = (source: string): string =>
+		source
+			.split('\n')
+			.map((row, i) => (i === 0 ? `- ${row}` : row === '' ? '' : `  ${row}`))
+			.join('\n') + '\n';
+
+	test.each([
+		['a list on the marker line', '- a'],
+		['an ordered list on the marker line', '1. a\n2. b'],
+		['a list two deep on the marker line', '- - a'],
+		['a svelte block', '{#if a}\nb\n{/if}'],
+		['a svelte block with a branch', '{#if a}\nb\n{:else}\n# c\n{/if}'],
+		['a comment on its line', '<!-- a -->'],
+		['a svelte tag on its line', '{@html a}'],
+		['a component on its line', '<Chart />'],
+		['a container directive', ':::box\na\n:::'],
+		['a container directive before a paragraph', ':::box\na\n:::\nb'],
+		['a thematic break under a paragraph', 'a\n---\nb'],
+		['a fence before a paragraph', '```\n```\nb'],
+		['a definition', '[r]: /u\n[a][r]'],
+		['a table', '| a |\n|---|\n| b |'],
+	])('%s: %j', (_, source) => {
+		expect(
+			container_mismatch('list_item', source.split('\n'), true, TIGHT)
+		).toBe('');
+		expect(fed_mismatch(item(source))).toBe('');
+	});
+
+	const kinds = (input: string): string[] =>
+		print_ast(parse_markdown_svelte(input).nodes, input)
+			.split('\n')
+			.map((line) => line.trim().split(' ')[0])
+			.filter((kind) => kind !== 'line_break' && kind !== 'text');
+
+	test.each([
+		[
+			'a container directive',
+			'- :::box\n  a\nb\n',
+			[
+				'root',
+				'list',
+				'list_item',
+				'directive_container',
+				'paragraph',
+				'paragraph',
+			],
+		],
+		[
+			'a svelte block',
+			'- {#if a}\n  b\nc\n',
+			[
+				'root',
+				'list',
+				'list_item',
+				'svelte_block',
+				'svelte_branch',
+				'paragraph',
+				'paragraph',
+			],
+		],
+		[
+			'a fence that closed',
+			'- ```\n  a\n  ```\nb\n',
+			['root', 'list', 'list_item', 'code_fence', 'paragraph'],
+		],
+		[
+			'a thematic break',
+			'- a\n  ---\nb\n',
+			['root', 'list', 'list_item', 'thematic_break', 'paragraph'],
+		],
+	])(
+		'a line that is not indented is outside %s in an item: %j',
+		(_, input, expected) => {
+			expect(kinds(input)).toEqual(expected);
+			expect(fed_mismatch(input)).toBe('');
+		}
+	);
+
+	test('a paragraph right under the item still takes a line that is not indented', () => {
+		expect(kinds('- a\nb\n')).toEqual([
+			'root',
+			'list',
+			'list_item',
+			'soft_break',
+		]);
+		expect(kinds('- - a\nb\n')).toEqual([
+			'root',
+			'list',
+			'list_item',
+			'list',
+			'list_item',
+			'soft_break',
+		]);
+	});
+
+	test('a marker under the content column is the next item', () => {
+		expect(kinds('- ```\n  a\n  ```\n- b\n')).toEqual([
+			'root',
+			'list',
+			'list_item',
+			'code_fence',
+			'list_item',
+		]);
 	});
 });

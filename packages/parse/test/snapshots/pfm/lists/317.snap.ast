@@ -6,9 +6,6 @@ root
     list_item
       paragraph
         text "b"
-      paragraph
-        text "[ref"
-        text "]: /url"
     list_item
       paragraph
         text "d"

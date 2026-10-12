@@ -1254,7 +1254,8 @@ describe('an html element inside a container directive', () => {
 				'          paragraph',
 				'            text "a"',
 				'          line_break',
-				'        line_break'
+				'        line_break',
+				'  line_break'
 			)
 		);
 	});

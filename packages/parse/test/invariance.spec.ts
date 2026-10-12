@@ -107,22 +107,16 @@ const INTENDED: Intended[] = [
 	{
 		what: 'a list marker and a thematic break of its character are one thematic break',
 		why: 'CommonMark, the baseline: `- ---` and `* * *` are thematic breaks before they are list items (examples 60 and 61)',
+		// a rule does not see the marker of the list, so no break of dashes or asterisks opens an item
 		drop: (seen) =>
-			seen.inside.length === 1 &&
-			seen.inside[0] === 'list_item' &&
+			near(seen) === 'list_item' &&
 			seen.before === null &&
 			seen.piece.kind === 'thematic_break' &&
-			seen.piece.form === 0,
+			seen.piece.form < 2,
 	},
 	{
 		what: 'in a list item any ordered marker ends a paragraph, elsewhere only `1.` does',
 		why: 'PFM.md, Blockquotes: "a bullet or `1.` with text after it, and any marker when the paragraph is in a list", so the generator writes no `7.` list straight after a block',
-	},
-	{
-		what: 'a link reference definition is a paragraph in a list item',
-		why: 'try_parse_link_ref_definition returns at once inside one, until the list item state reads its lines through line_start',
-		drop: (seen) =>
-			seen.piece.kind === 'definition' && seen.inside.includes('list_item'),
 	},
 ];
 
@@ -149,33 +143,12 @@ function only_tags(seen: Seen): boolean {
 /** every known failure, each one takes its pieces out of the documents until its issue is fixed */
 const KNOWN: Known[] = [
 	{
-		issue: 1021,
-		what: 'a svelte block does not open inside a list item',
-		drop: (seen) => is(seen, 'svelte_block') && within(seen, 'list_item'),
-		example: { site: 'list_item', source: '{#if a}\nb\n{/if}' },
-	},
-	{
-		issue: 1022,
-		what: 'an html comment on its own line gets a paragraph in a list item',
-		drop: (seen) =>
-			(is(seen, 'comment', 'comment_inline') ||
-				(only_tags(seen) && seen.piece.kids[0].kind === 'comment_inline')) &&
-			within(seen, 'list_item'),
-		example: { site: 'list_item', source: '<!-- a -->', loose: true },
-	},
-	{
-		issue: 1049,
-		what: 'a line of only tags keeps its paragraph in a loose list item',
-		drop: (seen) =>
-			(is(seen, 'svelte_tag', 'component') || only_tags(seen)) &&
-			near(seen) === 'list_item',
-		example: { site: 'list_item', source: '{@html a}', loose: true },
-	},
-	{
 		issue: 1050,
-		what: 'an html element in a block quote holds its lines as inline content',
+		what: 'an html element in a block quote holds its lines as inline content, and a tag or a comment in a list item there keeps a paragraph open',
 		drop: (seen) =>
-			is(seen, 'html_element', 'raw_element') && within(seen, 'block_quote'),
+			within(seen, 'block_quote') &&
+			(is(seen, 'html_element', 'raw_element') ||
+				(is(seen, 'comment', 'component') && within(seen, 'list_item'))),
 		example: { site: 'block_quote', source: '<div>\na\n</div>' },
 	},
 	{
@@ -187,20 +160,6 @@ const KNOWN: Known[] = [
 		example: { site: 'list_item', source: '<div>\na\n</div>' },
 	},
 	{
-		issue: 1025,
-		what: 'a container directive left open in a list item runs past the item',
-		drop: (seen) =>
-			is(seen, 'directive_container') && within(seen, 'list_item'),
-		example: { site: 'svelte_branch', source: '- :::box\n  a\n  :::' },
-	},
-	{
-		issue: 1051,
-		what: 'a list item that starts with a list marker is an empty item and a second item',
-		drop: (seen) =>
-			is(seen, 'list') && seen.before === null && near(seen) === 'list_item',
-		example: { site: 'list_item', source: '- a' },
-	},
-	{
 		issue: 1052,
 		what: 'a comment before text on its line is a block at the root and inline in a container',
 		drop: (seen) =>
@@ -210,21 +169,6 @@ const KNOWN: Known[] = [
 					seen.under[seen.under.length - 1] === 'paragraph')) ||
 			(seen.piece.join === '\n' && seen.before?.kind === 'comment'),
 		example: { site: 'block_quote', source: '<!-- a --> b' },
-	},
-	{
-		issue: 1056,
-		what: 'a thematic break in a list item ends the list or takes the next line into the item',
-		drop: (seen) => is(seen, 'thematic_break') && within(seen, 'list_item'),
-		example: { site: 'list_item', source: 'a\n---' },
-	},
-	{
-		issue: 1059,
-		what: 'the line after a fence that ends a list item is read as text of the item',
-		drop: (seen) =>
-			is(seen, 'code_fence') &&
-			near(seen) === 'list_item' &&
-			seen.after === null,
-		example: { site: 'svelte_branch', source: '- ```\n  a\n  ```' },
 	},
 	{
 		issue: 1058,
@@ -273,6 +217,24 @@ const KNOWN: Known[] = [
 			site: 'root',
 			source: '| a | b |\n|---|---|\n| c | <i\n> | q000 |\n',
 		},
+	},
+	{
+		issue: 1071,
+		what: 'a paragraph that opens at a tag loses its wrapper when fed, with a brace as a link destination in it',
+		edited: ['fed', /\]\(\{\)/],
+		example: { site: 'root', source: '<b>[]({)</b> a\n\nx\n' },
+	},
+	{
+		issue: 1071,
+		what: 'the same over the wire',
+		edited: ['wire', /\]\(\{\)/],
+		example: { site: 'root', source: '<b>[]({)</b> a\n\nx\n' },
+	},
+	{
+		issue: 1072,
+		what: 'a repeated attribute on a tag keeps the last value and loses the first',
+		edited: ['content', /\s(\w+)=\S*\s+\1=/],
+		example: { site: 'root', source: '<img alt=q000 alt="">\n' },
 	},
 	{
 		issue: 1054,
