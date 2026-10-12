@@ -177,16 +177,15 @@ The tab list is the children of the container rendered a second time, as buttons
 
 Export a `tabs` or a `tab` from a [directives module](https://mdsvex.pngwn.io/docs#declaring-directives) and it replaces the plugin's component. The plugin still splits the container, so yours gets the same props:
 
-| prop       | `tabs`                                               | `tab`                                                      |
-| ---------- | ---------------------------------------------------- | ---------------------------------------------------------- |
-| `label`    | the bracket text of the container, when there is any | the content of the heading                                 |
-| `children` | the tabs                                             | the panel                                                  |
-| `group`    | the `group` arg, when there is one                   |                                                            |
-| `code`     | `"true"` for a code group                            |                                                            |
-| `index`    |                                                      | the place of the tab, from `"0"`                           |
-| `title`    |                                                      | the label of a fence, or the number of a tab with no label |
+| prop       | `tabs`                                               | `tab`                                                |
+| ---------- | ---------------------------------------------------- | ---------------------------------------------------- |
+| `label`    | the bracket text of the container, when there is any | the content of the heading, or the name of the fence |
+| `children` | the tabs                                             | the panel                                            |
+| `group`    | the `group` arg, when there is one                   |                                                      |
+| `code`     | `"true"` for a code group                            |                                                      |
+| `index`    |                                                      | the place of the tab, from `"0"`                     |
 
-A tab has a `label` or a `title`, and both are worth rendering. The plugin's `tabs` renders its children twice, once for the buttons and once for the panels, and its `tab` reads from context which of the two it is. Replace both together, or wrap the plugin's own:
+Every tab has a `label`. For a fence it holds the name of the fence as text, and for a tab with nothing to show it holds its number. The plugin's `tabs` renders its children twice, once for the buttons and once for the panels, and its `tab` reads from context which of the two it is. Replace both together, or wrap the plugin's own:
 
 ```js
 import Tabs from '@mdsvex/plugin-tabs/Tabs.svelte';
