@@ -28,6 +28,7 @@ export default defineConfig({
 			],
 			templates: {
 				article: "$lib/templates/Article.svelte",
+				demo: "$lib/templates/Demo.svelte",
 				guide: "$lib/templates/Guide.svelte",
 				post: "$lib/templates/Post.svelte",
 			},

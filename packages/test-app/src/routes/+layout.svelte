@@ -19,6 +19,7 @@ let {children} = $props()
 		<a href="/steps">steps</a>
 		<a href="/tabs">tabs</a>
 		<a href="/external-links">external links</a>
+		<a href="/run">run</a>
 
 	</div>
 </nav>
