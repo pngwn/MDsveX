@@ -36,6 +36,8 @@ import {
 	parse_frontmatter,
 } from './frontmatter';
 import type { FrontmatterOptions } from './frontmatter';
+import { PLUGIN_DATA_EXPORT, plugin_data_export } from './plugin_data';
+import type { PluginData } from './plugin_data';
 import { scope_of } from './root_scope';
 import { highlight_run, plain_run } from './highlight_run';
 export { highlight_error_at, MathError } from './highlight_run';
@@ -69,6 +71,8 @@ export type { Mapping, MappingData, SourceMapV3, MapTrace };
 export type { ComponentSource };
 export type { FrontmatterOptions };
 export { FrontmatterError } from './frontmatter';
+export { PluginDataError } from './plugin_data';
+export type { PluginData };
 export { DirectiveError } from '@mdsvex/render/html-cursor';
 export type {
 	CodeInfo,
@@ -129,9 +133,6 @@ export interface CompileWarning {
 	/** the name of the plugin that reported it with ctx.warn, when it has one */
 	plugin?: string;
 }
-
-/** what plugins left in ctx.data, each under the name of its plugin */
-export type PluginData = Record<string, Record<string, unknown>>;
 
 /** tables of bound handlers, each with the name of its plugin */
 type BoundTables = NonNullable<ParseOptions['directive_handlers']>;
@@ -969,6 +970,8 @@ class PluginHost {
 	private parse: FrontmatterParse = undefined;
 	private read = false;
 	private metadata: Metadata | undefined = undefined;
+	/** the export of what the handlers left, undefined when they left nothing */
+	private exported: string | undefined = undefined;
 
 	constructor(dispatcher: PluginDispatcher) {
 		this.dispatcher = dispatcher;
@@ -982,6 +985,7 @@ class PluginHost {
 		this.parse = inputs.frontmatter_parse;
 		this.read = false;
 		this.metadata = undefined;
+		this.exported = undefined;
 		this.dispatcher.set_document(this);
 	}
 
@@ -1006,6 +1010,39 @@ class PluginHost {
 		);
 		this.read = true;
 		return (this.metadata = metadata);
+	}
+
+	/**
+	 * before a render, what the handlers left becomes an export of the module
+	 * script and a prop of the template, a throw leaves the renderer no template
+	 */
+	share(renderer: CursorHTMLRenderer, metadata: Metadata | undefined): void {
+		const data = this.dispatcher.data();
+		if (data === undefined) return;
+		const wrapper = renderer.template;
+		try {
+			this.exported = plugin_data_export(data);
+			if (wrapper === undefined) return;
+			if (metadata !== undefined && has_own.call(metadata, PLUGIN_DATA_EXPORT))
+				throw frontmatter_error(
+					this.tree!.get_buffer(),
+					this.source,
+					PLUGIN_DATA_EXPORT,
+					`The frontmatter key ${PLUGIN_DATA_EXPORT} collides with the prop a template takes what plugins left as, rename it`
+				);
+			wrapper.data = PLUGIN_DATA_EXPORT;
+		} catch (e) {
+			renderer.template = undefined;
+			throw e;
+		}
+	}
+
+	/** the module code of a document share ran for */
+	module_code(metadata: Metadata | undefined): string | undefined {
+		const exported = this.exported;
+		if (metadata === undefined) return exported;
+		const code = metadata_export(metadata);
+		return exported === undefined ? code : code + '\n' + exported;
 	}
 
 	/** a document that waits for its render, the dispatcher holds what they left until then */
@@ -1251,7 +1288,11 @@ function math_run(
 	return true;
 }
 
-function module_code_of(metadata: Metadata | undefined): string | undefined {
+function module_code_of(
+	metadata: Metadata | undefined,
+	host: PluginHost | null
+): string | undefined {
+	if (host !== null) return host.module_code(metadata);
 	return metadata === undefined ? undefined : metadata_export(metadata);
 }
 
@@ -1319,6 +1360,7 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 			nodes,
 			source
 		);
+		if (host !== null) host.share(renderer, metadata);
 	} catch (e) {
 		give_renderer(renderer);
 		throw e;
@@ -1340,7 +1382,7 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 				nodes,
 				source,
 				source.length === raw.length ? null : collapsed_of(raw),
-				module_code_of(metadata)
+				module_code_of(metadata, host)
 			);
 		} while (
 			mathy &&
@@ -1360,7 +1402,7 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 		return done;
 	}
 
-	do renderer.update(nodes, source, module_code_of(metadata));
+	do renderer.update(nodes, source, module_code_of(metadata, host));
 	while (
 		mathy &&
 		renderer.highlight === null &&
@@ -1689,6 +1731,13 @@ export class CompilerSession {
 		return parsed;
 	}
 
+	/** @internal a Parsed that will never render gives its arena back */
+	drop(parsed: Parsed): void {
+		parsed._nodes = null;
+		parsed._host = null;
+		this.take_back(parsed);
+	}
+
 	/** a rendered Parsed returns its arena unless the session built another meanwhile */
 	private take_back(parsed: Parsed): void {
 		const tree = parsed._tree;
@@ -2010,6 +2059,7 @@ export class CompilerSession {
 			nodes,
 			source
 		);
+		if (host !== null) host.share(renderer, metadata);
 
 		const math = inputs.math;
 		const mathy = math !== undefined && math !== false;
@@ -2039,7 +2089,7 @@ export class CompilerSession {
 							nodes,
 							source,
 							out!,
-							module_code_of(metadata)
+							module_code_of(metadata, host)
 						);
 						out!.source = source;
 						out!.html = renderer.html;
@@ -2053,7 +2103,7 @@ export class CompilerSession {
 							nodes,
 							source,
 							source.length === raw.length ? null : collapsed_of(raw),
-							module_code_of(metadata)
+							module_code_of(metadata, host)
 						);
 						done = {
 							code: renderer.html,
@@ -2065,7 +2115,7 @@ export class CompilerSession {
 					}
 					case Kind.V3: {
 						const file = inputs.filename;
-						const module_code = module_code_of(metadata);
+						const module_code = module_code_of(metadata, host);
 						// without a collapsed \r\n the records index raw
 						if (source.length === raw.length) {
 							const map = renderer.update_v3(
@@ -2097,13 +2147,13 @@ export class CompilerSession {
 						const trace = renderer.update_trace(
 							nodes,
 							source,
-							module_code_of(metadata)
+							module_code_of(metadata, host)
 						);
 						done = { code: renderer.html, trace, source, metadata, template };
 						break;
 					}
 					default:
-						renderer.update(nodes, source, module_code_of(metadata));
+						renderer.update(nodes, source, module_code_of(metadata, host));
 						done = { code: renderer.html, metadata, template };
 				}
 			} while (
