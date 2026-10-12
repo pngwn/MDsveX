@@ -568,3 +568,28 @@ describe('a line that looks like a footnote definition', () => {
 		}
 	});
 });
+
+describe('a definition inside an html element', () => {
+	const inputs = [
+		'<div>\n[r]: /u\n\n[a][r]\n</div>\n',
+		'<div>\n\n[r]: /u "t"\n\n</div>\n\n[a][r]\n',
+		'<section>\n<div>\n[r]: /u\n</div>\n[a][r]\n</section>\n',
+	];
+	test.each(inputs)('is read and makes no node: %j', (input) => {
+		const { nodes } = parse_markdown_svelte(input);
+		let links = 0;
+		let text = '';
+		for (let i = 0; i < nodes.size; i++) {
+			const node = nodes.get_node(i);
+			if (node.kind === 'link') {
+				links++;
+				expect(node.metadata.href).toBe('/u');
+			}
+			if (node.kind === 'text')
+				text += input.slice(node.value[0], node.value[1]);
+		}
+		expect(links).toBe(1);
+		expect(text).toBe('a');
+		expect(fed_mismatch(input)).toBe('');
+	});
+});
