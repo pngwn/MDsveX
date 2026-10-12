@@ -1,6 +1,6 @@
 # Parser structure: one grammar for every container
 
-Status: draft, 2026-10-12. Targets `next` (f20a7cae). Nothing here is built except the test harness and a throwaway prototype that was measured and deleted. The decisions the maintainer has to make are in §10.
+Status: accepted, 2026-10-12. Written against `next` at f20a7cae, when nothing was built except the test harness and a throwaway prototype that was measured and deleted. The maintainer's decisions are in §10, and the migration of §8 follows them.
 
 Sources:
 
@@ -352,14 +352,14 @@ What patching does not buy is the next construct. A footnote definition is a blo
 - If the maintainer rules against the principle of §6 and wants containers to differ by design. Then the per container table of §2 grows, the shared dispatcher saves less, and patching each cell to its own ruling is the honest way.
 - If footnotes and inline math are dropped or far off. Then the 25 fixes are the whole job, and patching with the harness is cheaper than nine PRs of structure.
 
-## 10. Decisions for the maintainer
+## 10. Decisions
 
-My pick first in each.
+Decided by the maintainer on 2026-10-12. Each is the first of the two options the draft offered, and the second is kept here as what was not chosen.
 
-1. **Adopt the principle of §6 in `PFM.md`.** Or keep containers different where they are today and rule on each cell.
-2. **Restructure in the order of §8.** Or patch the `KNOWN` table entry by entry with the harness as the guard.
-3. **Link reference definitions in a block quote and a list item: read them,** as CommonMark does and as the principle says. Or keep them root only, which also settles where a footnote definition may sit (the footnotes note assumes root only).
-4. **#1002: a block level element that starts a line is a block, and text after its close tag starts a paragraph,** the pick of the third stack's note. Or keep "never wrapped" and make the containers match the root.
-5. **`- - a`: a list inside the item.** Or keep it as an empty item and document that a marker line holds one marker.
-6. **A value that ran over prefixed lines is stored without the prefixes by the parser.** Or the renderer keeps stripping, and learns the list indent and the comment.
-7. **Footnotes after step 4 and inline math after step 9.** Or footnotes first on today's structure, paying the eleven sites once.
+1. **The principle of §6 goes into `PFM.md`.** Not chosen: keep containers different where they are today and rule on each cell.
+2. **The parser is restructured in the order of §8.** Not chosen: patch the `KNOWN` table entry by entry with the harness as the guard.
+3. **Link reference definitions are read in a block quote and a list item,** as CommonMark does and as the principle says. Exception 7 of §6 and the fifth row of the table in §2 fall away. Not chosen: keep them root only.
+4. **#1002: a block level element that starts a line is a block, and text after its close tag starts a paragraph.** Not chosen: keep "never wrapped" and make the containers match the root.
+5. **`- - a` is a list inside the item.** Not chosen: keep it as an empty item and document that a marker line holds one marker.
+6. **A value that ran over prefixed lines is stored without the prefixes by the parser.** It is a string on the node, as a code span that runs over lines stores its text today, and the value range still covers the source as written. Not chosen: the renderer keeps stripping, and learns the list indent and the comment.
+7. **Footnotes come after step 4 and inline math after step 9.** Not chosen: footnotes first on today's structure, paying the eleven sites once.

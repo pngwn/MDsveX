@@ -86,6 +86,25 @@ world
 
 -> two paragraphs, `hello\` and `world`.
 
+**Containers**, A block quote, a list item, an HTML element, a Svelte block and a container directive all hold the same blocks as the document does. A container defines only what its lines start with (a `>` for a quote, an indent for a list item, nothing for the others) and where it ends. Anything that is a block at the top of a document is the same block inside any of them.
+
+The exceptions:
+
+- Frontmatter and imports belong to the file, so they are read at the top of a document only.
+- A tight list item holds the content of a paragraph with no paragraph around it.
+- A list item may start with a task marker, and the rest of that line never opens a block. Any ordered marker ends a paragraph in a list item, where elsewhere only `1.` does. `- ---` is a thematic break, as in CommonMark.
+- An element whose content is phrasing only (`<span>`, `<b>`, `<p>`) holds inline content, and `<script>` and `<style>` hold text.
+- A table cell is not a container. It holds inline content only.
+- A block quote has no lazy continuation, and a paragraph in a list item still continues onto a line that is not indented.
+
+The parser does not hold to this everywhere yet. Where it still differs from the top of a document:
+
+- In a block quote: a table and a Svelte block do not open, an HTML element holds its lines as inline content, a directive or an element does not end a paragraph, and a link reference definition is a paragraph.
+- In a list item: an HTML element and a Svelte block do not open, a line of only a comment or of only tags keeps a paragraph, a table loses its body rows, `- - a` is an empty item and a second item, a container directive runs past the item, and a link reference definition is a paragraph.
+- In a Svelte block: a line of only a comment keeps a paragraph.
+- In an HTML element: a link reference definition is not read.
+- A value that runs over lines (the code of a fence, a comment) keeps the `>` or the indent of each line in a block quote or a list item.
+
 **Blockquotes**, No lazy continuation. Every line inside a blockquote must be explicitly prefixed with `>`. The first line without a `>` prefix terminates the blockquote; there is no implicit inheritance of blockquote context from a previous line. This enables line-local parsing decisions without tracking open paragraphs in parent containers.
 
 ```markdown
