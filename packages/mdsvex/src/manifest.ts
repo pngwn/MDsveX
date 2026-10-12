@@ -4,6 +4,7 @@
  */
 
 import type { ComponentMode } from './compile';
+import type { SmartPunctuation } from './smart_punctuation';
 
 /** where the plugin writes the manifest, relative to the vite root */
 export const MANIFEST_PATH = 'node_modules/.mdsvex/manifest.json';
@@ -79,6 +80,8 @@ export interface MdsvexManifest {
 	plugins?: ManifestPlugin[];
 	/** true when heading_ids is on in any form, a manifest without it means off */
 	heading_ids?: boolean;
+	/** the smart_punctuation option as written, a manifest without it means off */
+	smart_punctuation?: SmartPunctuation;
 	/**
 	 * how math fences render, false leaves them code blocks, custom is a
 	 * renderer function, a manifest without it means temml with no options

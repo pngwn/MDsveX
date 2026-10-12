@@ -13,6 +13,8 @@ import {
 import type { Bundle, ComponentMode, Parsed } from './compile';
 import { slug_of } from './heading_ids';
 import type { HeadingOptions } from './heading_ids';
+import { smart_of } from './smart_punctuation';
+import type { SmartOptions } from './smart_punctuation';
 import type { FrontmatterOptions } from './frontmatter';
 import { MANIFEST_VERSION, manifest_writer } from './manifest';
 import type { MdsvexManifest } from './manifest';
@@ -66,7 +68,8 @@ export type {
 } from './manifest';
 export type { MathOptions } from './math';
 
-export interface MdsvexOptions extends SyntaxOptions, HeadingOptions {
+export interface MdsvexOptions
+	extends SyntaxOptions, HeadingOptions, SmartOptions {
 	extensions?: string[];
 	/**
 	 * plugins, each brings directives with the components that render them and
@@ -287,6 +290,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	inputs.unwrap_images = options.unwrap_images;
 	// throws here for a value that is neither, not at the first document
 	inputs.heading_ids = slug_of(options.heading_ids);
+	inputs.smart_punctuation = smart_of(options.smart_punctuation);
 	if (
 		options.import_images !== undefined &&
 		typeof options.import_images !== 'boolean'
@@ -487,6 +491,8 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			}
 			// a slug function can not be written, an editor slugs as the default does
 			if (inputs.heading_ids !== undefined) out.heading_ids = true;
+			if (inputs.smart_punctuation !== undefined)
+				out.smart_punctuation = inputs.smart_punctuation;
 			// left out for temml without options, the default
 			const math = manifest_math(written_math);
 			if (math !== undefined) out.math = math;

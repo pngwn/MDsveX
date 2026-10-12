@@ -48,6 +48,8 @@ import type {
 } from './highlight_run';
 import { assign_heading_ids, slug_of } from './heading_ids';
 import type { HeadingOptions, HeadingSlug } from './heading_ids';
+import { smart_of } from './smart_punctuation';
+import type { SmartOptions, SmartPunctuation } from './smart_punctuation';
 import { image_imports } from './image_imports';
 import type { ImageImports, ImageNeed } from './image_imports';
 import { link_urls, links_of, with_images } from './link_urls';
@@ -96,6 +98,11 @@ export type {
 	HeadingOptions,
 	HeadingSlug,
 } from './heading_ids';
+export type {
+	SmartOptions,
+	SmartPunctuation,
+	SmartPunctuationOptions,
+} from './smart_punctuation';
 
 /**
  * which elements a replacement takes, markdown takes those from markdown
@@ -172,7 +179,7 @@ export interface Bundle {
 }
 
 export interface CompileOptions
-	extends TemplateOptions, SyntaxOptions, HeadingOptions {
+	extends TemplateOptions, SyntaxOptions, HeadingOptions, SmartOptions {
 	/**
 	 * plugin bundles, lowest precedence first, their directive components sit
 	 * below the directives option and their handlers run ahead of parse_plugins
@@ -355,6 +362,8 @@ export interface CompileInputs {
 	unwrap_images: boolean | undefined;
 	/** the slug of the heading_ids option, undefined when it is off */
 	heading_ids: HeadingSlug | undefined;
+	/** the smart_punctuation option, undefined when it is off */
+	smart_punctuation: SmartPunctuation | undefined;
 	math: MathOption | undefined;
 	/** true imports relative images, anything else leaves every url */
 	import_images: boolean | undefined;
@@ -385,6 +394,7 @@ export function compile_inputs(): CompileInputs {
 		filename: undefined,
 		unwrap_images: undefined,
 		heading_ids: undefined,
+		smart_punctuation: undefined,
 		math: undefined,
 		import_images: undefined,
 		links: undefined,
@@ -412,6 +422,7 @@ function inputs_of(options: CompileOptions): CompileInputs {
 	const filename = options.filename;
 	const unwrap_images = options.unwrap_images;
 	const heading_ids = options.heading_ids;
+	const smart = options.smart_punctuation;
 	const math = options.math;
 	const import_images = options.import_images;
 	const rewrite = options.rewrite;
@@ -431,6 +442,7 @@ function inputs_of(options: CompileOptions): CompileInputs {
 		filename === undefined &&
 		unwrap_images === undefined &&
 		heading_ids === undefined &&
+		smart === undefined &&
 		math === undefined &&
 		import_images === undefined &&
 		rewrite === undefined &&
@@ -451,6 +463,7 @@ function inputs_of(options: CompileOptions): CompileInputs {
 	inputs.filename = filename;
 	inputs.unwrap_images = unwrap_images;
 	if (heading_ids !== undefined) inputs.heading_ids = slug_of(heading_ids);
+	if (smart !== undefined) inputs.smart_punctuation = smart_of(smart);
 	inputs.math = math;
 	inputs.import_images = import_images;
 	if (rewrite !== undefined || links !== undefined)
@@ -462,6 +475,7 @@ function inputs_of(options: CompileOptions): CompileInputs {
 /** the options the positional entry points take as one trailing object */
 type PositionalOptions = SyntaxOptions &
 	HeadingOptions &
+	SmartOptions &
 	Pick<CompileOptions, 'import_images'>;
 
 /** inputs for the positional entry points, which are always strict */
@@ -488,6 +502,7 @@ function inputs_from(
 	if (syntax !== undefined) {
 		inputs.unwrap_images = syntax.unwrap_images;
 		inputs.heading_ids = slug_of(syntax.heading_ids);
+		inputs.smart_punctuation = smart_of(syntax.smart_punctuation);
 		inputs.import_images = syntax.import_images;
 	}
 	return inputs;
@@ -1331,6 +1346,8 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 		renderer.urls = images.lookup;
 	}
 	if (fenced !== null) renderer.fences = fenced;
+	const smart = inputs.smart_punctuation;
+	if (smart !== undefined) renderer.smart_punctuation = smart;
 
 	if (options?.sourcemap) {
 		let result;
@@ -2027,6 +2044,8 @@ export class CompilerSession {
 			renderer.urls = swaps.lookup;
 		}
 		if (fenced !== null) renderer.fences = fenced;
+		const smart = inputs.smart_punctuation;
+		if (smart !== undefined) renderer.smart_punctuation = smart;
 		// the session keeps its renderer, a render that throws must not leave
 		// the imports of this document for the next
 		try {
@@ -2118,6 +2137,7 @@ export class CompilerSession {
 				renderer.urls = undefined;
 			}
 			if (fenced !== null) renderer.fences = undefined;
+			if (smart !== undefined) renderer.smart_punctuation = undefined;
 		}
 		// one call site for every kind, each more is another callee to inline
 		unbind(done!, renderer, source);
