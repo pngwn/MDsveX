@@ -40,7 +40,7 @@ let x;
 [ref][]
 ```
 
-The definition must appear **before** the reference is used. Forward references are a parse error. This enables true streaming and incremental parsing.
+The definition must appear **before** the reference is used. A reference with no definition above it stays literal text. This enables true streaming and incremental parsing.
 
 A definition may sit in any container. In a block quote or a list item it is written on one line, the destination and the title do not move to the next line there.
 

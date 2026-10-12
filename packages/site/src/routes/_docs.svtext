@@ -13,6 +13,9 @@
 [katex-options]: https://katex.org/docs/options
 [twinkleplop-annotations]: https://twinkleplop.pngwn.at/docs/directives
 [shiki]: https://shiki.style
+[pfm]: https://github.com/pngwn/MDsveX/blob/next/PFM.md
+[plugins-md]: https://github.com/pngwn/MDsveX/blob/next/packages/parse/PLUGINS.md
+[enhanced-img]: https://svelte.dev/docs/kit/images#sveltejs-enhanced-img
 
 # mdsvex
 
@@ -20,7 +23,7 @@ mdsvex is a markdown preprocessor for [Svelte][svelte] components. Basically [MD
 
 This preprocessor allows you to use Svelte components in your markdown, or markdown in your Svelte components.
 
-mdsvex supports all Svelte syntax and _almost_ all markdown syntax. See [limitations](docs#limitations) for more information.
+mdsvex supports all Svelte syntax and its own flavour of markdown, which differs from CommonMark in a few places. See [Markdown](docs#markdown) for what is different and [limitations](docs#limitations) for what is missing.
 
 You can do this:
 
@@ -55,6 +58,8 @@ With `pnpm`:
 ```bash
 pnpm add --save-dev mdsvex@next
 ```
+
+mdsvex needs Svelte 5 and Vite 6 or later.
 
 ## Use it
 
@@ -183,6 +188,173 @@ The output imports from those specifiers exactly as written.
 
 A directive with no component is an error. For a preview or an editor, pass `strict_directives: false` to render it as its children instead.
 
+## Markdown
+
+mdsvex reads its own flavour of markdown, [Penguin-Flavoured Markdown][pfm]. It is CommonMark with the ambiguous parts taken out, the GFM additions most people use, and a few of its own. Most of a document reads as it does anywhere else. This section covers the rest.
+
+Coming from 0.x, the [migrator](docs#run-the-migrator) rewrites your documents for you.
+
+### Different from CommonMark
+
+| you write | in CommonMark | in mdsvex |
+| --- | --- | --- |
+| `_text_` | emphasis | emphasis |
+| `*text*` | emphasis | strong |
+| `**text**`, `__text__` | strong | strong inside strong, and emphasis inside emphasis. Write `*text*` |
+| a line of `===` or `---` under a title | a heading | a paragraph, and `---` is a thematic break. Write `# Title` |
+| `## Title ##` | the closing `#` are dropped | they are text |
+| four spaces of indent | a code block | nothing, indentation means nothing. Use a fence |
+| `~~~` | a code fence | text. A fence is three or more backticks |
+| two spaces at the end of a line | a line break | nothing. End the line with a backslash |
+| a line without `>` after a quoted line | still in the quote | the quote has ended |
+| `[text]` with a definition somewhere | a link | text. Write `[text][]`, with the definition above it |
+| `https://example.com`, as GFM links it | a link | text. Write `<https://example.com>` |
+| `{` and `}` | text | a Svelte expression. Write `\{` for a brace |
+
+A link reference definition comes before the first link that uses it. That lets a document render while it is still arriving, since nothing later in it can change what came before.
+
+```svx
+[svelte]: https://svelte.dev
+
+Made with [svelte][], see [the site][svelte].
+```
+
+A `_` or `*` opens after a space or punctuation and closes before one, so `snake_case_name` and `2*3*4` are text. To mark part of a word, put a `|` on the side that touches a letter. The `|` is not rendered:
+
+```svx
+fan|_tas_|tic
+```
+
+```html
+<p>fan<em>tas</em>tic</p>
+```
+
+Curly quotes, dashes and other Unicode punctuation count as punctuation there. Chinese, Japanese and Korean text needs no marker, `这是*重要*的` is strong.
+
+### Added to CommonMark
+
+| you write | you get |
+| --- | --- |
+| `H~2~O` | subscript, H<sub>2</sub>O |
+| `x^2^` | superscript, x<sup>2</sup> |
+| `~~gone~~` | strikethrough |
+| `- [x] done` | a [task list](docs#task-lists) |
+| a pipe table | a [table](docs#tables), with header columns and merged cells |
+| `:name[text]`, `::name`, `:::name` | a [directive](docs#directives), your own component |
+| a `math` fence, `` $`x^2`$ `` | [math](docs#math-1) |
+| `import` lines at the top | [imports](docs#svelte-in-markdown) without a `<script>` |
+
+Footnotes are not read yet, see [limitations](docs#limitations).
+
+### Task lists
+
+A list item that starts with `[ ]` or `[x]` and a space is a task:
+
+```svx
+- [x] write the docs
+- [ ] ship it
+```
+
+```html
+<ul>
+	<li><input type="checkbox" checked disabled /> write the docs</li>
+	<li><input type="checkbox" disabled /> ship it</li>
+</ul>
+```
+
+It works in bulleted and numbered lists at any depth. The marker needs text after it on its line, so `[x]done` and a bare `- [ ]` are text, and so is a marker anywhere but the start of an item. Write `- \[x] text` to start an item with those characters. A [replaced `li`](docs#element-props) gets `checked` and no checkbox.
+
+### Tables
+
+Tables are GFM pipe tables. A `:` in the delimiter row aligns a column, and `\|` is a bar inside a cell, in a code span too.
+
+A `||` in the header and delimiter rows makes the columns on one side of it row headers:
+
+```svx
+| option || type | default |
+| --- || --- | --- |
+| `extensions` || `string[]` | `['.svx']` |
+```
+
+```html
+<tr>
+	<th scope="row"><code>extensions</code></th>
+	<td><code>string[]</code></td>
+	<td><code>['.svx']</code></td>
+</tr>
+```
+
+A cell that holds only `>` joins the cell to its left, and one that holds only `^` joins the cell above:
+
+```svx
+| a | > | c |
+| --- | --- | --- |
+| 1 | 2 | 3 |
+| ^ | 4 | 5 |
+```
+
+```html
+<thead>
+	<tr>
+		<th colspan="2">a</th>
+		<th>c</th>
+	</tr>
+</thead>
+<tbody>
+	<tr>
+		<td rowspan="2">1</td>
+		<td>2</td>
+		<td>3</td>
+	</tr>
+	<tr>
+		<td>4</td>
+		<td>5</td>
+	</tr>
+</tbody>
+```
+
+Write `\>` or `\^` for a cell of that one character. A row is one line, and a table ends at a blank line or at any line that would end a paragraph, such as a heading.
+
+### Svelte in markdown
+
+Components, elements, expressions and blocks go anywhere, and markdown works inside them with no blank lines around it:
+
+```svx
+<Box>
+# A title
+</Box>
+
+{#if published}
+Some *strong* text.
+{/if}
+```
+
+```svelte
+<Box><h1>A title</h1></Box>{#if published}
+<p>Some <strong>strong</strong> text.</p>{/if}
+```
+
+A block quote, a list item, an element, a Svelte block and a container directive all hold the same blocks the document does, so a table or a `{#if}` is the same thing inside a list item as at the top.
+
+- **A paragraph of only tags gets no `<p>`.** `<Chart />` on a line of its own is the component and nothing else, and `<Badge /> new today` is a paragraph.
+- **A block level element that starts a line is a block.** `<div>one</div> two` is the `<div>` and then a paragraph, `two`.
+- **`<script>`, `<style>`, `<pre>` and `<textarea>` hold text.** Nothing inside them is markdown.
+- **Imports can stand at the top**, after any frontmatter, without a `<script>`. They go into the document's script:
+
+```svx
+import Chart from './Chart.svelte'
+
+<Chart />
+```
+
+```svelte
+<script>
+import Chart from './Chart.svelte'
+</script><Chart />
+```
+
+- **A brace is an expression.** For a brace as text, write `\{`, use `&#123;`, or put it in code, where a brace is always text.
+
 ## Options
 
 `mdsvex()` takes one object of options. They apply to every document.
@@ -209,14 +381,14 @@ interface MdsvexOptions {
 	math?: MathOptions | MathRenderer | false;
 	unwrap_images?: boolean;
 	import_images?: boolean;
-	rewrite?: (
-		url: string,
-		ctx: { filename?: string; type: 'link' | 'image'; written: string }
-	) => string | null | undefined | void;
 	links?: {
 		routes?: string;
 		base?: true | string | { import: string; from: string };
 	};
+	rewrite?: (
+		url: string,
+		ctx: { filename?: string; type: 'link' | 'image'; written: string }
+	) => string | null | undefined | void;
 	heading_ids?:
 		| boolean
 		| { slug?: (text: string, heading: { depth: number }) => string };
@@ -346,7 +518,7 @@ export function steps() {
 | `name` | names the plugin in errors and in the editor manifest |
 | `module` | the module that exports the directive components. It resolves as an import from the Vite root would |
 | `directives` | one entry per directive name the plugin owns |
-| `parse` | a [parse plugin](docs#parse_plugins) for the whole document |
+| `parse` | a [parse plugin](docs#parse_plugins) for the whole document, the same object an entry of `parse_plugins` is |
 | `components` | element replacements, as `{ specifier, names }` |
 
 An entry of `directives` can hold handlers. They are bound to that directive, so they never run anywhere else in the document:
@@ -392,7 +564,7 @@ Things to know:
 
 `compile()` takes `plugins` as well. It writes `module` as the import specifier exactly as given.
 
-The node API, `wrap_from` and what happens when the parser takes a node back are described in [`PLUGINS.md`](https://github.com/pngwn/MDsveX/blob/next/packages/parse/PLUGINS.md).
+What a handler gets and can do is under [plugin handlers](docs#plugin-handlers).
 
 ### `parse_plugins`
 
@@ -419,6 +591,111 @@ mdsvex({ parse_plugins: [external_links] });
 A plugin with `sequential: true` runs over the finished tree instead, after [`heading_ids`](docs#heading_ids) has set its ids.
 
 Elements a plugin creates count as markdown, so a [replacement](docs#custom-components) for `mark` also replaces the `<mark>` a highlight plugin adds.
+
+`parse_plugins` is the short way to add a few handlers from your config. To ship them with directives and components, or under a name, put the same object in the `parse` key of a [plugin](docs#plugins).
+
+### Plugin handlers
+
+Every handler, in `parse_plugins` or in a [plugin](docs#plugins), gets a node and a context. Handlers are keyed by node type:
+
+`paragraph`, `heading`, `emphasis`, `strong_emphasis`, `strikethrough`, `superscript`, `subscript`, `code_span`, `code_fence`, `link`, `image`, `block_quote`, `list`, `list_item`, `table`, `table_header`, `table_row`, `table_cell`, `thematic_break`, `hard_break`, `soft_break`, `html`, `html_comment`, `mustache`, `svelte_tag`, `svelte_block`, `svelte_branch`, `directive_inline`, `directive_leaf`, `directive_container`, `directive_label`, `frontmatter` and `import_statement`.
+
+An element or a component is an `html` node, with its name in `attrs.tag` and what was written on it in `attrs.attributes` once it has closed. An expression is a `mustache`.
+
+The node is a view of the tree as it is being built:
+
+| member | what it is |
+| --- | --- |
+| `type` | the node type. Writing it changes what the node renders as |
+| `attrs` | its attributes. Writing one sets it on the element, or passes it to a [replacement](docs#custom-components) as a prop |
+| `text_content` | the text inside it |
+| `parent`, `first_child`, `last_child`, `next`, `prev` | its neighbours, each a node or `null` |
+| `depth`, `href`, `title`, `info`, `math`, `ordered`, `start`, `tight` | what its type has: the depth of a heading, the url of a link, the info string of a fence |
+| `position` | `{ start, end }`, each with an `offset`, a `line` and a `column`. `end` is not set until the node closes |
+| `pending` | `true` while the parser may still take the node back |
+| `prepend(type, attrs)`, `append(type, attrs)` | adds a child and returns it. For `'text'` the second argument is the text |
+| `wrap_inner(type, attrs)` | puts a new node between the node and its children |
+| `wrap_from(type, attrs)` | puts a new node around the node and every sibling after it, until you call `close()` on what it returns |
+| `remove()` | takes the node out of the tree |
+
+A new `html` node takes its element name as `tag`. This wraps each `##` heading and what follows it in a `<section>`:
+
+```js
+const sections = {
+	heading: {
+		parse(node, ctx) {
+			if (node.depth !== 2 || node.parent?.type !== 'root') return;
+			ctx.section?.close();
+			ctx.section = node.wrap_from('html', { tag: 'section' });
+		}
+	}
+};
+
+mdsvex({ parse_plugins: [sections] });
+```
+
+```svx
+## One
+
+First.
+
+## Two
+
+Second.
+```
+
+```html
+<section><h2>One</h2><p>First.</p></section>
+<section><h2>Two</h2><p>Second.</p></section>
+```
+
+The context is new for each document, and any key you set on it is yours, as `ctx.section` is above. It also has:
+
+| member | what it is |
+| --- | --- |
+| `ctx.filename` | the path of the document |
+| `ctx.frontmatter` | the parsed frontmatter, `undefined` when the document has none. Don't write to it |
+| `ctx.warn(code, message, node)` | reports a problem. The build prints it with the line of the node |
+| `ctx.data` | what the plugin leaves for the page, see [plugin data](docs#plugin-data). It needs a `name` |
+
+```js
+const one_title = {
+	name: 'one_title',
+	parse: {
+		heading: {
+			parse(node, ctx) {
+				if (node.depth === 1 && ctx.frontmatter?.title !== undefined) {
+					ctx.warn('two_titles', `${ctx.filename} has a title and a # heading`, node);
+				}
+			}
+		}
+	}
+};
+
+mdsvex({ plugins: [one_title] });
+```
+
+A handler [bound to a directive](docs#plugins) has the same four beside `directive`, `index` and `state`. Its `children` table also takes `'*'`, a handler for a child of any type, which runs after the one for its type.
+
+Things to know:
+
+- **Handlers run while the document is read.** The parser opens some nodes on a guess, such as an emphasis before it has seen the closing `_` or a link before its url. When the guess is wrong it takes the node back, and everything a handler did for that node is undone. `node.pending` is `true` for such a node.
+- **`wrap_from` needs a node that is not pending.** Headings and block directives never are. For a link or an emphasis, call it from the function the handler returns, which runs once the node has closed.
+- **`remove()` works where nothing can ask for the node back**: in the function a handler returns, for a node that is not pending, or anywhere in a `sequential` plugin. A node removes itself or something inside it.
+
+```js
+// comments do not reach the page
+const no_comments = {
+	html_comment: {
+		parse: (node) => () => node.remove()
+	}
+};
+```
+
+- **Handlers are synchronous** and can't read files. A plugin can't add syntax either, only change the tree the parser made.
+- **A plugin sees the text as written.** [`smart_punctuation`](docs#smart_punctuation) is applied when the page renders, after every handler.
+
+[`PLUGINS.md`][plugins-md] in the repository has the whole API, with what a revoke undoes and how handlers run over a stream.
 
 ### Plugin data
 
@@ -1512,8 +1789,14 @@ Run the installer.
 		<button class="tab" role="tab" aria-selected="true">macOS</button>
 		<button class="tab" role="tab" aria-selected="false">Windows</button>
 	</div>
-	<div class="tab-panel" role="tabpanel"><p>Install it with Homebrew.</p></div>
-	<div class="tab-panel" role="tabpanel" hidden><p>Run the installer.</p></div>
+	<div class="tab-panel" role="tabpanel">
+		<div class="tab-panel-label" hidden>macOS</div>
+		<p>Install it with Homebrew.</p>
+	</div>
+	<div class="tab-panel" role="tabpanel" hidden>
+		<div class="tab-panel-label" hidden>Windows</div>
+		<p>Run the installer.</p>
+	</div>
 </div>
 ```
 
@@ -1522,7 +1805,7 @@ Run the installer.
 - **`:::tabs[Pick your system]`** renders that text in a `<p class="tabs-label">` above the tabs and names the tab list with it.
 - **Tabs nest** when the outer container uses more colons.
 
-**A code group** is the same directive around code fences. When the first thing in the container is a fence, each fence written directly inside is a tab, labelled by its name (`[npm]` or `title="npm"`, as [fence meta](docs#fence-meta) reads them) or, with neither, by its language:
+**A code group** is the same directive around code fences. The first heading or fence written directly inside the container decides which it is. When that is a fence, each fence written directly inside is a tab, labelled by its name (`[npm]` or `title="npm"`, as [fence meta](docs#fence-meta) reads them) or, with neither, by its language:
 
 ````svx
 :::tabs
@@ -1686,7 +1969,7 @@ external_links({
 
 The label is the name of the span, read out as part of the link the way the `alt` of an icon would be. There is no default, since the plugin can't know the language of the page.
 
-The plugin reads the finished tree, so its place in `plugins` doesn't matter, and a [replaced `a`](docs#custom-components) gets `rel` and `target` as props.
+The plugin reads each link as it closes, so `rel` and `target` are there while a document is still streaming. It keeps a `target` the link already has and adds to its `rel`, so a plugin that sets either has to come before it in `plugins`. A [replaced `a`](docs#custom-components) gets `rel` and `target` as props.
 
 ### Table of contents
 
@@ -1802,7 +2085,7 @@ plugin_data.page;
 // }
 ```
 
-`metadata` is not touched, it stays exactly the frontmatter. Each part can be turned off, and a key is only there when its part found something:
+`metadata` is not touched, it stays exactly the frontmatter. Each part can be turned off. `title`, `excerpt` and `edit_url` are only there when their part found something, and a document with no prose has `words: 0` and `minutes: 0`:
 
 ```ts
 page_data({
@@ -2698,7 +2981,7 @@ const { code, snippets } = compile(source, {
 
 A `RunError` has a `code` (`run_module`, `run_pre`, `run_lang`, `run_eval` or `run_value`) and a `line` and `column`. A block with `src=` imports its file, so it needs no `snippets`.
 
-The editor shows a block that runs as code. It doesn't check the code as a module yet.
+The editor shows a block that runs as code, and reports one the build would reject at its fence. It doesn't check the code as a module yet.
 
 ## Migrating from mdsvex 0.x
 
@@ -2712,28 +2995,30 @@ Layouts are now [templates](docs#templates-1). The idea is the same, a component
 npm i --save-dev @mdsvex/migrate@next
 ```
 
-It is a library of functions. Each returns the new `code` and a list of `notes`, things to check by hand, each with a `line` and a `message`. A short script runs them over a project. Commit your work first, then set `config` to the file that calls `mdsvex()` and `layouts` to your layout components:
+It is a library of functions. A short script runs them over a project. Commit your work first, then set `config` to the file that calls `mdsvex()`, `layouts` to your layout components, and `options` to what your documents were written for:
 
 ```js
 // migrate.js
 import { readFileSync, writeFileSync, globSync } from 'node:fs';
-import { migrate_config, migrate_frontmatter, check_template } from '@mdsvex/migrate';
+import { migrate, migrate_config, check_template } from '@mdsvex/migrate';
 
 const config = 'svelte.config.js';
 const layouts = ['src/lib/layouts/Blog.svelte'];
+// smartypants: your old smartypants option, true if you never set it
+// math: true if you used remark-math
+const options = { smartypants: true, math: false };
 
 function report(file, notes) {
 	for (const note of notes) console.log(`${file}:${note.line}: ${note.message}`);
 }
 
-function rewrite(file, migrate) {
-	const { code, notes } = migrate(readFileSync(file, 'utf8'));
-	writeFileSync(file, code);
-	report(file, notes);
-}
+const { code, notes } = migrate_config(readFileSync(config, 'utf8'));
+writeFileSync(config, code);
+report(config, notes);
 
-rewrite(config, migrate_config);
-for (const file of globSync('src/**/*.{svx,md}')) rewrite(file, migrate_frontmatter);
+for (const file of globSync('src/**/*.{svx,md}'))
+	writeFileSync(file, migrate(readFileSync(file, 'utf8'), options));
+
 for (const file of layouts) report(file, check_template(readFileSync(file, 'utf8')));
 ```
 
@@ -2741,13 +3026,15 @@ for (const file of layouts) report(file, check_template(readFileSync(file, 'utf8
 node migrate.js
 ```
 
-- `migrate_config` rewrites the `layout` option into `templates`, and the `highlight` and `smartypants` options, in a JavaScript or TypeScript config.
-- `migrate_frontmatter` renames a document's `layout:` key to `template:`.
+- `migrate_config` rewrites the options of a JavaScript or TypeScript config: `layout` into `templates`, `highlight`, `smartypants` and `extension`. It returns the new `code` and a list of `notes`, things to check by hand, each with a `line` and a `message`. Every entry of `remarkPlugins` and `rehypePlugins` gets a note that says [what replaces it](docs#coming-from-remark-and-rehype-plugins).
+- `migrate` converts a document to mdsvex's [markdown](docs#markdown) and returns it. 0.x read CommonMark, where `*text*` is emphasis and a `===` underline makes a heading, so every document needs it. Svelte in the document is kept as written, and the `layout:` key of the frontmatter becomes `template:`.
 - `check_template` lists what a layout component needs changed. It rewrites nothing.
+
+Read the diff before you commit it. `migrate` writes each document out again from what it parsed, so list markers, table padding and blank lines come out in one style.
 
 The options stay where they were. SvelteKit 3 has no `svelte.config.js`, so move the `mdsvex()` call from `preprocess` into the `plugins` of `vite.config.js`, as in [SvelteKit](docs#sveltekit). mdsvex registers its extensions, so they don't need to move with it.
 
-To also convert CommonMark documents to mdsvex's markdown, use `migrate`, which renames the `layout:` key as well. Its README has the details.
+For a document that is already mdsvex's markdown, `migrate_frontmatter` renames the `layout:` key and changes nothing else.
 
 ### What changes
 
@@ -2763,18 +3050,17 @@ To also convert CommonMark documents to mdsvex's markdown, use `migrate`, which 
 | `export let title` in a layout | `let { title } = $props()` |
 | `<script context="module">` exports | `<script module>` exports |
 | `{title}` in a document | `{metadata.title}` |
+| `extension: '.md'` | `extensions: ['.md']` |
+| `frontmatter: { marker, type }` | gone, the fences are always `---` and [`frontmatter.parse`](docs#custom-frontmatter-parsers) reads what is between them |
+| `rel="nofollow"` on every link to another site | no `rel`. `external_links({ rel: ['nofollow'] })` from [`@mdsvex/plugin-external-links`](docs#external-links) keeps it |
 | `smartypants`, on by default | [`smart_punctuation`](docs#smart_punctuation), off by default, the migrator turns it on |
-| `remarkPlugins`, `rehypePlugins` | [`parse_plugins`](docs#parse_plugins) |
-| `rehype-slug` | [`heading_ids: true`](docs#heading_ids) |
-| `rehype-autolink-headings` | [`@mdsvex/plugin-anchors`](docs#anchors) |
-| `rehype-external-links` | [`@mdsvex/plugin-external-links`](docs#external-links) |
-| `rehype-code-group` | [`@mdsvex/plugin-tabs`](docs#tabs) |
-| `mdsvex-relative-images` | built in, see [`import_images`](docs#import_images) |
-| `remark-link-rewrite`, `rehype-urls`, `remark-prepend-url` | [`rewrite`](docs#rewrite), or [`links`](docs#links) for routes and the base path |
-| `remark-code-import`, ```` ```js file=./a.js#L1-L5 ```` | built in as [`src=`](docs#code-from-a-file), the migrator renames `file=` on a fence with no code |
+| `remarkPlugins`, `rehypePlugins` | gone. Most of what they did is built in or a first-party plugin, see [coming from remark and rehype plugins](docs#coming-from-remark-and-rehype-plugins) |
+| CommonMark documents | mdsvex's own [markdown](docs#markdown), the migrator converts them |
+| ```` ```js file=./a.js#L1-L5 ````, from `remark-code-import` | [`src=`](docs#code-from-a-file), the migrator renames `file=` on a fence with no code |
+| `$x$` and `$$x$$`, from `remark-math` | [math](docs#math-1), the migrator rewrites them when you pass `math: true` |
 | `![alt](./a.png)` served from the page's url | imported from beside the document, write `/a.png` for a file in `static`, or set [`import_images: false`](docs#import_images) |
 
-The migrator handles the `layout` and `smartypants` rows and flags `<slot />` and `layoutPropForwarding`. The other rows are yours to change.
+The migrator handles the `layout`, `smartypants` and `extension` rows and converts the documents. It flags `<slot />`, `layoutPropForwarding`, the `frontmatter` options, the missing `nofollow` and every entry of `remarkPlugins` and `rehypePlugins`, each with what replaces it. The other rows are yours to change.
 
 0.x matched named layouts to folders. Templates aren't matched by folder, so for named layouts the notes include a `select_template` to paste into your config:
 
@@ -2875,33 +3161,285 @@ Or drop the highlighter and use the default. Either way, import a theme: highlig
 | `dashes: 'inverted'` | `dashes: true`, and the documents are rewritten |
 | `backticks`, which curled <code>&#96;&#96;quoted''</code> | gone, the documents are rewritten |
 
-The dashes are the one change that shows. With the 0.x default, `--` was an em dash. It is an en dash now, as it is in pandoc, cmark and LaTeX. So that pages render what they did, pass your old `smartypants` value to `migrate` when it converts your documents, `true` if you never set it:
+The dashes are the one change that shows. With the 0.x default, `--` was an em dash. It is an en dash now, as it is in pandoc, cmark and LaTeX. So that pages render what they did, pass your old `smartypants` value to `migrate` when it converts your documents, `true` if you never set it, as the script under [run the migrator](docs#run-the-migrator) does:
 
 ```js
-import { migrate } from '@mdsvex/migrate';
-
-for (const file of globSync('src/**/*.{svx,md}'))
-	writeFileSync(file, migrate(readFileSync(file, 'utf8'), { smartypants: true }));
+migrate(source, { smartypants: true });
 ```
 
 It turns each `--` in text into `---`, keeps a `---` that 0.x left alone as `\---`, swaps the two for `'inverted'`, and turns <code>&#96;&#96;quoted''</code> into `"quoted"`. Code, urls and attributes are not touched. The notes from `migrate_config` say which of this applies to your config.
 
 Three things 0.x changed are left alone now, because they are not prose: a string inside a Svelte expression, an attribute such as `--css-var="x"` on a component, and the text of an autolinked url. And `--name` after a space is read as a command line flag, where 0.x gave it a dash.
 
-## Limitations
+## Coming from remark and rehype plugins
 
-### Indentation
+mdsvex 0.x ran remark and rehype, and took their plugins in `remarkPlugins` and `rehypePlugins`. mdsvex now has its own parser, so those plugins don't run and the two options are gone. Most of what they were used for is built in, an option, or a first-party plugin. Find each plugin you used below.
 
-In markdown you can begin a code block by indenting 4 spaces. This doesn't work in mdsvex as indentation is common with XML-based languages. Indenting 4 spaces will do nothing.
+`migrate_config` from the [migrator](docs#run-the-migrator) leaves a note for every plugin it finds in your config, with the same answer.
 
-In general you have a lot more flexibility when it comes to indenting code in mdsvex than you do in markdown because of the above change, however, you need to be very careful when indenting fenced code blocks. By which I mean, don't do it.
+### Built into the markdown
 
-The following code block will break in a way that is both very bad and quite unexpected:
+| plugin | now | how |
+| --- | --- | --- |
+| `remark-gfm` | built in, apart from two things | [tables](docs#tables), `~~strikethrough~~` and [task lists](docs#task-lists) work as written. A bare url is not linked, the migrator writes each one as `<https://example.com>`. Footnotes are not read yet |
+| `remark-frontmatter`, `remark-parse-yaml` | built in | [frontmatter](docs#frontmatter-1) is the `metadata` export, and [`frontmatter.parse`](docs#custom-frontmatter-parsers) takes TOML or full YAML |
+| `remark-directive`, `remark-admonitions`, `remark-containers`, `remark-custom-blocks` | built in | [directives](docs#directives): `:::note` renders your `note` component |
+| `remark-sub-super`, `remark-supersub` | built in | `H~2~O` and `x^2^` |
+| `remark-extended-table`, `rehype-merge-cells` | built in | a `>` or `^` cell [merges](docs#tables), and `\|\|` makes header columns |
+| `remark-math` with `rehype-katex`, `rehype-katex-svelte` or `rehype-mathjax` | built in | a [`math` fence and `` $`x`$ ``](docs#math-1), rendered by Temml or, with `math: { renderer: 'katex' }`, KaTeX. For MathJax pass a [function](docs#custom-math-renderers). The migrator rewrites `$x$` when you pass `math: true` |
+| `remark-code-import` | built in | [`src=./file.ts#L5-L20`](docs#code-from-a-file) on a fence, the migrator renames `file=` |
+| `remark-breaks` | nothing, on purpose | a line end is a space. End a line with a backslash for a break |
+| `rehype-raw` | not needed | HTML in a document is always real markup |
 
-````mdsvex
-		```js
-					console.log('Hello, World!')
-		```
+### Now an option
+
+| plugin | now | how |
+| --- | --- | --- |
+| `remark-smartypants`, and the `smartypants` option | an option | [`smart_punctuation: true`](docs#smart_punctuation), off by default |
+| `rehype-slug`, `remark-slug` | an option | [`heading_ids: true`](docs#heading_ids), which the migrator adds |
+| `remark-unwrap-images`, `rehype-unwrap-images` | an option | [`unwrap_images: true`](docs#unwrap_images), which the migrator adds |
+| `mdsvex-relative-images`, `remark-embed-images` | on by default | a relative image is [imported](docs#import_images), so Vite hashes it |
+| `remark-link-rewrite`, `rehype-urls`, `remark-prepend-url`, `remark-relative-links` | an option | [`links`](docs#links) for links between documents and the base path, [`rewrite`](docs#rewrite) for anything else |
+| `rehype-highlight`, `remark-highlight.js`, `rehype-prism-plus`, `remark-prism`, `@shikijs/rehype`, `rehype-pretty-code` | on by default | [highlighting](docs#syntax-highlighting) needs a theme and no setup. [Fence meta](docs#fence-meta) reads `{1,3-4}`, `/word/` and `showLineNumbers` as they do. For Shiki itself pass a [function](docs#custom-highlighters) |
+| `rehype-code-titles`, `remark-code-titles`, `remark-flexible-code-titles` | built in | `title="math.ts"` or `[math.ts]` in the [fence meta](docs#fence-meta) |
+| `rehype-twoslash` | an option | [`highlight: { twoslash: true }`](docs#twoslash) |
+
+### First-party plugins
+
+| plugin | now | how |
+| --- | --- | --- |
+| `rehype-autolink-headings`, `remark-autolink-headings` | [`@mdsvex/plugin-anchors`](docs#anchors) | `anchors()`, with `heading_ids: true` |
+| `rehype-external-links`, `remark-external-links` | [`@mdsvex/plugin-external-links`](docs#external-links) | `external_links({ target: '_blank' })`. 0.x ran this plugin itself, with `rel="nofollow"`, see [what changes](docs#what-changes) |
+| `remark-toc`, `rehype-toc`, `@stefanprobst/rehype-extract-toc`, `@vcarl/remark-headings` | [`@mdsvex/plugin-toc`](docs#table-of-contents) | `toc()` leaves the headings as data, and `::toc` lists them in the page |
+| `remark-reading-time` | [`@mdsvex/plugin-page-data`](docs#page-data) | `plugin_data.page.minutes` and `words` |
+| `rehype-infer-description-meta`, `rehype-infer-title-meta`, `rehype-truncate` | [`@mdsvex/plugin-page-data`](docs#page-data) | `plugin_data.page.excerpt` and `title`, as text |
+| `rehype-code-group` | [`@mdsvex/plugin-tabs`](docs#tabs) | `:::tabs` around the fences |
+
+### A component or a few lines
+
+| plugin | now | how |
+| --- | --- | --- |
+| `rehype-rewrite`, `rehype-wrap`, `rehype-components` | a component | [replace the element](docs#custom-components) with a component of your own |
+| `rehype-class-names`, `rehype-add-classes` | a parse plugin | `{ table: { parse(node) { node.attrs.class = 'table'; } } }` in [`parse_plugins`](docs#parse_plugins) |
+| `remark-sectionize`, `rehype-section` | a parse plugin | the `sections` plugin under [plugin handlers](docs#plugin-handlers) |
+| `rehype-figure`, `remark-figure-caption` | a component | `unwrap_images: true` and an `img` replacement that renders a `<figure>`, as under [`unwrap_images`](docs#unwrap_images) |
+| `rehype-img-size`, `rehype-plugin-image-native-lazy-loading` | a component | an `img` replacement sets `loading="lazy"`. For sizes, import the image with `?enhanced` from [`@sveltejs/enhanced-img`][enhanced-img], the replacement gets the imported value as `src` |
+| `rehype-mermaid`, `remark-mermaidjs` | a component | a [`pre` replacement](docs#code-block-components) that draws its `code` in the browser when `lang` is `mermaid` |
+| `remark-embedder`, `remark-oembed`, `remark-youtube` | a component | a leaf directive, `::youtube[A talk](id=dQw4w9WgXcQ)`, see [directives](docs#the-three-forms) |
+| `remark-abbr` | a component | an inline directive, `:abbr[HTML](title=HyperText)` |
+| `remark-collapse` | nothing needed | `<details>` and `<summary>` work as typed, with markdown inside |
+| `rehype-meta`, `rehype-document` | a template | a [template](docs#templates-1) renders `<svelte:head>` from its props |
+| `rehype-video` | a component | an `a` or `img` replacement that renders a `<video>` for a video url |
+
+### Nothing yet
+
+| plugin | what to do today |
+| --- | --- |
+| footnotes, from `remark-gfm` or `remark-footnotes` | `[^1]` is text. The migrator keeps both halves as text so nothing is lost. Footnotes are being built |
+| `remark-github-blockquote-alert`, `remark-github-alerts`, `rehype-callouts` | `> [!NOTE]` is a block quote that starts with `[!NOTE]`. Write `:::note` with a directive component |
+| `remark-emoji`, `remark-gemoji` | `:tada:` is text. Type the emoji |
+| `remark-heading-id`, `remark-attr`, `rehype-attr` | `{#id}` and `{.class}` can't exist, braces belong to Svelte. `heading_ids` makes ids, and a parse plugin can set any attribute |
+| `remark-definition-list`, `remark-deflist` | type `<dl>`, `<dt>` and `<dd>` |
+| `remark-flexible-markers`, `remark-ins` | `==mark==` and `++ins++` are text, type `<mark>` and `<ins>` |
+| `remark-wiki-link` | `[[Page]]` is text |
+| `remark-github`, `remark-mentions` | `#123` and `@user` are text, a plugin can't yet turn part of a text into a link |
+| `rehype-citation` | no citations |
+| `remark-validate-links`, `remark-lint` | nothing checks links or style. A missing image fails the build when it is [imported](docs#import_images) |
+| `rehype-sanitize` | nothing, and none is planned. A document compiles to a component and runs as code, so don't compile markdown you don't trust |
+| `rehype-minify`, `rehype-format` | not needed, Svelte and Vite own the output |
+
+A plugin that is not listed did one of three things. If it changed elements or attributes, a [parse plugin](docs#parse_plugins) can do the same. If it added syntax, a [directive](docs#directives) is the syntax mdsvex has for that, and plugins can't add more. If it needed to fetch something or read a file while compiling, there is nowhere to do that yet, since handlers are synchronous.
+
+## Parser changes on `next`
+
+`1.0.0-next.2` reads some documents differently from `1.0.0-next.1`. If you are already on `next`, these are the changes that can show in your pages. Each is how the parser was meant to behave, and none has an option.
+
+### Every container holds the same blocks
+
+A block quote, a list item, an HTML element, a Svelte block and a container directive now hold whatever the document can hold. Before, several blocks were only read at the top level and came out as text inside a container.
+
+```svx
+> | a | b |
+> | --- | --- |
+> | 1 | 2 |
+```
+
+```html
+<!-- before -->
+<blockquote><p> a  b --- --- 1  2 </p></blockquote>
+
+<!-- after -->
+<blockquote><table>…</table></blockquote>
+```
+
+```svx
+- {#if show}
+  text
+  {/if}
+```
+
+```svelte
+<!-- before -->
+<li>{#if show} text {/if}</li>
+
+<!-- after -->
+<li>{#if show}<p>text</p>{/if}</li>
+```
+
+The same goes for a block quote or a directive inside a `<div>`, a list item that ends a quoted paragraph, and a link reference definition in a quote or a list item.
+
+### A pipe outside a table is text
+
+Every `|` in a paragraph used to be dropped.
+
+```svx
+one | two | three
+```
+
+```html
+<!-- before -->
+<p>one  two  three</p>
+
+<!-- after -->
+<p>one | two | three</p>
+```
+
+A `|` directly beside a `_`, `*` or `~` is still the [intraword marker](docs#different-from-commonmark) and is not rendered.
+
+### `<pre>` and `<textarea>` hold text
+
+Their content was parsed as markdown. Now it is kept as written, as the content of `<script>` and `<style>` is.
+
+```svx
+<pre>
+line one
+  indented *x*
+
+# line three
+</pre>
+```
+
+```html
+<!-- before -->
+<pre><p>line one indented <strong>x</strong></p><h1>line three</h1></pre>
+
+<!-- after -->
+<pre>
+line one
+  indented *x*
+
+# line three
+</pre>
+```
+
+Expressions and elements inside still work, since the text goes to Svelte as it is. A `<pre>` that starts a line is now a block, so it ends a paragraph or a table above it.
+
+### A block level element at the start of a line is a block
+
+Text after its close tag used to sit bare beside it. Now that text starts a paragraph.
+
+```svx
+<div>one</div> two
+```
+
+```html
+<!-- before -->
+<div>one</div> two
+
+<!-- after -->
+<div>one</div><p>two</p>
+```
+
+An inline element such as `<b>` that starts a line starts a paragraph, also when it closes on a later line. Later in a line, a block level element no longer takes the `<p>` off its paragraph, so `<Badge /> <div>a</div> text` is one paragraph.
+
+### A NUL is text, and a stall throws
+
+A NUL character in a document stopped the parse, and everything after it was missing. It is now a character like any other.
+
+A parse that stops moving through its input used to log `Infinite loop detected` and return a tree cut short. It now throws a `ParseStallError` with the `offset` it stopped at, so a build fails where it used to publish half a page. If you see one, it is a bug in the parser, please report the document.
+
+### A fence closes only at a line of backticks
+
+A line with anything after the backticks used to close the fence and lose that text. It is now a line of code, as in CommonMark.
+
+````svx
+```md
+```js
+let x;
+```
 ````
 
-The solution is to not do this. When working with fenced code blocks, do not indent them. This isn't an issue that can really be worked around, even if the parser did make assumptions about what you meant. Because code blocks are designed to respect whitespace, any fix would simply result in a different but equally frustrating failure. Don't indent code blocks.
+```html
+<!-- before -->
+<pre><code class="language-md"></code></pre><p>let x;</p><pre><code></code></pre>
+
+<!-- after -->
+<pre><code class="language-md">```js
+let x;</code></pre>
+```
+
+### A backslash before another block is a backslash
+
+A backslash at the end of a line is a hard break only when the next line carries on the paragraph. Before a blank line, the end of the document or a line that starts another block, it used to make a break, and the block after it became text.
+
+```svx
+a\
+# b
+```
+
+```html
+<!-- before -->
+<p>a<br /> # b</p>
+
+<!-- after -->
+<p>a\</p><h1>b</h1>
+```
+
+### Smaller changes
+
+| you write | before | after |
+| --- | --- | --- |
+| `a \{1 + 1\} b` | an expression, `a 2 b` | the text `a {1 + 1} b` |
+| `[a](/u\)b "t \" u")` | the backslashes stayed in the url and the title | `href="/u)b"` and `title="t &quot; u"` |
+| `<div class="a" class="b">` | the first `class` was dropped | both are written, and Svelte reports the duplicate |
+| an open tag over several lines, or `</a` and `>` on two lines | text | a tag |
+| `<!-- note --> some text` | the comment, then a paragraph | one paragraph that holds both |
+| `> _foo` then `> > bar_` | emphasis across the two quotes | `_foo`, then a quote with `bar_` |
+| a code span over two lines of a block quote | the `>` of the second line was in the code | it is not |
+| `- [x] done` | the text `[x] done` | a [task list](docs#task-lists) item |
+| `这是*重要*的`, `“*quoted*”` | text | strong |
+| `::toc`, `:::note` | text | a [directive](docs#the-three-forms), write `\::toc` for the text |
+| `---` with spaces after it, around frontmatter | a thematic break | the frontmatter fence |
+| `import {` over several lines | the first line only | the whole import |
+
+## Limitations
+
+### No indented code
+
+Indentation means nothing in mdsvex, since it is how markup inside elements and components is laid out. Four spaces of indent don't make a code block. Use a fence.
+
+A fence can be indented, inside an element or not. Its code keeps the indent it was written with:
+
+````svx
+<div>
+	```js
+	let x;
+	```
+</div>
+````
+
+```html
+<div><pre><code class="language-js">	let x;</code></pre></div>
+```
+
+### Not read yet
+
+- **Footnotes.** `[^1]` and its definition are text.
+- **Bare urls.** Only `<https://example.com>` is a link.
+- **GitHub alerts, definition lists, `==mark==`, wiki links and emoji shortcodes**, see [nothing yet](docs#nothing-yet).
+
+### Not possible yet
+
+- **Replacements of its own for a component.** Markdown inside a component uses the document's replacements, see [nested scopes](docs#nested-scopes) for the way around it.
+- **A plugin that waits.** Handlers are synchronous and can't read files, so a plugin can't fetch an embed or read a bibliography.
+- **A plugin that adds syntax,** or that replaces part of a text, which is what emoji shortcodes and issue references need.

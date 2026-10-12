@@ -6,14 +6,15 @@ A Markdown preprocessor for Svelte. Markdown in Svelte.
 
 ## Packages
 
-This is a monorepo containing `mdsvex` and any supporting packages. Each repo has its own readme with more details.
+This is a monorepo. `next` is the development branch, and holds a rewrite that is published under the `next` tag on npm.
 
-- [site](https://github.com/pngwn/MDsveX/tree/master/packages/site) - The documentation website.
-- [mdsvex](https://github.com/pngwn/MDsveX/tree/master/packages/mdsvex) - `mdsvex` itself.
-- [svelte-parse](https://github.com/pngwn/MDsveX/tree/master/packages/svelte-parse) - Generate a svast AST from a Svelte components.
-- [svast](https://github.com/pngwn/MDsveX/tree/master/packages/svast) - An AST specification with accompanying TypeScript definitions.
-- [svast-stringify](https://github.com/pngwn/MDsveX/tree/master/packages/svast-stringify) - Turn a svast AST into a Svelte component.
-- [svast-utils](https://github.com/pngwn/MDsveX/tree/master/packages/svast-utils) - Utilities for working with a svast tree.
+- [`mdsvex`](https://github.com/pngwn/MDsveX/tree/next/packages/mdsvex), the compiler and the Vite plugin.
+- [`@mdsvex/parse`](https://github.com/pngwn/MDsveX/tree/next/packages/parse), the markdown parser. The markdown it reads is described in [`PFM.md`](https://github.com/pngwn/MDsveX/blob/next/PFM.md).
+- [`@mdsvex/render`](https://github.com/pngwn/MDsveX/tree/next/packages/render), the renderer.
+- [`@mdsvex/migrate`](https://github.com/pngwn/MDsveX/tree/next/packages/migrate), which moves a project from mdsvex 0.x.
+- [`plugins`](https://github.com/pngwn/MDsveX/tree/next/plugins), the first-party plugins, each an `@mdsvex/plugin-*` package.
+- [`language-tools`](https://github.com/pngwn/MDsveX/tree/next/language-tools), the language server, the TypeScript plugin and the VS Code extension.
+- [`site`](https://github.com/pngwn/MDsveX/tree/next/packages/site), the documentation website and the playground.
 
 ## Contributing
 

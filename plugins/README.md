@@ -11,7 +11,7 @@ Each directory here is one npm package, `@mdsvex/plugin-<name>`, that exports a 
 | `@mdsvex/plugin-toc`            | [`toc`](./toc)                       | the headings of a document as data, and a `::toc` that lists them        |
 | `@mdsvex/plugin-page-data`      | [`page-data`](./page-data)           | a reading time, an excerpt, an inferred title and an edit url            |
 
-The other files in this directory are the audit of the remark and rehype plugins these replace.
+The other files in this directory are the audit of the remark and rehype plugins these replace. [`PLUGIN_AUDIT.md`](./PLUGIN_AUDIT.md) says, for each thing those plugins did, whether mdsvex has it and where.
 
 ## Adding a plugin
 
@@ -61,12 +61,14 @@ npm login
 ```
 
 ```bash
-node scripts/setup-trusted-publishing.mjs --dry-run @mdsvex/plugin-steps @mdsvex/plugin-anchors
+node scripts/setup-trusted-publishing.mjs --dry-run @mdsvex/plugin-steps @mdsvex/plugin-tabs @mdsvex/plugin-anchors @mdsvex/plugin-external-links @mdsvex/plugin-toc @mdsvex/plugin-page-data
 ```
 
 ```bash
-node scripts/setup-trusted-publishing.mjs @mdsvex/plugin-steps @mdsvex/plugin-anchors
+node scripts/setup-trusted-publishing.mjs @mdsvex/plugin-steps @mdsvex/plugin-tabs @mdsvex/plugin-anchors @mdsvex/plugin-external-links @mdsvex/plugin-toc @mdsvex/plugin-page-data
 ```
+
+Those are all six packages here, and none of them is on npm yet. Name only the new ones once these have had their first release.
 
 The dry run lists what it would do. The real run publishes a `0.0.0` placeholder of each package that is not on npm, then registers `pngwn/MDsveX` with `release.yml` as its trusted publisher. Run it with `node`, not through `pnpm run`, so the 2FA prompt reaches the terminal. It finds packages with `pnpm -r ls`, which covers `plugins/*`, and skips private ones, so a new package must not be `private` and must have a version other than `0.0.0`.
 
