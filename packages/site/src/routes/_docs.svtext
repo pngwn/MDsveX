@@ -2586,17 +2586,23 @@ export { default as footnotes } from './markdown/Footnotes.svelte';
 | `href` | the link to the note, `#fn-` and the label |
 | `id` | the id of the reference, `fnref-` and the number |
 
-`note` is what a side note or a hover card needs:
+`note` is what a side note or a hover card needs. A note holds blocks, and HTML allows no block inside the paragraph a reference is in, so draw it once the page is in the browser, as this card does on hover, or somewhere outside the paragraph:
 
 ```svelte
 <!-- src/lib/markdown/Footnote.svelte -->
 <script>
 	let { children, note } = $props();
+
+	let open = $state(false);
 </script>
 
-<span class="footnote">
-	{@render children()}
-	<span class="card">{@render note()}</span>
+<span
+	class="footnote"
+	role="group"
+	onpointerenter={() => (open = true)}
+	onpointerleave={() => (open = false)}
+>
+	{@render children()}{#if open}<span class="card">{@render note()}</span>{/if}
 </span>
 ```
 
@@ -2615,6 +2621,8 @@ export { default as footnotes } from './markdown/Footnotes.svelte';
 ```
 
 The links and the list that mdsvex writes for footnotes are not markdown, so `a`, `sup`, `ol` and `li` replacements never get them. What a note holds is markdown, so its paragraphs and links are replaced as anywhere else. A reference inside a `note` snippet gets no snippet of its own.
+
+See the [footnotes playground example](/playground/footnotes).
 
 ### Footnotes while streaming
 
