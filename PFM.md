@@ -101,7 +101,6 @@ The parser does not hold to this everywhere yet. Where it still differs from the
 
 - In a block quote: a table and a Svelte block do not open, an HTML element holds its lines as inline content, a directive or an element does not end a paragraph, and a link reference definition is a paragraph.
 - In a list item: an HTML element and a Svelte block do not open, a line of only a comment or of only tags keeps a paragraph, a table loses its body rows, `- - a` is an empty item and a second item, a container directive runs past the item, and a link reference definition is a paragraph.
-- In an HTML element: a link reference definition is not read.
 - A value that runs over lines (the code of a fence, a comment) keeps the `>` or the indent of each line in a block quote or a list item.
 
 **Blockquotes**, No lazy continuation. Every line inside a blockquote must be explicitly prefixed with `>`. The first line without a `>` prefix terminates the blockquote; there is no implicit inheritance of blockquote context from a previous line. This enables line-local parsing decisions without tracking open paragraphs in parent containers.
