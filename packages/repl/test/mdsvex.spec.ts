@@ -8,6 +8,7 @@ import {
 	TEMPLATE_DIRECTIVES_PREFIX,
 	TEMPLATE_PREFIX,
 	compile_markdown,
+	is_snippet,
 	highlight_for,
 	math_for,
 	is_markdown,
@@ -314,6 +315,26 @@ describe('compile_markdown', () => {
 		expect(() =>
 			compile_markdown('```src=./gone.ts\n```\n', 'App.svx', {})
 		).toThrow('No text was given for ./gone.ts');
+	});
+
+	test('a fence that runs is imported as a sibling the bundler can serve', () => {
+		const { code, snippets } = compile_markdown(
+			'# t\n\n```svelte run\n<b>hi</b>\n```\n',
+			'docs/App.svx',
+			{ components: [{ specifier: 'mdsvex:components', names: ['pre'] }] }
+		);
+		expect(snippets!.size).toBe(1);
+		const [[specifier, text]] = [...snippets!];
+		expect(is_snippet(specifier)).toBe(true);
+		expect(specifier).toMatch(/^\.\/App\.svx\.snippet-[0-9a-f]{10}\.svelte$/);
+		// on the line it has in the document
+		expect(text).toBe('\n\n\n<b>hi</b>');
+		expect(code).toContain(` from "${specifier}";`);
+		expect(code).toContain('module={__snippet_');
+		// an id the repl resolves itself is never one
+		expect(is_snippet('mdsvex:components')).toBe(false);
+		expect(is_snippet('./App.svelte')).toBe(false);
+		expect(compile_markdown('# t\n', 'App.svx', {}).snippets).toBeUndefined();
 	});
 
 	test('maps the svelte output back to the markdown file', () => {

@@ -29,6 +29,7 @@ import {
 import { is_sveltekit_virtual_module } from '../sveltekit';
 import {
 	compile_markdown,
+	is_snippet,
 	highlight_for,
 	math_for,
 	is_markdown,
@@ -142,9 +143,15 @@ async function get_bundle(
 	const is_component = (id: string) =>
 		id.endsWith('.svelte') || is_markdown(id, config);
 
+	// the modules of the fences that run, by id, a document is compiled before its imports resolve
+	const snippets = new Map<string, string>();
+
 	const mdsvex_plugin: Plugin = {
 		name: 'mdsvex',
 		resolveId(importee, importer) {
+			// no file of the workspace, so the resolver of the repl must not look for it
+			if (importer?.startsWith(VIRTUAL) && is_snippet(importee))
+				return new URL(importee, importer).href;
 			if (!importee.startsWith('mdsvex:')) return null;
 
 			const target = resolve_virtual(importee, config);
@@ -152,6 +159,9 @@ async function get_bundle(
 
 			// a package specifier, resolved as if the document imported it
 			return this.resolve(target.specifier, importer, { skipSelf: true });
+		},
+		load(id) {
+			return snippets.get(id) ?? null;
 		},
 		async transform(code, id) {
 			if (uid !== current_id) throw ABORT;
@@ -161,7 +171,7 @@ async function get_bundle(
 			const highlight = await highlight_for(code, config);
 			const math = await math_for(code, config);
 			if (uid !== current_id) throw ABORT;
-			const { code: svelte_code, map } = compile_markdown(
+			const compiled = compile_markdown(
 				code,
 				name,
 				{
@@ -171,7 +181,10 @@ async function get_bundle(
 				},
 				prepared.files
 			);
-			return { code: svelte_code, map: map as SourceMapInput };
+			if (compiled.snippets !== undefined)
+				for (const [specifier, text] of compiled.snippets)
+					snippets.set(new URL(specifier, id).href, text);
+			return { code: compiled.code, map: compiled.map as SourceMapInput };
 		},
 	};
 
