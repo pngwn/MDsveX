@@ -162,12 +162,6 @@ const KNOWN: Known[] = [
 		edited: ['wire', /\]\(\{\)/],
 		example: { site: 'root', source: '<b>[]({)</b> a\n\nx\n' },
 	},
-	{
-		issue: 1072,
-		what: 'a repeated attribute on a tag keeps the last value and loses the first',
-		edited: ['content', /\s([^\s=<>]+)=\S*\s+\1=/],
-		example: { site: 'root', source: '<img alt=q000 alt="">\n' },
-	},
 ];
 
 const RULES: Rule[] = [...INTENDED, ...KNOWN];

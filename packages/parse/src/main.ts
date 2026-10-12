@@ -67,6 +67,7 @@ export type { Emitter } from './opcodes';
 
 // a method load on the source goes megamorphic across its string maps, a call through the builtin still inlines
 const char_code_at = String.prototype.charCodeAt;
+const has_own = Object.prototype.hasOwnProperty;
 const string_slice = String.prototype.slice;
 const string_index_of = String.prototype.indexOf;
 const string_starts_with = String.prototype.startsWith;
@@ -441,6 +442,8 @@ export const enum StateKind {
 	frontmatter = 29,
 	raw_text = 30,
 }
+
+type TagAttribute = string | boolean | { type: 'expression'; value: string };
 
 interface MarkerResult {
 	indent: number;
@@ -4255,6 +4258,7 @@ export class PFMParser {
 		open_tag: {
 			tag: string;
 			attributes: object;
+			repeated: unknown[] | null;
 			end: number;
 			has_attrs: boolean;
 		},
@@ -4262,9 +4266,7 @@ export class PFMParser {
 	): void {
 		const html_id = this.emit_open(NodeKind.html, this.cursor, parent);
 		this.out.attr(html_id, 'tag', open_tag.tag);
-		if (open_tag.has_attrs) {
-			this.out.attr(html_id, 'attributes', open_tag.attributes);
-		}
+		if (open_tag.has_attrs) this.tag_attributes(html_id, open_tag);
 		this.out.set_value_start(html_id, open_tag.end);
 		this.cold.raw_node = html_id;
 		this.cold.raw_needle = '</' + open_tag.tag + '>';
@@ -4281,10 +4283,9 @@ export class PFMParser {
 	 */
 	private try_parse_html_open_tag(pos: number): {
 		tag: string;
-		attributes: Record<
-			string,
-			string | boolean | { type: 'expression'; value: string }
-		>;
+		attributes: Record<string, TagAttribute>;
+		/** each later value of a name the tag writes again, attributes holds the first as html reads it */
+		repeated: [string, TagAttribute][] | null;
 		self_closing: boolean;
 		end: number;
 		has_attrs: boolean;
@@ -4321,10 +4322,8 @@ export class PFMParser {
 
 		const rec = tag_rec;
 		const tag = string_slice.call(source, pos - base, tag_name_end - base);
-		const attributes: Record<
-			string,
-			string | boolean | { type: 'expression'; value: string }
-		> = {};
+		const attributes: Record<string, TagAttribute> = {};
+		let repeated: [string, TagAttribute][] | null = null;
 		const n = tag_rec_n;
 		for (let i = 0; i < n; i += 5) {
 			const kind = rec[i];
@@ -4333,17 +4332,14 @@ export class PFMParser {
 				rec[i + 1] - base,
 				rec[i + 2] - base
 			);
-			if (kind === TAG_ATTR_BOOL) attributes[name] = true;
+			let value: TagAttribute;
+			if (kind === TAG_ATTR_BOOL) value = true;
 			else if (kind === TAG_ATTR_VALUE)
-				attributes[name] = string_slice.call(
-					source,
-					rec[i + 3] - base,
-					rec[i + 4] - base
-				);
+				value = string_slice.call(source, rec[i + 3] - base, rec[i + 4] - base);
 			else if (kind === TAG_ATTR_SHORTHAND)
-				attributes[name] = { type: 'expression', value: name };
+				value = { type: 'expression', value: name };
 			else
-				attributes[name] = {
+				value = {
 					type: 'expression',
 					value: string_slice.call(
 						source,
@@ -4351,14 +4347,27 @@ export class PFMParser {
 						rec[i + 4] - base
 					),
 				};
+			if (i !== 0 && has_own.call(attributes, name)) {
+				if (repeated === null) repeated = [];
+				repeated.push([name, value]);
+			} else attributes[name] = value;
 		}
 		return {
 			tag,
 			attributes,
+			repeated,
 			self_closing: tag_self_closing,
 			end,
 			has_attrs: n > 0,
 		};
+	}
+
+	private tag_attributes(
+		id: number,
+		tag: { attributes: object; repeated: unknown[] | null }
+	): void {
+		this.out.attr(id, 'attributes', tag.attributes);
+		if (tag.repeated !== null) this.out.attr(id, 'repeated', tag.repeated);
 	}
 
 	/**
@@ -4801,6 +4810,7 @@ export class PFMParser {
 		tag: {
 			tag: string;
 			attributes: object;
+			repeated: unknown[] | null;
 			self_closing: boolean;
 			end: number;
 			has_attrs: boolean;
@@ -4839,7 +4849,7 @@ export class PFMParser {
 		if (leaf) {
 			const html_id = this.emit_open(NodeKind.html, this.cursor, para);
 			this.out.attr(html_id, 'tag', tag.tag);
-			if (tag.has_attrs) this.out.attr(html_id, 'attributes', tag.attributes);
+			if (tag.has_attrs) this.tag_attributes(html_id, tag);
 			this.out.attr(html_id, 'self_closing', true);
 			this.emit_close(html_id, tag.end);
 			this.chomp(tag.end, true);
@@ -4848,7 +4858,7 @@ export class PFMParser {
 		this.states.push(StateKind.inline);
 		const html_id = this.emit_open_pending(NodeKind.html, this.cursor, para);
 		this.out.attr(html_id, 'tag', tag.tag);
-		if (tag.has_attrs) this.out.attr(html_id, 'attributes', tag.attributes);
+		if (tag.has_attrs) this.tag_attributes(html_id, tag);
 		this.html_tag_stack.push({ id: html_id, tag: tag.tag });
 		this.node_stack.push(html_id);
 		this.states.push(StateKind.html_element);
@@ -7564,9 +7574,8 @@ export class PFMParser {
 										current_node
 									);
 									this.out.attr(html_id, 'tag', open_tag.tag);
-									if (open_tag.has_attrs) {
-										this.out.attr(html_id, 'attributes', open_tag.attributes);
-									}
+									if (open_tag.has_attrs)
+										this.tag_attributes(html_id, open_tag);
 									this.out.attr(html_id, 'self_closing', true);
 									this.emit_close(html_id, open_tag.end);
 									this.chomp(open_tag.end, true);
@@ -7582,9 +7591,8 @@ export class PFMParser {
 										current_node
 									);
 									this.out.attr(html_id, 'tag', open_tag.tag);
-									if (open_tag.has_attrs) {
-										this.out.attr(html_id, 'attributes', open_tag.attributes);
-									}
+									if (open_tag.has_attrs)
+										this.tag_attributes(html_id, open_tag);
 									this.html_tag_stack.push({ id: html_id, tag: open_tag.tag });
 									this.node_stack.push(html_id);
 									this.states.push(StateKind.html_element);
@@ -9940,7 +9948,7 @@ export class PFMParser {
 				parent
 			);
 			this.out.attr(html_id, 'tag', tag.tag);
-			if (tag.has_attrs) this.out.attr(html_id, 'attributes', tag.attributes);
+			if (tag.has_attrs) this.tag_attributes(html_id, tag);
 			this.html_tag_stack.push({ id: html_id, tag: tag.tag });
 			this.node_stack.push(html_id);
 			this.states.push(StateKind.html_block_element);

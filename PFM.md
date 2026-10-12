@@ -181,6 +181,8 @@ A link that holds only images counts as its images, so a linked image or a row o
 a \{1 + 1\} b
 ```
 
+**Repeated attributes**, A tag that writes one attribute name more than once is still a tag. The first value is the attribute, as in HTML, and the later ones are kept beside it as written, so nothing in the source is dropped. Svelte rejects a repeated attribute when it compiles the component.
+
 **Superscript**, Added, via `^`:
 
 ```markdown
