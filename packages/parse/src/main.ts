@@ -518,6 +518,8 @@ let tag_fail_p = 0;
 // in feed mode what a scan that ran off the end waits for, a closing quote, brace or angle bracket
 let tag_need = '>';
 let tag_self_closing = false;
+// the scan passed a line end, so where the tag ends hangs on the containers open then
+let tag_lines = false;
 const TAG_ATTR_BOOL = 0;
 const TAG_ATTR_VALUE = 1;
 const TAG_ATTR_SHORTHAND = 2;
@@ -812,6 +814,8 @@ interface ColdState {
 	// finished input only, attribute token starts from which an open tag scan fails
 	tag_memo: Uint8Array | null;
 	tag_memo_base: number;
+	/** where the open tag of an element ends, by its start, for those that run over a line */
+	tag_ends: Map<number, number> | null;
 	wait_needle: string;
 	wait_cursor: number;
 	// the stalled block quote fence scan, fence cursor or -1 and the first line it has not passed
@@ -890,6 +894,7 @@ export class PFMParser {
 		brace_memo: null,
 		tag_memo: null,
 		tag_memo_base: 0,
+		tag_ends: null,
 		wait_needle: '',
 		wait_cursor: -1,
 		fence_text: '',
@@ -1744,6 +1749,7 @@ export class PFMParser {
 		cold.bp_start = -1;
 		if (cold.brace_memo !== null) cold.brace_memo = null;
 		if (cold.tag_memo !== null) cold.tag_memo = null;
+		if (cold.tag_ends !== null) cold.tag_ends = null;
 		if (this.wait_chunks.length !== 0) this.wait_chunks.length = 0;
 		cold.raw_node = 0;
 		cold.raw_needle = '';
@@ -4286,6 +4292,8 @@ export class PFMParser {
 		self_closing: boolean;
 		end: number;
 		has_attrs: boolean;
+		/** the tag runs over a line end */
+		lines: boolean;
 	} | null {
 		const source = this.source;
 		const base = this.source_base;
@@ -4356,6 +4364,7 @@ export class PFMParser {
 			self_closing: tag_self_closing,
 			end,
 			has_attrs: n > 0,
+			lines: tag_lines,
 		};
 	}
 
@@ -4403,6 +4412,7 @@ export class PFMParser {
 		if (memo !== null) marks.length = 0;
 		tag_rec_n = 0;
 		tag_need = '>';
+		tag_lines = false;
 		let p = pos + 1;
 		while (
 			p < length &&
@@ -4412,15 +4422,8 @@ export class PFMParser {
 		tag_name_end = p;
 
 		while (p < length) {
-			// skip whitespace
-			while (
-				p < length &&
-				(char_code_at.call(source, p - base) === SPACE ||
-					char_code_at.call(source, p - base) === TAB ||
-					char_code_at.call(source, p - base) === LINEFEED)
-			)
-				p++;
-
+			p = this.tag_space(p);
+			if (p < 0) return -1;
 			if (p >= length) break;
 
 			if (memo !== null) {
@@ -4490,26 +4493,13 @@ export class PFMParser {
 			}
 			const attr_name_end = p;
 
-			// skip whitespace before potential =
-			while (
-				p < length &&
-				(char_code_at.call(source, p - base) === SPACE ||
-					char_code_at.call(source, p - base) === TAB ||
-					char_code_at.call(source, p - base) === LINEFEED)
-			)
-				p++;
+			p = this.tag_space(p);
+			if (p < 0) return -1;
 
 			if (p < length && char_code_at.call(source, p - base) === EQUALS) {
 				p++; // skip =
-				// skip whitespace after =
-				while (
-					p < length &&
-					(char_code_at.call(source, p - base) === SPACE ||
-						char_code_at.call(source, p - base) === TAB ||
-						char_code_at.call(source, p - base) === LINEFEED)
-				)
-					p++;
-
+				p = this.tag_space(p);
+				if (p < 0) return -1;
 				if (p >= length) break;
 
 				const quote = char_code_at.call(source, p - base);
@@ -4575,6 +4565,46 @@ export class PFMParser {
 
 		tag_fail_p = length;
 		return -1; // ran off end of input
+	}
+
+	/**
+	 * the position after the spaces and line ends between two tokens of an open tag
+	 * a new line starts with what its block quotes and list items put before it
+	 * @returns -1 with tag_fail_p set when a line is blank or leaves one of them
+	 */
+	private tag_space(p: number): number {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		for (;;) {
+			let ch = char_code_at.call(source, p - base);
+			while (ch === SPACE || ch === TAB) {
+				ch = char_code_at.call(source, ++p - base);
+			}
+			if (ch !== LINEFEED) return p;
+			const lf = p++;
+			if (this.frames.length !== 0) {
+				const kept = this.line_start(p);
+				if (kept < 0) {
+					tag_fail_p = length;
+					return -1;
+				}
+				if (kept < this.frames.length) {
+					tag_fail_p = lf;
+					return -1;
+				}
+				p = this.line_pos;
+			}
+			ch = char_code_at.call(source, p - base);
+			while (ch === SPACE || ch === TAB) {
+				ch = char_code_at.call(source, ++p - base);
+			}
+			if (ch === LINEFEED) {
+				tag_fail_p = lf;
+				return -1;
+			}
+			tag_lines = true;
+		}
 	}
 
 	/**
@@ -4851,6 +4881,7 @@ export class PFMParser {
 			self_closing: boolean;
 			end: number;
 			has_attrs: boolean;
+			lines: boolean;
 		},
 		close_end: number,
 		parent: number,
@@ -4892,6 +4923,7 @@ export class PFMParser {
 			repeated: unknown[] | null;
 			end: number;
 			has_attrs: boolean;
+			lines: boolean;
 		},
 		parent: number
 	): number {
@@ -4900,6 +4932,7 @@ export class PFMParser {
 		this.out.attr(html_id, 'tag', tag.tag);
 		if (tag.has_attrs) this.tag_attributes(html_id, tag);
 		this.html_tag_stack.push({ id: html_id, tag: tag.tag });
+		if (tag.lines) this.note_tag_end(tag.end);
 		this.node_stack.push(html_id);
 		this.states.push(StateKind.html_element);
 		this.chomp(tag.end, true);
@@ -5180,8 +5213,21 @@ export class PFMParser {
 		);
 	}
 
+	/** the element opening at the cursor has a tag over lines that ends at end */
+	private note_tag_end(end: number): void {
+		const cold = this.cold;
+		if (cold.tag_ends === null) cold.tag_ends = new Map();
+		cold.tag_ends.set(this.cursor, end);
+	}
+
 	/** end of the text html_open_tag_text takes, a tag may span lines */
 	private html_open_tag_end(start: number): number {
+		// a tag over lines is read with the containers open when it opened, not those open now
+		const ends = this.cold.tag_ends;
+		if (ends !== null) {
+			const end = ends.get(start);
+			if (end !== undefined) return end;
+		}
 		const tag = this.try_parse_html_open_tag(start + 1);
 		if (tag !== null) return tag.end;
 		const source = this.source;
@@ -7531,6 +7577,7 @@ export class PFMParser {
 									if (open_tag.has_attrs)
 										this.tag_attributes(html_id, open_tag);
 									this.html_tag_stack.push({ id: html_id, tag: open_tag.tag });
+									if (open_tag.lines) this.note_tag_end(open_tag.end);
 									this.node_stack.push(html_id);
 									this.states.push(StateKind.html_element);
 									this.chomp(open_tag.end, true);
@@ -9893,6 +9940,7 @@ export class PFMParser {
 			this.out.attr(html_id, 'tag', tag.tag);
 			if (tag.has_attrs) this.tag_attributes(html_id, tag);
 			this.html_tag_stack.push({ id: html_id, tag: tag.tag });
+			if (tag.lines) this.note_tag_end(tag.end);
 			this.node_stack.push(html_id);
 			this.states.push(StateKind.html_block_element);
 			this.html_block_depth++;
