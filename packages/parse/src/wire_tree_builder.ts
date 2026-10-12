@@ -279,6 +279,8 @@ export class WireTreeBuilder {
 		if (this.buf.kind_at(last) !== NodeKind.text) return NONE;
 		// a repaired node is only its delimiter, as the batch builder has it
 		if (this.repaired !== null && this.repaired.has(last)) return NONE;
+		// a text node a plugin made holds its own text only
+		if (this.buf.synthetic_at(last)) return NONE;
 		return last;
 	}
 

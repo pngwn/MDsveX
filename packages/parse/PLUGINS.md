@@ -51,6 +51,7 @@ The view exposes:
 - `wrap_inner(type, attrs?)` — inserts a new node between this node and its current children, returns the new node's view
 - `prepend(type, attrs?)` — inserts a new node as the first child, returns the new node's view
 - `append(type, attrs?)` — inserts a new node as the last child, returns the new node's view
+- `prepend('text', text)` and `append('text', text)` — the same for a text node, which takes its text in place of attrs (see [Adding text](#adding-text))
 - `wrap_from(type, attrs?)` — inserts a new node as the parent of this node and of every sibling after it, returns a view of the new node with a `close()` method (see [Grouping siblings](#grouping-siblings-wrap_from))
 
 ### Positions
@@ -96,6 +97,30 @@ Structural mutations (`wrap_inner`, `prepend`, `append`, `wrap_from`) can also b
 A node made by a structural method is flagged as synthetic in the buffer (`NodeBuffer.synthetic_at(index)`, `Cursor.synthetic`). The renderer reads the flag to tell an element a plugin made from one the author typed, and a revoke repair reads it to find the parent the parser made.
 
 When the new node is a directive, its `args` must be an object of strings, which is how the parser sets them and how they reach a component as props. A value of any other type throws a `TypeError` where it is set, in the `attrs` passed to a structural method or in a later `node.attrs.args = ...`.
+
+### Adding text
+
+A text node takes its text as the second argument of `prepend` or `append`:
+
+```js
+link: {
+  parse(node) {
+    return () => {
+      // read out after the link text, and shown to nobody
+      const label = node.append('html', { tag: 'span', attributes: { class: 'visually-hidden' } });
+      label.append('text', ' (opens in a new tab)');
+    };
+  }
+}
+```
+
+- **The text is text, not markup.** A renderer escapes it like any other, so `<`, `&` and a `{` come out as characters.
+- **It needs the text.** `append('text')` throws a `TypeError`, and so does a string given to a node of any other type, whose second argument is its attrs.
+- **It keeps to itself.** Text the parser sends for the same parent afterwards is a node of its own on both builders, so `prepend('text', 'Step 1: ')` in a heading's open handler leaves two text nodes, the plugin's and the heading's.
+- **`text_content` reads it**, on the node and on everything that holds it.
+- **It is revoked like any node a handler made.** When the node whose handler added it is revoked, the text goes.
+
+No handler runs for a text node, the parser's or a plugin's.
 
 ### Grouping siblings: `wrap_from`
 
@@ -508,7 +533,7 @@ Multiple plugins on the same node type are composed into a single function at re
 **What parse plugins can do:**
 - Read any property on any node reachable via traversal
 - Write attrs, type, and type-specific properties on any reachable node
-- Inject synthetic children via `wrap_inner`/`prepend`/`append` on any reachable node
+- Inject synthetic children via `wrap_inner`/`prepend`/`append` on any reachable node, text nodes with their text included
 - Group a node and the siblings after it under a synthetic parent via `wrap_from`
 - Register close callbacks via return value
 - Capture state in closures between open and close

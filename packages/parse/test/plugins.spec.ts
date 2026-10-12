@@ -425,7 +425,7 @@ describe('parse plugins: structural mutations', () => {
 		const plugin: ParsePlugin = {
 			heading: {
 				parse(node) {
-					node.append('text');
+					node.append('text', 'more');
 				},
 			},
 		};
@@ -443,7 +443,7 @@ describe('parse plugins: structural mutations', () => {
 		const plugin: ParsePlugin = {
 			heading: {
 				parse(node) {
-					const prepended = node.prepend('text');
+					const prepended = node.prepend('text', 'more');
 					prepended.attrs.marker = true;
 				},
 			},
