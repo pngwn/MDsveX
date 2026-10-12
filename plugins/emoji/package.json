@@ -1,0 +1,50 @@
+{
+	"name": "@mdsvex/plugin-emoji",
+	"version": "0.0.1",
+	"description": "Emoji shortcodes for mdsvex, :tada: becomes the emoji, with an optional accessible label",
+	"type": "module",
+	"scripts": {
+		"build": "run-s build:tsc build:vite build:copy-dts",
+		"build:tsc": "tsc",
+		"build:vite": "vite build --config vite.config.build.ts",
+		"build:copy-dts": "shx cp tsc/*.d.ts dist/",
+		"build:table": "node scripts/build-table.mjs",
+		"test": "vitest --disableConsoleIntercept",
+		"test:run": "vitest run"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		},
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"dist"
+	],
+	"sideEffects": false,
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pngwn/MDsveX.git",
+		"directory": "plugins/emoji"
+	},
+	"keywords": [
+		"mdsvex",
+		"mdsvex-plugin",
+		"markdown",
+		"emoji",
+		"gemoji",
+		"shortcodes"
+	],
+	"author": "pngwn <hello@pngwn.io>",
+	"license": "MIT",
+	"peerDependencies": {
+		"mdsvex": "^1.0.0-next.2"
+	},
+	"devDependencies": {
+		"gemoji": "8.1.0",
+		"mdsvex": "workspace:^",
+		"npm-run-all2": "^7.0.2",
+		"shx": "^0.3.4"
+	}
+}

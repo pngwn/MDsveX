@@ -10,6 +10,7 @@ Each directory here is one npm package, `@mdsvex/plugin-<name>`, that exports a 
 | `@mdsvex/plugin-external-links` | [`external-links`](./external-links) | `rel` and `target` on every link that leaves the site                    |
 | `@mdsvex/plugin-toc`            | [`toc`](./toc)                       | the headings of a document as data, and a `::toc` that lists them        |
 | `@mdsvex/plugin-page-data`      | [`page-data`](./page-data)           | a reading time, an excerpt, an inferred title and an edit url            |
+| `@mdsvex/plugin-emoji`          | [`emoji`](./emoji)                   | emoji shortcodes, `:tada:` becomes the emoji, with an optional label     |
 
 The other files in this directory are the audit of the remark and rehype plugins these replace.
 
