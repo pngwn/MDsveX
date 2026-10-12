@@ -2328,6 +2328,32 @@ export class PFMParser {
 		this.span_start(cs_id, this.cursor);
 	}
 
+	/**
+	 * the end of the run of plain text from p, every text scan of the parser stops where this one does
+	 * at the first break char or the end of the window, a nul is no break here
+	 */
+	private text_run(p: number): number {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		// the ascii guard keeps the table load in bounds so it never takes out of bounds feedback
+		while (p < length) {
+			const ch = char_code_at.call(source, p - base);
+			if (ch < 128 && TEXT_BREAK[ch] !== 0) break;
+			p++;
+		}
+		return p;
+	}
+
+	/** text_run for a run whose first char is before p, a nul or a break char at p is left for the text state */
+	private text_run_after(p: number): number {
+		if (p >= this.source_end) return p;
+		const c1 = char_code_at.call(this.source, p - this.source_base);
+		return c1 !== 0 && (c1 >= 128 || TEXT_BREAK[c1] === 0)
+			? this.text_run(p + 1)
+			: p;
+	}
+
 	private open_text_run(p0: number, parent: number): void {
 		const source = this.source;
 		const base = this.source_base;
@@ -2337,19 +2363,7 @@ export class PFMParser {
 		this.node_stack.push(t_id);
 		this.states.push(StateKind.text);
 		// as in the inline default, a nul or break char right after p0 is left for the text state
-		let p = p0 + 1;
-		if (p < length) {
-			const c1 = char_code_at.call(source, p - base);
-			if (c1 !== 0 && (c1 >= 128 || TEXT_BREAK[c1] === 0)) {
-				const text_break = TEXT_BREAK;
-				p++;
-				while (p < length) {
-					const ch = char_code_at.call(source, p - base);
-					if (ch < 128 && text_break[ch] !== 0) break;
-					p++;
-				}
-			}
-		}
+		let p = this.text_run_after(p0 + 1);
 		this.cursor = p;
 	}
 
@@ -6247,18 +6261,7 @@ export class PFMParser {
 			// plain content, take the text run of the heading_marker trip and its close of text and heading at the linefeed
 			const t_id = this.emit_open(NodeKind.text, content_start, h_id);
 			this.out.set_value_start(t_id, content_start);
-			let p = content_start + 1;
-			if (p < length) {
-				const c1 = char_code_at.call(source, p - base);
-				if (c1 !== 0 && (c1 >= 128 || TEXT_BREAK[c1] === 0)) {
-					p++;
-					while (p < length) {
-						const ch = char_code_at.call(source, p - base);
-						if (ch < 128 && TEXT_BREAK[ch] !== 0) break;
-						p++;
-					}
-				}
-			}
+			let p = this.text_run_after(content_start + 1);
 			this.cursor = p;
 			if (p < length && char_code_at.call(source, p - base) === LINEFEED) {
 				let ve = p;
@@ -6769,19 +6772,7 @@ export class PFMParser {
 							current_node
 						);
 						this.out.set_value_start(t_id, this.cursor);
-						let p = this.cursor + 1;
-						if (p < length) {
-							const c1 = char_code_at.call(source, p - base);
-							if (c1 !== 0 && (c1 >= 128 || TEXT_BREAK[c1] === 0)) {
-								const text_break = TEXT_BREAK;
-								p++;
-								while (p < length) {
-									const ch = char_code_at.call(source, p - base);
-									if (ch < 128 && text_break[ch] !== 0) break;
-									p++;
-								}
-							}
-						}
+						let p = this.text_run_after(this.cursor + 1);
 						if (
 							p < length &&
 							char_code_at.call(source, p - base) === LINEFEED
@@ -7745,19 +7736,7 @@ export class PFMParser {
 
 							this.states.push(StateKind.text);
 							// skip the plain run the text state would, leaving a break char, nul or the buffer end for it
-							let p = this.cursor + 1;
-							if (p < length) {
-								const c1 = char_code_at.call(source, p - base);
-								if (c1 !== 0 && (c1 >= 128 || TEXT_BREAK[c1] === 0)) {
-									const text_break = TEXT_BREAK;
-									p++;
-									while (p < length) {
-										const ch = char_code_at.call(source, p - base);
-										if (ch < 128 && text_break[ch] !== 0) break;
-										p++;
-									}
-								}
-							}
+							let p = this.text_run_after(this.cursor + 1);
 							this.cursor = p;
 							continue;
 						}
@@ -7923,13 +7902,7 @@ export class PFMParser {
 									this.out.set_value_start(t_id, p);
 									this.node_stack.push(t_id);
 									states.push(StateKind.text);
-									const text_break = TEXT_BREAK;
-									p += 2;
-									while (p < length) {
-										const ch = char_code_at.call(source, p - base);
-										if (ch < 128 && text_break[ch] !== 0) break;
-										p++;
-									}
+									p = this.text_run(p + 2);
 								}
 							}
 							this.cursor = p;
@@ -7971,20 +7944,8 @@ export class PFMParser {
 
 						continue;
 					}
-					// fast scan: skip plain text in a tight loop instead of
-					// re-entering the main loop per character. stops at any
-					// delimiter, escape, line break, or end of buffer.
-					// the ascii guard keeps the table load in bounds so it never takes out of bounds feedback
-					{
-						const text_break = TEXT_BREAK;
-						let p = this.cursor + 1;
-						while (p < length) {
-							const ch = char_code_at.call(source, p - base);
-							if (ch < 128 && text_break[ch] !== 0) break;
-							p++;
-						}
-						this.cursor = p;
-					}
+					// skip plain text in one scan instead of re-entering the main loop per character
+					this.cursor = this.text_run(this.cursor + 1);
 					continue;
 				}
 
@@ -11098,18 +11059,7 @@ export class PFMParser {
 		let start = this.cursor;
 		for (;;) {
 			// the text is emitted once the end of the run decides between a leaf and an open
-			let p = start + 1;
-			if (p < length) {
-				const c1 = char_code_at.call(source, p - base);
-				if (c1 !== 0 && (c1 >= 128 || TEXT_BREAK[c1] === 0)) {
-					p++;
-					while (p < length) {
-						const ch = char_code_at.call(source, p - base);
-						if (ch < 128 && TEXT_BREAK[ch] !== 0) break;
-						p++;
-					}
-				}
-			}
+			let p = this.text_run_after(start + 1);
 			if (p < length && char_code_at.call(source, p - base) === LINEFEED) {
 				const bq = this.block_quote_depth > 0;
 				// at the root the text state holds back on the linefeed, in a list inline does
