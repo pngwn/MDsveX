@@ -149,6 +149,8 @@ export const enum NodeKind {
 	frontmatter = 33,
 	import_statement = 34,
 	directive_label = 35,
+	footnote_reference = 36,
+	footnote_definition = 37,
 }
 
 /**
@@ -243,12 +245,16 @@ export const kind_to_string = (kind: NodeKind): string => {
 			return 'import_statement';
 		case NodeKind.directive_label:
 			return 'directive_label';
+		case NodeKind.footnote_reference:
+			return 'footnote_reference';
+		case NodeKind.footnote_definition:
+			return 'footnote_definition';
 	}
 };
 
 /** reverse mapping from string name to numeric NodeKind. built once at module load. */
 const _string_to_kind = new Map<string, NodeKind>();
-for (let i = 0; i <= 35; i++) {
+for (let i = 0; i <= 37; i++) {
 	_string_to_kind.set(kind_to_string(i as NodeKind), i as NodeKind);
 }
 
@@ -286,6 +292,24 @@ let src_made = false;
 export function take_src(): boolean {
 	if (!src_made) return false;
 	src_made = false;
+	return true;
+}
+
+let footnote_made = false;
+
+/** @internal the parser made a footnote reference or definition */
+export function note_footnote(): void {
+	footnote_made = true;
+}
+
+/**
+ * @internal true once when a parse made a footnote reference or definition
+ * since the last call, so only a document with one is looked through for
+ * them, the note is shared between documents as the note of take_src is
+ */
+export function take_footnote(): boolean {
+	if (!footnote_made) return false;
+	footnote_made = false;
 	return true;
 }
 
@@ -505,6 +529,7 @@ function repair_level(kind: NodeKind): RepairLevel {
 		case NodeKind.svelte_tag:
 		case NodeKind.hard_break:
 		case NodeKind.soft_break:
+		case NodeKind.footnote_reference:
 			return RepairLevel.inline;
 		default:
 			return RepairLevel.block;
@@ -1017,7 +1042,8 @@ export class NodeBuffer {
 			parent_kind === NodeKind.block_quote ||
 			parent_kind === NodeKind.list_item ||
 			parent_kind === NodeKind.svelte_branch ||
-			parent_kind === NodeKind.directive_container;
+			parent_kind === NodeKind.directive_container ||
+			parent_kind === NodeKind.footnote_definition;
 
 		// frontmatter with no closing fence, the parser reads its lines again as blocks
 		if (kind === NodeKind.frontmatter && at_block_level) {

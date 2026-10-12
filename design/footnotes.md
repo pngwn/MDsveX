@@ -44,7 +44,7 @@ A claim[^1], and a second one[^smith].
 - **One compare on the hot path.** `[` already ends a text run. The inline `[` case checks for `^` and hands over to a cold function.
 - **No caret in a label keeps superscript as it is.** `[^TM^]` stays a bracket, a superscript and a bracket.
 - **It wins over a link.** `[^1](url)` is a reference followed by `(url)`. Nothing is lost, since it is not a link today either.
-- **Not in link text or directive text,** where links are already literal. A reference is a link.
+- **Not in directive text or the alt of an image,** where a bracket is already literal. The text of a link holds one, as it holds a link today.
 - **`\[^1]` is literal,** as any escaped bracket is.
 - **The exception: a negated character class in prose,** `[^abc]`, parses as a reference. It has no definition, so the compile fails at it (§2). It has to be escaped, `\[^abc]`, or put in code.
 

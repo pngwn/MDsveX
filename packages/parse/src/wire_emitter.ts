@@ -85,6 +85,8 @@ const KIND_NAMES: string[] = [
 	"frontmatter",
 	"import_statement",
 	"directive_label",
+	"footnote_reference",
+	"footnote_definition",
 ];
 
 /** tracks progressive text emission for a node. */

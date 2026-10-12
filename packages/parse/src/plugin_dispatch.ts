@@ -38,7 +38,7 @@ import type {
 const NONE = 0xffffffff;
 
 /** total number of node kinds in the enum. */
-const NODE_KIND_COUNT = 36;
+const NODE_KIND_COUNT = 38;
 
 /** first synthetic id. high bit flag partitions id space from parser ids. */
 const SYNTHETIC_ID_BASE = 0x40000000;
@@ -153,7 +153,7 @@ function compose(handlers: NodeHandler[], at: number[]): ComposedHandler {
 	}
 }
 
-/** 36 slots, one per NodeKind, null means no handlers */
+/** a slot per NodeKind, null means no handlers */
 type HandlersTable = (ComposedHandler | null)[];
 
 interface RegistrationResult {
@@ -205,7 +205,7 @@ function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
 
 	// compose fused handlers
 	const fused: HandlersTable = new Array(NODE_KIND_COUNT).fill(null);
-	const has_handler = new Uint32Array(2); // 64 bits, need 36
+	const has_handler = new Uint32Array(2); // 64 bits, need 38
 
 	for (let i = 0; i < NODE_KIND_COUNT; i++) {
 		const list = per_kind[i];
@@ -681,6 +681,10 @@ function dispatch_open(
 			return fused[34]!(view, ctx);
 		case 35:
 			return fused[35]!(view, ctx);
+		case 36:
+			return fused[36]!(view, ctx);
+		case 37:
+			return fused[37]!(view, ctx);
 		default:
 			return null;
 	}

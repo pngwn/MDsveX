@@ -52,3 +52,171 @@ export function buf_text_content(
 	}
 	return text;
 }
+
+// must follow NodeKind
+const FOOTNOTE_REFERENCE = 36;
+const FOOTNOTE_DEFINITION = 37;
+
+/** what a document gets wrong about its footnotes, node is the reference or the definition */
+export interface FootnoteProblem {
+	/**
+	 * footnote_undefined is a reference with no definition, footnote_duplicate
+	 * a definition of a label that has one, footnote_unused a definition no
+	 * reference reaches
+	 */
+	code: 'footnote_undefined' | 'footnote_duplicate' | 'footnote_unused';
+	label: string;
+	node: number;
+}
+
+/** the footnotes of a document as it renders them, numbered by first reference */
+export interface FootnoteIndex {
+	/** the label of each footnote, footnote n is at n - 1 */
+	labels: string[];
+	/** the definition node of each footnote, NONE for a label that has none */
+	definitions: number[];
+	/** how many references each footnote has */
+	counts: number[];
+	/**
+	 * by reference node, its footnote number times 65536 plus which reference
+	 * to that footnote it is, from 1, a reference no footnote was numbered for
+	 * is not in it
+	 */
+	references: Map<number, number>;
+	/** in document order, the references of the body before those inside definitions */
+	problems: FootnoteProblem[];
+}
+
+/** the id of the definition of a footnote, by its label so a link to it survives a renumbering */
+export function footnote_id(label: string): string {
+	return 'fn-' + label;
+}
+
+/** the id of a reference, nth is which reference to footnote number it is, from 1 */
+export function footnote_ref_id(number: number, nth: number): string {
+	return nth === 1 ? 'fnref-' + number : 'fnref-' + number + '-' + nth;
+}
+
+/** every id the footnotes of a document take, so nothing else is given one of them */
+export function footnote_ids(index: FootnoteIndex): string[] {
+	const ids: string[] = [];
+	for (let i = 0; i < index.labels.length; i++) {
+		if (index.definitions[i] !== NONE) ids.push(footnote_id(index.labels[i]));
+		for (let nth = 1; nth <= index.counts[i]; nth++)
+			ids.push(footnote_ref_id(i + 1, nth));
+	}
+	return ids;
+}
+
+function footnote_label(buf: NodeBuffer, node: number): string {
+	const label = buf.metadata_at(node)?.label;
+	return typeof label === 'string' ? label : '';
+}
+
+/**
+ * numbers the footnotes of a document by first reference, the references of
+ * the body first and then those inside each definition as it is written out,
+ * null for a document with no footnote node
+ *
+ * a reference with no definition is a problem and gets no number, as a second
+ * definition of a label and a definition nothing refers to get no place, with
+ * optimistic set such a reference is numbered and linked all the same, which
+ * suits a document that is still arriving, and no problem is reported
+ */
+export function footnote_index(
+	buf: NodeBuffer,
+	optimistic = false
+): FootnoteIndex | null {
+	const defined = new Map<string, number>();
+	const problems: FootnoteProblem[] = [];
+	/** reference nodes by the definition they are in, NONE for the body */
+	const held = new Map<number, number[]>();
+	const owners: number[] = [];
+	let owner = NONE;
+	let any = false;
+
+	let node = buf.first_child_at(0);
+	while (node !== NONE) {
+		const kind = buf.kind_at(node) as number;
+		let down = buf.first_child_at(node);
+		if (kind === FOOTNOTE_REFERENCE) {
+			any = true;
+			const refs = held.get(owner);
+			if (refs === undefined) held.set(owner, [node]);
+			else refs.push(node);
+		} else if (kind === FOOTNOTE_DEFINITION) {
+			any = true;
+			const label = footnote_label(buf, node);
+			if (defined.has(label)) {
+				if (!optimistic)
+					problems.push({ code: 'footnote_duplicate', label, node });
+				// nothing in it renders, so nothing in it is numbered
+				down = NONE;
+			} else {
+				defined.set(label, node);
+				if (down !== NONE) {
+					owners.push(owner);
+					owner = node;
+				}
+			}
+		}
+		if (down !== NONE) {
+			node = down;
+			continue;
+		}
+		// the next node in document order
+		for (;;) {
+			const next = buf.next_at(node);
+			const parent = buf.parent_at(node);
+			if (next !== NONE && buf.parent_at(next) === parent) {
+				node = next;
+				break;
+			}
+			if (parent === 0 || parent === NONE) {
+				node = NONE;
+				break;
+			}
+			node = parent;
+			if (node === owner) owner = owners.pop()!;
+		}
+	}
+	if (!any) return null;
+
+	const labels: string[] = [];
+	const definitions: number[] = [];
+	const counts: number[] = [];
+	const references = new Map<number, number>();
+	const numbers = new Map<string, number>();
+	const number_all = (refs: number[] | undefined): void => {
+		if (refs === undefined) return;
+		for (let i = 0; i < refs.length; i++) {
+			const ref = refs[i];
+			const label = footnote_label(buf, ref);
+			let number = numbers.get(label);
+			if (number === undefined) {
+				const definition = defined.get(label);
+				if (definition === undefined && !optimistic) {
+					problems.push({ code: 'footnote_undefined', label, node: ref });
+					continue;
+				}
+				number = labels.push(label);
+				definitions.push(definition === undefined ? NONE : definition);
+				counts.push(0);
+				numbers.set(label, number);
+			}
+			references.set(ref, number * 65536 + ++counts[number - 1]);
+		}
+	};
+	number_all(held.get(NONE));
+	// a definition may refer to a footnote the body does not, which then follows
+	for (let i = 0; i < definitions.length; i++) {
+		if (definitions[i] !== NONE) number_all(held.get(definitions[i]));
+	}
+	if (!optimistic) {
+		for (const [label, definition] of defined) {
+			if (!numbers.has(label))
+				problems.push({ code: 'footnote_unused', label, node: definition });
+		}
+	}
+	return { labels, definitions, counts, references, problems };
+}
