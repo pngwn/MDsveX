@@ -16,7 +16,7 @@
 		"@mdsvex/plugin-anchors": "workspace:*",
 		"@mdsvex/repl": "workspace:*",
 		"@twinkleplop/theme-ayu": "^0.1.3",
-		"mdsvex": "1.0.0-next.1"
+		"mdsvex": "workspace:*"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^6.1.1",
