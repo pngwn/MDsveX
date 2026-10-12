@@ -306,25 +306,38 @@ function note_info(start: number, end: number): void {
 }
 
 /**
- * @internal true when an info string noted since the last call holds text,
- * so a compile that looks for a key in fence meta only looks through a tree
- * that has it, source is the string the last parse read, also true when
- * there were too many info strings to note, the notes are shared between
- * documents as the note of take_src is
+ * @internal true when an info string noted since the last call holds text
+ * or other, so a compile that looks for a key in fence meta only looks
+ * through a tree that has it, source is the string the last parse read, also
+ * true when there were too many info strings to note, the notes are shared
+ * between documents as the note of take_src is
  */
-export function take_info(source: string, text: string): boolean {
+export function take_info(
+	source: string,
+	text: string,
+	other?: string
+): boolean {
 	// the search stays out of line, most documents have no info string
-	return info_count !== 0 && info_search(source, text);
+	return info_count !== 0 && info_search(source, text, other);
 }
 
-function info_search(source: string, text: string): boolean {
+function info_search(
+	source: string,
+	text: string,
+	other: string | undefined
+): boolean {
 	const count = info_count;
 	info_count = 0;
 	if (count > INFO_CAP) return true;
 	for (let i = 0; i < count; i += 2) {
-		const last = info_spans[i + 1] - text.length;
+		const end = info_spans[i + 1];
+		const last = end - text.length;
 		for (let at = info_spans[i]; at <= last; at++)
 			if (source.startsWith(text, at)) return true;
+		if (other === undefined) continue;
+		const other_last = end - other.length;
+		for (let at = info_spans[i]; at <= other_last; at++)
+			if (source.startsWith(other, at)) return true;
 	}
 	return false;
 }
