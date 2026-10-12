@@ -344,6 +344,10 @@ MARK[ASTERISK] = 1;
 MARK[UNDERSCORE] = 1;
 MARK[TILDE] = 1;
 
+// the first characters block_start has an arm for, any other opens a paragraph
+const BLOCK_START = new Uint8Array(128);
+for (const char of '#`*-_<>|{[:!+0123456789')
+	BLOCK_START[char.charCodeAt(0)] = 1;
 const TEXT_BREAK = new Uint8Array(128);
 TEXT_BREAK[LINEFEED] = 1;
 TEXT_BREAK[BACKSLASH] = 1;
@@ -6696,294 +6700,11 @@ export class PFMParser {
 							continue;
 						}
 
-						case OCTOTHERP: {
-							if (!this.start_heading(current_node)) break main_loop;
-							continue;
-						}
-
-						case BACKTICK: {
-							this.start_fence(current_node);
-							continue;
-						}
-
-						case ASTERISK:
-						case DASH:
-						case UNDERSCORE: {
-							// distinguish thematic break (`---`) from list (`- `)
-							// from paragraph (`-text`). stall only while the line
-							// could still be a thematic break (marker + ws chars
-							// only). as soon as we see a non-marker/ws char, we
-							// can commit to list or paragraph speculatively.
-							if (this.could_be_thematic_break(this.cursor, code)) {
-								break main_loop;
-							}
-							if (this.is_thematic_break_start(this.cursor)) {
-								let line_end = this.cursor;
-								while (
-									line_end < length &&
-									char_code_at.call(source, line_end - base) !== LINEFEED
-								) {
-									line_end++;
-								}
-								const break_end = line_end < length ? line_end + 1 : line_end;
-
-								this.emit_bare_leaf(
-									NodeKind.thematic_break,
-									this.cursor,
-									current_node,
-									break_end
-								);
-
-								this.chomp(break_end, true);
-								continue;
-							}
-							if (code !== UNDERSCORE) {
-								const marker = this.try_parse_list_marker(this.cursor);
-								if (marker) {
-									this.start_list(marker, current_node);
-									continue;
-								}
-							}
-							this.states.push(StateKind.paragraph);
-							const para_id = this.emit_open(
-								NodeKind.paragraph,
-								this.cursor,
-								current_node
-							);
-							this.node_stack.push(para_id);
-							continue;
-						}
-
-						case OPEN_ANGLE_BRACKET: {
-							// in incremental mode, stall if the tag might be incomplete
-							// (no closing > visible in the available source).
-							if (
-								!this.finished &&
-								string_index_of.call(source, '>', this.cursor + 1 - base) === -1
-							) {
-								this.wait_for('>');
-								break main_loop;
-							}
-
-							// autolinks require a scheme prefix (<scheme:...>).
-							// only uri autolinks trigger paragraph wrapping at block level.
-							const blk_uri = this.try_parse_uri_autolink(this.cursor + 1);
-							if (blk_uri !== -1) {
-								this.states.push(StateKind.paragraph);
-								const auto_para = this.emit_open(
-									NodeKind.paragraph,
-									this.cursor,
-									current_node
-								);
-								this.node_stack.push(auto_para);
-								continue;
-							}
-
-							// try html comment at block level
-							const blk_comment = this.try_parse_html_comment(this.cursor + 1);
-							if (blk_comment === false) {
-								if (this.cursor + 3 < length) this.wait_for('-->');
-								break main_loop;
-							}
-							if (blk_comment) {
-								const c_id = this.emit_open(
-									NodeKind.html_comment,
-									this.cursor,
-									current_node
-								);
-								this.out.text(
-									c_id,
-									blk_comment.content_start,
-									blk_comment.content_end,
-									NodeKind.html_comment
-								);
-								this.emit_close(c_id, blk_comment.end);
-								this.chomp(blk_comment.end, true);
-								continue;
-							}
-
-							// try html opening tag at block level
-							const blk_tag = this.try_parse_html_open_tag(this.cursor + 1);
-							if (blk_tag === null && this.tag_wait) break main_loop;
-							if (blk_tag) {
-								// an element that closes on its line is inline in a paragraph, close_end is past its close
-								const close_end =
-									blk_tag.self_closing || this.is_void_tag(blk_tag.tag)
-										? blk_tag.end
-										: this.is_raw_text_tag(blk_tag.tag)
-											? 0
-											: this.closes_on_line(blk_tag.tag, blk_tag.end);
-								if (close_end === -1) {
-									this.wait_for('\n');
-									break main_loop;
-								}
-								if (close_end > 0) {
-									this.open_spec_tag(blk_tag, close_end, current_node, false);
-								} else if (this.is_raw_text_tag(blk_tag.tag)) {
-									this.open_raw_text(blk_tag, current_node);
-								} else {
-									const html_id = this.emit_open_pending(
-										NodeKind.html,
-										this.cursor,
-										current_node
-									);
-									this.out.attr(html_id, 'tag', blk_tag.tag);
-									if (blk_tag.has_attrs) {
-										this.out.attr(html_id, 'attributes', blk_tag.attributes);
-									}
-									this.html_tag_stack.push({ id: html_id, tag: blk_tag.tag });
-									this.node_stack.push(html_id);
-									this.states.push(StateKind.html_block_element);
-									this.html_block_depth++;
-									this.chomp(blk_tag.end, true);
-								}
-								continue;
-							}
-
-							// not html - start paragraph
-							this.states.push(StateKind.paragraph);
-							const blk_para_id = this.emit_open(
-								NodeKind.paragraph,
-								this.cursor,
-								current_node
-							);
-							this.node_stack.push(blk_para_id);
-							continue;
-						}
-
-						case CLOSE_ANGLE_BRACKET: {
-							let p = this.cursor + 1;
-							if (p < length && char_code_at.call(source, p - base) === SPACE)
-								p++;
-
-							this.block_quote_depth++;
-							const bq_id = this.emit_open(
-								NodeKind.block_quote,
-								this.cursor,
-								current_node
-							);
-							this.node_stack.push(bq_id);
-							this.states.push(StateKind.block_quote);
-							this.chomp(p, true);
-							continue;
-						}
-
-						case PIPE: {
-							const result = this.try_start_table(current_node);
-							if (result === false) break main_loop; // hold back
-							if (result === true) continue; // table started
-							// not a table - fall through to paragraph
-							this.states.push(StateKind.paragraph);
-							const para_id = this.emit_open(
-								NodeKind.paragraph,
-								this.cursor,
-								current_node
-							);
-							this.node_stack.push(para_id);
-							continue;
-						}
-
-						case OPEN_BRACE: {
-							// svelte block opener: {#tag expr}
-							if (!this.finished) {
-								const probe = this.probe_matching_brace(this.cursor + 1);
-								if (probe === -1) break main_loop;
-							}
-							const token = this.try_parse_svelte_block_token(this.cursor);
-							if (token && token.kind === '#') {
-								this.start_svelte_block(token, current_node);
-								continue;
-							}
-							// not a block - start paragraph (inline will handle {expr})
-							if (this.at_svelte_tag(code)) {
-								this.open_spec_para(current_node, false);
-								continue;
-							}
-							this.states.push(StateKind.paragraph);
-							const brace_para = this.emit_open(
-								NodeKind.paragraph,
-								this.cursor,
-								current_node
-							);
-							this.node_stack.push(brace_para);
-							continue;
-						}
-
-						case OPEN_SQUARE_BRACKET: {
-							// need a complete line for link ref definition detection
-							if (
-								!this.finished &&
-								string_index_of.call(source, '\n', this.cursor - base) === -1
-							) {
-								break main_loop;
-							}
-							const def_end = this.try_parse_link_ref_definition(this.cursor);
-							if (def_end === -2) break main_loop;
-							if (def_end >= 0) {
-								this.chomp(def_end, true);
-								continue;
-							}
-							if (this.unwrap_images) {
-								const image = this.open_image_para(current_node, false);
-								if (image < 0) break main_loop;
-								if (image > 0) continue;
-							}
-							this.states.push(StateKind.paragraph);
-							const ref_para = this.emit_open(
-								NodeKind.paragraph,
-								this.cursor,
-								current_node
-							);
-							this.node_stack.push(ref_para);
-							continue;
-						}
-
-						case COLON: {
-							// try_parse_block_directive stalls internally while the
-							// prefix is still consistent with a directive opener, so
-							// non-directive lines dispatch to paragraph eagerly
-							const dir = this.try_parse_block_directive(this.cursor);
-							if (dir === false) break main_loop;
-							if (dir !== null) {
-								this.start_block_directive(dir, current_node);
-								continue;
-							}
-							this.states.push(StateKind.paragraph);
-							const colon_para = this.emit_open(
-								NodeKind.paragraph,
-								this.cursor,
-								current_node
-							);
-							this.node_stack.push(colon_para);
-							continue;
-						}
-
-						// its own case keeps the option off the default path
-						case EXCLAMATION_MARK: {
-							if (this.unwrap_images) {
-								const image = this.open_image_para(current_node, false);
-								if (image < 0) break main_loop;
-								if (image > 0) continue;
-							}
-							this.states.push(StateKind.paragraph);
-							const bang_para = this.emit_open(
-								NodeKind.paragraph,
-								this.cursor,
-								current_node
-							);
-							this.node_stack.push(bang_para);
-							continue;
-						}
-
 						default: {
-							if (code === PLUS || (code >= 48 && code <= 57)) {
-								if (!this.finished && this.plus_marker_pending(this.cursor))
-									break main_loop;
-								const marker = this.try_parse_list_marker(this.cursor);
-								if (marker) {
-									this.start_list(marker, current_node);
-									continue;
-								}
+							if (code < 128 && BLOCK_START[code] !== 0) {
+								const started = this.block_start(code, current_node);
+								if (started === -1) break main_loop;
+								if (started === 1) continue;
 							}
 							this.states.push(StateKind.paragraph);
 							const para_id = this.emit_open(
@@ -10748,81 +10469,9 @@ export class PFMParser {
 			return false;
 		}
 
-		// dispatch block-level content
-		if (code === OCTOTHERP) {
-			if (!this.start_heading(current_node)) return true;
-			return false;
-		}
-
-		if (code === BACKTICK) {
-			this.start_fence(current_node);
-			return false;
-		}
-
-		if (code === CLOSE_ANGLE_BRACKET) {
-			let p = this.cursor + 1;
-			if (p < length && char_code_at.call(source, p - base) === SPACE) p++;
-			this.block_quote_depth++;
-			const bq_id = this.emit_open(
-				NodeKind.block_quote,
-				this.cursor,
-				current_node
-			);
-			this.node_stack.push(bq_id);
-			this.states.push(StateKind.block_quote);
-			this.chomp(p, true);
-			return false;
-		}
-
+		const started = this.block_start(code, current_node);
+		if (started !== 0) return started === -1;
 		if (code === OPEN_ANGLE_BRACKET) {
-			if (
-				!this.finished &&
-				string_index_of.call(source, '>', this.cursor + 1 - base) === -1
-			) {
-				this.wait_for('>');
-				return true;
-			}
-			const blk_tag = this.try_parse_html_open_tag(this.cursor + 1);
-			if (blk_tag === null && this.tag_wait) return true;
-			if (blk_tag) {
-				// an element that closes on its line is inline in a paragraph, close_end is past its close
-				const close_end =
-					blk_tag.self_closing || this.is_void_tag(blk_tag.tag)
-						? blk_tag.end
-						: this.is_raw_text_tag(blk_tag.tag)
-							? 0
-							: this.closes_on_line(blk_tag.tag, blk_tag.end);
-				if (close_end === -1) {
-					this.wait_for('\n');
-					return true;
-				}
-				if (close_end > 0) {
-					this.open_spec_tag(
-						blk_tag,
-						close_end,
-						current_node,
-						this.in_phrasing(current_node)
-					);
-				} else if (this.is_raw_text_tag(blk_tag.tag)) {
-					this.open_raw_text(blk_tag, current_node);
-				} else {
-					const html_id = this.emit_open_pending(
-						NodeKind.html,
-						this.cursor,
-						current_node
-					);
-					this.out.attr(html_id, 'tag', blk_tag.tag);
-					if (blk_tag.has_attrs) {
-						this.out.attr(html_id, 'attributes', blk_tag.attributes);
-					}
-					this.html_tag_stack.push({ id: html_id, tag: blk_tag.tag });
-					this.node_stack.push(html_id);
-					this.states.push(StateKind.html_block_element);
-					this.html_block_depth++;
-					this.chomp(blk_tag.end, true);
-				}
-				return false;
-			}
 			const close = this.try_parse_html_close_tag(this.cursor + 1);
 			if (close) {
 				const opener_idx = this.find_html_opener(close.tag);
@@ -10831,77 +10480,6 @@ export class PFMParser {
 					return false;
 				}
 			}
-		}
-
-		if (code === ASTERISK || code === DASH || code === UNDERSCORE) {
-			if (this.could_be_thematic_break(this.cursor, code)) return true;
-			if (this.is_thematic_break_start(this.cursor)) {
-				let line_end = this.cursor;
-				while (
-					line_end < length &&
-					char_code_at.call(source, line_end - base) !== LINEFEED
-				)
-					line_end++;
-				this.emit_bare_leaf(
-					NodeKind.thematic_break,
-					this.cursor,
-					current_node,
-					line_end
-				);
-				this.chomp(line_end, true);
-				return false;
-			}
-			if (code !== UNDERSCORE) {
-				const marker = this.try_parse_list_marker(this.cursor);
-				if (marker) {
-					this.start_list(marker, current_node);
-					return false;
-				}
-			}
-		}
-
-		if (code === PLUS || (code >= 48 && code <= 57)) {
-			if (!this.finished && this.plus_marker_pending(this.cursor)) return true;
-			const marker = this.try_parse_list_marker(this.cursor);
-			if (marker) {
-				this.start_list(marker, current_node);
-				return false;
-			}
-		}
-
-		if (code === OPEN_SQUARE_BRACKET) {
-			const def_end = this.try_parse_link_ref_definition(this.cursor);
-			if (def_end === -2) return true;
-			if (def_end >= 0) {
-				this.chomp(def_end, true);
-				return false;
-			}
-		}
-
-		if (code === COLON) {
-			const dir = this.try_parse_block_directive(this.cursor);
-			if (dir === false) return true;
-			if (dir !== null) {
-				this.start_block_directive(dir, current_node);
-				return false;
-			}
-		}
-
-		if (code === PIPE) {
-			const result = this.try_start_table(current_node);
-			if (result === false) return true;
-			if (result === true) return false;
-		}
-
-		// default: start a paragraph
-		if (this.at_svelte_tag(code)) {
-			this.open_spec_para(current_node, false);
-			return false;
-		}
-		if (this.unwrap_images) {
-			const image = this.open_image_para(current_node, false);
-			if (image < 0) return true;
-			if (image > 0) return false;
 		}
 		this.states.push(StateKind.paragraph);
 		const svelte_para = this.emit_open(
@@ -11710,6 +11288,8 @@ export class PFMParser {
 						char_code_at.call(source, line_end - base) !== LINEFEED
 					)
 						line_end++;
+					// at the root the break takes its linefeed
+					if (line_end < length && this.states.length === 1) line_end++;
 					this.emit_bare_leaf(
 						NodeKind.thematic_break,
 						this.cursor,
@@ -11751,6 +11331,11 @@ export class PFMParser {
 			}
 
 			case OPEN_SQUARE_BRACKET: {
+				if (
+					!this.finished &&
+					string_index_of.call(source, '\n', this.cursor - base) === -1
+				)
+					return -1;
 				const def_end = this.try_parse_link_ref_definition(this.cursor);
 				if (def_end === -2) return -1;
 				if (def_end >= 0) {

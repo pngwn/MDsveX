@@ -1,9 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import {
-	get_all_child_kinds,
-	get_content,
-} from './utils';
+import { get_all_child_kinds, get_content } from './utils';
 
 import { parse_markdown_svelte } from '../src/main';
 
@@ -103,7 +100,8 @@ describe('svelte blocks - {#each}', () => {
 	});
 
 	test('each with else', () => {
-		const input = '{#each items as item}\nhas items\n{:else}\nno items\n{/each}';
+		const input =
+			'{#each items as item}\nhas items\n{:else}\nno items\n{/each}';
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
@@ -154,8 +152,7 @@ describe('svelte blocks - {#snippet}', () => {
 
 describe('svelte blocks - nesting', () => {
 	test('nested if blocks', () => {
-		const input =
-			'{#if a}\n{#if b}\ninner\n{/if}\n{/if}';
+		const input = '{#if a}\n{#if b}\ninner\n{/if}\n{/if}';
 		const { nodes } = parse_markdown_svelte(input);
 
 		const root = nodes.get_node();
@@ -204,5 +201,26 @@ describe('svelte blocks - mixed with markdown', () => {
 		const root = nodes.get_node();
 		const kinds = get_all_child_kinds(nodes, root.index);
 		expect(kinds).toEqual(['code_fence']);
+	});
+});
+
+describe('a comment in a svelte block', () => {
+	const kinds_in_branch = (input: string) => {
+		const { nodes } = parse_markdown_svelte(input);
+		const block = nodes.get_node(nodes.get_node().children[0]);
+		return get_all_child_kinds(nodes, block.children[0]).filter(
+			(kind) => kind !== 'line_break'
+		);
+	};
+
+	test.each([
+		['on its line', '{#if a}\n<!-- b -->\n{/if}\n', ['html_comment']],
+		[
+			'over lines, before a paragraph',
+			'{#if a}\n<!-- b\nc -->\nd\n{/if}\n',
+			['html_comment', 'paragraph'],
+		],
+	])('%s is a block as at the root: %j', (_, input, kinds) => {
+		expect(kinds_in_branch(input)).toEqual(kinds);
 	});
 });

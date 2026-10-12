@@ -24,8 +24,7 @@ root
         line_break
       svelte_branch tag="else"
         line_break
-        paragraph
-          html_comment " this block renders when photos.length === 0 "
+        html_comment " this block renders when photos.length === 0 "
         line_break
         html tag="p"
           text "loading..."
