@@ -144,24 +144,6 @@ const KNOWN: Known[] = [
 			/^<(\w+)[^\n]*<\1/.test(inline_text([seen.piece])),
 		example: { site: 'table_cell', source: '<b>`<b>`</b>' },
 	},
-	{
-		issue: 1076,
-		what: 'a paragraph that opens at a tag loses its wrapper when a backtick in an autolink or a link destination pairs with one after the element',
-		edited: ['placed', /`[>)]<\/\w+>`/],
-		example: { site: 'root', source: '<Badge><ht:`></Badge>`\n' },
-	},
-	{
-		issue: 1071,
-		what: 'a paragraph that opens at a tag loses its wrapper when fed, with a brace as a link destination in it',
-		edited: ['fed', /\]\(\{\)/],
-		example: { site: 'root', source: '<b>[]({)</b> a\n\nx\n' },
-	},
-	{
-		issue: 1071,
-		what: 'the same over the wire',
-		edited: ['wire', /\]\(\{\)/],
-		example: { site: 'root', source: '<b>[]({)</b> a\n\nx\n' },
-	},
 ];
 
 const RULES: Rule[] = [...INTENDED, ...KNOWN];
