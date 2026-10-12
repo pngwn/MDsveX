@@ -456,11 +456,7 @@ function escape_text_at(
 		const bits = esc_bits;
 		if (bits === null || (bits[i >>> 3] & (1 << (i & 7))) !== 0) {
 			const s = c.prebuilt_at(i);
-			if (s !== undefined)
-				// text a plugin wrote is all characters, a brace or a reference too
-				return code || (c.words[i * W.stride + W.pending] & 2) !== 0
-					? escape_code(s)
-					: escape_text_html(s);
+			if (s !== undefined) return stored_text(c, i, s, code);
 		}
 	}
 	// empty cases must match Cursor.text
@@ -485,6 +481,14 @@ function escape_text_at(
 		return brace_text(c, i, vs, ve, first);
 	if (m >= ve) return src.slice(vs, ve);
 	return escape_hits(src, vs, ve, m);
+}
+
+/** a stored string, apart so escape_text_at stays small enough for v8 to inline */
+function stored_text(c: Cursor, i: number, s: string, code: boolean): string {
+	// text a plugin wrote is all characters, a brace or a reference too
+	return code || (c.words[i * W.stride + W.pending] & 2) !== 0
+		? escape_code(s)
+		: escape_text_html(s);
 }
 
 /** the text of a value that opens at a brace a backslash escaped */

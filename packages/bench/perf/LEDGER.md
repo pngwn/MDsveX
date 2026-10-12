@@ -313,7 +313,8 @@ again.
   a branch of it that a plain render never takes made it 509, and with nothing
   else changed `render` read -1.5% and `micro/directive:render` -7.6% in both
   passes of `core --modes render,render-mapped --repeat 2`. `quick` has no
-  `render` mode and read level. Check the length with
+  `render` mode and read level. The check for text a plugin wrote took it to
+  479 the same way, until it moved into `stored_text`. Check the length with
   `node --print-bytecode --print-bytecode-filter=<name>` when the function
   changes, and move new work behind a call.
 - **Fed modes.** `quick` has none. Use `--suite core --modes incremental`.
