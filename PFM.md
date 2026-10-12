@@ -29,6 +29,8 @@ A markdown variant for mdsvex. Uses CommonMark as baseline. Goals: remove ambigu
 
 The definition must appear **before** the reference is used. Forward references are a parse error. This enables true streaming and incremental parsing.
 
+A label cannot start with `^`. `[^note]: text` is how a footnote definition is written, so the line is never a link reference definition and stays text.
+
 **Headings**, Only ATX style (`#` prefix). Setext style (`===`/ `---` underlines) removed. Trailing `#` characters are treated as heading text, not syntax.
 
 **Lists**, Non-sequential numbers supported (`11.`, `27.` etc.). Tight vs. loose is determined locally and per-list: no blank lines between items = tight (no `<p>` wrappers), all items separated by blank lines = loose (with `<p>` wrappers). Mixed blank lines are treated as loose. No cascade behaviour, a blank line in one list never affects another.

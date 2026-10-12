@@ -6044,6 +6044,10 @@ export class PFMParser {
 		if (char_code_at.call(source, p - base) !== OPEN_SQUARE_BRACKET) return -1;
 		p++;
 
+		// a caret starts no link label, it is how a footnote is written
+		if (p >= length) return this.finished ? -1 : -2;
+		if (char_code_at.call(source, p - base) === CARET) return -1;
+
 		// parse label - no line breaks, no empty label
 		const label_start = p;
 		while (p < length) {
