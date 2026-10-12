@@ -214,8 +214,13 @@ export class WireTreeBuilder {
 		let idx = this.id_to_index[id];
 		if (idx === undefined) return;
 
-		// text of a wrapped parent goes to its innermost open wrapper
-		if (this.dispatcher) idx = this.dispatcher.resolve(idx);
+		const dispatcher = this.dispatcher;
+		if (dispatcher !== null) {
+			// a fence with an empty info string is sent none, its text comes next
+			if (dispatcher.holding) dispatcher.unhold(this.buf);
+			// text of a wrapped parent goes to its innermost open wrapper
+			idx = dispatcher.resolve(idx);
+		}
 
 		const kind = this.buf.kind_at(idx);
 		const strings = this.buf._strings;
@@ -295,10 +300,15 @@ export class WireTreeBuilder {
 			this.buf.set_metadata(idx, make_meta(key, value));
 		}
 
-		// only a directive gets a name, its open handlers and the handlers bound to it start here
 		const dispatcher = this.dispatcher;
-		if (dispatcher !== null && key === 'name' && dispatcher.wants_name()) {
-			dispatcher.dispatch_name(idx, value, this.buf);
+		if (dispatcher === null) return;
+		// only a directive gets a name, its open handlers and the handlers bound to it start here
+		if (key === 'name') {
+			if (dispatcher.wants_name())
+				dispatcher.dispatch_name(idx, value, this.buf);
+		} else if (key === 'info' && dispatcher.holds(idx)) {
+			// the info string of a fence is whole, its open handlers waited for it
+			dispatcher.unhold(this.buf);
 		}
 	}
 

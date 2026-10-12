@@ -429,7 +429,12 @@ export class TreeBuilder implements Emitter {
 				} else {
 					nodes.set_metadata(idx, make_meta(key, value));
 				}
-				if (this.dispatcher !== null && key === 'name') this.named(idx, value);
+				if (this.dispatcher !== null) {
+					if (key === 'name') this.named(idx, value);
+					// the info string of a fence is whole, its open handlers waited for it
+					else if (key === 'info_end' && this.dispatcher.holds(idx))
+						this.unheld(this.dispatcher);
+				}
 				break;
 			}
 		}
@@ -443,6 +448,15 @@ export class TreeBuilder implements Emitter {
 		const size = nodes._size;
 		dispatcher.dispatch_name(idx, name, nodes);
 		// a scope opened, or the parse handler of the directive made a link
+		this.refresh(dispatcher);
+		if (nodes._size !== size) this.pushed();
+	}
+
+	/** the open handlers of a held node ran, they may have pushed nodes and made links */
+	private unheld(dispatcher: PluginDispatcher): void {
+		const nodes = this.nodes;
+		const size = nodes._size;
+		dispatcher.unhold(nodes);
 		this.refresh(dispatcher);
 		if (nodes._size !== size) this.pushed();
 	}

@@ -41,7 +41,8 @@ The view exposes:
 - `text_content` — flattened text of all descendants (populated as children arrive)
 - `parent`, `first_child`, `last_child`, `next`, `prev` — lazy traversal, each returns a view for the corresponding node or `null`
 - `position` — where the node is in the source, see [Positions](#positions)
-- Type-specific properties surfaced directly (`depth` for headings, `lang` for code blocks, etc.)
+- Type-specific properties surfaced directly (`depth` for headings, `info` for code fences, etc.)
+- `info` — the info string of a code fence, its language and everything after it, see [The info string of a fence](#the-info-string-of-a-fence). `lang` is the same string under its older name.
 
 **Writable properties**
 - `attrs` — a key-value bag for arbitrary attributes. Proxied so setter calls flow through to the SoA and trigger dirty marking.
@@ -297,6 +298,23 @@ directive_container: {
 - **A block directive has its `args` too**, as the parser sends them ahead of the name. The `(key=val)` list of an inline directive follows its closing bracket, so its open handlers see no args and its close callback sees them.
 - **Nothing else changes for the node.** It has no children yet, and it is placed [as any handled node is](#where-a-node-is-placed), after its handlers ran.
 - **With an emitter of your own**, a directive that is sent no name runs its open handlers without one, before the next node opens or anything closes.
+
+### The info string of a fence
+
+The open handlers of a `code_fence` wait as well, for its info string, which the parser sends before any of its code. So `node.info` is whole in the open handler, and that is the place to read it:
+
+```js
+code_fence: {
+  parse(node) {
+    node.info; // 'ts [app.ts] {1,3}', '' for a fence with none
+    // nothing of the code has arrived, node.text_content is ''
+  }
+}
+```
+
+- **It is the whole line after the fence**, the language and what follows it. The parser does not split it. In `mdsvex`, `fence_meta(node.info)` from `mdsvex/compile` reads it the way a compile does: the language, a `[name]` or `title="..."`, a caption, `src=`, and the `key=value` pairs and flags.
+- **While the document streams**, the handlers run once the line of the opening fence is complete. Over the wire a fence with an empty info string is sent none, and its handlers run when its first text or its close arrives.
+- **Any other node has no `info`**, it reads `undefined`.
 
 ### Where a Node Is Placed
 

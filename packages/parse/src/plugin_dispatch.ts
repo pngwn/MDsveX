@@ -745,7 +745,10 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	/** the node whose handler or close callback is running */
 	private running = NONE;
 
-	/** a directive whose open handlers wait for its name, the parser sends it next */
+	/**
+	 * a node whose open handlers wait for what the parser sends next, a
+	 * directive for its name, a code fence for its info string
+	 */
 	private held = NONE;
 
 	/** the tree is complete, a wrapper has no later children to take */
@@ -1334,14 +1337,16 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 
 	/**
 	 * dispatch fused plugin handlers on node open, those of a directive wait
-	 * for its name, which the parser sends before anything else of the node
+	 * for its name and those of a code fence for its info string, which the
+	 * parser sends before anything else of the node
 	 */
 	dispatch_open(buf_idx: number, kind: NodeKind, buf: NodeBuffer): void {
 		if (this.held !== NONE) this.unhold(buf);
 		if (
 			kind === NodeKind.directive_container ||
 			kind === NodeKind.directive_leaf ||
-			kind === NodeKind.directive_inline
+			kind === NodeKind.directive_inline ||
+			kind === NodeKind.code_fence
 		) {
 			this.held = buf_idx;
 			return;
@@ -1349,8 +1354,22 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		this.run_open(buf_idx, kind, buf);
 	}
 
-	/** the open handlers of a directive that got no name run without one */
-	private unhold(buf: NodeBuffer): void {
+	/** true while the open handlers of this node wait */
+	holds(buf_idx: number): boolean {
+		return this.held === buf_idx;
+	}
+
+	/** true while the open handlers of any node wait */
+	get holding(): boolean {
+		return this.held !== NONE;
+	}
+
+	/**
+	 * what the held node waited for arrived, or something else did, a
+	 * directive sent no name and a fence sent no info string run their open
+	 * handlers without one
+	 */
+	unhold(buf: NodeBuffer): void {
 		const held = this.held;
 		this.held = NONE;
 		this.run_open(held, buf.kind_at(held), buf);

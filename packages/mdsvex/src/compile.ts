@@ -72,6 +72,8 @@ export type { ComponentSource };
 export type { FrontmatterOptions };
 export { FrontmatterError } from './frontmatter';
 export { PluginDataError } from './plugin_data';
+export { fence_meta } from './code_meta';
+export type { FenceMeta, MetaInfo } from './code_meta';
 export type { PluginData };
 export { DirectiveError } from '@mdsvex/render/html-cursor';
 export type {
