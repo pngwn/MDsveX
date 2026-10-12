@@ -149,7 +149,7 @@ describe('top level external scripts', () => {
 	it('render as svelte:element', () => {
 		expect(render(embed + '\n' + embed)).toBe(
 			(
-				'<blockquote class="twitter-tweet"><p>Hi</p>by H</blockquote> ' +
+				'<blockquote class="twitter-tweet"><p>Hi</p>by H</blockquote>' +
 				'<svelte:element this={"script"} async src="https://platform.twitter.com/widgets.js" charset="utf-8"></svelte:element>'
 			).repeat(2)
 		);

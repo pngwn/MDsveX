@@ -210,7 +210,7 @@ describe('a tag left open at the start of a line', () => {
 	it('keeps the text after a delimiter on the line of a closed block tag once', () => {
 		for (const [name, nodes] of every_tree('<div>x</div> *a b\n')) {
 			expect(joined_tree(nodes, '<div>x</div> *a b\n'), name).toBe(
-				lines('html div', '  "x"', '" *a b"', 'line_break')
+				lines('html div', '  "x"', 'paragraph', '  "*a b"', 'line_break')
 			);
 		}
 	});

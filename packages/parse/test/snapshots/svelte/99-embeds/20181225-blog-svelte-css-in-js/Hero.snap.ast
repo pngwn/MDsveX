@@ -12,8 +12,9 @@ root
           line_break
           html tag="div" class=[object Object]
             text "CSS"
-          soft_break
-          text "				in JS"
+          line_break
+          paragraph
+            text "in JS"
           line_break
         line_break
         paragraph

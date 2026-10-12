@@ -118,24 +118,6 @@ const KNOWN: Known[] = [
 		example: { site: 'table_cell', source: '<!-- a --> b' },
 	},
 	{
-		issue: 1002,
-		what: 'text after a block level element that closes on its line has no paragraph',
-		drop: (seen) =>
-			// the line after it is text of the same paragraph, a list item passes it on to the line after the list
-			(seen.piece.join === '\n' &&
-				seen.before !== null &&
-				last_leaf(seen.before).kind === 'html_line') ||
-			// an element that is no block does not end a paragraph, the line in it is then inline
-			(is(seen, 'html_element') &&
-				seen.piece.join === '\n' &&
-				seen.piece.kids.some((kid) => kid.kind === 'html_line')),
-		edited: [
-			'placed',
-			/<\/(div|p|section|details)>|<(div|p|section|details)\/>/,
-		],
-		example: { site: 'root', source: '<div>a</div>\nb\n' },
-	},
-	{
 		issue: 1062,
 		what: 'an element that holds its own name again is not seen to close on its line',
 		drop: (seen) =>

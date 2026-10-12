@@ -13,8 +13,7 @@ root
     html tag="slot" name="header"
     line_break
     html tag="hr" self_closing=true
-    soft_break
-    text "	"
+    line_break
     html tag="slot"
     line_break
     html tag="hr" self_closing=true

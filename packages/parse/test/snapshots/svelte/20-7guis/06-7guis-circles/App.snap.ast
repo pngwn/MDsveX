@@ -39,8 +39,7 @@ root
           mustache "selected.cx"
           text ", "
           mustache "selected.cy"
-        soft_break
-        text "		"
+        line_break
         html tag="input" type="range" value=[object Object] on:input=[object Object] self_closing=true
         line_break
       line_break
