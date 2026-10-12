@@ -138,6 +138,33 @@ function check_args(kind: NodeKind, args: unknown): void {
 }
 
 /**
+ * what prepend and append take after the type, the text of a text node, the
+ * attrs of any other, a text node with no text throws, as does text for another type
+ */
+function content_of(
+	kind: NodeKind,
+	type: string,
+	given: Record<string, any> | string | undefined
+): Record<string, any> | undefined {
+	if (kind === NodeKind.text) {
+		if (typeof given !== 'string') {
+			throw new TypeError(
+				`a text node takes its text, as in append('text', 'some text'), got ` +
+					(given === undefined ? 'none' : typeof given)
+			);
+		}
+		return undefined;
+	}
+	if (typeof given === 'string') {
+		throw new TypeError(
+			`only a text node takes text, the second argument of a ${type} node is its attrs`
+		);
+	}
+	if (given !== undefined) check_args(kind, given.args);
+	return given;
+}
+
+/**
  * per-dispatch identity cache for node views.
  * ensures two handlers accessing the same node get the same view object.
  * short-lived: created before handler invocation, cleared after.
@@ -415,7 +442,8 @@ export class NodeView {
 
 		// leaf text node
 		if (kind === NodeKind.text) {
-			const s = this._text_source.get_string(idx);
+			// the text of a wire node, of a repair, or of a node a plugin made
+			const s = buf._strings[idx];
 			if (s !== undefined) return s;
 			const vs = buf.value_start_at(idx);
 			const ve = buf.value_end_at(idx);
@@ -585,50 +613,61 @@ export class NodeView {
 	}
 
 	/**
-	 * insert a new node as the first child of this node.
-	 * returns a view for the new node.
+	 * insert a new node as the first child of this node, a text node takes
+	 * its text in place of attrs, returns a view for the new node
+	 *
+	 * @example
+	 * node.prepend('text', 'Step 1: ');
 	 */
-	prepend(type: string, attrs?: Record<string, any>): NodeView {
+	prepend(type: 'text', text: string): NodeView;
+	prepend(type: string, attrs?: Record<string, any>): NodeView;
+	prepend(type: string, given?: Record<string, any> | string): NodeView {
 		const kind_num = string_to_kind(type);
 		if (kind_num === undefined) throw new Error(`Unknown node type: ${type}`);
 
 		const buf = this._live();
 		const idx = this._index;
-		if (attrs !== undefined) check_args(kind_num, attrs.args);
+		const attrs = content_of(kind_num, type, given);
 		const prior_first_child = buf.first_child_at(idx);
 
+		let new_idx: number;
 		if (prior_first_child === NONE) {
 			// no existing children: push is equivalent to prepend
-			const new_idx = buf.push_synthetic(kind_num, 0, idx, 0, attrs);
-			this._undo.record_prepend(idx, new_idx, prior_first_child);
-			return this._cache.get(new_idx)!;
+			new_idx = buf.push_synthetic(kind_num, 0, idx, 0, attrs);
+		} else {
+			// allocate unlinked and manually wire as first child
+			new_idx = buf.push_synthetic(kind_num, 0, NONE, 0, attrs);
+			buf.set_parent(new_idx, idx);
+			buf.set_next(new_idx, prior_first_child);
+			buf.set_prev(prior_first_child, new_idx);
+			buf.set_first_child(idx, new_idx);
 		}
-
-		// allocate unlinked and manually wire as first child
-		const new_idx = buf.push_synthetic(kind_num, 0, NONE, 0, attrs);
-		buf.set_parent(new_idx, idx);
-		buf.set_next(new_idx, prior_first_child);
-		buf.set_prev(prior_first_child, new_idx);
-		buf.set_first_child(idx, new_idx);
+		if (typeof given === 'string') buf.own_strings()[new_idx] = given;
 
 		this._undo.record_prepend(idx, new_idx, prior_first_child);
 		return this._cache.get(new_idx)!;
 	}
 
 	/**
-	 * insert a new node as the last child of this node.
-	 * returns a view for the new node.
+	 * insert a new node as the last child of this node, a text node takes its
+	 * text in place of attrs, returns a view for the new node
+	 *
+	 * @example
+	 * link.append('text', ' (opens in a new tab)');
 	 */
-	append(type: string, attrs?: Record<string, any>): NodeView {
+	append(type: 'text', text: string): NodeView;
+	append(type: string, attrs?: Record<string, any>): NodeView;
+	append(type: string, given?: Record<string, any> | string): NodeView {
 		const kind_num = string_to_kind(type);
 		if (kind_num === undefined) throw new Error(`Unknown node type: ${type}`);
 
 		const buf = this._live();
 		const idx = this._index;
-		if (attrs !== undefined) check_args(kind_num, attrs.args);
+		const attrs = content_of(kind_num, type, given);
 		const prior_last_child = buf.last_child_at(idx);
 
 		const new_idx = buf.push_synthetic(kind_num, 0, idx, 0, attrs);
+		if (typeof given === 'string') buf.own_strings()[new_idx] = given;
 
 		this._undo.record_append(idx, new_idx, prior_last_child);
 		return this._cache.get(new_idx)!;
