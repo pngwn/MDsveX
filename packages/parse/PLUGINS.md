@@ -41,6 +41,7 @@ The view exposes:
 - `text_content` — flattened text of all descendants (populated as children arrive)
 - `parent`, `first_child`, `last_child`, `next`, `prev` — lazy traversal, each returns a view for the corresponding node or `null`
 - `position` — where the node is in the source, see [Positions](#positions)
+- `pending` — `true` while the parser may still revoke the node, see [Pending nodes](#pending-nodes)
 - Type-specific properties surfaced directly (`depth` for headings, `info` for code fences, etc.)
 - `info` — the info string of a code fence, its language and everything after it, see [The info string of a fence](#the-info-string-of-a-fence). `lang` is the same string under its older name.
 
@@ -76,6 +77,28 @@ heading: {
 - **`position` is `undefined` for a node a plugin made**, which has no source, **and over the wire**. The wire format carries text and no offsets, so a tree built by `WireTreeBuilder` cannot say where a node was.
 
 The line table is built from the source the first time a position is read, so a plugin that reads none pays nothing.
+
+### Pending nodes
+
+The parser opens some nodes on a guess: an emphasis before it has seen the closer, a link before its destination, an inline directive before its closing bracket, an element before its close tag, the paragraph of a list item while the list can still be tight. `node.pending` is `true` for such a node until the parser settles it.
+
+```js
+link: {
+  parse(node) {
+    node.pending; // true, the destination may never come
+    return () => {
+      // false, this link closed, so it can be wrapped
+      if (!node.pending) node.wrap_from('html', { tag: 'span' }).close();
+    };
+  }
+}
+```
+
+- **`wrap_from` and `close()` throw exactly when the node whose handler or close callback is running is pending.** Read `node.pending` there to know. Every other method works on a pending node, and is undone if it is revoked.
+- **In a close callback it is `false` for a node that closed for good**, which is every close but two: a delimiter with no closer, which the parser closes where its block ends and then revokes, and a pending paragraph, which a commit or a revoke settles later. Those two still read `true`.
+- **It is the node you ask about.** `node.parent.pending` in the handler of an emphasis inside a tight list item is the paragraph's.
+- **Not pending is not never revoked.** The parser also revokes a few nodes it opened as certain: a table cell that turns out to be a merge marker, a code span that never closes, frontmatter with no closing fence.
+- **In a sequential pass nothing is pending**, and neither is a node a plugin made.
 
 ### Mutation Semantics
 
@@ -138,7 +161,7 @@ wrapper.close();
 - **The node must be the last child of its parent.** A later sibling may already have been rendered, and nothing moves a node that has gone downstream, so `wrap_from` throws for a node that has one. In an open handler the node in hand always qualifies. An earlier sibling does not, and neither does an open wrapper: the node in hand sits after it until its handlers return.
 - **Nesting.** A wrapper opened while another is open goes inside it. Closing the outer one closes the inner ones. To get siblings, close the open wrapper first.
 - **With `wrap_inner`.** A `wrap_inner` wrapper of the parent holds the `wrap_from` wrappers like any other child, whichever came first.
-- **Not from the handler of a pending node.** `wrap_from` and `close()` throw when the node whose handler or close callback is running is pending (an emphasis before its closer, a tight list paragraph, an unclosed html element). Undoing them moves nodes, and pending nodes are revoked often. Headings and block directives are never pending.
+- **Not from the handler of a pending node.** `wrap_from` and `close()` throw when the node whose handler or close callback is running is pending (an emphasis before its closer, a tight list paragraph, an unclosed html element). Undoing them moves nodes, and pending nodes are revoked often. Headings and block directives are never pending. `node.pending` says which it is, see [Pending nodes](#pending-nodes).
 - **In a sequential pass** the tree is complete, so the wrapper holds that node alone and is closed at once.
 - **Spans.** The wrapper starts where the node it wrapped starts. It has no source of its own, so it ends there too once it is closed. The renderers cache a top level block once it has an end, so a closed wrapper at the root is not rendered again.
 
