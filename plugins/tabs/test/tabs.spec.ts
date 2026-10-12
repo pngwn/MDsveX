@@ -442,22 +442,35 @@ describe('revokes', () => {
 		expect(warnings(':::tabs\ntext')).toEqual(['no_tabs']);
 	});
 
-	test('an element that never closes inside a tab is text in its panel', () => {
-		expect(tree(':::tabs\n## One\n\n<div>\n\ninside\n\n## Two\n:::\n')).toEqual(
+	test('a heading inside an element that never closes starts no tab', () => {
+		const source = ':::tabs\n## One\n\n<div>\n\ninside\n\n## Two\n:::\n';
+		expect(warnings(source)).toEqual([]);
+		expect(tree(source)).toEqual([
+			'root',
 			[
-				'root',
-				[
-					TABS,
-					tab(
-						0,
-						['text:One'],
-						['paragraph', 'text:<div>'],
-						['paragraph', 'text:inside']
-					),
-					tab(1, ['text:Two']),
-				],
-			]
-		);
+				TABS,
+				tab(
+					0,
+					['text:One'],
+					['paragraph', 'text:<div>'],
+					['paragraph', 'text:inside'],
+					['heading', 'text:Two']
+				),
+			],
+		]);
+	});
+
+	test('an element that closes inside a tab stays in its panel', () => {
+		expect(
+			tree(':::tabs\n## One\n\n<div>\n\ninside\n\n</div>\n\n## Two\n:::\n')
+		).toEqual([
+			'root',
+			[
+				TABS,
+				tab(0, ['text:One'], ['html', ['paragraph', 'text:inside']]),
+				tab(1, ['text:Two']),
+			],
+		]);
 	});
 });
 
