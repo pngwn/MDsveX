@@ -9,6 +9,8 @@ export type NoteKind =
 	| "highlight_language"
 	| "escape_svelte"
 	| "smart_punctuation"
+	| "plugin"
+	| "external_links"
 	| "manual";
 
 /** something the migration leaves for a person to change */

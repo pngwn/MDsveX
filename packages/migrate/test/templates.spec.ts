@@ -9,14 +9,14 @@ import {
 	migrate_frontmatter,
 } from "../src/main";
 
-/** without the smart_punctuation option every 0.x config gains, and its note */
+/** without the smart_punctuation option every 0.x config gains, its note and the external links note */
 function migrate_config(source: string): ReturnType<typeof migrate_whole_config> {
 	const { code, notes } = migrate_whole_config(source);
 	return {
 		code: code
 			.replace(/\{ smart_punctuation: true \}/, "{}")
 			.replace(/,\s*smart_punctuation: true(?!,)|\s*smart_punctuation: true,?/, ""),
-		notes: notes.filter((n) => n.kind !== "smart_punctuation"),
+		notes: notes.filter((n) => n.kind !== "smart_punctuation" && n.kind !== "external_links"),
 	};
 }
 
