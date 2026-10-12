@@ -80,6 +80,25 @@ describe('escape_text', () => {
 		expect(out).toContain('\\&copy;');
 	});
 
+	it('writes a brace a backslash escaped as a reference, svelte would read it as an expression', () => {
+		const texts = (source: string): string[] => {
+			const { c } = cursor_for(source);
+			return indices(c)
+				.filter((idx) => (c.move_to(idx), c.kind === 1))
+				.map((idx) => (c.move_to(idx), escape_text(c)));
+		};
+		expect(texts('a \\{1 & 2\\} b\n')).toEqual([
+			'a ',
+			'&#123;1 &amp; 2',
+			'&#125; b',
+		]);
+		expect(texts('\\{\\}\n')).toEqual(['&#123;', '&#125;']);
+		expect(texts('\\{&copy;\\&\n')).toEqual(['&#123;&copy;', '&amp;']);
+		expect(texts('a \\\\\\{b\n')).toEqual(['a ', '\\', '&#123;b']);
+		expect(texts('a \\\\{ b\n')).toEqual(['a ', '\\', '{ b']);
+		expect(texts('a { b\n')).toEqual(['a ', '{ b']);
+	});
+
 	it('follows the cursor to a new source', () => {
 		const a = cursor_for(DOCS[0]);
 		const b = cursor_for(DOCS[2]);

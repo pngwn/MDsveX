@@ -306,6 +306,111 @@ describe('braces in code (#839)', () => {
 	});
 });
 
+describe('braces escaped with a backslash (#995)', () => {
+	test('the paragraph from the issue', () => {
+		expect(compile_all('a \\{1 + 1\\} b')).toBe('<p>a &#123;1 + 1&#125; b</p>');
+		expect(shown_in('a \\{1 + 1\\} b', 'p')).toEqual(['a {1 + 1} b']);
+	});
+
+	test('text that is not javascript compiles', () => {
+		expect(shown_in('\\{ some code \\}', 'p')).toEqual(['{ some code }']);
+		expect(shown_in('a \\{ b', 'p')).toEqual(['a { b']);
+		expect(shown_in('\\{\\}', 'p')).toEqual(['{}']);
+		expect(shown_in('\\{#if x}', 'p')).toEqual(['{#if x}']);
+	});
+
+	test.each([
+		['# h \\{x\\}', 'h1', 'h {x}'],
+		['- \\{x\\}', 'li', '{x}'],
+		['> \\{x\\}', 'p', '{x}'],
+		['*\\{x\\}*', 'strong', '{x}'],
+		['_\\{x\\}_', 'em', '{x}'],
+		['[\\{x\\}](/u)', 'a', '{x}'],
+		['| a |\n|-|\n| \\{x\\} |', 'td', '{x}'],
+		['| \\{x\\} |\n|-|', 'th', '{x}'],
+		['<span>\\{x\\}</span>', 'span', '{x}'],
+		['<div>\n\n\\{x\\}\n\n</div>', 'p', '{x}'],
+		['a\\\n\\{x\\}', 'p', 'a\n{x}'],
+	])('%s', (raw, tag, text) => {
+		expect(shown_in(raw, tag)).toEqual([text]);
+	});
+
+	test('in the text a replaced element gets', () => {
+		const p: ComponentSource[] = [{ specifier: './c.js', names: ['p'] }];
+		const nodes = svelte_nodes(compile_all('a \\{x\\} b', p));
+		const [el] = find_all(nodes, 'P_MDSVEX_G');
+		expect(shown(el)).toBe('a {x} b');
+	});
+
+	test('in the text of a directive', () => {
+		const nodes = svelte_nodes(compile_all(':::note\n\\{x\\}\n:::'));
+		expect(find_all(nodes, 'p').map(shown)).toEqual(['{x}']);
+	});
+
+	test('in the alt of an image', () => {
+		const code = compile_all('![a \\{x\\} b](/u.png)');
+		expect(code).toBe('<p><img src="/u.png" alt="a &#123;x&#125; b" /></p>');
+		const [img] = find_all(svelte_nodes(code), 'img');
+		expect(attr_value(img, 'alt')).toBe('a {x} b');
+	});
+
+	test('an unescaped brace is still an expression', () => {
+		expect(compile_all('a {1 + 1} b')).toBe('<p>a {1 + 1} b</p>');
+		expect(compile_all('a \\\\{x} b')).toBe('<p>a \\{x} b</p>');
+		expect(shown_in('<script>let x = 1;</script>\n\na \\\\{x} b', 'p')).toEqual(
+			['a \\<expr x> b']
+		);
+	});
+
+	test('a brace after an escaped backslash and an escaped one', () => {
+		expect(compile_all('a \\\\\\{x\\} b')).toBe('<p>a \\&#123;x&#125; b</p>');
+	});
+
+	test('random text keeps every expression and no other brace', () => {
+		let seed = 995;
+		const rand = () => {
+			seed = (seed + 0x6d2b79f5) | 0;
+			let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+			t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+			return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+		};
+		const pieces = [
+			'a',
+			' ',
+			'\\{',
+			'\\}',
+			'{x}',
+			'\\\\',
+			'*',
+			'_',
+			'\n',
+			'# ',
+			'- ',
+		];
+		for (let i = 0; i < 300; i++) {
+			let raw = 'a';
+			let expressions = 0;
+			const length = 1 + Math.floor(rand() * 8);
+			for (let k = 0; k < length; k++) {
+				const piece = pieces[Math.floor(rand() * pieces.length)];
+				if (piece === '{x}') expressions++;
+				raw += piece;
+			}
+			const code = compile_all(raw);
+			const rest = code.split('{x}');
+			expect(rest.length - 1, JSON.stringify(raw)).toBe(expressions);
+			expect(rest.join(''), JSON.stringify(raw)).not.toMatch(/[{}]/);
+		}
+	});
+
+	test('the other ways to write a brace are as they were', () => {
+		expect(compile_all('&#123; &lbrace; `{`')).toBe(
+			'<p>&#123; &lbrace; <code>&#123;</code></p>'
+		);
+		expect(compile_all("{'{'}")).toBe("<p>{'{'}</p>");
+	});
+});
+
 describe('braces in highlighted code', async () => {
 	const twinkleplop = create_highlight({
 		languages: await load_default_languages(),
