@@ -110,6 +110,49 @@ describe('vite plugin math', () => {
 		expect(parsed).toEqual(['a', 'b', 'c', 'd']);
 	});
 
+	test('the document that loads the renderer reports each warning once', async () => {
+		const { transform, warned } = plugin({
+			parse_plugins: [
+				{
+					name: 'p',
+					heading: {
+						parse: (node, ctx) => ctx.warn('h', 'a heading', node),
+					},
+				},
+			],
+		});
+		const doc = '# a\n\n' + MATH + '\n```nope\nb\n```\n';
+		await transform(doc);
+		const messages = () => warned.map((w) => w[0]);
+		expect(messages()).toEqual(['a heading', expect.stringContaining('nope')]);
+		// an unknown language warns once per file, the first render must not use that up
+		transform(doc);
+		expect(messages()).toEqual([
+			'a heading',
+			expect.stringContaining('nope'),
+			'a heading',
+		]);
+	});
+
+	test('a document that only renders again warns once without a wait for code', async () => {
+		const { transform, warned } = plugin({
+			highlight: false,
+			parse_plugins: [
+				{
+					name: 'p',
+					heading: {
+						parse: (node, ctx) => ctx.warn('h', 'a heading', node),
+					},
+				},
+			],
+		});
+		const first = transform('# a\n\n' + MATH);
+		// the render that is thrown away says nothing
+		expect(warned).toEqual([]);
+		await first;
+		expect(warned).toEqual([['a heading', { line: 1, column: 0 }]]);
+	});
+
 	test('a kept parse waits out other documents without parse plugins too', async () => {
 		const { transform } = plugin({ highlight: false });
 		const first = transform('# a\n\n' + MATH);
