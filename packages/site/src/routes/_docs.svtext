@@ -1373,13 +1373,14 @@ The first-party plugins are packages of their own, named `@mdsvex/plugin-*`. Eac
 import { mdsvex } from 'mdsvex';
 import { anchors } from '@mdsvex/plugin-anchors';
 import { external_links } from '@mdsvex/plugin-external-links';
+import { page_data } from '@mdsvex/plugin-page-data';
 import { steps } from '@mdsvex/plugin-steps';
 import { tabs } from '@mdsvex/plugin-tabs';
 import { toc } from '@mdsvex/plugin-toc';
 
 mdsvex({
 	heading_ids: true,
-	plugins: [steps(), tabs(), anchors(), external_links(), toc()]
+	plugins: [steps(), tabs(), anchors(), external_links(), toc(), page_data()]
 });
 ```
 
@@ -1390,6 +1391,7 @@ mdsvex({
 | [`@mdsvex/plugin-anchors`](docs#anchors) | a link to itself on every heading that has an id |
 | [`@mdsvex/plugin-external-links`](docs#external-links) | `rel` and `target` on every link that leaves the site |
 | [`@mdsvex/plugin-toc`](docs#table-of-contents) | the headings of a document as data, and a `::toc` directive that lists them |
+| [`@mdsvex/plugin-page-data`](docs#page-data) | a reading time, an excerpt, an inferred title and an edit url for each document |
 
 ### Steps
 
@@ -1772,6 +1774,75 @@ It takes `min_depth` and `max_depth` to narrow the list, a `label` snippet, and 
 ```
 
 The brackets are its label, `::toc(max_depth=2)` narrows it, and any other arg is an attribute of the `<nav>`. It lists the whole document, the headings after it as well: the plugin fills it in once the document is parsed and its ids are set. While a document streams, nothing is shown in its place until the stream ends. A `::toc` with nothing to list renders nothing, and the build says so.
+
+### Page data
+
+```bash
+pnpm add --save-dev @mdsvex/plugin-page-data@next
+```
+
+```js
+import { page_data } from '@mdsvex/plugin-page-data';
+
+mdsvex({ plugins: [page_data()] });
+```
+
+Works out facts about each document and leaves them in its [plugin data](docs#plugin-data), under one key:
+
+```js
+import Post, { plugin_data } from './moving-to-runes.svx';
+
+plugin_data.page;
+// {
+//   title: 'Moving to runes',
+//   excerpt: 'Signals changed how I write components. Here is what I learned.',
+//   words: 842,
+//   minutes: 5,
+//   edit_url: 'https://github.com/you/site/edit/main/src/routes/blog/moving-to-runes.svx'
+// }
+```
+
+`metadata` is not touched, it stays exactly the frontmatter. Each part can be turned off, and a key is only there when its part found something:
+
+```ts
+page_data({
+	reading_time: boolean | { words_per_minute: number } = true,
+	excerpt: boolean | { max_length: number, ellipsis: string } = true,
+	title: boolean = true,
+	edit_url: string | { base: string, root: string } | ((filename: string) => string | undefined)
+});
+```
+
+- **`words`** counts the prose: headings, paragraphs, lists, quotes and table cells. Code blocks, image alts, comments, expressions and attributes are not counted, and code inside a sentence is. Chinese, Japanese and Korean are written without spaces, so each Han ideograph, hiragana and hangul syllable is a word, the rule of the `reading-time` package.
+- **`minutes`** is `words` over `words_per_minute`, 200 by default, to two decimals and then rounded up, as `reading-time` shows it. One word is 1 minute and 202 words are 2.
+- **`excerpt`** is the first paragraph, or everything before a `<!-- more -->` comment when the document has one. It is plain text: a parse plugin sees the document before it is rendered, so there is no HTML to give. `max_length` cuts a longer one where a word ends and adds the `ellipsis`.
+- **`title`** is the text of the first `#` heading, and is only set when the frontmatter has no `title`.
+- **`edit_url`** is off until you give it a base. The url is the base and the path of the document relative to `root`, the working directory by default:
+
+```js
+page_data({ edit_url: 'https://github.com/you/site/edit/main/' });
+```
+
+The date a document was last changed is not here. It comes from git or the file system, which a parse plugin can't read.
+
+A [`?data` import](docs#plugin-data) gives all of it without rendering the document, which is what a page that lists posts wants:
+
+```svelte
+<!-- src/routes/blog/+page.svelte -->
+<script>
+	const posts = import.meta.glob('./*/+page.svx', { query: '?data', eager: true });
+</script>
+
+<ul>
+	{#each Object.entries(posts) as [path, { metadata, plugin_data }] (path)}
+		<li>
+			<a href="/blog/{path.split('/')[1]}">{metadata?.title ?? plugin_data?.page?.title}</a>
+			<span>{plugin_data?.page?.minutes} min read</span>
+			<p>{plugin_data?.page?.excerpt}</p>
+		</li>
+	{/each}
+</ul>
+```
 
 `compile()` takes every plugin the same way, through its `plugins` option.
 
