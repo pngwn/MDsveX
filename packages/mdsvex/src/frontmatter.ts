@@ -89,9 +89,13 @@ function lines_before(source: string, offset: number): number {
 // svelte and preprocessors find script and style tags even inside strings
 const TAG = /<(?=\/?(?:script|style))/gi;
 
-export function metadata_export(metadata: Record<string, unknown>): string {
-	let json = JSON.stringify(metadata);
+/** json as the code of a script */
+export function script_json(value: unknown): string {
+	const json = JSON.stringify(value);
 	// < only occurs in a json string, where \u003c reads the same
-	if (json.indexOf('<') !== -1) json = json.replace(TAG, '\\u003c');
-	return 'export const metadata = ' + json + ';';
+	return json.indexOf('<') === -1 ? json : json.replace(TAG, '\\u003c');
+}
+
+export function metadata_export(metadata: Record<string, unknown>): string {
+	return 'export const metadata = ' + script_json(metadata) + ';';
 }

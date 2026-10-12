@@ -1051,6 +1051,7 @@ function wrap_hoist_begin(c: Cursor, buf: NodeBuffer): void {
 		'<' +
 		WRAP_LOCAL +
 		(wrap_metadata ? ' {...metadata}' : '') +
+		(wrap_data === '' ? '' : ' {' + wrap_data + '}') +
 		(props === '' ? '' : ' {...' + props + '}') +
 		'>';
 	// no script and no import to start one, the render starts with one
@@ -1089,9 +1090,24 @@ function module_begin(buf: NodeBuffer, code: string): void {
 	}
 }
 
+/**
+ * module_begin for a fold render, which meets the module code at the
+ * frontmatter, a document with neither that nor a module script starts with it
+ */
+function module_begin_fold(buf: NodeBuffer, code: string): void {
+	module_begin(buf, code);
+	if (hoist_module !== -1) return;
+	const n = buf._n;
+	const first = n[W.first_child];
+	if (first === Slot.NONE || (n[first * W.stride] & 0xff) !== K.FRONTMATTER)
+		comp_prefix += module_script();
+}
+
 function module_end(): void {
 	module_code = '';
 	hoist_module = -1;
+	// module_begin_fold may have left the script there
+	comp_prefix = '';
 }
 
 /** the module script with the module code, for a document with none */
@@ -5135,6 +5151,8 @@ export interface TemplateWrapper {
 	specifier: string;
 	/** true spreads the module script metadata export as props */
 	metadata: boolean;
+	/** a module script export passed as the prop of its name, after the metadata */
+	data?: string;
 }
 
 const WRAP_LOCAL = 'Template_MDSVEX';
@@ -5156,18 +5174,22 @@ const WRAP_HOISTED = new Set([
 // set by wrap_begin, '' when the render wraps nothing
 let wrap_spec = '';
 let wrap_metadata = false;
+let wrap_data = '';
 let wrap_open = '';
 let wrap_mode: number = CM.FOLD;
 
 function wrap_begin(wrapper: TemplateWrapper, mode: number): void {
 	wrap_spec = wrapper.specifier;
 	wrap_metadata = wrapper.metadata;
+	const data = wrapper.data;
+	if (data !== undefined) wrap_data = data;
 	wrap_mode = mode;
 }
 
 function wrap_end(): void {
 	wrap_spec = '';
 	wrap_metadata = false;
+	wrap_data = '';
 	wrap_open = '';
 	wrap_mode = CM.FOLD;
 	comp_lines = '';
@@ -5390,7 +5412,7 @@ export class CursorHTMLRenderer {
 				if (extra) extra_begin(imports);
 				if (this.strict_directives) dir_strict = true;
 				hoist_begin(c, buf, extra);
-				if (code) module_begin(buf, code);
+				if (code) module_begin_fold(buf, code);
 				prebuilt_begin(buf);
 				this.html = render_folded(c);
 			} finally {
@@ -5558,7 +5580,10 @@ export class CursorHTMLRenderer {
 			if (this.strict_directives) dir_strict = true;
 			wrap_begin(this.template!, mode);
 			wrap_hoist_begin(c, buf);
-			if (code) module_begin(buf, code);
+			if (code) {
+				if (sink === null) module_begin_fold(buf, code);
+				else module_begin(buf, code);
+			}
 			prebuilt_begin(buf);
 			if (sink === null) {
 				fold_out = comp_prefix;

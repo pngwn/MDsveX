@@ -209,7 +209,7 @@ In `mdsvex` these join the `warnings` of the compile, with `plugin` set to the n
 - **A count kept by reassigning** (`ctx.data.n = (ctx.data.n ?? 0) + 1`) is exact when the node that is revoked wrote last. When an earlier writer is revoked and a later one stays, the later value still includes the earlier one. A sequential pass has no such case.
 - **A plugin that left nothing has no key** in the result, and a parse where no plugin left anything gives `undefined`.
 
-In `mdsvex` the objects come back as `data` on the result of a compile, keyed by plugin name: `compile(source, { plugins: [toc()] }).data.toc.headings`.
+In `mdsvex` the objects come back as `data` on the result of a compile, keyed by plugin name: `compile(source, { plugins: [toc()] }).data.toc.headings`. The compiled document exports the same object as `plugin_data`, its template takes it as a prop of that name, and a `?data` import gives it without a render. It is written into the module as JSON there, so `mdsvex` throws a `PluginDataError` for a value JSON cannot hold: keep to plain objects, arrays, strings, finite numbers, booleans and `null`.
 
 ### For whoever runs the parse
 
