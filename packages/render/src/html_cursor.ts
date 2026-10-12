@@ -497,8 +497,25 @@ function escape_text_at(
 	if (esc_gt < m) m = esc_gt;
 	if (esc_quot < m) m = esc_quot;
 	if (code) return escape_code_slice(src, vs, ve, m);
+	const first = src.charCodeAt(vs);
+	if ((first === 123 || first === 125) && brace_escaped(src, vs)) {
+		return (
+			(first === 123 ? '&#123;' : '&#125;') +
+			escape_text_at(c, i, vs + 1, ve, false)
+		);
+	}
 	if (m >= ve) return src.slice(vs, ve);
 	return escape_hits(src, vs, ve, m);
+}
+
+/**
+ * the brace at pos follows an odd run of backslashes, an escape opens its
+ * text node at the escaped char, and svelte would read the brace as an expression
+ */
+function brace_escaped(src: string, pos: number): boolean {
+	let p = pos;
+	while (p > 0 && src.charCodeAt(p - 1) === 92) p--;
+	return ((pos - p) & 1) === 1;
 }
 
 /** a reference in text stays as written, unless a backslash escaped its & */
@@ -1304,7 +1321,18 @@ function _children_raw(c: Cursor): string {
 	let text = '';
 	do {
 		if (c.kind === K.TEXT) {
-			text += c.text();
+			const t = c.text();
+			const vs = c.value_start;
+			const first = t.charCodeAt(0);
+			// alt is an attribute, svelte reads a brace there as an expression too
+			if (
+				(first === 123 || first === 125) &&
+				vs !== Slot.NONE &&
+				c.source.charCodeAt(vs) === first &&
+				brace_escaped(c.source, vs)
+			)
+				text += (first === 123 ? '&#123;' : '&#125;') + t.slice(1);
+			else text += t;
 		} else {
 			text += _children_raw(c);
 		}

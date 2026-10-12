@@ -145,6 +145,12 @@ An image is text by default, so a paragraph of one image is `<p><img /></p>`. Th
 
 A link that holds only images counts as its images, so a linked image or a row of badges is unwrapped too. Anything else keeps the paragraph: text before or after an image or inside its link, a hard break between two images, emphasis around an image, or a `[` whose link never closes. Images and tags mix, `<Badge /> ![a chart](/chart.png)` has no `<p>` either. A tight list item never has a `<p>`, and with the option a loose item of only images has none while its siblings keep theirs.
 
+**Braces**, `{` and `}` in text are a Svelte expression. To write one as text, escape it with a backslash, use a character reference (`&#123;`, `&#125;`), or put it in a code span or a fenced code block, where a brace is always text:
+
+```markdown
+a \{1 + 1\} b
+```
+
 **Superscript**, Added, via `^`:
 
 ```markdown
