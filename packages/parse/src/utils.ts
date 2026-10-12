@@ -497,6 +497,13 @@ function push_all(to: number[], from: number[]): void {
 	for (let i = 0; i < from.length; i++) to.push(from[i]);
 }
 
+/** an element whose content is text as written up to its close tag */
+export function is_raw_text_tag(tag: unknown): boolean {
+	return (
+		tag === 'script' || tag === 'style' || tag === 'pre' || tag === 'textarea'
+	);
+}
+
 export class NodeBuffer {
 	// v8 sizes in-object slots from constructor stores, so every field is
 	// initialized here, not only in alloc, or the tail fields spill out of line

@@ -569,7 +569,7 @@ tabs: {
 - **It has to be asked about every node.** While its directive is the innermost one open, every node that opens inside goes through the dispatcher, where one that is no child and has no handler of its own is let through at once. A handler keyed by type costs nothing for the other types, so use `'*'` when the type is not known ahead.
 - **Only `children` has it.** `descendants: { '*': ... }` throws.
 
-A child reaches its container through a repair in one case: an element alone on its line is opened in a paragraph when the document is fed in pieces, and the paragraph is revoked when it closes. `'*'` then ran for the paragraph and gave its index back, and does not run for the element. The same holds for a `children.html` handler.
+A child reaches its container through a repair in one case: an element alone on its line is opened in a paragraph when the document is fed in pieces, and the paragraph is revoked when it closes. `'*'` and a `children.paragraph` handler then ran for the paragraph, which was pending, and gave their index back. The `children` handlers run for the element when the paragraph goes, so by then the element may have closed already, and a callback they return then fires at once. A handler that must not act on a paragraph that may go checks `node.pending`.
 
 ### Order
 

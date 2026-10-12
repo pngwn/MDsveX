@@ -17,7 +17,13 @@
  *   const html = renderCursor(cursor);
  */
 
-import { NodeBuffer, NodeKind, make_meta, merge_meta } from './utils';
+import {
+	NodeBuffer,
+	NodeKind,
+	is_raw_text_tag,
+	make_meta,
+	merge_meta,
+} from './utils';
 import { Cursor } from './cursor';
 import type { PluginDispatcher } from './plugin_dispatch';
 import { WireTextSource } from './node_view';
@@ -242,7 +248,7 @@ export class WireTreeBuilder {
 		// the parser writes value_start/value_end directly on the html node.
 		if (kind === NodeKind.html) {
 			const meta = this.buf.metadata_at(idx);
-			if (meta && (meta.tag === 'script' || meta.tag === 'style')) {
+			if (meta && is_raw_text_tag(meta.tag)) {
 				const existing = strings[idx];
 				strings[idx] = existing !== undefined ? existing + content : content;
 				return;
@@ -317,13 +323,16 @@ export class WireTreeBuilder {
 		if (idx === undefined) return;
 
 		// plugin revoke: undo mutations before handle_repair
+		let lifted: number[] | null = null;
 		if (this.dispatcher) {
 			this.dispatcher.dispatch_revoke(idx, this.buf);
 			// a plugin took the node out of the tree, there is nothing to repair
 			if (this.buf.parent_at(idx) === NONE) return;
+			lifted = this.dispatcher.lifted(idx, this.buf);
 		}
 
 		this.buf.handle_repair(idx, delimiter || undefined);
+		if (lifted !== null) this.dispatcher!.dispatch_lifted(lifted, this.buf);
 		if (this.buf.kind_at(idx) === NodeKind.text) {
 			if (this.repaired === null) this.repaired = new Set();
 			this.repaired.add(idx);

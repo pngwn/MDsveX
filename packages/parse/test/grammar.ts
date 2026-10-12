@@ -157,7 +157,7 @@ export class Grammar {
 			}
 			case 27:
 			case 28: {
-				const form = this.int(3);
+				const form = this.int(ctx.lines ? 4 : 3);
 				return holder('html_inline', form, 2);
 			}
 			case 29:
@@ -235,7 +235,7 @@ export class Grammar {
 			case 16:
 				return this.with_words(piece('comment', this.int(2)), 2);
 			case 17:
-				return piece('raw_element', this.int(2));
+				return piece('raw_element', this.int(4));
 			case 18:
 			case 19: {
 				const form = this.int(4);
@@ -386,6 +386,7 @@ function inline_one(p: Piece): string {
 		case 'html_inline':
 			if (p.form === 1) return `<span class="${a}">${inner()}</span>`;
 			if (p.form === 2) return `<Badge value={${a}}>${inner()}</Badge>`;
+			if (p.form === 3) return `<span\nclass="${a}">${inner()}</span>`;
 			return `<b>${inner()}</b>`;
 		case 'html_void':
 			return ['<br />', `<Badge value="${a}" />`, `<img alt="${a}">`][p.form];
@@ -460,9 +461,13 @@ function block_rows(p: Piece): string[] {
 		case 'comment':
 			return p.form === 1 ? [`<!-- ${a}`, `${b} -->`] : [`<!-- ${a} ${b} -->`];
 		case 'raw_element':
-			return p.form === 1
-				? ['<style>', 'p { color: red; }', '</style>']
-				: ['<script>', 'let v = 1 < 2;', '</script>'];
+			return [
+				['<script>', 'let v = 1 < 2;', '</script>'],
+				['<style>', 'p { color: red; }', '</style>'],
+				// lines that would be blocks in any other element
+				['<pre>', '# one', '', '  - two *x*', '</pre>'],
+				['<textarea>', '> one', '- two', '</textarea>'],
+			][p.form];
 		case 'directive_leaf': {
 			const text = inline_text(p.kids);
 			return [

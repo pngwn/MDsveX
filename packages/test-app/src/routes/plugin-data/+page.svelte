@@ -14,7 +14,7 @@
 			<span class="minutes">{plugin_data?.reading_time.minutes} min</span>
 			<span class="words">{plugin_data?.reading_time.words} words</span>
 			<span class="sections">
-				{plugin_data?.toc.headings.map((h) => h.text).join(", ")}
+				{plugin_data?.toc?.headings.map((h) => h.text).join(", ")}
 			</span>
 		</li>
 	{/each}

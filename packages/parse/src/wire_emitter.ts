@@ -1,5 +1,5 @@
 import type { Emitter } from "./opcodes";
-import { NodeKind } from "./utils";
+import { NodeKind, is_raw_text_tag } from "./utils";
 
 /**
  * wire format for PFM parser opcode streaming.
@@ -223,7 +223,7 @@ export class WireEmitter implements Emitter {
 		if (
 			key === "tag" &&
 			this.kinds.get(id) === NodeKind.html &&
-			(value === "script" || value === "style")
+			is_raw_text_tag(value)
 		) {
 			this.raw_html_ids.add(id);
 		}

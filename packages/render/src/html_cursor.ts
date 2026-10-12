@@ -12,6 +12,7 @@
  */
 
 import { Cursor } from '@mdsvex/parse/cursor';
+import { is_raw_text_tag } from '@mdsvex/parse/utils';
 import type { NodeBuffer } from '@mdsvex/parse/utils';
 import {
 	MapSink,
@@ -884,6 +885,20 @@ function expr_attr(k: string, value: string): string {
 		: ' ' + k + '={' + value + '}';
 }
 
+/** the later values of the names a tag writes again, written so that svelte reports them */
+function repeated_attrs(repeated: [string, unknown][], typed: boolean): string {
+	let s = '';
+	for (let i = 0; i < repeated.length; i++) {
+		const k = repeated[i][0];
+		const v = repeated[i][1];
+		if (v === true) s += ' ' + k;
+		else if (typeof v === 'object' && v !== null)
+			s += expr_attr(k, meta_str((v as any).value));
+		else s += ' ' + k + '="' + escape_attr(meta_str(v), typed) + '"';
+	}
+	return s;
+}
+
 function _attrs(c: Cursor, skip?: Set<string>): string {
 	const meta = c.meta();
 	if (!meta) return '';
@@ -1684,6 +1699,8 @@ function render_node(c: Cursor, sink?: MapSink): void {
 							s += ' ' + k + '="' + escape_attr(v as string, typed) + '"';
 						}
 					}
+					if (meta!.repeated !== undefined)
+						s += repeated_attrs(meta!.repeated as [string, unknown][], typed);
 				}
 				mo += self_closing ? s + ' />' : s + '>';
 			}
@@ -1701,10 +1718,9 @@ function render_node(c: Cursor, sink?: MapSink): void {
 				}
 			} else {
 				const ao = mo.length;
-				// raw-text elements: parser stores content as value range on
-				// the html node itself (no child nodes). emit unescaped, the
-				// browser does not parse script/style bodies as html.
-				if (tag === 'script' || tag === 'style') {
+				// raw text elements hold their content as the value range of the
+				// node, with no children, it is written as it is in the source
+				if (is_raw_text_tag(tag)) {
 					if (c.index === hoist_script) {
 						mo += '\n';
 						mo_imports(c, sink, false);
@@ -2615,10 +2631,17 @@ function fold_html(c: Cursor, p: number): number {
 
 	p = push_static(p, S_LT);
 	p = push_dyn(p, tag);
-	if (html_attrs) p = fold_html_attrs(html_attrs, !c.synthetic, p);
+	if (html_attrs) {
+		p = fold_html_attrs(html_attrs, !c.synthetic, p);
+		if (meta!.repeated !== undefined)
+			p = push_dyn(
+				p,
+				repeated_attrs(meta!.repeated as [string, unknown][], !c.synthetic)
+			);
+	}
 	p = push_static(p, S_GT);
 	// raw text elements keep their content as the node value range, see _node
-	if (tag === 'script' || tag === 'style') {
+	if (is_raw_text_tag(tag)) {
 		if (c.index === hoist_script) p = push_dyn(p, '\n' + import_lines(c));
 		else if (c.index === hoist_module)
 			p = push_dyn(p, '\n' + module_code + '\n');
@@ -3213,6 +3236,8 @@ function tr_html(c: Cursor, sink: MapSink, p: number): number {
 					s += ' ' + k + '="' + escape_attr(v as string, typed) + '"';
 				}
 			}
+			if (meta!.repeated !== undefined)
+				s += repeated_attrs(meta!.repeated as [string, unknown][], typed);
 		}
 		if (self_closing) {
 			mo += s;
@@ -3225,7 +3250,7 @@ function tr_html(c: Cursor, sink: MapSink, p: number): number {
 		tr_run(sink, pre, mo.length, c.start, c.end);
 		return 0;
 	}
-	if (tag === 'script' || tag === 'style') {
+	if (is_raw_text_tag(tag)) {
 		if (c.index === hoist_script) {
 			mo = mo + FOLD_STR[S_GT] + '\n';
 			mo_imports(c, sink, true);
@@ -3773,6 +3798,8 @@ function mp_html(c: Cursor, sink: MapSink, p: number): number {
 					s += ' ' + k + '="' + escape_attr(v as string, typed) + '"';
 				}
 			}
+			if (meta!.repeated !== undefined)
+				s += repeated_attrs(meta!.repeated as [string, unknown][], typed);
 		}
 		mo += s;
 		if (self_closing) {
@@ -3801,7 +3828,7 @@ function mp_html(c: Cursor, sink: MapSink, p: number): number {
 		return 0;
 	}
 	const ao = mo.length + FOLD_LEN[S_GT];
-	if (tag === 'script' || tag === 'style') {
+	if (is_raw_text_tag(tag)) {
 		if (c.index === hoist_script) {
 			mo = mo + FOLD_STR[S_GT] + '\n';
 			mo_imports(c, sink, false);
@@ -4250,7 +4277,8 @@ function cm_text(
 	c: Cursor,
 	sink: MapSink | undefined,
 	p: number,
-	text: string
+	text: string,
+	code: number = Code.CODE_CONTENT
 ): number {
 	if (comp_mode === CM.FOLD) return push_dyn(p, text);
 	if (p !== 0) mo += FOLD_STR[p];
@@ -4265,7 +4293,7 @@ function cm_text(
 			c.value_start,
 			c.value_end,
 			c.index,
-			Code.CODE_CONTENT
+			code
 		);
 	mo += text;
 	return 0;
@@ -4474,6 +4502,7 @@ function comp_node(
 	let lead = '';
 	let close = '</' + local + '>';
 	let preset: number = Preset.TEXT;
+	let raw = false;
 
 	switch (kind) {
 		case K.HEADING:
@@ -4618,6 +4647,8 @@ function comp_node(
 						open += expr_attr(k, meta_str((v as any).value));
 					else open += ' ' + k + '="' + escape_attr(meta_str(v), typed) + '"';
 				}
+				if (meta.repeated !== undefined)
+					open += repeated_attrs(meta.repeated as [string, unknown][], typed);
 			}
 			if (typed) open += typed_extras(tag, attrs);
 			const shut = meta.self_closing ? ' />' : '>';
@@ -4636,6 +4667,7 @@ function comp_node(
 				cm_void(c, sink, pre, Preset.TEXT);
 				return p;
 			}
+			raw = is_raw_text_tag(tag);
 			break;
 		}
 
@@ -4645,7 +4677,8 @@ function comp_node(
 
 	p = cm_put(p, open + '>' + lead);
 	const ao = mo.length;
-	p = kind === K.TABLE ? cm_table(c, sink, p) : cm_children(c, sink, p);
+	if (raw) p = cm_text(c, sink, p, c.text(), Code.SVELTE_CONTENT);
+	else p = kind === K.TABLE ? cm_table(c, sink, p) : cm_children(c, sink, p);
 	const bc = mo.length;
 	p = cm_put(p, close);
 	cm_spans(c, sink, pre, ao, bc, mo.length, preset);

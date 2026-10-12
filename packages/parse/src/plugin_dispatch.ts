@@ -1868,6 +1868,77 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	}
 
 	/**
+	 * the children a revoked paragraph gives to the directive it was written in, read before the repair
+	 * they opened under the paragraph, so the children handlers of the directive have not seen them
+	 */
+	lifted(buf_idx: number, buf: NodeBuffer): number[] | null {
+		const scope = this.scope;
+		if (scope === null || buf.kind_at(buf_idx) !== NodeKind.paragraph)
+			return null;
+		const entry = scope.entry;
+		if (entry.children === null && entry.any_child === null) return null;
+		// a wrapper holds what was written in the directive
+		let parent = buf.parent_at(buf_idx);
+		while (parent !== NONE && buf.synthetic_at(parent)) {
+			parent = buf.parent_at(parent);
+		}
+		if (parent !== scope.directive) return null;
+		let lifted: number[] | null = null;
+		for (
+			let child = buf.first_child_at(buf_idx);
+			child !== NONE;
+			child = buf.next_at(child)
+		) {
+			const kind = buf.kind_at(child);
+			// the line end between two tags is no child, as a blank line is none
+			if (kind === NodeKind.text || kind === NodeKind.soft_break) continue;
+			if (lifted === null) lifted = [child];
+			else lifted.push(child);
+		}
+		return lifted;
+	}
+
+	/** the children handlers of the innermost scope for each node the repair made its child */
+	dispatch_lifted(nodes: number[], buf: NodeBuffer): void {
+		const scope = this.scope;
+		if (scope === null) return;
+		const entry = scope.entry;
+		const undo = this.undo;
+		for (let i = 0; i < nodes.length; i++) {
+			const node = nodes[i];
+			const kind = buf.kind_at(node);
+			const closed = buf.end_at(node) !== NONE;
+			const cache = this.views(buf);
+			const view = cache.get(node)!;
+			// nothing reads what a handler records for a node that is final
+			if (!closed || buf.pending_at(node) !== 0) undo.set_active_node(node);
+			this.running = node;
+			let callbacks: (() => void)[] | null = null;
+			const handler = entry.children === null ? null : entry.children[kind];
+			if (handler != null) {
+				callbacks = this.call_bound(handler, view, scope, kind, callbacks);
+			}
+			const any = entry.any_child;
+			if (any !== null && kind !== NodeKind.line_break) {
+				callbacks = this.call_bound(any, view, scope, ANY_SLOT, callbacks);
+			}
+			undo.clear_active_node();
+			this.running = NONE;
+			cache.clear();
+			if (callbacks !== null) {
+				let close_cbs = this.close_cbs;
+				if (close_cbs === NO_CLOSE_CBS)
+					close_cbs = this.close_cbs = new CloseCallbackStore();
+				// ahead of the callbacks its open left, bound runs first
+				for (let c = callbacks.length - 1; c >= 0; c--) {
+					close_cbs.add_first(node, callbacks[c]);
+				}
+			}
+			if (closed) this.dispatch_close(node, buf, true);
+		}
+	}
+
+	/**
 	 * run sequential plugin passes over a completed tree.
 	 * each sequential plugin gets its own tree walk.
 	 */
