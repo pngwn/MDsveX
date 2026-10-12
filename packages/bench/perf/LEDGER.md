@@ -288,6 +288,25 @@ delete it.
     design note measured both (`design/syntax-highlighting.md`, 14.3). Not
     built.
 
+### the cheatsheet render row after footnotes
+
+- **Source:** footnotes, the renderer's two new node kinds and its section
+  after the root.
+- **Measured:** `real/site-src-components-cheatsheet:render` -8.9% (820ns to
+  905ns, -8.9% and -11.1% by pass), `core --repeat 2` against the commit
+  below with the default 3.0% floor. Geomean over the 238 workloads -0.10%,
+  render -0.43%, no other row slower, parity all outputs identical. The
+  level above it, blocks in a definition, read +0.03% with no row past the
+  floor.
+- **Cause:** not found. The document is a `<style>`, a `<script>` and one
+  `<div>`, and holds no footnote. Rendered alone in a fresh process, 200,000
+  times a round, it reads 762ns to 786ns before and 770ns to 782ns after, so
+  it is the state the workloads before it leave the JIT in, not work the
+  document does.
+- **Ideas:**
+  - Run the row alone, one workload a process, before reading anything into
+    it.
+
 ## Closed
 
 ### id map and undo logs with parse plugins

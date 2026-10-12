@@ -207,6 +207,7 @@ interface MdsvexOptions {
 	parse_plugins?: ParsePlugin[];
 	highlight?: HighlightOptions | Highlighter | false;
 	math?: MathOptions | MathRenderer | false;
+	footnotes?: { label?: string; back_label?: string; strict?: boolean };
 	unwrap_images?: boolean;
 	import_images?: boolean;
 	rewrite?: (
@@ -501,6 +502,14 @@ math: MathOptions | MathRenderer | false = {};
 ```
 
 How a `math` fence and inline math render. `renderer` picks `'temml'`, the default, or `'katex'`, and `options` goes to that library. A function is a renderer of your own, and `false` leaves the fence a code block and inline math inline code. See [Math](docs#math-1).
+
+### `footnotes`
+
+```ts
+footnotes: { label?: string; back_label?: string; strict?: boolean } = {};
+```
+
+The accessible names of the [footnotes](docs#footnotes-1) section and of its back links, for a site that is not in English. `strict: false` builds a document whose footnotes a compile rejects, with warnings in place of the error.
 
 ### `unwrap_images`
 
@@ -2484,6 +2493,69 @@ const math = temml_math(temml, { annotate: true });
 `compile` also takes a [renderer function](docs#custom-math-renderers), or `false`.
 
 The editor reads the option from the manifest the plugin writes, or from `math` in an `mdsvex.config.json`, and reports LaTeX that Temml can't read as you type. With KaTeX or a function it doesn't check the LaTeX.
+
+## Footnotes
+
+A footnote is a reference in the text and a definition anywhere in the document:
+
+```md
+A claim[^1], and a second one[^smith].
+
+[^1]: The source, with a [link](https://example.com).
+[^smith]: Smith, 2020.
+```
+
+The reference renders as a number that links to the note, and the notes are collected at the end of the document, in the order they are first referred to:
+
+```html
+<p>A claim<sup><a href="#fn-1" id="fnref-1" role="doc-noteref">1</a></sup>, and a second one<sup><a href="#fn-smith" id="fnref-2" role="doc-noteref">2</a></sup>.</p>
+
+<section class="footnotes" role="doc-endnotes" aria-label="Footnotes">
+<ol>
+<li id="fn-1"><p>The source, with a <a href="https://example.com">link</a>. <a href="#fnref-1" role="doc-backlink" aria-label="Back to reference 1">&#8617;</a></p></li>
+<li id="fn-smith"><p>Smith, 2020. <a href="#fnref-2" role="doc-backlink" aria-label="Back to reference 2">&#8617;</a></p></li>
+</ol>
+</section>
+```
+
+- **A label** is any run of characters without whitespace, brackets or `^`. Labels match exactly, case included. The number a reader sees comes from the order of the references, not from the label, so `[^smith]` is as good a label as `[^2]`.
+- **A definition** is a line that starts with `[^label]:` and has text after it. Its text is one paragraph, which may run over several lines, and may hold links, emphasis, code and references to other notes. It can be written anywhere: under the paragraph that cites it, at the end of the document, inside a block quote or a list item. Wherever it is, it renders in the section at the end.
+- **Referring to a note twice** gives both references the same number, and the note a link back to each.
+- **The id of a note** is `fn-` and its label, so a link to a note survives a renumbering. The id of a reference is `fnref-` and its number. With [`heading_ids`](docs#heading_ids), a heading whose slug would be one of these gets a suffix.
+- **mdsvex adds no CSS** and no heading. The section has the `footnotes` class and an accessible name. The arrow of a back link is followed by a variation selector, so it is drawn as text and not as an emoji.
+
+A reference is read by its syntax alone, before any definition is known. So a `[^…]` in prose that is not a footnote, such as the regular expression class `[^abc]`, has to be escaped or put in code:
+
+```md
+The class \[^abc] matches, and so does `[^abc]`.
+```
+
+### Footnote errors
+
+A reference with no definition and a label defined twice fail the build with a `FootnoteError`. It has the `code` (`footnote_undefined` or `footnote_duplicate`), the `label`, and the `line` and `column` of the reference or of the second definition, and `problems` lists every one in the document:
+
+```
+the footnote reference [^nope] has no definition, add `[^nope]: text`, or escape the bracket as `\[^nope]` if it is not a footnote (src/routes/post.svx:12)
+```
+
+A definition that nothing refers to is not rendered, and the compile warns with the code `footnote_unused`.
+
+### Footnote options
+
+```js
+mdsvex({
+	footnotes: {
+		label: 'Notes',
+		back_label: 'Back to note {n}'
+	}
+});
+```
+
+`label` names the section and `back_label` each link back, where `{n}` is the number of the reference. `strict: false` turns the two errors into warnings: a reference with no definition is numbered and linked all the same, and the first definition of a label is the one that renders. That suits a preview of a document that is still being written.
+
+### Footnotes while streaming
+
+`compile` knows the whole document, so it can number the notes and move them. The streaming renderer does not: a reference shows its label as a superscript, and a definition renders where it is written, behind the same label.
 
 ## Live code
 
