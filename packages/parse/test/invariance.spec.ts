@@ -171,11 +171,10 @@ const KNOWN: Known[] = [
 	},
 	{
 		issue: 1021,
-		what: 'a svelte block does not open inside a block quote, a list item or a container directive',
+		what: 'a svelte block does not open inside a block quote or a list item',
 		drop: (seen) =>
-			is(seen, 'svelte_block') &&
-			within(seen, 'block_quote', 'list_item', 'directive_container'),
-		example: { site: 'directive_container', source: '{#if a}\nb\n{/if}' },
+			is(seen, 'svelte_block') && within(seen, 'block_quote', 'list_item'),
+		example: { site: 'block_quote', source: '{#if a}\nb\n{/if}' },
 	},
 	{
 		issue: 1022,
@@ -183,16 +182,16 @@ const KNOWN: Known[] = [
 		drop: (seen) =>
 			(is(seen, 'comment', 'comment_inline') ||
 				(only_tags(seen) && seen.piece.kids[0].kind === 'comment_inline')) &&
-			within(seen, 'svelte_branch', 'directive_container', 'list_item'),
+			within(seen, 'svelte_branch', 'list_item'),
 		example: { site: 'svelte_branch', source: '<!-- a -->' },
 	},
 	{
 		issue: 1049,
-		what: 'a line of only tags keeps its paragraph in a container directive and a loose list item',
+		what: 'a line of only tags keeps its paragraph in a loose list item',
 		drop: (seen) =>
 			(is(seen, 'svelte_tag', 'component') || only_tags(seen)) &&
-			(near(seen) === 'directive_container' || near(seen) === 'list_item'),
-		example: { site: 'directive_container', source: '{@html a}' },
+			near(seen) === 'list_item',
+		example: { site: 'list_item', source: '{@html a}', loose: true },
 	},
 	{
 		issue: 1050,
@@ -217,9 +216,9 @@ const KNOWN: Known[] = [
 	},
 	{
 		issue: 1024,
-		what: 'an html element in a container directive in a block quote keeps a paragraph',
+		what: 'a tag or a comment in a container directive in a block quote keeps a paragraph',
 		drop: (seen) =>
-			(is(seen, 'html_line') || only_tags(seen)) &&
+			(is(seen, 'html_line', 'component', 'comment') || only_tags(seen)) &&
 			within(seen, 'block_quote') &&
 			within(seen, 'directive_container'),
 		example: { site: 'block_quote', source: ':::box\n<div>a</div>\n:::' },
