@@ -2051,3 +2051,51 @@ describe('block directives without brackets', () => {
 		}
 	});
 });
+
+describe('a container directive holds the blocks the document does', () => {
+	const cases: [string, string, unknown][] = [
+		[
+			'a svelte block',
+			':::box\n{#if a}\nb\n{/if}\n:::\n',
+			[
+				'directive_container',
+				['svelte_block', ['svelte_branch', ['paragraph', 'text:b']]],
+			],
+		],
+		[
+			'a comment on its line',
+			':::box\n<!-- a -->\n:::\n',
+			['directive_container', 'html_comment'],
+		],
+		[
+			'a comment over lines',
+			':::box\n<!-- a\nb -->\nc\n:::\n',
+			['directive_container', 'html_comment', ['paragraph', 'text:c']],
+		],
+		[
+			'a svelte tag on its line',
+			':::box\n{@html a}\n:::\n',
+			['directive_container', 'svelte_tag'],
+		],
+		[
+			'an autolink that could start a tag',
+			':::box\n<MAILTO:a@b.c>\n:::\n',
+			['directive_container', ['paragraph', ['link', 'text:MAILTO:a@b.c']]],
+		],
+		[
+			'a svelte tag before text',
+			':::box\n{@html a} b\n:::\n',
+			['directive_container', ['paragraph', 'svelte_tag', 'text: b']],
+		],
+	];
+	for (const [name, input, tree] of cases) {
+		test(`${name}: ${JSON.stringify(input)}`, () => {
+			const whole = expect_parity(input, () => []);
+			expect(whole).toEqual(['root', tree]);
+			for (const chunk of [1, 2, 3, 7]) {
+				const fed = run_batch(input, undefined, chunk);
+				expect(shape(fed.nodes, input, 0, { merge_text: true })).toEqual(whole);
+			}
+		});
+	}
+});

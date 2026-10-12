@@ -11635,6 +11635,163 @@ export class PFMParser {
 		}
 	}
 
+	/**
+	 * the block a line starts at the cursor, one dispatch for every container
+	 * @returns 1 when a block opened, -1 while it is not all here, 0 when the line is a plain paragraph
+	 */
+	private block_start(code: number, current_node: number): number {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		switch (code) {
+			case OCTOTHERP:
+				return this.start_heading(current_node) ? 1 : -1;
+
+			case BACKTICK:
+				this.start_fence(current_node);
+				return 1;
+
+			case CLOSE_ANGLE_BRACKET: {
+				let p = this.cursor + 1;
+				if (p < length && char_code_at.call(source, p - base) === SPACE) p++;
+				this.block_quote_depth++;
+				const bq_id = this.emit_open(
+					NodeKind.block_quote,
+					this.cursor,
+					current_node
+				);
+				this.node_stack.push(bq_id);
+				this.states.push(StateKind.block_quote);
+				this.chomp(p, true);
+				return 1;
+			}
+
+			case OPEN_ANGLE_BRACKET: {
+				if (
+					!this.finished &&
+					string_index_of.call(source, '>', this.cursor + 1 - base) === -1
+				) {
+					this.wait_for('>');
+					return -1;
+				}
+				if (this.try_parse_uri_autolink(this.cursor + 1) !== -1) return 0;
+				const comment = this.try_parse_html_comment(this.cursor + 1);
+				if (comment === false) {
+					if (this.cursor + 3 < length) this.wait_for('-->');
+					return -1;
+				}
+				if (comment) {
+					const c_id = this.emit_open(
+						NodeKind.html_comment,
+						this.cursor,
+						current_node
+					);
+					this.out.text(
+						c_id,
+						comment.content_start,
+						comment.content_end,
+						NodeKind.html_comment
+					);
+					this.emit_close(c_id, comment.end);
+					this.chomp(comment.end, true);
+					return 1;
+				}
+				return this.open_block_tag(current_node);
+			}
+
+			case ASTERISK:
+			case DASH:
+			case UNDERSCORE: {
+				if (this.could_be_thematic_break(this.cursor, code)) return -1;
+				if (this.is_thematic_break_start(this.cursor)) {
+					let line_end = this.cursor;
+					while (
+						line_end < length &&
+						char_code_at.call(source, line_end - base) !== LINEFEED
+					)
+						line_end++;
+					this.emit_bare_leaf(
+						NodeKind.thematic_break,
+						this.cursor,
+						current_node,
+						line_end
+					);
+					this.chomp(line_end, true);
+					return 1;
+				}
+				if (code !== UNDERSCORE) {
+					const marker = this.try_parse_list_marker(this.cursor);
+					if (marker) {
+						this.start_list(marker, current_node);
+						return 1;
+					}
+				}
+				return 0;
+			}
+
+			case PIPE: {
+				const result = this.try_start_table(current_node);
+				if (result === false) return -1;
+				return result === true ? 1 : 0;
+			}
+
+			case OPEN_BRACE: {
+				if (!this.finished && this.probe_matching_brace(this.cursor + 1) === -1)
+					return -1;
+				const token = this.try_parse_svelte_block_token(this.cursor);
+				if (token && token.kind === '#') {
+					this.start_svelte_block(token, current_node);
+					return 1;
+				}
+				if (this.at_svelte_tag(code)) {
+					this.open_spec_para(current_node, false);
+					return 1;
+				}
+				return 0;
+			}
+
+			case OPEN_SQUARE_BRACKET: {
+				const def_end = this.try_parse_link_ref_definition(this.cursor);
+				if (def_end === -2) return -1;
+				if (def_end >= 0) {
+					this.chomp(def_end, true);
+					return 1;
+				}
+				if (this.unwrap_images)
+					return this.open_image_para(current_node, false);
+				return 0;
+			}
+
+			case COLON: {
+				const dir = this.try_parse_block_directive(this.cursor);
+				if (dir === false) return -1;
+				if (dir !== null) {
+					this.start_block_directive(dir, current_node);
+					return 1;
+				}
+				return 0;
+			}
+
+			case EXCLAMATION_MARK:
+				if (this.unwrap_images)
+					return this.open_image_para(current_node, false);
+				return 0;
+
+			default: {
+				if (code === PLUS || (code >= 48 && code <= 57)) {
+					if (!this.finished && this.plus_marker_pending(this.cursor))
+						return -1;
+					const marker = this.try_parse_list_marker(this.cursor);
+					if (marker) {
+						this.start_list(marker, current_node);
+						return 1;
+					}
+				}
+				return 0;
+			}
+		}
+	}
+
 	private _run_directive_container(
 		code: number,
 		current_node: number
@@ -11757,174 +11914,42 @@ export class PFMParser {
 					return false;
 				}
 
-				// check for nested directive (opening fence)
-				const dir = this.try_parse_block_directive(this.cursor);
-				if (dir === false) return true;
-				if (dir !== null) {
-					this.start_block_directive(dir, current_node);
-					return false;
+				break;
+			}
+
+			case OPEN_ANGLE_BRACKET: {
+				if (this.html_tag_stack.length !== 0) {
+					const closed = this.close_outer_tag();
+					if (closed !== 0) return closed === -1;
 				}
-				// not a directive - start paragraph
-				this.states.push(StateKind.paragraph);
-				const dc_colon_para = this.emit_open(
-					NodeKind.paragraph,
-					this.cursor,
-					current_node
-				);
-				this.node_stack.push(dc_colon_para);
-				return false;
+				break;
 			}
 
-			case OCTOTHERP: {
-				if (!this.start_heading(current_node)) return true;
-				return false;
-			}
-
-			case BACKTICK: {
-				this.start_fence(current_node);
-				return false;
-			}
-
-			case ASTERISK:
-			case DASH:
-			case UNDERSCORE: {
-				if (this.could_be_thematic_break(this.cursor, code)) return true;
-				if (this.is_thematic_break_start(this.cursor)) {
-					let line_end = this.cursor;
-					while (
-						line_end < length &&
-						char_code_at.call(source, line_end - base) !== LINEFEED
-					)
-						line_end++;
-					this.emit_bare_leaf(
-						NodeKind.thematic_break,
-						this.cursor,
-						current_node,
-						line_end
-					);
-					this.chomp(line_end, true);
-					return false;
-				}
-				if (code !== UNDERSCORE) {
-					const marker = this.try_parse_list_marker(this.cursor);
-					if (marker) {
-						this.start_list(marker, current_node);
-						return false;
-					}
-				}
-				this.states.push(StateKind.paragraph);
-				const para_id = this.emit_open(
-					NodeKind.paragraph,
-					this.cursor,
-					current_node
-				);
-				this.node_stack.push(para_id);
-				return false;
-			}
-
-			case CLOSE_ANGLE_BRACKET: {
-				let p = this.cursor + 1;
-				if (p < length && char_code_at.call(source, p - base) === SPACE) p++;
-				this.block_quote_depth++;
-				const bq_id = this.emit_open(
-					NodeKind.block_quote,
-					this.cursor,
-					current_node
-				);
-				this.node_stack.push(bq_id);
-				this.states.push(StateKind.block_quote);
-				this.chomp(p, true);
-				return false;
-			}
-
-			case PIPE: {
-				const result = this.try_start_table(current_node);
-				if (result === false) return true;
-				if (result === true) return false;
-				this.states.push(StateKind.paragraph);
-				const para_id = this.emit_open(
-					NodeKind.paragraph,
-					this.cursor,
-					current_node
-				);
-				this.node_stack.push(para_id);
-				return false;
-			}
-
-			case OPEN_SQUARE_BRACKET: {
-				const def_end = this.try_parse_link_ref_definition(this.cursor);
-				if (def_end === -2) return true;
-				if (def_end >= 0) {
-					this.chomp(def_end, true);
-					return false;
-				}
-				if (this.unwrap_images) {
-					const image = this.open_image_para(current_node, false);
-					if (image < 0) return true;
-					if (image > 0) return false;
-				}
-				this.states.push(StateKind.paragraph);
-				const dc_ref_para = this.emit_open(
-					NodeKind.paragraph,
-					this.cursor,
-					current_node
-				);
-				this.node_stack.push(dc_ref_para);
-				return false;
-			}
-
-			case EXCLAMATION_MARK: {
-				if (this.unwrap_images) {
-					const image = this.open_image_para(current_node, false);
-					if (image < 0) return true;
-					if (image > 0) return false;
-				}
-				this.states.push(StateKind.paragraph);
-				const dc_bang_para = this.emit_open(
-					NodeKind.paragraph,
-					this.cursor,
-					current_node
-				);
-				this.node_stack.push(dc_bang_para);
-				return false;
-			}
-
-			default: {
-				if (code === OPEN_ANGLE_BRACKET) {
-					if (this.html_tag_stack.length !== 0) {
-						const closed = this.close_outer_tag();
-						if (closed !== 0) return closed === -1;
-					}
-					// the element state reads whole lines, in a block quote the tag stays in a paragraph
-					if (this.block_quote_depth === 0) {
-						const opened = this.open_block_tag(current_node);
-						if (opened !== 0) return opened === -1;
-					}
-				}
-				if (code === OPEN_BRACE && this.svelte_block_depth > 0) {
+			case OPEN_BRACE: {
+				if (this.svelte_block_depth > 0) {
 					const ended = this.branch_token_ends();
 					if (ended !== 0) return ended === -1;
 				}
-				if (code === PLUS || (code >= 48 && code <= 57)) {
-					// stall only while the marker prefix is still being read
-					if (!this.finished && this.plus_marker_pending(this.cursor))
-						return true;
-					const marker = this.try_parse_list_marker(this.cursor);
-					if (marker) {
-						this.start_list(marker, current_node);
-						return false;
-					}
-				}
-				this.states.push(StateKind.paragraph);
-				const para_id = this.emit_open(
-					NodeKind.paragraph,
-					this.cursor,
-					current_node
-				);
-				this.node_stack.push(para_id);
-				return false;
+				break;
 			}
 		}
+		// the element and branch states read whole lines, in a block quote a tag or a block token stays in a paragraph
+		if (
+			this.block_quote_depth === 0 ||
+			(code !== OPEN_ANGLE_BRACKET &&
+				(code !== OPEN_BRACE || this.at_svelte_tag(code)))
+		) {
+			const started = this.block_start(code, current_node);
+			if (started !== 0) return started === -1;
+		}
+		this.states.push(StateKind.paragraph);
+		const para_id = this.emit_open(
+			NodeKind.paragraph,
+			this.cursor,
+			current_node
+		);
+		this.node_stack.push(para_id);
+		return false;
 	}
 
 	private _run_frontmatter(current_node: number): boolean {
