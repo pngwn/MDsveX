@@ -21,6 +21,17 @@ A markdown variant for mdsvex. Uses CommonMark as baseline. Goals: remove ambigu
 
 **Indentation**, Indented code blocks removed. Fenced code blocks only. Indentation is now insignificant.
 
+**Fenced code**, A fence closes at a line that holds only backticks, at least as many as opened it, with spaces or tabs before and after them, as in CommonMark. A line with anything else after the backticks is code:
+
+````markdown
+```md
+```js
+let x;
+```
+````
+
+-> one fence with the info `md` whose code is the lines ` ```js ` and `let x;`.
+
 **Link references**, Shorthand references must be explicit. `[ref]` alone is ambiguous (is it a link or plain text?). Required form:
 
 ```markdown

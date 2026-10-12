@@ -208,11 +208,12 @@ export function is_tight(blocks: Piece[]): boolean {
 				(block.form === last.form || (block.form > 2 && last.form > 2));
 			if (!one_list) return false;
 		}
+		// the rows of a table end no paragraph, so they are lines of it too
 		const lazy =
 			last !== null &&
 			last.kind === 'list' &&
 			block.join === '\n' &&
-			LINES.includes(block.kind) &&
+			(block.kind === 'table' || LINES.includes(block.kind)) &&
 			LINES.includes(tail(last).kind);
 		if (!lazy) last = block;
 	}
