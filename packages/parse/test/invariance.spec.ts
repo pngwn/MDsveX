@@ -34,6 +34,8 @@ function is(seen: Seen, ...kinds: string[]): boolean {
 interface Intended extends Rule {
 	/** the PFM.md sentence or the decision that makes it intended */
 	why: string;
+	/** an invariant it breaks in an edited source, and what the smallest such source holds */
+	edited?: [Invariant, RegExp];
 }
 
 /**
@@ -57,6 +59,11 @@ const INTENDED: Intended[] = [
 			seen.before === null &&
 			is(seen, 'thematic_break') &&
 			seen.piece.form === 0,
+	},
+	{
+		what: 'a link reference definition leaves no node',
+		why: 'its destination and title are in the links that use it, and a title may run over lines, so their words are in no node',
+		edited: ['content', /^[ \t>]*\[[^\]\n]+\]:/],
 	},
 	{
 		what: 'the cells of a table row past the column count are left out of the tree',
@@ -94,28 +101,8 @@ interface Known extends Rule {
 	example: { site: Site; source: string; loose?: boolean };
 }
 
-/** the last piece a block ends with, itself when it holds no block */
-function last_leaf(piece: Piece): Piece {
-	const last = piece.kids[piece.kids.length - 1];
-	return piece.kind === 'list' || piece.kind === 'list_item'
-		? last === undefined
-			? piece
-			: last_leaf(last)
-		: piece;
-}
-
 /** every known failure, each one takes its pieces out of the documents until its issue is fixed */
-const KNOWN: Known[] = [
-	{
-		issue: 1062,
-		what: 'an element that holds its own name again is not seen to close on its line',
-		drop: (seen) =>
-			is(seen, 'html_inline') &&
-			seen.before === null &&
-			/^<(\w+)[^\n]*<\1/.test(inline_text([seen.piece])),
-		example: { site: 'table_cell', source: '<Badge><Badge /></Badge> x' },
-	},
-];
+const KNOWN: Known[] = [];
 
 const RULES: Rule[] = [...INTENDED, ...KNOWN];
 
@@ -194,15 +181,15 @@ function subjects(seed: number): Subject[] {
 	return out;
 }
 
-/** the known failure an edited source shows, read off the smallest source that still fails */
+/** the known failure or intended difference an edited source shows, read off the smallest source that still fails */
 function known_edit(
 	source: string,
 	invariant: Invariant
-): [Known | undefined, string] {
+): [Known | Intended | undefined, string] {
 	const least = shrink_text(source, (next) =>
 		broken_by(next, invariant).has(invariant)
 	);
-	const rule = KNOWN.find(
+	const rule = [...INTENDED, ...KNOWN].find(
 		(known) => known.edited?.[0] === invariant && known.edited[1].test(least)
 	);
 	return [rule, least];
@@ -268,9 +255,13 @@ describe.skipIf(census === undefined)('census', () => {
 			const [from, to] = census!.split('-').map(Number);
 			const known = new Map<string, number>();
 			const groups = new Map<string, Group>();
-			const count = (rule: Known | undefined): void => {
+			const count = (rule: Known | Intended | undefined): void => {
 				const key =
-					rule === undefined ? 'several' : `#${rule.issue} ${rule.what}`;
+					rule === undefined
+						? 'several'
+						: 'issue' in rule
+							? `#${rule.issue} ${rule.what}`
+							: `intended, ${rule.what}`;
 				known.set(key, (known.get(key) ?? 0) + 1);
 			};
 			let documents = 0;

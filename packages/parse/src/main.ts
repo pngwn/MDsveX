@@ -5011,12 +5011,28 @@ export class PFMParser {
 		let depth = 1;
 		let p = from;
 		close_nested = false;
+		// the next backtick, a tag in a code span on the line is code
+		let tick = -2;
 		for (;;) {
 			const i = string_index_of.call(source, '<', p - base);
 			if (i === -1) return 0;
 			const q = i + base;
 			if (q >= line_end) return 0;
+			if (tick !== -1 && tick < p - base)
+				tick = string_index_of.call(source, '`', p - base);
+			if (tick !== -1 && tick < i) {
+				p = this.code_span_past(tick + base, line_end);
+				continue;
+			}
 			const closing = char_code_at.call(source, q + 1 - base) === SLASH;
+			if (!closing) {
+				// a backtick in an autolink opens no code span
+				const uri = this.try_parse_uri_autolink(q + 1);
+				if (uri !== -1 && uri <= line_end) {
+					p = uri;
+					continue;
+				}
+			}
 			const name = closing ? q + 2 : q + 1;
 			if (
 				name + n <= line_end &&
@@ -5031,6 +5047,12 @@ export class PFMParser {
 					after === LINEFEED
 				) {
 					if (!closing) {
+						// a self closing tag of the name opens nothing
+						const end = this.scan_open_tag(q + 1, null);
+						if (end > 0 && end <= line_end && tag_self_closing) {
+							p = end;
+							continue;
+						}
 						depth++;
 						close_nested = true;
 					} else if (--depth === 0) {
@@ -5040,6 +5062,37 @@ export class PFMParser {
 				}
 			}
 			p = q + 1;
+		}
+	}
+
+	/**
+	 * past the code span that the backticks at pos open when it closes before limit,
+	 * past the backticks alone when they open none, as a run of three or more and one with no closer
+	 */
+	private code_span_past(pos: number, limit: number): number {
+		const source = this.source;
+		const base = this.source_base;
+		// an escaped backtick opens nothing
+		let slashes = pos;
+		while (
+			slashes > base &&
+			char_code_at.call(source, slashes - 1 - base) === BACKSLASH
+		)
+			slashes--;
+		if (((pos - slashes) & 1) === 1) return pos + 1;
+		let p = pos + 1;
+		while (p < limit && char_code_at.call(source, p - base) === BACKTICK) p++;
+		const run = p - pos;
+		if (run > 2) return p;
+		let q = p;
+		for (;;) {
+			const i = string_index_of.call(source, '`', q - base);
+			if (i === -1 || i + base >= limit) return p;
+			let end = i + base + 1;
+			while (end < limit && char_code_at.call(source, end - base) === BACKTICK)
+				end++;
+			if (end - i - base === run) return end;
+			q = end;
 		}
 	}
 
