@@ -424,8 +424,8 @@ export class NodeView {
 		}
 
 		// content-leaf nodes: text stored as value range or string on the node itself.
-		// heading is NOT a content-leaf here: in wire mode its text is in
-		// child text nodes, and after wrap_inner children may be nested deeper.
+		// a heading is none, its value range is the source as written, markup
+		// included, and its text is in its children
 		if (
 			kind === NodeKind.code_fence ||
 			kind === NodeKind.code_span ||
@@ -438,19 +438,6 @@ export class NodeView {
 			const ve = buf.value_end_at(idx);
 			if (vs === NONE || ve === NONE || ve <= vs) return '';
 			return this._text_source.slice(vs, ve);
-		}
-
-		// heading: try value range first (batch mode), fall through to
-		// child walk if no value range is set (wire mode).
-		if (kind === NodeKind.heading) {
-			const s = this._text_source.get_string(idx);
-			if (s !== undefined) return s;
-			const vs = buf.value_start_at(idx);
-			const ve = buf.value_end_at(idx);
-			if (vs !== NONE && ve !== NONE && ve > vs) {
-				return this._text_source.slice(vs, ve);
-			}
-			// fall through to child walk
 		}
 
 		// container node: walk children, concatenate

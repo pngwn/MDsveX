@@ -1327,3 +1327,64 @@ describe('parse plugins: nodes around an open wrapper', () => {
 		expect(closes).toEqual(['strong_emphasis']);
 	});
 });
+
+describe('parse plugins: text_content is the text a reader sees on every path', () => {
+	const closed = (kind: string) => (log: string[]) => [
+		{
+			[kind]: {
+				parse: (node: NodeView) => () => void log.push(node.text_content),
+			},
+		},
+	];
+
+	it('a heading holds no markup', () => {
+		const { log } = expect_parity_logged(
+			'## Two *words* and `code` <b>x</b> {y}\n',
+			closed('heading')
+		);
+		expect(log).toEqual(['Two words and code x ']);
+	});
+
+	it('nor a link, an image, an escape or a trailing run of #', () => {
+		const { log } = expect_parity_logged(
+			'# [a _b_](/u) ![c](/d) \\* e ##\n\n###### ~~f~~ g^h^\n',
+			closed('heading')
+		);
+		expect(log).toEqual(['a b c * e ##', 'f gh']);
+	});
+
+	it('a plain heading reads as it is written', () => {
+		const { log } = expect_parity_logged('# Hello World\n', closed('heading'));
+		expect(log).toEqual(['Hello World']);
+	});
+
+	it('an empty heading is empty', () => {
+		const { log } = expect_parity_logged('#\n\n# \n', closed('heading'));
+		expect(log).toEqual(['', '']);
+	});
+
+	it('a sequential pass reads the same', () => {
+		const { log } = expect_parity_logged('## Two *words* `code`\n', (log) => [
+			{
+				sequential: true,
+				heading: { parse: (node) => void log.push(node.text_content) },
+			},
+		]);
+		expect(log).toEqual(['Two words code']);
+	});
+
+	it('a heading in a list item, a block quote and a directive', () => {
+		const { log } = expect_parity_logged(
+			'- # a *b*\n\n> ## c `d`\n\n:::x\n### e _f_\n:::\n',
+			closed('heading')
+		);
+		expect(log).toEqual(['a b', 'c d', 'e f']);
+	});
+
+	it('a paragraph holding the same inline nodes reads the same', () => {
+		const inline = 'Two *words* and `code` <b>x</b> {y}';
+		const heading = expect_parity_logged(`# ${inline}\n`, closed('heading'));
+		const paragraph = expect_parity_logged(`${inline}\n`, closed('paragraph'));
+		expect(heading.log).toEqual(paragraph.log);
+	});
+});
