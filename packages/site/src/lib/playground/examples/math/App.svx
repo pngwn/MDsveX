@@ -7,6 +7,9 @@ when the document compiles, so the page loads no script for it:
 \int_0^\infty e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}
 ```
 
+A code span wrapped in dollars is inline math, such as $`e^{i\pi} + 1 = 0`$ or
+$`\sqrt{2}`$. Plain dollars are text, so $5 is a price.
+
 Braces, backslashes and underscores need no escaping:
 
 ```math
@@ -23,7 +26,8 @@ f \colon \RR \to \RR, \quad f(x) = x^2
 ```
 
 `math` is replaced by `Math.svelte`, which adds a button that copies the
-LaTeX. Only `math` is math, a `latex` fence shows its source:
+LaTeX of a fence and leaves inline math as it is. Only `math` is math, a
+`latex` fence shows its source:
 
 ```latex
 \frac{a}{b}

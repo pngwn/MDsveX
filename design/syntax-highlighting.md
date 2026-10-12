@@ -527,7 +527,7 @@ No questions are open on §0 to §12. §14 has its own.
 
 ## 14. Inline math
 
-Draft, 2026-10-12. Nothing here is built. Display math shipped as the `math` fence. It has no design doc of its own, and it is rendered by the highlight run this document describes, so the inline form is specified here. The syntax was decided on 2026-10-10 (`plugins/PLUGIN_AUDIT.md` §6): a code span wrapped in dollars, and nothing else.
+Built as written here, with the maintainer's picks in §14.8 all taken as the note's own. Display math shipped as the `math` fence. It has no design doc of its own, and it is rendered by the highlight run this document describes, so the inline form is specified here. The syntax was decided on 2026-10-10 (`plugins/PLUGIN_AUDIT.md` §6): a code span wrapped in dollars, and nothing else.
 
 ```md
 Euler's identity, $`e^{i\pi} + 1 = 0`$, links five constants.

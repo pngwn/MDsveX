@@ -348,13 +348,29 @@ Keys start with a letter or underscore, then `[a-zA-Z0-9_-]`. Values are bare (n
 
 The fence keeps the LaTeX raw, so `{}`, `\`, `_` and `^` need no escaping, and it renders as math on GitHub and GitLab. In mdsvex it renders as display math through a math renderer, Temml by default, with no `<pre>` or `<code>` around it; with math turned off it is an ordinary code block. Only the language `math` is math: a `latex` or `tex` fence stays an ordinary code block that shows the source. Anything after `math` in the info string is kept and reserved for later use, such as equation labels.
 
-Inline math is planned, not implemented yet. It will be a code span wrapped in dollars:
+Inline math is a code span wrapped in dollars: a `$`, a code span and a `$`, with nothing between them, all on one line.
 
 ```markdown
 Euler's identity, $`e^{i\pi} + 1 = 0`$, links five constants.
 ```
 
-A `$` that is not followed by a backtick is plain text, so prices need no escaping. Plain `$…$` and `$$…$$` are not math. A code span with the language hint `` `#!math …` `` is not math either, it stays inline code.
+The code span is any code span, of one or two backticks, and a space at each end is padding as it is in one. The LaTeX is raw: nothing in it is markup, and a leading `#!` is not a language hint. It may stand anywhere a code span may, in a heading, a table cell or the text of a link, and it needs no space around it (`` a$`x`$b `` is math). In a table cell `\|` is a bar, as in any code span there, so the LaTeX double bar is written `\Vert`.
+
+Both dollars are needed, and a `$` that is escaped does not count. Everything else is what it is without the dollars:
+
+| source | result |
+|---|---|
+| `` $`x`$ `` | math |
+| `` $`x` `` | a `$`, then a code span |
+| `` `x`$ `` | a code span, then a `$` |
+| `` \$`x`$ `` | a `$`, a code span, a `$` |
+| `` $ `x`$ `` | the same, a space is not nothing |
+| `$5`, `a $ b`, `$x$`, `$$x$$` | text |
+| `` $$`x`$$ `` | a `$`, math, a `$` |
+
+So prices need no escaping, and plain `$…$` and `$$…$$` are not math. A code span may run over a line end and inline math may not: a `$` before a code span that closes on a later line is a `$` and a code span. A formula too long for a line is what the fence is for. A code span with the language hint `` `#!math …` `` is not math either, it stays inline code.
+
+In mdsvex inline math renders through the same math renderer as the fence. With math turned off it is an ordinary code span that shows the LaTeX, without the dollars.
 
 ---
 
