@@ -220,6 +220,13 @@ interface MdsvexOptions {
 	heading_ids?:
 		| boolean
 		| { slug?: (text: string, heading: { depth: number }) => string };
+	smart_punctuation?:
+		| boolean
+		| {
+				quotes?: boolean | [string, string, string, string];
+				dashes?: boolean;
+				ellipses?: boolean;
+		  };
 }
 ```
 
@@ -690,6 +697,67 @@ mdsvex({ heading_ids: true, parse_plugins: [anchors] });
 [`@mdsvex/plugin-anchors`](docs#anchors) is that plugin, with a choice of where the link goes.
 
 A [replacement](docs#custom-components) for a heading gets the `id` as a prop. `compile()` takes the option too. The ids belong to the compile, so `@mdsvex/parse` used on its own, for a streaming render, makes none. The editor reads the option from the manifest the plugin writes, or from `heading_ids: true` in an `mdsvex.config.json`, which can't hold a `slug` function.
+
+### `smart_punctuation`
+
+```ts
+smart_punctuation:
+	| boolean
+	| { quotes?: boolean | [string, string, string, string]; dashes?: boolean; ellipses?: boolean }
+	= false;
+```
+
+Turns the punctuation you can type into the punctuation a typesetter would use:
+
+```js
+mdsvex({ smart_punctuation: true });
+```
+
+| you write | you get | |
+| --- | --- | --- |
+| `"quoted"` | “quoted” | curly double quotes |
+| `'quoted'`, `it's` | ‘quoted’, it’s | curly single quotes, and the apostrophe |
+| `1990--2020` | 1990–2020 | two hyphens are an en dash |
+| `wait --- what` | wait — what | three hyphens are an em dash |
+| `and so on...` | and so on… | three dots are an ellipsis |
+
+It is off by default, so a document renders the characters it has unless you ask. mdsvex 0.x had it on, see [smart punctuation in 0.x](docs#smart-punctuation-in-0x).
+
+Only those five are replaced. A run of any other length stays as written, so four hyphens or four dots are still four. Two hyphens after a space and before a letter are a command line flag and stay too, so `run it with --watch` is safe, while `a -- b`, `a--b` and `1--2` get a dash.
+
+A quote opens after a space, at the start of a paragraph, heading, list item or table cell, and after an opening bracket, a dash or another quote that just opened. Anywhere else it closes, which also makes an apostrophe. A quote with a space on both sides is left straight. Markup is looked through: the quotes in `_"word"_` and `"_word_"` face the same way, and the `'s` after a code span, a link or `{name}` is an apostrophe.
+
+Quotes are not paired, so two cases come out wrong: an apostrophe at the start of a word opens (`'90s`, `rock 'n' roll`), and feet and inches close (`6'2"`). Type the character you want there, `’90s` or `6′2″`. A character you type yourself is never changed.
+
+Each kind can be turned off, and `quotes` takes the four strings of another language, the opening and closing double quote and then the opening and closing single quote:
+
+```js
+mdsvex({
+	smart_punctuation: {
+		dashes: false,
+		// French, with a no-break space inside the guillemets
+		quotes: ['«\u00a0', '\u00a0»', '“', '”']
+	}
+});
+```
+
+German is `['„', '“', '‚', '‘']`. An apostrophe between two letters or digits is always `’`, whatever the closing single quote is. There is one style for the whole site, mdsvex does not read a document's language.
+
+Only prose is touched. These stay exactly as written:
+
+- code spans, fenced code, highlighted code and math
+- Svelte expressions and blocks, such as `{"a--b"}` and `{#if x === "y"}`
+- attributes of elements and components, such as `<Box --gap="1--2">`
+- urls, and the text of an autolink such as `<https://example.com/a--b>`
+- the `alt` text of an image and the `title` of a link or an image
+- text inside `<code>`, `<kbd>`, `<pre>`, `<samp>`, `<var>`, `<tt>` and `<textarea>`, and the contents of `<script>` and `<style>`
+- character references, so `&quot;` and `&#39;` are a way to keep a straight quote
+- a character behind a backslash, so `\"`, `\'`, `\--` and `\...` stay literal
+- frontmatter, HTML comments and thematic breaks
+
+Text inside a component or any other element is prose and is changed.
+
+[`heading_ids`](docs#heading_ids) makes its ids from the text as written, so turning this on does not change any anchor. `compile()` takes the option too. It belongs to the compile and to the incremental HTML renderer, so the streaming Svelte renderer shows text as written. The editor reads the option from the manifest the plugin writes, or from `smart_punctuation` in an `mdsvex.config.json`.
 
 ## Frontmatter
 
@@ -2270,7 +2338,7 @@ for (const file of layouts) report(file, check_template(readFileSync(file, 'utf8
 node migrate.js
 ```
 
-- `migrate_config` rewrites the `layout` option into `templates`, and the `highlight` option, in a JavaScript or TypeScript config.
+- `migrate_config` rewrites the `layout` option into `templates`, and the `highlight` and `smartypants` options, in a JavaScript or TypeScript config.
 - `migrate_frontmatter` renames a document's `layout:` key to `template:`.
 - `check_template` lists what a layout component needs changed. It rewrites nothing.
 
@@ -2292,6 +2360,7 @@ To also convert CommonMark documents to mdsvex's markdown, use `migrate`, which 
 | `export let title` in a layout | `let { title } = $props()` |
 | `<script context="module">` exports | `<script module>` exports |
 | `{title}` in a document | `{metadata.title}` |
+| `smartypants`, on by default | [`smart_punctuation`](docs#smart_punctuation), off by default, the migrator turns it on |
 | `remarkPlugins`, `rehypePlugins` | [`parse_plugins`](docs#parse_plugins) |
 | `rehype-slug` | [`heading_ids: true`](docs#heading_ids) |
 | `rehype-autolink-headings` | [`@mdsvex/plugin-anchors`](docs#anchors) |
@@ -2302,7 +2371,7 @@ To also convert CommonMark documents to mdsvex's markdown, use `migrate`, which 
 | `remark-code-import`, ```` ```js file=./a.js#L1-L5 ```` | built in as [`src=`](docs#code-from-a-file), the migrator renames `file=` on a fence with no code |
 | `![alt](./a.png)` served from the page's url | imported from beside the document, write `/a.png` for a file in `static`, or set [`import_images: false`](docs#import_images) |
 
-The migrator handles the `layout` rows and flags `<slot />` and `layoutPropForwarding`. The other rows are yours to change.
+The migrator handles the `layout` and `smartypants` rows and flags `<slot />` and `layoutPropForwarding`. The other rows are yours to change.
 
 0.x matched named layouts to folders. Templates aren't matched by folder, so for named layouts the notes include a `select_template` to paste into your config:
 
@@ -2387,6 +2456,34 @@ mdsvex({
 ```
 
 Or drop the highlighter and use the default. Either way, import a theme: highlighted code has no colours without one.
+
+### Smart punctuation in 0.x
+
+0.x curled quotes and made dashes and ellipses in every document unless you set `smartypants: false`. Now [`smart_punctuation`](docs#smart_punctuation) does that, and it is off unless you turn it on. `migrate_config` turns it on for a config that relied on the old default, so your pages keep their typography:
+
+| mdsvex 0.x | now |
+| --- | --- |
+| no `smartypants` option | `smart_punctuation: true` is added |
+| `smartypants: true` | `smart_punctuation: true` |
+| `smartypants: false` | removed, off is the default |
+| `smartypants: { quotes, ellipses }` | `smart_punctuation: { quotes, ellipses }` |
+| `dashes: true`, the default: `--` is an em dash, `---` is left alone | `--` is an en dash and `---` an em dash |
+| `dashes: 'oldschool'` | `dashes: true`, which now means the same |
+| `dashes: 'inverted'` | `dashes: true`, and the documents are rewritten |
+| `backticks`, which curled <code>&#96;&#96;quoted''</code> | gone, the documents are rewritten |
+
+The dashes are the one change that shows. With the 0.x default, `--` was an em dash. It is an en dash now, as it is in pandoc, cmark and LaTeX. So that pages render what they did, pass your old `smartypants` value to `migrate` when it converts your documents, `true` if you never set it:
+
+```js
+import { migrate } from '@mdsvex/migrate';
+
+for (const file of globSync('src/**/*.{svx,md}'))
+	writeFileSync(file, migrate(readFileSync(file, 'utf8'), { smartypants: true }));
+```
+
+It turns each `--` in text into `---`, keeps a `---` that 0.x left alone as `\---`, swaps the two for `'inverted'`, and turns <code>&#96;&#96;quoted''</code> into `"quoted"`. Code, urls and attributes are not touched. The notes from `migrate_config` say which of this applies to your config.
+
+Three things 0.x changed are left alone now, because they are not prose: a string inside a Svelte expression, an attribute such as `--css-var="x"` on a component, and the text of an autolinked url. And `--name` after a space is read as a command line flag, where 0.x gave it a dash.
 
 ## Limitations
 

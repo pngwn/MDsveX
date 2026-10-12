@@ -38,6 +38,7 @@ const nav = [
 			["highlight", "docs#highlight", true],
 			["math", "docs#math", true],
 			["heading_ids", "docs#heading_ids", true],
+			["smart_punctuation", "docs#smart_punctuation", true],
 		],
 	],
 	[
@@ -140,6 +141,7 @@ const nav = [
 			["what changes", "docs#what-changes", false],
 			["layout components", "docs#layout-components", false],
 			["syntax highlighting", "docs#syntax-highlighting-in-0x", false],
+			["smart punctuation", "docs#smart-punctuation-in-0x", false],
 		],
 	],
 	["Limitations", "docs#limitations"],

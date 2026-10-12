@@ -1,6 +1,6 @@
 # Smart punctuation: design
 
-Status: draft, 2026-10-12. Targets `next`. Nothing is built. The audit decided that this is a core feature behind an option (`plugins/PLUGIN_AUDIT.md` §6); the open points are in §9.
+Status: built, 2026-10-12, on `next`. The maintainer took every pick in §9 that day. §10 says where the code differs from the sections before it, which are kept as they were written. The audit decided that this is a core feature behind an option (`plugins/PLUGIN_AUDIT.md` §6).
 
 Sources:
 - #825, which tracks the old smartypants rewriting text that is not prose: string literals in `{…}` (#83), `--css-var="x"` on a component (#459) and the text of an autolinked URL (#424).
@@ -137,6 +137,8 @@ Left as written. Neither goes through `escape_text_at`, both are attribute value
 
 ## 9. Decisions for the maintainer
 
+All seven were decided on 2026-10-12, each as picked below.
+
 1. **Default.** Off, and the migrator turns it on (my pick). Or on, as it was in 0.x. Off matches `heading_ids` and `unwrap_images`, and output that differs from the source without being asked is the kind of surprise PFM avoids.
 2. **The set.** The five in §1 and nothing else (my pick). Or add primes and backtick quotes for parity with the old option.
 3. **`--name`.** Left alone as a flag (my pick). Or converted like any other `--`, which is simpler to state and wrong in most technical prose.
@@ -144,3 +146,55 @@ Left as written. Neither goes through `escape_text_at`, both are attribute value
 5. **Language.** One style plus the four-string override, no `lang` lookup (my pick). Or a built-in table keyed by language.
 6. **`alt` and `title`.** Untouched (my pick). Or transformed, with a string version of the rule.
 7. **Streaming (D7).** Compile and the incremental HTML renderer, not `Node.svelte` (my pick). Or a second implementation in `Node.svelte` that accepts a flip at the open end.
+
+## 10. What was built
+
+The option, the five substitutions, the direction rule, the exclusions and the migration are as above. These parts differ.
+
+**Where it runs (§0, §6).** Not in the shared path of `escape_text_at`. That function clamps a value that runs past the end of the source, a branch a whole document never takes. A render with the option sets the length it compares against to zero, so every value arrives in that branch, and the check for the option sits there. A render without the option runs the code it ran before, with no new load or compare per text node. Text goes on to `smart_text`, which has an escape index of its own (the four pointers of `esc_*` again, plus `'`, `--` and `...`), and code is escaped from its slice. Nothing in the plain path is shared or touched.
+
+**One rule for a node and for a run (§0, §2).** No walk was edited and none carries state. `fold_children` still joins a run of text nodes and soft breaks into one slice, and the other walks still render node by node. Both give the same answer because the question is the same: inside the slice the two characters come from the source, where a soft break is a newline and so reads as space, and at either end of the slice the tree is asked. For the right end of a run that is the last node of the run, found by its value end. A seeded test renders random text through all five walks and checks they agree.
+
+**The neighbour at a node edge (§2).** Inside a node the two characters are read from the source. At the first or last character of a node, `sp_left` and `sp_right` find the character a reader would see beside it, which is more than §2 asked for:
+
+- a text sibling gives its last or first character, a stored string included;
+- a soft break, a hard break and a line break are space;
+- emphasis, strong, strikethrough, superscript, subscript, a link, an inline directive and an inline element are looked into, so `_don_'t` ends in an apostrophe because of the `n`;
+- with no sibling on that side the search goes up through the same kinds, so the quote in `a _"b"_` is judged by the space before the emphasis and the one in `(_"b"_)` by the bracket;
+- a code span, an expression, an image and a `{@tag}` read as a word, as §2 has it;
+- a comment and an empty text node render nothing and are skipped;
+- anything else is the edge of a block, and so is typed HTML with a block tag (`p`, `div`, `li`, `td`, `br` and the rest of `SP_BLOCK_TAGS`), so `<td>a</td><td>"b"</td>` opens the second quote.
+
+A quote that ends the node before is asked which way it faced, so `"_'a'_"` nests. The child list has no back links, so the search for a previous sibling resumes from the last pair it found, which keeps a long paragraph linear.
+
+**The checks of §4.**
+
+- Autolink text: a text node whose parent is a link that starts with `<` in the source. No look at the text itself.
+- Typed HTML that holds code: asked once per parent at the first hit, as §4 describes. `script` and `style` are in the set too.
+- Escapes: the test is an odd run of backslashes before the node (`brace_escaped`), so `\\"` is an escaped backslash and a live quote. A run of hyphens or dots is kept when the node starts at an escaped one, or when it ends where the next node starts behind a backslash.
+
+**The flag.** `--name` is a flag when the hyphens follow a space, a break or the start of a block and a letter of the same text node follows. `--` at the end of a node is a dash, whatever comes next.
+
+**Quote strings.** The four strings are text. A `<` or a brace in one is escaped, a character reference is kept, so `&nbsp;` works. Anything but four strings throws.
+
+**A word, for the apostrophe (§3).** Only the apostrophe rule asks whether a neighbour is a letter or digit, and only when the closing single quote is not `’`. It uses ranges and not a table: ASCII letters and digits, and every character from U+00C0 up apart from the general and CJK punctuation blocks.
+
+**Stored strings and the wire (§4, §7).** A text node with a stored string is returned before the option is looked at. Every text node of a tree built from the wire is one, so the HTML renderer shows such a tree as written, the same as `Node.svelte`. Nothing reads a source that is not there.
+
+**Source maps (§6).** As described, with one case worth knowing. A record is read as a copy of the source when its two lengths match. A dash or an ellipsis shortens the text and an `&`, `<`, `>` or a straight `"` lengthens it, so in a text node that has both the lengths can come out equal (`a & b... c...`). The record then claims a copy, and positions between the first and last substitution are off by the few characters that cancelled. Positions outside them are right, and so is every other node. Splitting the record per substitution would fix it, with the precision §6 already left for later.
+
+**Heading ids (§5).** From the text as written, pinned by a test: turning the option on changes no anchor.
+
+**Migration (§8).**
+
+- `migrate_config` adds `smart_punctuation: true` to a config with no `smartypants`, also for `mdsvex()` with no options, renames `true`, removes `false`, and maps an object key by key. `dashes: 'oldschool'` becomes `true` with no note, `'inverted'` becomes `true` with one, `backticks` is removed.
+- The dash mode reaches the documents as `migrate(source, { smartypants })`, the 0.x value itself. `migrate` still returns a string. The note that says to do this comes from `migrate_config`, kind `smart_punctuation`.
+- With the 0.x default, `--` becomes `---`. 0.x left `---` alone, so it becomes `\---` and stays three hyphens.
+- A backtick quote becomes `"`, or the curly character when the old config had `quotes: false`, since nothing would curl it.
+- Not mapped: 0.x also read `. . .` as an ellipsis, and it gave `--name` a dash where the flag rule now leaves it.
+
+**Left open.**
+
+- `-->` and `<--` have exactly two hyphens, so they get an en dash, as the five substitutions say. Arrows were out of scope in §1. Leaving a run that touches `<` or `>` alone would be one more exemption beside the flag.
+- `Node.svelte` has no implementation, by decision 7.
+
