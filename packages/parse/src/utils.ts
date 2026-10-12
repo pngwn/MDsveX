@@ -289,6 +289,46 @@ export function take_src(): boolean {
 	return true;
 }
 
+// every fence gets an info_start and an info_end, they differ when it has an
+// info string, the info_end arm notes where each one is, as pairs, a parse
+// nobody asks about must not grow the list, so past the cap the count says
+// only that there were more
+const INFO_CAP = 128;
+const info_spans: number[] = [];
+let info_count = 0;
+
+function note_info(start: number, end: number): void {
+	if (info_count < INFO_CAP) {
+		info_spans[info_count] = start;
+		info_spans[info_count + 1] = end;
+		info_count += 2;
+	} else info_count = INFO_CAP + 2;
+}
+
+/**
+ * @internal true when an info string noted since the last call holds text,
+ * so a compile that looks for a key in fence meta only looks through a tree
+ * that has it, source is the string the last parse read, also true when
+ * there were too many info strings to note, the notes are shared between
+ * documents as the note of take_src is
+ */
+export function take_info(source: string, text: string): boolean {
+	// the search stays out of line, most documents have no info string
+	return info_count !== 0 && info_search(source, text);
+}
+
+function info_search(source: string, text: string): boolean {
+	const count = info_count;
+	info_count = 0;
+	if (count > INFO_CAP) return true;
+	for (let i = 0; i < count; i += 2) {
+		const last = info_spans[i + 1] - text.length;
+		for (let at = info_spans[i]; at <= last; at++)
+			if (source.startsWith(text, at)) return true;
+	}
+	return false;
+}
+
 /**
  * a computed key literal takes a slow generic define, so known keys get
  * constant key literals and other keys a store into an empty literal
@@ -321,6 +361,8 @@ export function make_meta(key: string, value: any): Record<string, any> {
 		case 'tight':
 			return { tight: value };
 		case 'info_end':
+			// its start is not known here, a search from 0 finds what it holds
+			note_info(0, value);
 			return { info_end: value };
 		case 'args':
 			// a block directive gets its args ahead of its name, the name slot
@@ -363,6 +405,7 @@ export function merge_meta(
 			meta.self_closing = value;
 			return;
 		case 'info_end':
+			if (value !== meta.info_start) note_info(meta.info_start, value);
 			meta.info_end = value;
 			return;
 		case 'col_count':

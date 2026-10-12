@@ -64,6 +64,20 @@ describe("code", () => {
 		expect(m("```js\nconst a = 1;\n```")).toBe("```js\nconst a = 1;\n```");
 	});
 
+	test("file= of remark-code-import becomes src= on a fence with no code", () => {
+		expect(migrate("```js file=./a.js#L1-L2\n```\n")).toBe(
+			"```js src=./a.js#L1-L2\n\n```\n",
+		);
+		expect(migrate("```js title=x file=./a.js\n```\n")).toBe(
+			"```js title=x src=./a.js\n\n```\n",
+		);
+		// code of its own would be an error under src=
+		expect(migrate("```js file=./a.js\nlet a;\n```\n")).toBe(
+			"```js file=./a.js\nlet a;\n```\n",
+		);
+		expect(migrate("```js profile=x\n```\n")).toBe("```js profile=x\n\n```\n");
+	});
+
 	test("fence grows to escape inner backticks", () => {
 		const out = m("````\n```\n````");
 		expect(out).toBe("````\n```\n````");

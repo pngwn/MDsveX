@@ -293,6 +293,29 @@ export * as directives from './directives.js';`,
 });
 
 describe('compile_markdown', () => {
+	test('a fence with src= shows a file of the workspace', () => {
+		const workspace = files({
+			'lib/math.ts': 'export const a = 1;\nexport const b = 2;\n',
+			'docs/App.svelte': '<h1>hi</h1>\n',
+		});
+		const { code } = compile_markdown(
+			'```src=../lib/math.ts#L2\n```\n\n```src=./App.svelte\n```\n',
+			'docs/App.svx',
+			{},
+			workspace
+		);
+		expect(code).toBe(
+			'<pre><code class="language-ts">export const b = 2;</code></pre>' +
+				'<pre><code class="language-svelte">&lt;h1&gt;hi&lt;/h1&gt;</code></pre>'
+		);
+		expect(() =>
+			compile_markdown('```src=./gone.ts\n```\n', 'App.svx', {}, workspace)
+		).toThrow('No text was given for ./gone.ts');
+		expect(() =>
+			compile_markdown('```src=./gone.ts\n```\n', 'App.svx', {})
+		).toThrow('No text was given for ./gone.ts');
+	});
+
 	test('maps the svelte output back to the markdown file', () => {
 		const source = '# hello\n\nsome *text*';
 		const { code, map } = compile_markdown(source, 'App.svx', {});

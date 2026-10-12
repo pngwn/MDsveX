@@ -1,6 +1,7 @@
 import * as acorn from 'acorn';
 import {
 	compile,
+	SourceError,
 	type CompileOptions,
 	type ComponentMode,
 } from 'mdsvex/compile';
@@ -126,6 +127,8 @@ export interface Prepared {
 	config: ResolvedConfig;
 	options: MdsvexCompileOptions;
 	error: Error | null;
+	/** the workspace, a fence with src= shows one of its files */
+	files: FileMap;
 }
 
 export type FileMap = Map<string, string>;
@@ -160,7 +163,7 @@ function empty_config(): ResolvedConfig {
 export function prepare(files: FileMap): Prepared {
 	const config = empty_config();
 	const raw = files.get(CONFIG_FILE);
-	if (raw === undefined) return { config, options: {}, error: null };
+	if (raw === undefined) return { config, options: {}, error: null, files };
 	const plugins: { id: string; target: TemplateTarget }[] = [];
 
 	let parsed: ReplConfig;
@@ -171,6 +174,7 @@ export function prepare(files: FileMap): Prepared {
 			config,
 			options: {},
 			error: new Error(`${CONFIG_FILE}: ${(e as Error).message}`),
+			files,
 		};
 	}
 
@@ -242,7 +246,7 @@ export function prepare(files: FileMap): Prepared {
 			});
 		}
 	} catch (e) {
-		return { config, options: {}, error: e as Error };
+		return { config, options: {}, error: e as Error, files };
 	}
 
 	const options: MdsvexCompileOptions = {
@@ -292,7 +296,7 @@ export function prepare(files: FileMap): Prepared {
 		];
 	}
 
-	return { config, options, error: null };
+	return { config, options, error: null, files };
 }
 
 const PLUGIN_OPTIONS = ['twoslash', 'parse_meta'];
@@ -642,12 +646,29 @@ export interface MarkdownResult {
 	map: SourceMapV3;
 }
 
+/** files is the workspace a fence with src= reads a relative path from */
 export function compile_markdown(
 	source: string,
 	filename: string,
-	options: MdsvexCompileOptions
+	options: MdsvexCompileOptions,
+	files?: FileMap
 ): MarkdownResult {
-	const result = compile(source, { ...options, sourcemap: true });
+	let sources: Record<string, string> | undefined;
+	let result;
+	for (;;) {
+		try {
+			result = compile(source, { ...options, sources, sourcemap: true });
+			break;
+		} catch (e) {
+			// compile names one file it has no text for, each try adds that one
+			if (!(e instanceof SourceError) || e.code !== 'src_missing') throw e;
+			const text = e.spec.startsWith('.')
+				? files?.get(relative_to(filename, e.spec))
+				: undefined;
+			if (text === undefined) throw e;
+			(sources ??= {})[e.spec] = text;
+		}
+	}
 	const map = mappings_to_v3(
 		result.mappings ?? [],
 		source,

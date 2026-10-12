@@ -204,6 +204,7 @@ function claimed(part: string): boolean {
 	if (first === BRACE_OPEN) return line_group(part);
 	if (first === SLASH) return word_group(part);
 	if (part === 'twoslash' || part === 'eval') return true;
+	if (part.startsWith('src=')) return true;
 	if (part === ':no-line-numbers' || part === ':line-numbers') return true;
 	if (part.startsWith(':line-numbers=')) return digits(part.slice(14));
 	if (part === 'showLineNumbers') return true;
@@ -284,6 +285,7 @@ const BUILT_IN_PROPS = [
 	'caption',
 	'class',
 	'children',
+	'src',
 ];
 
 /** the props text of a pre replacement and the messages of the meta props it drops */

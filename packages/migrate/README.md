@@ -31,6 +31,7 @@ migrate(source, {
 | -------------------------------------- | ----------------------------------------------------- |
 | Setext headings (`===` / `---`)        | ATX headings (`#`)                                    |
 | Indented code blocks                   | Fenced code blocks                                    |
+| `file=./a.js` on a fence with no code  | `src=./a.js` (remark-code-import)                     |
 | `*emph*` / `_emph_`                    | `_emph_` (emphasis is always `_`)                     |
 | `**strong**` / `__strong__`            | `*strong*` (strong is always `*`)                     |
 | Trailing-space hard breaks             | Backslash hard breaks (`\`)                           |

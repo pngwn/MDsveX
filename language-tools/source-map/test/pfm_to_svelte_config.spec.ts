@@ -329,6 +329,26 @@ describe("pfmToSvelte compile diagnostics", () => {
 		expect(r.code).toContain("<h1>after</h1>");
 	});
 
+	it("a fence that shows a file is no error, the editor reads none", () => {
+		const source = "# t\n\n```ts src=./math.ts#L2\n```\n\n## after\n";
+		const r = pfmToSvelte(source, { resolve: (id) => FILES[id] });
+		expect(r.diagnostics).toEqual([]);
+		expect(r.code).toContain('<pre><code class="language-ts"></code></pre>');
+		expect(r.code).toContain("<h2>after</h2>");
+	});
+
+	it("reports a fence with src= and code of its own at the fence", () => {
+		const source = "# t\n\n```ts src=./math.ts\nlet mine;\n```\n\n## after\n";
+		const r = pfmToSvelte(source, { resolve: (id) => FILES[id] });
+		expect(r.diagnostics).toHaveLength(1);
+		const [d] = r.diagnostics;
+		expect(d.severity).toBe("error");
+		expect(d.message).toContain("so it can have no code of its own");
+		expect(d.start).toBe(source.indexOf("```ts"));
+		expect(r.code).toContain("let mine;");
+		expect(r.code).toContain("<h2>after</h2>");
+	});
+
 	it("reports invalid latex at the latex and shows the math as written", () => {
 		const source = "# t\n\n```math\nx + \\frac{a}{\n```\n\n```math\ny\n```\n\n## after\n";
 		const r = pfmToSvelte(source, {

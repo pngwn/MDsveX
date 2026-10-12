@@ -161,11 +161,16 @@ async function get_bundle(
 			const highlight = await highlight_for(code, config);
 			const math = await math_for(code, config);
 			if (uid !== current_id) throw ABORT;
-			const { code: svelte_code, map } = compile_markdown(code, name, {
-				...prepared.options,
-				highlight,
-				math,
-			});
+			const { code: svelte_code, map } = compile_markdown(
+				code,
+				name,
+				{
+					...prepared.options,
+					highlight,
+					math,
+				},
+				prepared.files
+			);
 			return { code: svelte_code, map: map as SourceMapInput };
 		},
 	};

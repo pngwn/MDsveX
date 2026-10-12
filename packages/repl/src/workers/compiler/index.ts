@@ -77,11 +77,16 @@ addEventListener('message', async (event: MessageEvent<CompilerRequest>) => {
 		if (markdown) {
 			const highlight = await highlight_for(file.contents, prepared.config);
 			const math = await math_for(file.contents, prepared.config);
-			md = compile_markdown(file.contents, file.name, {
-				...prepared.options,
-				highlight,
-				math,
-			});
+			md = compile_markdown(
+				file.contents,
+				file.name,
+				{
+					...prepared.options,
+					highlight,
+					math,
+				},
+				prepared.files
+			);
 			source = md.code;
 			to_source = offset_mapper(md.map, md.code, file.contents);
 		}

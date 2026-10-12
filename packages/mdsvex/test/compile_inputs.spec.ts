@@ -100,6 +100,7 @@ describe('compile inputs', () => {
 			filename: undefined,
 			unwrap_images: undefined,
 			heading_ids: undefined,
+			await_sources: false,
 		});
 		const doc = '# plain\n\ntext\n';
 		const out = target();

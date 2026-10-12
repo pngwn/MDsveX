@@ -46,6 +46,8 @@ import { metadata_query } from './metadata_query';
 import type { MetadataDev } from './metadata_query';
 import { links_of } from './link_urls';
 import type { BaseImport, Rewrite } from './link_urls';
+import { need_error } from './fence_sources';
+import { slashed, source_files } from './source_files';
 
 export * from './compile';
 export {
@@ -291,6 +293,11 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	)
 		throw new Error('[mdsvex] import_images must be true or false');
 	inputs.import_images = options.import_images !== false;
+	// a document that shows a file with src= stops after its parse, the
+	// plugin reads the file and the document renders with it
+	inputs.await_sources = true;
+	const shown = source_files();
+	const fetched = new WeakMap<Parsed, Record<string, string>>();
 	const written_links = options.links;
 	if (
 		written_links !== undefined &&
@@ -410,6 +417,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			highlight: false,
 			math: false,
 			import_images: false,
+			sources: false,
 		});
 		return { code: result.code, frontmatter: result.metadata !== undefined };
 	};
@@ -487,13 +495,16 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		(message) => log(message)
 	);
 
-	/** parsed is a document that only has to render again */
+	/**
+	 * parsed is a document that only has to render, null when the document
+	 * stopped after its parse for the files it shows, show_sources renders it
+	 */
 	function compile_doc(
 		ctx: Rollup.TransformPluginContext,
 		code: string,
 		id: string,
 		parsed: Parsed | undefined
-	): { code: string } {
+	): { code: string } | null {
 		let doc = stored.get(id);
 		if (doc === undefined) {
 			doc = {
@@ -508,6 +519,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				start: 0,
 				split: 0,
 				end: 0,
+				waiting: undefined,
 			};
 			stored.set(id, doc);
 		}
@@ -516,8 +528,23 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		// without templates or a selector a query has nothing to pick
 		if (!no_templates) inputs.templates = templates_for(templates, select, id);
 		inputs.filename = clean_id(id);
-		if (parsed === undefined) compiler.compile_into(code, inputs, doc);
-		else compiler.render_into(parsed, inputs, doc);
+		if (parsed === undefined) {
+			compiler.compile_into(code, inputs, doc);
+			if (doc.waiting !== undefined) return null;
+			// it shows no file, or no longer
+			if (!shown.empty) shown.drop(clean_id(id));
+		} else {
+			const sources = fetched.get(parsed);
+			if (sources === undefined) compiler.render_into(parsed, inputs, doc);
+			else {
+				inputs.sources = sources;
+				try {
+					compiler.render_into(parsed, inputs, doc);
+				} finally {
+					inputs.sources = undefined;
+				}
+			}
+		}
 		doc.raw = code;
 		if (doc.warnings !== undefined) {
 			// a document that met math without its renderer renders again and warns then
@@ -557,7 +584,75 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		code: string,
 		id: string
 	): Promise<{ code: string }> {
-		return rerender(code, id, (parsed) => compile_doc(ctx, code, id, parsed));
+		return rerender(code, id, (parsed) => compile_doc(ctx, code, id, parsed)!);
+	}
+
+	/**
+	 * for a document that stopped after its parse, called straight after its
+	 * compile, resolves each file its fences show as an import from the
+	 * document would, reads it, and renders the document with the text, a
+	 * document with math first loads the renderer it would meet unloaded
+	 */
+	async function show_sources(
+		ctx: Rollup.TransformPluginContext,
+		id: string,
+		again: (parsed: Parsed) => Compiled
+	): Promise<{ code: string }> {
+		const doc = stored.get(id)!;
+		const parsed = doc.waiting!;
+		doc.waiting = undefined;
+		const file = clean_id(id);
+		const fs = await import('node:fs/promises');
+		const sources: Record<string, string> = {};
+		const files: string[] = [];
+		await Promise.all(
+			parsed.needs!.map(async (need) => {
+				if (need.type !== 'source') return;
+				const resolved = await ctx.resolve(need.spec, file);
+				if (resolved === null || resolved.external)
+					throw need_error(
+						need,
+						`Could not resolve "${need.spec}" from "${file}"`,
+						file
+					);
+				const path = slashed(clean_id(resolved.id));
+				let text: string;
+				try {
+					text = await fs.readFile(path, 'utf8');
+				} catch {
+					throw need_error(
+						need,
+						`Could not read "${path}", the file src=${need.spec} names`,
+						file
+					);
+				}
+				sources[need.spec] = text;
+				files.push(path);
+			})
+		);
+		shown.track(file, files);
+		for (const path of files) {
+			// a watch build compiles again when the file changes, the dev server asks hotUpdate
+			if (command === 'build') ctx.addWatchFile(path);
+			else dev?.watch(path);
+		}
+		fetched.set(parsed, sources);
+		if (parsed.math && inputs.math === math_pending)
+			return load_math(() => again(parsed));
+		return again(parsed);
+	}
+
+	/** show_sources for a config without replacements or templates */
+	function reshow(
+		ctx: Rollup.TransformPluginContext,
+		code: string,
+		id: string
+	): Promise<{ code: string }> {
+		return show_sources(
+			ctx,
+			id,
+			(parsed) => compile_doc(ctx, code, id, parsed)!
+		);
 	}
 
 	return [
@@ -664,10 +759,12 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				if (tracker === null) {
 					if (waits.length === 0) {
 						const result = compile_doc(this, code, id, undefined);
+						if (result === null) return reshow(this, code, id);
 						return math_needed ? recompile(this, code, id) : result;
 					}
 					return Promise.all(waits).then(() => {
 						const result = compile_doc(this, code, id, undefined);
+						if (result === null) return reshow(this, code, id);
 						return math_needed ? recompile(this, code, id) : result;
 					});
 				}
@@ -684,6 +781,8 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 					inputs.components = registry?.sources();
 					inputs.directives = registry?.directive_sources();
 					const result = compile_doc(this, code, id, parsed);
+					// it shows files, which are read before it renders
+					if (result === null) return show_sources(this, id, finish);
 					// it met a math fence before the renderer was loaded
 					if (math_needed) return rerender(code, id, finish);
 					const picked = stored.get(id)!.template;
@@ -736,8 +835,22 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				const in_templates =
 					templates !== null && templates.files().includes(file);
 				const queried = await metadata.hot(this.environment, update);
-				const with_queried =
+				let with_queried =
 					queried === undefined ? undefined : [...update.modules, queried];
+				// a file a fence shows is no module of the document, so nothing else compiles it again
+				const showing = shown.docs_showing(file);
+				if (showing.length !== 0) {
+					const graph = this.environment.moduleGraph;
+					with_queried ??= update.modules.slice();
+					for (const doc of showing) {
+						const mods = graph.getModulesByFile(doc);
+						if (mods === undefined) continue;
+						for (const mod of mods) {
+							graph.invalidateModule(mod, new Set(), update.timestamp, true);
+							if (!with_queried.includes(mod)) with_queried.push(mod);
+						}
+					}
+				}
 				if (!in_root && !in_templates) return with_queried;
 				const warn = (m: string) =>
 					this.environment.logger.warn('[mdsvex] ' + m);

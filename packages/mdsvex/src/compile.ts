@@ -17,6 +17,7 @@ import type {
 	SyntaxOptions,
 } from '@mdsvex/parse';
 import { TreeBuilder } from '@mdsvex/parse/tree-builder';
+import { take_info } from '@mdsvex/parse/utils';
 import type { NodeBuffer } from '@mdsvex/parse/utils';
 import {
 	ComponentScope,
@@ -51,6 +52,8 @@ import { image_imports } from './image_imports';
 import type { ImageImports, ImageNeed } from './image_imports';
 import { link_urls, links_of, with_images } from './link_urls';
 import type { LinkOptions, Links, Rewrite } from './link_urls';
+import { fence_sources, source_fences, sources_met } from './fence_sources';
+import type { SourceFences, SourceNeed } from './fence_sources';
 
 export type {
 	DirectiveContext,
@@ -79,6 +82,8 @@ export type {
 } from './highlight_run';
 export { heading_slug } from './heading_ids';
 export type { ImageNeed } from './image_imports';
+export { SourceError } from './fence_sources';
+export type { SourceErrorCode, SourceNeed } from './fence_sources';
 export type {
 	BaseImport,
 	LinkOptions,
@@ -226,18 +231,33 @@ export interface CompileOptions
 	 * links: { routes: 'src/routes', base: '/docs' }
 	 */
 	links?: LinkOptions;
+	/**
+	 * the text of each file a fence shows with src=, by the path the fence
+	 * names without its line slice, a fence whose file is not here throws a
+	 * SourceError, false leaves src= unread, the fence then renders as written
+	 *
+	 * @example
+	 * compile('```ts src=./math.ts#L1-L2\n```', {
+	 *   sources: { './math.ts': 'export const a = 1;\nexport const b = 2;\n' },
+	 * });
+	 */
+	sources?: Readonly<Record<string, string>> | false;
 	/** the document, highlighters, math renderers and their errors see it */
 	filename?: string;
 }
+
+/** the sources option once it is known to be on */
+type Sources = Readonly<Record<string, string>> | undefined;
 
 /** the import lines and url lookup a render is given, from image imports, rewritten urls or both */
 type UrlSwaps = NonNullable<ReturnType<typeof with_images>>;
 
 /**
  * something a parsed document asks for before it renders, a render answers
- * an image itself, with the import
+ * an image itself, with the import, and takes the text of a source from the
+ * sources of its inputs
  */
-export type Need = ImageNeed;
+export type Need = ImageNeed | SourceNeed;
 
 /** a svelte component that wraps documents, its replacements chain in front of the root */
 export interface TemplateEntry {
@@ -340,6 +360,13 @@ export interface CompileInputs {
 	import_images: boolean | undefined;
 	/** the rewrite and links options, links_of prepares them, undefined when no url changes */
 	links: Links | undefined;
+	/** the text of the files fences show with src=, by spec, false leaves src= unread */
+	sources: Readonly<Record<string, string>> | false | undefined;
+	/**
+	 * true makes an into compile stop after the parse when sources lacks a
+	 * file, the document then waits in the waiting field of its target
+	 */
+	await_sources: boolean;
 }
 
 /** @internal every inputs object comes from here, so they share one shape */
@@ -361,6 +388,8 @@ export function compile_inputs(): CompileInputs {
 		math: undefined,
 		import_images: undefined,
 		links: undefined,
+		sources: undefined,
+		await_sources: false,
 	};
 }
 
@@ -387,6 +416,7 @@ function inputs_of(options: CompileOptions): CompileInputs {
 	const import_images = options.import_images;
 	const rewrite = options.rewrite;
 	const links = options.links;
+	const sources = options.sources;
 	// options that set none need no inputs of their own
 	if (
 		bundles === undefined &&
@@ -404,7 +434,8 @@ function inputs_of(options: CompileOptions): CompileInputs {
 		math === undefined &&
 		import_images === undefined &&
 		rewrite === undefined &&
-		links === undefined
+		links === undefined &&
+		sources === undefined
 	)
 		return no_inputs;
 	const inputs = compile_inputs();
@@ -424,6 +455,7 @@ function inputs_of(options: CompileOptions): CompileInputs {
 	inputs.import_images = import_images;
 	if (rewrite !== undefined || links !== undefined)
 		inputs.links = links_of(rewrite, links);
+	inputs.sources = sources;
 	return inputs;
 }
 
@@ -1261,6 +1293,18 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 				images === null ? null : images.lookup
 			)
 		);
+	const given = inputs.sources;
+	const shown =
+		given !== false &&
+		(take_info(source, 'src=') ||
+			inputs.parse_plugins !== undefined ||
+			inputs.directive_handlers !== undefined)
+			? source_fences(nodes, source, inputs.filename)
+			: null;
+	const fenced =
+		shown === null
+			? null
+			: fence_sources(shown, given as Sources, source, inputs.filename);
 	const renderer = take_renderer();
 	const math = inputs.math;
 	const mathy = math !== undefined && math !== false;
@@ -1281,11 +1325,12 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 	}
 	if (mathy && renderer.highlight !== null)
 		(renderer.highlight as HighlightRun).with_math(math);
-	// give_renderer clears both, a throw drops the renderer
+	// give_renderer clears these, a throw drops the renderer
 	if (images !== null) {
 		renderer.imports = images.lines;
 		renderer.urls = images.lookup;
 	}
+	if (fenced !== null) renderer.fences = fenced;
 
 	if (options?.sourcemap) {
 		let result;
@@ -1375,13 +1420,17 @@ export class Parsed {
 	/** the parsed frontmatter, undefined when the document has none */
 	readonly metadata: Metadata | undefined;
 	/**
-	 * what the document asks for before it renders, in document order,
-	 * undefined for nothing, only what the inputs of the parse turned on is
-	 * looked for
+	 * what the document asks for before it renders, images and then sources,
+	 * each in document order, undefined for nothing, only what the inputs of
+	 * the parse turned on is looked for
 	 */
 	needs: readonly Need[] | undefined = undefined;
 	/** @internal the imports the needs of type image render with */
 	_images: ImageImports | null = null;
+	/** @internal the fences the needs of type source are for */
+	_sources: SourceFences | null = null;
+	/** true when the document shows a file and has a math fence, a caller that loads the math renderer late loads it first */
+	math = false;
 	/** @internal null once a render took them */
 	_nodes: NodeBuffer | null;
 	/** @internal the plain arena of the session, lent until the render */
@@ -1608,6 +1657,8 @@ export class CompilerSession {
 		if (plugged) this.plugin_arena!.host.wait(parsed);
 		if (inputs.import_images === true)
 			this.need_images(parsed, image_imports(nodes, source));
+		if (inputs.sources !== false)
+			this.need_sources(parsed, source_fences(nodes, source, inputs.filename));
 		return this.lend(parsed, plugged);
 	}
 
@@ -1615,6 +1666,15 @@ export class CompilerSession {
 		if (images === null) return;
 		parsed._images = images;
 		parsed.needs = images.needs;
+	}
+
+	private need_sources(parsed: Parsed, shown: SourceFences | null): void {
+		if (shown === null) return;
+		parsed._sources = shown;
+		parsed.math = shown.math;
+		const needs = parsed.needs;
+		parsed.needs =
+			needs === undefined ? shown.needs : [...needs, ...shown.needs];
 	}
 
 	/** the arena that holds the document goes to its Parsed, the next parse builds one or gets one back */
@@ -1840,6 +1900,7 @@ export class CompilerSession {
 		let nodes: NodeBuffer;
 		let metadata: Metadata | undefined;
 		let images: ImageImports | null = null;
+		let shown: SourceFences | null = null;
 		// set when plugin handlers could run, a document without plugins never has one
 		let host: PluginHost | null = null;
 		if (parsed === undefined) {
@@ -1876,14 +1937,27 @@ export class CompilerSession {
 			// and a compile a handler starts takes the note
 			if (inputs.import_images === true && (take_src() || plugged))
 				images = image_imports(nodes, source);
-			if (kind === Kind.PARSE) {
+			// the parser notes where the info strings are, only a document with
+			// src= in one is walked
+			const given = inputs.sources;
+			if (given !== false && (take_info(source, 'src=') || plugged))
+				shown = source_fences(nodes, source, inputs.filename);
+			if (
+				kind === Kind.PARSE ||
+				(shown !== null &&
+					out !== undefined &&
+					inputs.await_sources &&
+					!sources_met(shown, given as Sources))
+			) {
 				const waiting = new Parsed(raw, source, metadata, nodes);
 				if (host !== null) host.wait(waiting);
 				this.need_images(waiting, images);
+				this.need_sources(waiting, shown);
 				// parse_once made its own nodes, no arena of the session holds them
-				return renderer !== this.renderer
-					? waiting
-					: this.lend(waiting, plugged);
+				if (renderer === this.renderer) this.lend(waiting, plugged);
+				if (kind === Kind.PARSE) return waiting;
+				out!.waiting = waiting;
+				return out!;
 			}
 		} else {
 			const waited = parsed._nodes;
@@ -1895,6 +1969,7 @@ export class CompilerSession {
 			source = parsed.source;
 			metadata = parsed.metadata;
 			images = parsed._images;
+			shown = parsed._sources;
 			// the next document of the session resets it
 			host = parsed._host;
 			parsed._host = null;
@@ -1915,6 +1990,16 @@ export class CompilerSession {
 					images === null ? null : images.lookup
 				)
 			);
+		// a source that is missing or too short throws here, before the renderer is bound
+		const fenced =
+			shown === null
+				? null
+				: fence_sources(
+						shown,
+						inputs.sources as Sources,
+						source,
+						inputs.filename
+					);
 		if (out !== undefined) out.metadata = metadata;
 		const template = bind(
 			renderer,
@@ -1941,6 +2026,7 @@ export class CompilerSession {
 			renderer.imports = swaps.lines;
 			renderer.urls = swaps.lookup;
 		}
+		if (fenced !== null) renderer.fences = fenced;
 		// the session keeps its renderer, a render that throws must not leave
 		// the imports of this document for the next
 		try {
@@ -2031,6 +2117,7 @@ export class CompilerSession {
 				renderer.imports = undefined;
 				renderer.urls = undefined;
 			}
+			if (fenced !== null) renderer.fences = undefined;
 		}
 		// one call site for every kind, each more is another callee to inline
 		unbind(done!, renderer, source);
@@ -2049,6 +2136,11 @@ export interface TraceTarget extends MapTrace {
 	warnings: CompileWarning[] | undefined;
 	/** what plugins left in ctx.data, set by every compile that has plugins */
 	data?: PluginData;
+	/**
+	 * the document when the compile stopped after its parse for want of a
+	 * source, see await_sources, nothing else of the target is written then
+	 */
+	waiting?: Parsed;
 }
 
 // a session keeps its arena at its largest document size, so large documents
