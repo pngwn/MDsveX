@@ -370,8 +370,8 @@ const BLOCK_START = new Uint8Array(128);
 for (const char of '|!') BLOCK_START[char.charCodeAt(0)] = 1;
 for (const char of '#`*-_<>{:+0123456789[') BLOCK_START[char.charCodeAt(0)] = 3;
 
-// the column of the frame of a footnote definition, which no line is indented to
-const NOTE_COLUMN = 0x7fff;
+// a line goes on with a footnote definition when it is indented this far past where the definition starts
+const NOTE_INDENT = 4;
 const TEXT_BREAK = new Uint8Array(128);
 TEXT_BREAK[LINEFEED] = 1;
 TEXT_BREAK[BACKSLASH] = 1;
@@ -826,6 +826,9 @@ interface ColdState {
 	tag_memo_base: number;
 	/** where the open tag of an element ends, by its start, for those that run over a line */
 	tag_ends: Map<number, number> | null;
+	/** where the text of the last footnote definition starts, and the column that text stands at */
+	note_pos: number;
+	note_column: number;
 	wait_needle: string;
 	wait_cursor: number;
 	// the stalled block quote fence scan, fence cursor or -1 and the first line it has not passed
@@ -905,6 +908,8 @@ export class PFMParser {
 		tag_memo: null,
 		tag_memo_base: 0,
 		tag_ends: null,
+		note_pos: -1,
+		note_column: 0,
 		wait_needle: '',
 		wait_cursor: -1,
 		fence_text: '',
@@ -1760,6 +1765,7 @@ export class PFMParser {
 		if (cold.brace_memo !== null) cold.brace_memo = null;
 		if (cold.tag_memo !== null) cold.tag_memo = null;
 		if (cold.tag_ends !== null) cold.tag_ends = null;
+		cold.note_pos = -1;
 		if (this.wait_chunks.length !== 0) this.wait_chunks.length = 0;
 		cold.raw_node = 0;
 		cold.raw_needle = '';
@@ -3257,6 +3263,7 @@ export class PFMParser {
 	 * start or from where skip_bq_markers leaves a block quote line, 0 otherwise
 	 */
 	private lead_columns(pos: number): number {
+		if (pos === this.cold.note_pos) return this.cold.note_column;
 		const source = this.source;
 		const base = this.source_base;
 		let p = pos;
@@ -10512,11 +10519,12 @@ export class PFMParser {
 
 	/**
 	 * opens the footnote definition at the cursor, whose text starts at text
-	 * it holds one paragraph, which goes on over the lines a paragraph of a list item goes on over
+	 * it holds blocks as a list item does, the line of its label and every line indented to its column
 	 */
 	private open_note(parent: number, text: number): void {
 		const base = this.source_base;
 		const start = this.cursor;
+		const column = this.lead_columns(start) + NOTE_INDENT;
 		const id = this.emit_open(NodeKind.footnote_definition, start, parent);
 		this.out.attr(
 			id,
@@ -10529,11 +10537,12 @@ export class PFMParser {
 		);
 		note_footnote();
 		this.block_quote_depth++;
-		this.push_frame(NOTE_COLUMN);
+		this.push_frame(column);
 		this.node_stack.push(id);
 		this.states.push(StateKind.block_quote);
-		this.states.push(StateKind.paragraph);
-		this.node_stack.push(this.emit_open(NodeKind.paragraph, text, id));
+		// what starts on the line of the label stands at the column of the definition
+		this.cold.note_pos = text;
+		this.cold.note_column = column;
 		this.chomp(text, true);
 	}
 
