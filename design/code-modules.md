@@ -1,6 +1,6 @@
 # Code blocks as modules: design
 
-Status: draft, 2026-10-09. Corrected against the Vite plugin and renderer code on 2026-10-10. `src=` (§3, phases 0 and 1) was built on 2026-10-12, and §3 describes it as built. `run` (§4 on) is still a draft; its open questions are in §9. Targets `next`.
+Status: draft, 2026-10-09. Corrected against the Vite plugin and renderer code on 2026-10-10. `src=` (§3, phases 0 and 1) was built on 2026-10-12, and §3 describes it as built. `run` (§4 and §5, phases 2 and 3) was built on 2026-10-12 too, and those sections describe it as built. The open questions it touches (§9) have no ruling yet: each is marked with the default that was taken and the one place to change it. Targets `next`.
 
 Sources:
 - #832 (dynamic and executable code blocks), #52, #432, #608 (runnable and demo blocks).
@@ -9,14 +9,14 @@ Sources:
 
 ## 0. Where we are
 
-- **Fence meta is read in `packages/mdsvex/src/code_meta.ts`.** `claimed()` reserves line groups, `/word/`, `twoslash`, `eval`, `:line-numbers`, `:no-line-numbers` and `showLineNumbers`. `[name]`, `title=` and `caption=` are read apart. Any other `key=value` or bare flag becomes a prop on a replaced `pre` (syntax highlighting Q9).
+- **Fence meta is read in `packages/mdsvex/src/code_meta.ts`.** `claimed()` reserves line groups, `/word/`, `twoslash`, `eval`, `src=`, `run`, `:line-numbers`, `:no-line-numbers` and `showLineNumbers`. `[name]`, `title=` and `caption=` are read apart. Any other `key=value` or bare flag becomes a prop on a replaced `pre` (syntax highlighting Q9).
 - **File names already have a convention.** `[math.ts]` or `title="math.ts"` names a block. `src=` is read (§3). `file=` is not, and reaches a replaced `pre` as a plain prop.
-- **No code block runs.** `eval` makes `{…}` groups inside displayed code live against the page's scope (syntax highlighting §5). It never runs the block itself.
+- **A block runs only when it is marked `run` (§4).** `eval` makes `{…}` groups inside displayed code live against the page's scope (syntax highlighting §5). It never runs the block itself.
 - **The syntax highlighting design ruled demo blocks out of scope.** §11 says executable and demo blocks "belong to directives (`:::example`)". This design keeps directives as the layout tool (§6) and adds the piece they were missing: a way to get the block's code as a module.
 - **mdsvex is already a Vite plugin.** `main.ts` has `resolveId`, `load` and `hotUpdate`, and serves components and templates as virtual modules. Vite 6 is the minimum since #929.
 - **Its file tracking for registries doesn't cover this.** `export_tracker` only exists when `components` or `templates` are configured. `src=` files have a tracker of their own, `source_files.ts`, and a `hotUpdate` branch ahead of the registry one (§3.3).
 - **A compile can stop between its parse and its render.** `CompilerSession.parse(raw, inputs)` returns a `Parsed`, `render(parsed, inputs)` and `render_into(parsed, inputs, out)` finish it, and `keep(raw, inputs, metadata)` takes the document a compile just parsed. See §3.2. The plugin's string test, `has_code`, is still its only check on the source text.
-- **Imports are hoisted only when a component replacement is used.** The renderer's `hoist_begin` returns early otherwise.
+- **Imports are hoisted when a component replacement is used or the render is given extra lines.** `renderer.imports` holds the extra lines, which is how image imports and the modules of run blocks reach the instance script.
 - **Compile is synchronous and pure.** Anything async (resolving, reading files) happens in the plugin before `compile()` is called. That principle comes from syntax highlighting §1.2 and stays.
 
 ## 1. Principles
@@ -99,7 +99,7 @@ phase 2, sync    render with sources: Map<spec, { id, text }>
 - **`sources` is plain data.** Outside Vite, the REPL fills it from its in-memory files, and anyone calling `compile()` directly fills it themselves.
 - **The text is substituted at the renderer's `fence_text`,** which all five render walks and the highlighter read. Substituting inside the highlighter would miss the plain, unhighlighted paths. The seam is `renderer.fences`, a map from the node index of a fence to `{ text, info?, props? }`. `text` replaces the body, `info` replaces the info string (so a fence with no language can take one, and a claimed key can be kept from the highlighter), and `props` is props text a replaced `pre` gets after its own. Unset, every fence reads the source as before.
 - **Source mappings need care.** A fence with `src=` has an empty source range for its body. The code maps to that empty range as one span, so nothing points past the fence. Live `{…}` groups in code from the map get no records of their own, since they have no source text to map to.
-- **The highlighter sees the meta too.** twinkleplop's own meta parser receives the whole string. How it treats `src=…#L5-L20` and `run` is unchecked (Q8).
+- **The highlighter sees the meta too.** twinkleplop's own meta parser receives the whole string, without `src=…` and `run`, which the info string of the fence seam leaves out (Q8).
 
 ### 3.3 HMR
 
@@ -111,70 +111,98 @@ phase 2, sync    render with sources: Map<spec, { id, text }>
 
 ## 4. Run: snippet modules
 
+Built 2026-10-12. The compile half is `packages/mdsvex/src/run_blocks.ts` and the walk in `fence_sources.ts`; the Vite half is `snippet_modules.ts` and the `resolveId` and `load` hooks in `main.ts`.
+
 ### 4.1 Marking a block
 
-A bare flag in fence meta marks a block. `run` is the working name. `eval` is taken by live code (§0), and Q1 covers the name. The flag is claimed, so it stops being a meta prop.
+A bare flag in fence meta marks a block: `run` (Q1). The flag is claimed, so it stops being a meta prop, and it is taken out of the info string before the highlighter or the `meta` prop of a replaced `pre` sees it.
 
-`run` and live `eval` can't share a block in v1, because `{…}` groups mean different things in each. Using both is a compile error.
+- `run` imports the block with the document. `run=client` imports it when it is asked for (§4.6). Any other value is a compile error.
+- The flag can stand where the language would, as `src=` can: ```` ```src=./Counter.svelte run ````. A fence that is only ```` ```run ```` has the flag and no language, which is an error, not a block in a language called `run`.
+- `run` and live code can't share a block, because `{…}` groups mean different things in each. `run` with the `eval` flag, with `eval` as the language, or with an `[!eval]` marker in the code is a compile error.
+- The parser already notes where each info string is (§3.2). `take_info(source, 'src=', 'run')` looks for either key in those ranges, so a document with neither is never walked, and one walk finds both.
 
 ### 4.2 Module id
 
 Each run block gets an id that is a fake sibling of the document:
 
 ```
-/abs/docs/guide.md.snippet-3fa9c1.svelte
+/abs/docs/guide.md.snippet-3fa9c1d2e0.svelte
 ```
 
 The shape follows three rules:
 
-- **It ends in the real extension,** so the TS and Svelte plugins transform it. The language-to-extension table covers `js`, `ts`, `jsx`, `tsx`, `svelte`, and `css`/`json` if Q5 allows them. Running a block in any other language is a compile error.
+- **It ends in the real extension,** so the TS and Svelte plugins transform it. The table is `js`, `ts`, `jsx`, `tsx` and `svelte`, with `javascript` and `typescript` as names for the first two (Q5). Running a block in any other language is a compile error.
 - **It has no `\0` prefix,** because other plugins skip `\0` ids by convention.
 - **It sits in the document's directory,** so relative imports inside the snippet resolve the same way they would in the document.
 
-The query form (`guide.md?snippet=3fa9c1&lang.svelte`) doesn't work. vite-plugin-svelte's id filter tests the path before the query, and mdsvex's own `matches()` strips the query, so both would take that id for the document itself. The sibling path ends in `.svelte`, which the filter accepts. That comes from reading the filter; a dev-server test should confirm it.
+The query form (`guide.md?snippet=3fa9c1&lang.svelte`) doesn't work. vite-plugin-svelte's id filter tests the path before the query, and mdsvex's own `matches()` strips the query, so both would take that id for the document itself.
+
+**The sibling path was tested in a dev server before anything was built on it** (investigation I3). With vite-plugin-svelte 6 on Vite 7, and again in the SvelteKit test app with vite-plugin-svelte 7 on Vite 8:
+
+- a snippet served from `load` under this id is compiled by vite-plugin-svelte (`.svelte`) and by Vite's own transform (`.ts`), in the client and the SSR environment and in a production build;
+- mdsvex's `matches()` does not take the id for the document, and neither does its source map plugin;
+- a relative import in the snippet resolves from the document's directory;
+- the scoped style of a Svelte snippet is served as vite-plugin-svelte's sub request of the id, `…snippet-3fa9c1d2e0.svelte?svelte&type=style&lang.css`, which `resolveId` leaves to it;
+- an edit that changes one hash leaves the module of every other block untouched (§4.3).
+
+One thing the test found: a browser that kept a page across a server restart asks for a snippet by its url alone, `/src/docs/guide.md.snippet-….ts`, before the graph has seen the document. `resolveId` therefore also takes a root relative url and a `/@fs/` url and turns each into the path of the file system.
 
 A snippet id must not start with `mdsvex:`. The REPL resolves every such id itself and throws on the ones it doesn't know.
 
 ### 4.3 Content hashes
 
-The id carries a hash of the block's language and raw text, not its position.
+The id carries a hash of the block's extension and code, not its position: ten hex digits of two FNV-1a rounds over `extension + '\n' + code`.
 
 - **Editing a block changes only its own id.** The document re-transforms and emits a new import for that block. Every other block keeps its module, so it isn't re-evaluated: no repeated side effects and no repeated fetches. Old ids are simply never imported again.
 - **This needs no snippet-specific `hotUpdate`.** Index-based ids would rename every block below an insertion and need explicit invalidation.
-- **Identical blocks share a module.** Modules are evaluated once, but each component instance is separate, so sharing is harmless.
+- **Identical blocks share a module.** Modules are evaluated once, but each component instance is separate, so sharing is harmless. The hash covers the extension, not the language as written, so a `js` and a `javascript` block with the same code are one module.
+- **Checked in a browser:** in the SvelteKit test app an edit to one block fetched the document and the one new snippet, hot updated the page without a reload, and left the module scope of the other blocks as it was.
 
 ### 4.4 Loading
 
-- `resolveId` recognises `*.md.snippet-<hash>.<ext>` (or whichever extensions the plugin handles) and returns it as is.
-- `load` reads the snippet's text from a per-document snippet map that `transform` fills. The plugin's existing `stored` map can't serve, because its entries are wiped after each transform. On a miss, `load` re-reads and parses the document from disk and finds the block by hash. Parsing is fast, and the fallback matters because SSR, the client, cold starts and build workers can each ask for a snippet before that environment has transformed the document.
-- A hash that's no longer in the document can show up during an HMR race. `load` returns an empty module that logs a warning, not an error overlay.
-- `load` returns a source map into the `.md` file. Errors and stack traces from a snippet then point at the document's lines.
+- **`resolveId`** takes an id whose path matches `<document>.snippet-<10 hex>.<js|ts|jsx|tsx|svelte>` where the document has one of the plugin's extensions. A relative specifier joins the directory of its importer. An absolute id is returned as is, a url is put on the root (§4.2). Every other id pays one `indexOf('.snippet-')`.
+- **`load`** reads the snippet from a per-document snippet map that `transform` fills from the `snippets` of the compile (§4.5). The plugin's existing `stored` map can't serve, because its entries are wiped after each transform. A document that compiles without a run block drops its entry.
+- **On a miss,** `load` reads the document from disk, parses it (the first half of the two-phase compile, with the document's parse plugins) and finds the block by hash. SSR, the client, a cold start and a build worker can each ask for a snippet before that environment has transformed the document. What the disk has is added beside what a compile gave, never in place of it.
+- **A hash that's no longer in the document** can show up during an HMR race. In dev `load` returns an empty module that warns, in the browser console and in the server log, not an error overlay. In a build nothing can race, so it is an error.
+- **`load` returns a source map into the `.md` file,** and the module text has the code on the lines it has in the document (blank lines come first). Both matter:
+  - Vite chains the map of `load` with the maps of the transforms, so a stack trace and a compile error from a snippet point at the document's lines. A syntax error in a Svelte block is reported with the document as its file and a code frame of the document.
+  - vite-plugin-svelte passes `getCombinedSourcemap()`, which holds the map of `load`, to the Svelte compiler, and Vite then applies the map of `load` again to what comes back. A map that moved lines would be applied twice and point past the block. With the code on its own lines the map sends every line to itself, so twice is the same as once. The columns of a Svelte block are left as they are for the same reason, so inside a block quote or a list item they are short by the marker. A script block has exact columns.
+  - The map is cached with the module, which is keyed by the hash. A block that moves in the document keeps its module and its old line numbers until the server restarts. That is the price of position-independent ids.
 
 ### 4.5 What compile emits
 
 ```svelte
 <script>
-  import * as __snippet_3fa9c1 from './guide.md.snippet-3fa9c1.svelte';
+  import * as __snippet_3fa9c1d2e0 from "./guide.md.snippet-3fa9c1d2e0.svelte";
 </script>
 
-<Pre_MDSVEX_G lang="svelte" code={`…`} module={__snippet_3fa9c1}>
+<Pre_MDSVEX_G lang={"svelte"} module={__snippet_3fa9c1d2e0} code={"…"}>
   <pre class="twinkleplop language-svelte">…</pre>
 </Pre_MDSVEX_G>
 ```
 
-`module`, `load` and `src` join the built-in `pre` props (`BUILT_IN_PROPS` in `code_meta.ts`), so a meta prop with one of those names is dropped with a warning. With `src=… run`, the import is the real file and `src` is passed as a prop too.
+- **Nothing in the renderer changed.** The import goes through `renderer.imports`, after any image imports, and the `module` prop through the `props` of the fence seam (`renderer.fences`, §3.2), which the highlighted and the plain path both read. The entry also gives the info string without the flag.
+- **`module`, `load` and `src` are built-in `pre` props** (`BUILT_IN_PROPS` in `code_meta.ts`), so a meta prop with one of those names is dropped with a warning.
+- **With `src=… run`** the import is the file, by the spec as written without its slice, and `src` is passed as a prop too. There is no snippet: the file is the module, whatever lines the fence shows.
+- **Without a replaced `pre`** a run block is a typed compile error at the fence (Q4). The check runs after the scope is bound, so a template that replaces `pre` is enough.
+- **Errors are a `RunError`** with a `code` and a 1 based `line` and `column` of the fence: `run_eval`, `run_lang`, `run_value`, `run_pre` and `run_module`.
 
-Two renderer changes have to land first:
+**`compile()` has no module graph.** It emits the import, but something else has to serve the module, so the `snippets` option says how:
 
-- **An extra-imports path.** The snippet import has to be hoisted whether or not a component replacement is used.
-- **Extra props on a replaced `pre`,** on both the highlighted and the plain path.
+| `snippets` | a run block |
+|---|---|
+| unset | throws `RunError` `run_module`, so a caller with no resolver gets an error from mdsvex and not a missing module from its bundler |
+| `true` | is imported as a sibling of `filename`, `./name.snippet-<hash>.<ext>`, the id the Vite plugin serves |
+| a function | is imported by the specifier it returns for the snippet |
+| `false` | is only shown: the flag leaves the meta, nothing is imported and nothing about running is an error |
 
-**Without a replaced `pre`,** a run block has nowhere to go: plain markup can't run a module. Q4 asks whether that's a compile error or a sensible default.
+With `true` or a function the result has `snippets`, one `{ hash, lang, extension, code, line }` per module, for the caller's resolve and load. The Vite plugin compiles with `true`, the REPL with a function, language-tools with `false`. A `src=… run` block imports a real file and needs no option.
 
 ### 4.6 Static or lazy
 
-- **Static import** (default): the snippet takes part in SSR. That's right for Svelte demos, and the user's component can render `module.default`.
-- **Lazy import** (`run=client`): compile emits `load={() => import('…')}` in place of `module`. Use this for snippets that touch `window` at module level, or for heavy demos below the fold.
+- **Static import** (`run`): the snippet takes part in SSR. That's right for Svelte demos, and the user's component can render `module.default`.
+- **Lazy import** (`run=client`): compile emits `load={() => import("…")}` in place of `module`, and no import statement. Use this for snippets that touch `window` at module level, or for heavy demos below the fold. The server never loads the module, and a build makes it a chunk of its own.
 
 ## 5. The component contract
 
@@ -186,17 +214,27 @@ A replaced `pre` gains three props:
 | `load` | `run=client` | `() => Promise<module namespace>` |
 | `src` | `src=` | the spec as written |
 
-Example:
+Example, the recipe the docs and the test app (`packages/test-app/src/lib/templates/demo/Pre.svelte`) have:
 
 ```svelte
 <!-- #lib/markdown/Pre.svelte -->
 <script>
-  let { lang, module, children } = $props();
-  const Demo = lang === 'svelte' ? module?.default : null;
+  let { lang, module, load, children } = $props();
+
+  let loaded = $state();
+  const ran = $derived(module ?? loaded);
+  const Demo = $derived(lang === 'svelte' ? ran?.default : undefined);
+  const result = $derived(
+    lang !== 'svelte' && typeof ran?.default === 'function' ? ran.default() : undefined
+  );
 </script>
 
 {#if Demo}
   <div class="demo"><Demo /></div>
+{:else if result !== undefined}
+  <output>{String(result)}</output>
+{:else if load}
+  <button onclick={async () => (loaded = await load())}>run</button>
 {/if}
 {@render children()}
 ```
@@ -215,15 +253,15 @@ The syntax highlighting design put demo blocks with directives (`:::example`). T
 :::
 ````
 
-Q2 is how the directive component gets at the module. The simplest answer is that it doesn't: the replaced `pre` inside the directive renders the demo, and the directive wraps the layout around both. The alternative is passing a `modules` prop to a container directive with the run blocks it contains.
+Q2 is how the directive component gets at the module. Built as the simplest answer, it doesn't: the replaced `pre` inside the directive renders the demo, and the directive wraps the layout around both. The alternative is passing a `modules` prop to a container directive with the run blocks it contains.
 
 ## 7. Tooling
 
-- **language-tools:** snippet ids map to ranges of the `.md` file, so the TS service could check code blocks as virtual files. That's out of scope for v1, but the id scheme shouldn't block it. Until then the snippet import lines pass through language-tools untouched and TypeScript will try to resolve them (Q9).
-- **Errors:** new compile errors are typed and carry a position. language-tools recovers from the errors it knows about and may lose the document on any other.
+- **language-tools:** compiles with `snippets: false`, so the editor accepts the flag, shows the block as code, and has no import line for TypeScript to look for (Q9). It reports nothing about running: not a missing `pre` component, not a language that can't run. Snippet ids map to ranges of the `.md` file, so the TS service could check code blocks as virtual files. That is phase 4.
+- **Errors:** new compile errors are typed and carry a position. language-tools recovers from the errors it knows about and may lose the document on any other. With `snippets: false` no `RunError` reaches it.
 - **No change when unused:** with no `sources` and no `run` block, compile emits exactly what it does today.
-- **REPL:** fills `sources` for `src=` from its in-memory files (done, relative paths only), and implements the resolve/load pair for snippet ids.
-- **`@mdsvex/migrate`:** rewrites remark-code-import's `file=` to `src=` on a fence with no code. Its slice syntax, `#L5-L20`, `#L5-` and `#-L20`, already matches. A fence with `file=` and code of its own is left alone, since `src=` would make that an error. remark-code-import's `<rootDir>` prefix is not rewritten.
+- **REPL:** fills `sources` for `src=` from its in-memory files (done, relative paths only). For `run` it compiles with a `snippets` function, and its bundler plugin resolves `./name.snippet-<hash>.<ext>` beside the document and loads the code, ahead of the resolver that only knows workspace files. A `.svelte` or `.ts` snippet then goes through the transforms a workspace file of that extension does. The playground has an example, `/playground/run`.
+- **`@mdsvex/migrate`:** rewrites remark-code-import's `file=` to `src=` on a fence with no code. Its slice syntax, `#L5-L20`, `#L5-` and `#-L20`, already matches. A fence with `file=` and code of its own is left alone, since `src=` would make that an error. remark-code-import's `<rootDir>` prefix is not rewritten. `run` has nothing to migrate from: mdsvex 0.x ran no code block and the plugin audit has no plugin that did.
 
 ## 8. Phasing
 
@@ -231,18 +269,20 @@ Q2 is how the directive component gets at the module. The simplest answer is tha
 |---|---|---|
 | 0 | groundwork: an extra-imports path in the renderer (done), fence text and `pre` props from a per-document map (done), one compile-inputs object (done), two-phase compile (done) | — |
 | 1 | `src=`: claimed key, slice syntax, `sources` compile option, the phase-1 scan with `this.resolve`, the document-to-files map and `hotUpdate` branch, `src` prop, errors (done) | 0 |
-| 2 | `run`: claimed flag, language-to-extension table, hashed sibling ids, plugin `resolveId`/`load` with a snippet map and disk fallback, source maps, `module` prop | 0; 1 for `src=… run` |
-| 3 | `run=client` lazy form, REPL resolve/load, docs (demo `Pre` recipe, `:::example` recipe) | 2 |
-| 4 | language-tools checking of snippet modules | 2 |
+| 2 | `run`: claimed flag, language-to-extension table, hashed sibling ids, plugin `resolveId`/`load` with a snippet map and disk fallback, source maps, `module` prop (done) | 0; 1 for `src=… run` |
+| 3 | `run=client` lazy form, REPL resolve/load, docs (demo `Pre` recipe, `:::example` recipe) (done) | 2 |
+| 4 | language-tools checking of snippet modules, and diagnostics for a block that can't run | 2 |
 
 ## 9. Open questions
 
-- **Q1. The flag's name.** `run`, `exec` or `demo`? `eval` is taken. The flag also stops being a meta prop, which changes behaviour for anyone already using it as their own flag. `next` is a prerelease, so that's acceptable, but the name should be unlikely to clash.
-- **Q2. Directive access to modules.** Should a container directive get the `modules` of the run blocks inside it, or should layout be left to the replaced `pre`?
+Q1, Q2, Q4, Q5 and Q9 have no ruling. Each was built with a default, in one place, so a ruling is a small change.
+
+- **Q1. The flag's name.** `run`, `exec` or `demo`? `eval` is taken. The flag also stops being a meta prop, which changes behaviour for anyone already using it as their own flag. `next` is a prerelease, so that's acceptable, but the name should be unlikely to clash. **Default taken: `run`.** To change it: `RUN_FLAG` in `run_blocks.ts`, and the second key of the two `take_info` calls in `compile.ts`.
+- **Q2. Directive access to modules.** Should a container directive get the `modules` of the run blocks inside it, or should layout be left to the replaced `pre`? **Default taken: layout is left to the replaced `pre`,** a directive gets nothing. Nothing was built for the alternative, so there is nothing to flip: it would be a new prop on a container directive, filled from the fences inside it.
 - **Q3. Default title from `src=`.** Should `src=./math.ts` set `title="math.ts"` when no title is given? Built as no: `src=` sets no title. A replaced `pre` has the `src` prop to make one from.
-- **Q4. A run block with no replaced `pre`.** Compile error, or a built-in fallback (for example rendering `module.default` for Svelte blocks)?
-- **Q5. Non-script languages.** Should `css` (injects styles) and `json` run blocks be allowed?
+- **Q4. A run block with no replaced `pre`.** Compile error, or a built-in fallback (for example rendering `module.default` for Svelte blocks)? **Default taken: a compile error,** `run_pre`, at the first such fence. To change it: `give_fences` in `compile.ts` is the one check, and a fallback would render there instead of throwing.
+- **Q5. Non-script languages.** Should `css` (injects styles) and `json` run blocks be allowed? **Default taken: no,** script languages only, and any other is a compile error, `run_lang`. To change it: the `EXTENSIONS` table in `run_blocks.ts` and the extension list of `SNIPPET_PATH` in `snippet_modules.ts`.
 - **Q6. Named regions.** Should slices accept `#region-name` markers in the file as well as `#L5-L20`? Built as no: line slices only. A slice that is not a line range is a `src_spec` error, so a region name can be given a meaning later without changing a document that compiles today.
 - **Q7. Two-phase compile.** Answered 2026-10-11, see §3.2. Two calls on `CompilerSession`, with a handle that owns its nodes. Documents that need nothing compile in one call as before and measured no slower.
-- **Q8. The highlighter and the new meta.** How does twinkleplop's meta parser treat `src=…#L5-L20` and `run`? Do they need stripping before the meta reaches it? Checked for `src=`: twinkleplop ignores it, no output change and no warning. It is stripped anyway, with the info string the fence seam supplies, so a custom highlighter and the `meta` prop of a replaced `pre` never see it either. `run` is unchecked.
-- **Q9. Snippet imports in the editor.** A module declaration for snippet ids, or should language-tools drop those import lines?
+- **Q8. The highlighter and the new meta.** How does twinkleplop's meta parser treat `src=…#L5-L20` and `run`? Do they need stripping before the meta reaches it? Checked for `src=`: twinkleplop ignores it, no output change and no warning. It is stripped anyway, with the info string the fence seam supplies, so a custom highlighter and the `meta` prop of a replaced `pre` never see it either. `run` is stripped the same way, so the highlighter never sees it.
+- **Q9. Snippet imports in the editor.** A module declaration for snippet ids, or should language-tools drop those import lines? **Default taken: the editor has no import line,** because it compiles with `snippets: false` (§7). To change it: the one option in `compile_leniently` in `language-tools/source-map/src/pfm_to_svelte.ts`.

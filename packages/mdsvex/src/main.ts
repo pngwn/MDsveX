@@ -55,6 +55,17 @@ import { links_of } from './link_urls';
 import type { BaseImport, Rewrite } from './link_urls';
 import { need_error } from './fence_sources';
 import { slashed, source_files } from './source_files';
+import {
+	SNIPPET_MARK,
+	dir_of,
+	joined,
+	missing_module,
+	snippet_code,
+	snippet_id,
+	snippet_map,
+	snippet_modules,
+} from './snippet_modules';
+import type { SnippetId, SnippetModule } from './snippet_modules';
 
 export * from './compile';
 export {
@@ -203,6 +214,7 @@ export interface PluginLinkOptions {
 
 const ABSOLUTE = /^(?:[\\/]|[a-zA-Z]:[\\/])/;
 const ROOTED = /^(?:\/|[a-zA-Z][a-zA-Z0-9+.-]*:)/;
+const DRIVE = /^[a-zA-Z]:\//;
 
 export interface PluginHighlightOptions extends Omit<
 	HighlightOptions,
@@ -307,6 +319,10 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	inputs.await_sources = true;
 	const shown = source_files();
 	const fetched = new WeakMap<Parsed, Record<string, string>>();
+	// a fence marked run is a module, a fake sibling of its document, which
+	// resolveId and load serve from what the compile of the document gave
+	inputs.snippets = true;
+	const modules = snippet_modules();
 	const written_links = options.links;
 	if (
 		written_links !== undefined &&
@@ -427,6 +443,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			math: false,
 			import_images: false,
 			sources: false,
+			snippets: false,
 		});
 		return { code: result.code, frontmatter: result.metadata !== undefined };
 	};
@@ -447,17 +464,34 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		(options.parse_plugins !== undefined && options.parse_plugins.length !== 0);
 
 	const no_templates = templates === null && select === undefined;
+	/** the handlers of a plugin are guarded by the directives the config registers */
+	function plugs_ready(
+		ctx: Rollup.PluginContext
+	): Promise<unknown> | undefined {
+		const waits: Promise<unknown>[] = [];
+		if (registry !== null && !registry.ready())
+			waits.push(registry.ensure(ctx));
+		if (templates !== null && !templates.ready())
+			waits.push(templates.ensure(ctx));
+		return waits.length === 0 ? undefined : Promise.all(waits);
+	}
+	/** the inputs of a parse that no render follows, it asks for nothing a render would need */
+	function parsing_inputs(file: string) {
+		const parsing = Object.assign(compile_inputs(), inputs);
+		parsing.filename = file;
+		if (!no_templates)
+			parsing.templates = templates_for(templates, select, file);
+		parsing.directives = registry?.directive_sources();
+		parsing.import_images = false;
+		parsing.sources = false;
+		parsing.await_sources = false;
+		parsing.links = undefined;
+		parsing.snippets = false;
+		return parsing;
+	}
 	const metadata = metadata_query(extensions, options.frontmatter?.parse);
 	const queried_data = data_query(extensions, {
-		// the handlers of a plugin are guarded by the directives the config registers
-		ready(ctx) {
-			const waits: Promise<unknown>[] = [];
-			if (registry !== null && !registry.ready())
-				waits.push(registry.ensure(ctx));
-			if (templates !== null && !templates.ready())
-				waits.push(templates.ensure(ctx));
-			return waits.length === 0 ? undefined : Promise.all(waits);
-		},
+		ready: plugs_ready,
 		settled: () =>
 			(registry === null || registry.ready()) &&
 			(templates === null || templates.ready()),
@@ -468,17 +502,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 					read_metadata(raw, options.frontmatter?.parse),
 					undefined
 				);
-			const parsing = Object.assign(compile_inputs(), inputs);
-			parsing.filename = file;
-			if (!no_templates)
-				parsing.templates = templates_for(templates, select, file);
-			parsing.directives = registry?.directive_sources();
-			// a parse for its data asks for nothing a render would need
-			parsing.import_images = false;
-			parsing.sources = false;
-			parsing.await_sources = false;
-			parsing.links = undefined;
-			const parsed = compiler.parse(raw, parsing);
+			const parsed = compiler.parse(raw, parsing_inputs(file));
 			compiler.drop(parsed);
 			return data_module(parsed.metadata, parsed.data);
 		},
@@ -572,6 +596,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				split: 0,
 				end: 0,
 				waiting: undefined,
+				snippets: undefined,
 			};
 			stored.set(id, doc);
 		}
@@ -598,6 +623,13 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			}
 		}
 		doc.raw = code;
+		const made = doc.snippets;
+		if (made !== undefined) {
+			doc.snippets = undefined;
+			modules.set(clean_id(id), code, made);
+		}
+		// it runs no block, or no longer
+		else if (!modules.empty) modules.drop(clean_id(id));
 		if (doc.warnings !== undefined) {
 			// a document that met math without its renderer renders again and warns then
 			if (!math_needed)
@@ -707,6 +739,98 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		);
 	}
 
+	/**
+	 * the id of a snippet, the path of its document with the hash and the
+	 * extension after it, from the specifier a document imports it by or
+	 * from the url a browser asks for, undefined for any other id
+	 */
+	function resolve_snippet(
+		id: string,
+		importer: string | undefined
+	): string | Promise<string> | undefined {
+		const q = id.indexOf('?');
+		// the style of a svelte block is a request of vite-plugin-svelte
+		if (q >= 0 && svelte_request(id, q)) return;
+		const path = slashed(q < 0 ? id : id.slice(0, q));
+		const at = snippet_id(path);
+		if (at === null || !matches(at.doc)) return;
+		const query = q < 0 ? '' : id.slice(q);
+		if (path.charCodeAt(0) === 46) {
+			if (importer === undefined) return;
+			return joined(dir_of(slashed(clean_id(importer))), path) + query;
+		}
+		if (!ABSOLUTE.test(path)) return;
+		if (path.startsWith('/@fs/')) {
+			const file = path.slice(5);
+			return (DRIVE.test(file) ? file : '/' + file) + query;
+		}
+		const base = root.replace(/\/$/, '');
+		if (base === '' || path.startsWith(base + '/')) return path + query;
+		// a url is a path from the root, an id is a path of the file system
+		return import('node:fs').then((fs) =>
+			!fs.existsSync(at.doc) && fs.existsSync(base + at.doc)
+				? base + path + query
+				: path + query
+		);
+	}
+
+	function snippet_loaded(at: SnippetId, hit: SnippetModule) {
+		return {
+			code: snippet_code(hit.snippet),
+			map: snippet_map(at.doc, hit.raw, hit.snippet),
+		};
+	}
+
+	/**
+	 * the code of a snippet for an environment that asks before it compiled
+	 * the document, a server render, a cold start or a build worker, the
+	 * document is read and parsed again and the block found by its hash, a
+	 * hash the document no longer has is an empty module that warns
+	 */
+	async function snippet_from_disk(ctx: Rollup.PluginContext, at: SnippetId) {
+		const fs = await import('node:fs/promises');
+		let raw: string | undefined;
+		try {
+			raw = await fs.readFile(at.doc, 'utf8');
+		} catch {
+			// no document, no block
+		}
+		if (raw !== undefined) {
+			await plugs_ready(ctx);
+			const parsing = parsing_inputs(at.doc);
+			parsing.snippets = true;
+			try {
+				const parsed = compiler.parse(raw, parsing);
+				const found = parsed.snippets;
+				compiler.drop(parsed);
+				if (found !== undefined) modules.add(at.doc, raw, found);
+			} catch {
+				// the compile of the document reports what is wrong with it
+			}
+			const hit = modules.get(at.doc, at.hash);
+			if (hit !== undefined) return snippet_loaded(at, hit);
+		}
+		const message = `[mdsvex] ${at.doc} has no block that runs with the hash ${at.hash}, the document changed since it was imported`;
+		// only a dev server serves a document that changes under its imports
+		if (command === 'build') ctx.error(message);
+		ctx.warn(message);
+		return {
+			code: missing_module(at.extension, message),
+			map: { mappings: '' as const },
+		};
+	}
+
+	/** undefined for an id that is no snippet, sub requests of one are not it either */
+	function load_snippet(ctx: Rollup.PluginContext, id: string) {
+		if (id.indexOf('?') !== -1) return;
+		const at = snippet_id(slashed(id));
+		if (at === null || !matches(at.doc)) return;
+		const hit = modules.get(at.doc, at.hash);
+		return hit !== undefined
+			? snippet_loaded(at, hit)
+			: snippet_from_disk(ctx, at);
+	}
+
 	return [
 		{
 			name: 'mdsvex',
@@ -778,6 +902,10 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			},
 
 			resolveId(id, importer) {
+				if (id.indexOf(SNIPPET_MARK) !== -1) {
+					const snippet = resolve_snippet(id, importer);
+					if (snippet !== undefined) return snippet;
+				}
 				const queried =
 					metadata.resolve(this, id, importer) ??
 					queried_data.resolve(this, id, importer);
@@ -799,6 +927,10 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			},
 
 			load(id) {
+				if (id.indexOf(SNIPPET_MARK) !== -1) {
+					const snippet = load_snippet(this, id);
+					if (snippet !== undefined) return snippet;
+				}
 				if (metadata.is(id)) return metadata.load(this, id, dev);
 				if (queried_data.is(id)) return queried_data.load(this, id, dev);
 				// only templates with extra replacements load a module
