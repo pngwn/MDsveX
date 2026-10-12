@@ -99,6 +99,22 @@ describe("pfmToSvelte with a config", () => {
 		expect(on.diagnostics).toEqual([]);
 	});
 
+	it("renders smart punctuation when the config says so, and maps what follows shortened text", () => {
+		const source = "---\ntemplate: docs\n---\n\n## \"Two\" -- it's {1 + 1}\n";
+		const off = pfmToSvelte(source, docs);
+		expect(off.code).toContain("&quot;Two&quot; -- it's {1 + 1}");
+		const on = pfmToSvelte(source, {
+			...docs,
+			compile: { ...docs.compile, smart_punctuation: true },
+		});
+		valid(source, on);
+		expect(on.code).toContain("\u201cTwo\u201d \u2013 it\u2019s {1 + 1}");
+		expect(on.diagnostics).toEqual([]);
+		const expression = on.mappings.find((m) => gen_of(on.code, m) === "1 + 1");
+		expect(src_of(source, expression!)).toBe("1 + 1");
+		expect(expression!.sourceOffsets[0]).toBe(source.indexOf("1 + 1"));
+	});
+
 	it("gives a replaced heading its id when the config says so", () => {
 		const source = "---\ntemplate: docs\n---\n\n## Two *b*\n\n## Two b\n";
 		const off = pfmToSvelte(source, docs);

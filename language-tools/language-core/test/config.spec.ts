@@ -206,6 +206,25 @@ describe("document options from a manifest", () => {
 		).toBe(true);
 	});
 
+	it("passes smart_punctuation on as the manifest has it", () => {
+		expect("smart_punctuation" in document_options(m, "/app/a.svx").compile!).toBe(false);
+		expect(
+			document_options({ ...m, smart_punctuation: true }, "/app/a.svx").compile!
+				.smart_punctuation,
+		).toBe(true);
+		const set = { quotes: ["\u00ab", "\u00bb", "\u2039", "\u203a"] as const, dashes: false };
+		const options = document_options({ ...m, smart_punctuation: set }, "/app/a.svx").compile;
+		expect(options!.smart_punctuation).toEqual(set);
+		expect(compile('"a" -- b...', options).code).toBe("<p>\u00aba\u00bb -- b\u2026</p>");
+	});
+
+	it("leaves out a smart_punctuation that is not the option", () => {
+		expect(
+			"smart_punctuation" in
+				document_options({ ...m, smart_punctuation: "on" as never }, "/app/a.svx").compile!,
+		).toBe(false);
+	});
+
 	it("compiles math as the build does when it can, else shows the latex", () => {
 		const math = (extra: Partial<MdsvexManifest>, latex = "x") =>
 			compile("```math\n" + latex + "\n```", document_options({ ...m, ...extra }, "/app/a.svx").compile).code;
@@ -473,6 +492,37 @@ describe("mdsvex.config.json", () => {
 		expect(
 			"heading_ids" in from_json({ heading_ids: {} as never }, root, ts),
 		).toBe(false);
+	});
+
+	it("takes smart_punctuation, a manifest without the field when it is off", () => {
+		const root = tree({ "doc.svx": "# a" });
+		expect(from_json({ smart_punctuation: true }, root, ts).smart_punctuation).toBe(true);
+		expect(
+			from_json({ smart_punctuation: { dashes: false } }, root, ts).smart_punctuation,
+		).toEqual({ dashes: false });
+		for (const off of [
+			{},
+			{ smart_punctuation: false },
+			{ smart_punctuation: { quotes: false, dashes: false, ellipses: false } },
+			{ smart_punctuation: "on" as never },
+			{ smart_punctuation: { quotes: ["a"] } as never },
+			{ smart_punctuation: { dashes: "em" } as never },
+		])
+			expect("smart_punctuation" in from_json(off, root, ts)).toBe(false);
+	});
+
+	it("compiles a document with the smart_punctuation of its config", () => {
+		const root = tree({
+			"on/mdsvex.config.json": '{ "smart_punctuation": true }',
+			"on/doc.svx": "# a",
+			"off/mdsvex.config.json": "{}",
+			"off/doc.svx": "# a",
+		});
+		const loader = create_config_loader({ typescript: ts });
+		const on = loader.options_for(join(root, "on/doc.svx")).options;
+		const off = loader.options_for(join(root, "off/doc.svx")).options;
+		expect(on.compile?.smart_punctuation).toBe(true);
+		expect(off.compile?.smart_punctuation).toBeUndefined();
 	});
 
 	it("compiles a document with the heading_ids of its config", () => {
