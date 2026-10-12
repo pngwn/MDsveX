@@ -553,13 +553,13 @@ describe('element replacement, all mode', () => {
 			'a rebuilt value keeps its entities',
 			'<span title="a &amp; b" title="c &amp; d">x</span>',
 			['span'],
-			'<Span_MDSVEX_G title="a &amp; b">x</Span_MDSVEX_G>',
+			'<Span_MDSVEX_G title="a &amp; b" title="c &amp; d">x</Span_MDSVEX_G>',
 		],
 		[
 			'attributes the source does not spell are rebuilt',
 			'<span title="a" title="b">x</span>',
 			['span'],
-			'<Span_MDSVEX_G title="a">x</Span_MDSVEX_G>',
+			'<Span_MDSVEX_G title="a" title="b">x</Span_MDSVEX_G>',
 		],
 	];
 
