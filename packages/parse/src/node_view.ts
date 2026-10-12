@@ -485,18 +485,27 @@ export class NodeView {
 		return buf.extra_at(this._index);
 	}
 
-	/** code block language/info string. */
-	get lang(): string | undefined {
+	/**
+	 * the info string of a code fence, its language and everything after it,
+	 * '' for a fence with none, whole from its open handler on, undefined for
+	 * any other node
+	 */
+	get info(): string | undefined {
 		const buf = this._live();
 		const kind = buf.kind_at(this._index);
 		if (kind !== NodeKind.code_fence) return undefined;
 		const meta = buf.metadata_at(this._index);
-		if (!meta) return undefined;
+		if (!meta) return '';
 		if (meta.info) return meta.info as string;
 		if (meta.info_start != null && meta.info_end != null) {
 			return this._text_source.slice(meta.info_start, meta.info_end);
 		}
-		return undefined;
+		return '';
+	}
+
+	/** the info string of a code fence, see info */
+	get lang(): string | undefined {
+		return this.info;
 	}
 
 	/** link/image href. */

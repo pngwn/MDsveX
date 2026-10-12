@@ -1790,6 +1790,23 @@ A fence with a title or caption renders inside a `<figure class="twinkleplop-blo
 
 A line range past the end of the fence fails the build, so a stale range doesn't silently highlight nothing. The `language-` class carries only the language, never the rest of the meta.
 
+A [parse plugin](docs#parse_plugins) reads the same conventions with `fence_meta`, from the info string a `code_fence` node has in its handler:
+
+```js
+import { fence_meta } from 'mdsvex/compile';
+
+const titled = {
+	code_fence: {
+		parse(node) {
+			const { lang, title, src, props } = fence_meta(node.info);
+			// 'ts', 'math.ts', undefined, [['wrap', true]] for ```ts [math.ts] wrap
+		}
+	}
+};
+```
+
+It gives the language, the rest as `meta`, the `title` and `caption`, what `src=` names, the `key=value` pairs and bare flags no convention claims as `props`, and every part as it was written as `parts`.
+
 ### Code from a file
 
 `src=` in the meta of a fence shows a file in place of code written in the document, so the docs never drift from the code they describe. The fence itself stays empty.
