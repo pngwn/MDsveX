@@ -463,14 +463,8 @@ function escape_text_at(
 	if (vs === Slot.NONE || ve === Slot.NONE || ve <= vs) return '';
 	const src = c.source;
 	if (src !== esc_src) esc_reset(src);
-	if (ve > esc_len) {
-		// a render with smart punctuation keeps the length at zero, so every
-		// value comes here and a render without it pays nothing
-		if (sp_on)
-			return code ? escape_code(src.slice(vs, ve)) : smart_text(c, i, vs, ve);
-		ve = esc_len;
-		if (ve <= vs) return '';
-	}
+	// one call, a statement more here and v8 no longer inlines this function
+	if (ve > esc_len) return escape_past(c, i, vs, ve, code);
 	if (vs < esc_lo) esc_reset(src);
 	if (esc_amp < vs) esc_amp = esc_next('&', vs);
 	if (esc_lt < vs) esc_lt = esc_next('<', vs);
@@ -483,14 +477,24 @@ function escape_text_at(
 	if (esc_quot < m) m = esc_quot;
 	if (code) return escape_code_slice(src, vs, ve, m);
 	const first = src.charCodeAt(vs);
-	if ((first === 123 || first === 125) && brace_escaped(src, vs)) {
-		return (
-			(first === 123 ? '&#123;' : '&#125;') +
-			escape_text_at(c, i, vs + 1, ve, false)
-		);
-	}
+	if ((first === 123 || first === 125) && brace_escaped(src, vs))
+		return brace_text(c, i, vs, ve, first);
 	if (m >= ve) return src.slice(vs, ve);
 	return escape_hits(src, vs, ve, m);
+}
+
+/** the text of a value that opens at a brace a backslash escaped */
+function brace_text(
+	c: Cursor,
+	i: number,
+	vs: number,
+	ve: number,
+	first: number
+): string {
+	return (
+		(first === 123 ? '&#123;' : '&#125;') +
+		escape_text_at(c, i, vs + 1, ve, false)
+	);
 }
 
 /**
@@ -6244,6 +6248,8 @@ let sp_quot = -1;
 let sp_apos = -1;
 let sp_dash = -1;
 let sp_dot = -1;
+/** the least of the seven when they were last moved, a slice that ends by it has no hit */
+let sp_min = -1;
 
 /** the parent whose text sp_plain answered last, text nodes arrive in runs of one parent */
 let sp_parent = -1;
@@ -6334,6 +6340,26 @@ const SP_PLAIN_TAGS = new Set([
 	'style',
 ]);
 
+/**
+ * escape_text_at of a value that ends past esc_len, which is zero for a
+ * render with smart punctuation, so all of its text comes here and a render
+ * without the option runs no check for it
+ */
+function escape_past(
+	c: Cursor,
+	i: number,
+	vs: number,
+	ve: number,
+	code: boolean
+): string {
+	if (sp_on)
+		return code
+			? escape_code(c.source.slice(vs, ve))
+			: smart_text(c, i, vs, ve);
+	// a value cut short by the source, as a fed document has
+	return esc_len <= vs ? '' : escape_text_at(c, i, vs, esc_len, code);
+}
+
 /** after esc_reset, sp_end follows it, in a finally */
 function sp_begin(opt: SmartPunctuation): void {
 	if (opt !== sp_opt) sp_read(opt);
@@ -6341,7 +6367,7 @@ function sp_begin(opt: SmartPunctuation): void {
 	sp_on = true;
 	sp_parent = -1;
 	sp_trail = Slot.NONE;
-	// every value is then past the end, which is where escape_text_at asks for sp_on
+	// every value is then past the end and goes to escape_past
 	esc_len = 0;
 }
 
@@ -6399,6 +6425,7 @@ function sp_reset(src: string): void {
 	sp_apos = sp_quotes ? -1 : len;
 	sp_dash = sp_dashes ? -1 : len;
 	sp_dot = sp_dots ? -1 : len;
+	sp_min = -1;
 }
 
 function sp_next(needle: string, from: number): number {
@@ -6412,14 +6439,27 @@ function sp_next(needle: string, from: number): number {
  * them, a quote at either end of the slice asks the tree
  */
 function smart_text(c: Cursor, i: number, vs: number, ve: number): string {
-	// empty cases must match Cursor.text
-	if (vs === Slot.NONE || ve === Slot.NONE || ve <= vs) return '';
 	const src = c.source;
 	if (src !== sp_src || vs < sp_lo) sp_reset(src);
 	if (ve > sp_len) {
 		ve = sp_len;
 		if (ve <= vs) return '';
 	}
+	let m = sp_min;
+	// with the least pointer past the slice none is behind it and none hits
+	if (m < ve) m = sp_seek(vs);
+	const first = src.charCodeAt(vs);
+	if ((first === 123 || first === 125) && brace_escaped(src, vs)) {
+		const brace = first === 123 ? '&#123;' : '&#125;';
+		if (m >= ve) return brace + src.slice(vs + 1, ve);
+		return brace + smart_hits(c, i, src, vs, ve, m, vs + 1);
+	}
+	if (m >= ve) return src.slice(vs, ve);
+	return smart_hits(c, i, src, vs, ve, m, vs);
+}
+
+/** moves every pointer to its first match at or after vs, returns the least */
+function sp_seek(vs: number): number {
 	if (sp_amp < vs) sp_amp = sp_next('&', vs);
 	if (sp_lt < vs) sp_lt = sp_next('<', vs);
 	if (sp_gt < vs) sp_gt = sp_next('>', vs);
@@ -6435,14 +6475,7 @@ function smart_text(c: Cursor, i: number, vs: number, ve: number): string {
 	if (sp_apos < m) m = sp_apos;
 	if (sp_dash < m) m = sp_dash;
 	if (sp_dot < m) m = sp_dot;
-	const first = src.charCodeAt(vs);
-	if ((first === 123 || first === 125) && brace_escaped(src, vs)) {
-		const brace = first === 123 ? '&#123;' : '&#125;';
-		if (m >= ve) return brace + src.slice(vs + 1, ve);
-		return brace + smart_hits(c, i, src, vs, ve, m, vs + 1);
-	}
-	if (m >= ve) return src.slice(vs, ve);
-	return smart_hits(c, i, src, vs, ve, m, vs);
+	return (sp_min = m);
 }
 
 /** m is the first hit at or after vs, the text is copied from pos */
@@ -6521,6 +6554,7 @@ function smart_hits(
 	}
 	// every pointer is now at or past ve
 	sp_lo = ve;
+	sp_min = m;
 	return text + src.slice(pos, ve);
 }
 
