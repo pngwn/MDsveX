@@ -7408,8 +7408,11 @@ export class PFMParser {
 						}
 
 						case OPEN_ANGLE_BRACKET: {
+							// a tag, a comment or an autolink in a table cell ends on its row
+							const row = this.in_table ? this.row_end() : -1;
 							// in incremental mode, stall if the tag might be incomplete
 							if (
+								row === -1 &&
 								!this.finished &&
 								string_index_of.call(source, '>', this.cursor + 1 - base) === -1
 							) {
@@ -7454,11 +7457,11 @@ export class PFMParser {
 
 							// try html comment: <!--
 							const comment = this.try_parse_html_comment(this.cursor + 1);
-							if (comment === false) {
+							if (comment === false && row === -1) {
 								if (this.cursor + 3 < length) this.wait_for('-->');
 								break main_loop;
 							}
-							if (comment) {
+							if (comment && (row === -1 || comment.end <= row)) {
 								const c_id = this.emit_open(
 									NodeKind.html_comment,
 									this.cursor,
@@ -7509,8 +7512,16 @@ export class PFMParser {
 							}
 
 							// try html opening tag: <tag ...> or <tag ... />
-							const open_tag = this.try_parse_html_open_tag(this.cursor + 1);
-							if (open_tag === null && this.tag_wait) break main_loop;
+							let open_tag = this.try_parse_html_open_tag(this.cursor + 1);
+							if (open_tag === null && this.tag_wait) {
+								if (row === -1) break main_loop;
+								this.wait_kind = WAIT_NONE;
+							}
+							if (open_tag !== null && this.in_table) {
+								const fits = this.tag_fits_row(open_tag, row);
+								if (fits === -1) break main_loop;
+								if (fits === 0) open_tag = null;
+							}
 							if (open_tag) {
 								if (open_tag.self_closing || this.is_void_tag(open_tag.tag)) {
 									const html_id = this.emit_open(
@@ -7566,7 +7577,10 @@ export class PFMParser {
 							let expr_end: number;
 							if (!this.finished) {
 								expr_end = this.probe_matching_brace(this.cursor + 1);
-								if (expr_end === -1) break main_loop;
+								if (expr_end === -1) {
+									if (!this.in_table || this.row_end() === -1) break main_loop;
+									this.wait_kind = WAIT_NONE;
+								}
 							} else if (
 								this.cold.bp_start === this.cursor + 1 &&
 								this.cold.bp_p === this.source_end &&
@@ -7576,6 +7590,11 @@ export class PFMParser {
 								expr_end = -1;
 							} else {
 								expr_end = this.find_matching_brace(this.cursor + 1);
+							}
+							// an expression in a table cell ends on its row
+							if (expr_end !== -1 && this.in_table) {
+								const row = this.row_end();
+								if (row !== -1 && expr_end > row) expr_end = -1;
 							}
 							if (expr_end !== -1) {
 								// svelte void tag: {@tag ...}
@@ -11842,6 +11861,37 @@ export class PFMParser {
 		if (code === LINEFEED) return 1;
 		if (pos < this.source_end) return 0;
 		return this.finished ? 1 : -1;
+	}
+
+	/**
+	 * where the row of the table cell at the cursor ends, what a cell holds ends before it
+	 * @returns the offset of its linefeed or of the end of the input, -1 while a feed has shown neither
+	 */
+	private row_end(): number {
+		const lf = string_index_of.call(
+			this.source,
+			'\n',
+			this.cursor - this.source_base
+		);
+		if (lf !== -1) return lf + this.source_base;
+		return this.finished ? this.source_end : -1;
+	}
+
+	/**
+	 * an open tag in a table cell ends on its row, and a script or a style closes on it
+	 * @returns 1 when it does, 0 when it is text, -1 while a feed has shown neither its close tag nor the end of the row
+	 */
+	private tag_fits_row(tag: { tag: string; end: number }, row: number): number {
+		if (row !== -1 && tag.end > row) return 0;
+		if (!this.is_raw_text_tag(tag.tag)) return 1;
+		const base = this.source_base;
+		const close = string_index_of.call(
+			this.source,
+			'</' + tag.tag + '>',
+			tag.end - base
+		);
+		if (close !== -1 && (row === -1 || close + base < row)) return 1;
+		return row === -1 ? -1 : 0;
 	}
 
 	private end_table(): void {
