@@ -9,6 +9,9 @@
 	"description": "TypeScript plugin that teaches tsserver how to resolve .pfm imports",
 	"type": "module",
 	"main": "./lib/index.cjs",
+	"files": [
+		"lib"
+	],
 	"scripts": {
 		"build": "vite build --config vite.config.build.ts"
 	},
