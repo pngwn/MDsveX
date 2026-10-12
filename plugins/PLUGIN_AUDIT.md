@@ -119,7 +119,7 @@ How blocks render, and how authors style them. **Shared state:** none at runtime
 | **Unwrap lone images** | rehype-unwrap-images (404k), remark-unwrap-images (137k) | `core` option | Decided: a core option, off by default. A `<figure>` can't sit inside a `<p>`, so this has to come first. mdsvex already unwraps paragraphs made only of tags; check whether images count. |
 | **Figure and caption** | @microflash/rehype-figure (80k), rehype-figure, remark-figure-caption, remark-captions, rehype-semantic-images | `component` (replaced `img`) | Works once images are unwrapped. Code fences already do this with `title` and `caption`. |
 | **Details, kbd, ruby, badges** | remark-collapse (61k), remark-kbd(-plus), remark-ruby (4k), remark-directive-sugar (4k), remark-flexible-paragraphs | `component` | One starter kit: `:::details`, `:kbd[Ctrl]`, `:ruby[漢字](rt=かんじ)`, `:badge[new]`. |
-| **Structured containers: steps, tabs, accordions, code groups** | rehype-code-group (30k), expressive-code tabs | `plugin+API` (plugin-owned directives, `wrap_from`) + `component` | The plugin claims `:::steps`, supplies the component, and its bound handlers rewrite the headings inside into `step` directives. See `design/plugin-directives.md`. |
+| **Structured containers: steps, tabs, accordions, code groups** | rehype-code-group (30k), expressive-code tabs | `plugin+API` (plugin-owned directives, `wrap_from`) + `component`; steps, tabs and code groups exist (`@mdsvex/plugin-steps`, `@mdsvex/plugin-tabs`), accordions do not | The plugin claims `:::steps`, supplies the component, and its bound handlers rewrite the headings inside into `step` directives. See `design/plugin-directives.md`. |
 | **Static directives** | none | `vite` | Opt-in: render a directive's component at build time and write its HTML into the page, with holes for the label and children. No component code ships for it. Suits callouts, steps and badges. See `design/plugin-directives.md` §5. |
 | **Embeds** | @remark-embedder/core (20k), remark-oembed, remark-youtube, remark-iframes | `component`, `plugin+API` (async) for oEmbed | `::youtube[](id=…)`. Fetching oEmbed at build time needs async. |
 | **Media links** | rehype-video (180k), remark-images (59k) | `component` (replaced `a`, `img`) | A link to `.mp4` renders `<video>`. |
@@ -135,7 +135,7 @@ Showing code, and running it. **Shared state:** the fence meta conventions and s
 | **Code from a file** | remark-code-import (156k), remark-sources | `vite` | `src=./x.ts#L5-L20`. The file is tracked for HMR. |
 | **Runnable blocks** | no remark equivalent; #832, #52, #432, #608 | `vite` | A `run` flag turns the fence into a virtual module, which the replaced `pre` gets as `module`. |
 | **Copy button, frames, terminal chrome** | expressive-code (5.4M) | `component` | A reference `Pre.svelte`. |
-| **Code tabs** | rehype-code-group (30k), expressive-code tabs | `plugin+API` + `component` | `:::tabs` around fences. One of the structured containers under Presentation. |
+| **Code tabs** | rehype-code-group (30k), expressive-code tabs | `plugin+API` + `component`, exists (`@mdsvex/plugin-tabs`) | `:::tabs` around fences. One of the structured containers under Presentation. |
 | **Doc tests** | remark-code-blocks (5.5k) | `vite` + `tooling` | Snippet modules are real modules, so a test runner could import every `run` block. Needs a snippet manifest. |
 | **Color chips** | rehype-color-chips (19k) | `plugin` | Appends a swatch to `` `#e2551b` ``. |
 | **TS → JS view** | remark-typescript | `vite` | Niche. With snippet modules, the compiled output is already available. |
@@ -254,13 +254,13 @@ Ranked on usefulness to mdsvex users × popularity × cost. Items tagged `core` 
 | 13 | Reading time | Document data | plugin+API | 1M |
 | 14 | Links to routes and the base path | Resolution | vite | ~150k combined; issue #389 |
 | 15 | Metadata-only imports | Collections | vite | every blog and docs listing |
-| 16 | Component starter kit (details, kbd, ruby, badges, embeds; steps and tabs need plugin-owned directives) | Presentation | component + plugin+API | replaces ~10 plugins |
+| 16 | Component starter kit (details, kbd, ruby, badges, embeds; steps and tabs exist as plugins, accordions do not) | Presentation | component + plugin+API | replaces ~10 plugins |
 | 17 | Mermaid | Diagrams | component | 2.3M |
 | 18 | Unwrap lone images (core option), then figure and caption | Presentation | core + component | 540k + 90k |
 | 19 | Code from a file (`src=`) | Code | vite | 156k |
 | 20 | Runnable blocks (`run`) | Code | vite | issue #832 |
 | 21 | Excerpt, inferred title, source info | Document data | plugin+API | 64k+ |
-| 22 | Copy button and code tabs | Code | component + plugin+API | expressive-code 5.4M |
+| 22 | Copy button and code tabs (code tabs exist, `@mdsvex/plugin-tabs`) | Code | component + plugin+API | expressive-code 5.4M |
 | 23 | Definition lists | Presentation | core / component | 818k |
 | 24 | Link validation | Quality | plugin+API | 639k |
 | 25 | GitHub refs, mentions, linkify | Cross-references | plugin+API | 3.2M |

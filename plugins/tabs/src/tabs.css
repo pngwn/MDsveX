@@ -1,0 +1,96 @@
+/* every selector sits in :where() so any rule of a site wins */
+
+:where(.tabs) {
+	--tabs-gap: 0.25rem;
+	--tabs-padding: 0.5rem 0.75rem;
+	--tabs-line: color-mix(in srgb, currentColor 20%, transparent);
+	--tabs-color: color-mix(in srgb, currentColor 70%, transparent);
+	--tabs-selected-color: inherit;
+	--tabs-selected-line: currentColor;
+
+	margin-block: 1.5rem;
+}
+
+:where(.tabs-label) {
+	margin-block: 0 0.5rem;
+	font-weight: 600;
+}
+
+:where(.tabs-list) {
+	display: flex;
+	gap: var(--tabs-gap);
+	overflow-x: auto;
+	box-shadow: inset 0 -1px var(--tabs-line);
+}
+
+:where(.tabs-list > .tab) {
+	flex: none;
+	appearance: none;
+	margin: 0;
+	padding: var(--tabs-padding);
+	border: 0;
+	border-block-end: 2px solid transparent;
+	border-radius: 0;
+	background: none;
+	color: var(--tabs-color);
+	font: inherit;
+	cursor: pointer;
+}
+
+:where(.tabs-list > .tab[aria-selected='true']) {
+	border-block-end-color: var(--tabs-selected-line);
+	color: var(--tabs-selected-color);
+}
+
+/* the ring stays inside the list, which clips what leaves it */
+:where(.tabs-list > .tab:focus-visible) {
+	outline-offset: -2px;
+}
+
+/* anything written before the first tab is rendered with the panels alone */
+:where(.tabs-list > :not(.tab)) {
+	display: none;
+}
+
+:where(.tab-panel) {
+	padding-block-start: 1rem;
+}
+
+:where(.tab-panel > .tab-panel-label + *) {
+	margin-block-start: 0;
+}
+
+:where(.tab-panel > :last-child) {
+	margin-block-end: 0;
+}
+
+/* a code group, the tab is the title of its fence */
+:where(.tabs-code > .tab-panel) {
+	padding-block-start: 0;
+}
+
+:where(.tabs-code > .tab-panel > .twinkleplop-block > .twinkleplop-title) {
+	display: none;
+}
+
+/* hidden while there are tabs to press, see the end of the file */
+:where(.tab-panel > .tab-panel-label) {
+	margin-block-end: 0.5rem;
+	font-weight: 600;
+}
+
+/* without scripting no tab can be chosen, so every panel shows under its label */
+@media (scripting: none) {
+	:where(.tabs-list) {
+		display: none;
+	}
+
+	:where(.tab-panel[hidden]),
+	:where(.tab-panel > .tab-panel-label[hidden]) {
+		display: block;
+	}
+
+	:where(.tab-panel + .tab-panel) {
+		margin-block-start: 1rem;
+	}
+}

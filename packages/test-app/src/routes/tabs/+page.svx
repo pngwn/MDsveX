@@ -1,0 +1,73 @@
+<script>
+  let version = $state("2");
+</script>
+
+# Tabs
+
+:::tabs[Install it](group=pm)
+
+## npm
+
+Use *npm*:
+
+```sh
+npm install mdsvex
+```
+
+## pnpm
+
+Use `pnpm`:
+
+```sh
+pnpm add mdsvex
+```
+
+## yarn v{version}
+
+```sh
+yarn add mdsvex
+```
+
+:::
+
+Some text between the two sets.
+
+:::tabs(group=pm)
+
+```sh [npm]
+npm run dev
+```
+
+```sh title="pnpm"
+pnpm dev
+```
+
+A note under the pnpm command.
+
+```js
+console.log("no title, so the language");
+```
+
+:::
+
+::::tabs
+
+## Outer
+
+:::tabs
+
+### Inner one
+
+First inner panel.
+
+### Inner two
+
+Second inner panel.
+
+:::
+
+## Other
+
+The other outer panel.
+
+::::

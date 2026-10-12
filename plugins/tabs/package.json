@@ -1,0 +1,72 @@
+{
+	"name": "@mdsvex/plugin-tabs",
+	"version": "0.0.1",
+	"description": "Tabs and code groups for mdsvex, each heading or code fence inside a tabs directive is a tab",
+	"type": "module",
+	"scripts": {
+		"build": "run-s build:check build:package",
+		"build:check": "tsc",
+		"build:package": "svelte-package -i src -o dist",
+		"test": "vitest --disableConsoleIntercept",
+		"test:run": "vitest run"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		},
+		"./directives": {
+			"types": "./dist/unstyled.d.ts",
+			"svelte": "./dist/directives.js"
+		},
+		"./directives/unstyled": {
+			"types": "./dist/unstyled.d.ts",
+			"svelte": "./dist/unstyled.js"
+		},
+		"./Tabs.svelte": {
+			"types": "./dist/Tabs.svelte.d.ts",
+			"svelte": "./dist/Tabs.svelte"
+		},
+		"./Tab.svelte": {
+			"types": "./dist/Tab.svelte.d.ts",
+			"svelte": "./dist/Tab.svelte"
+		},
+		"./tabs.css": "./dist/tabs.css",
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"dist"
+	],
+	"sideEffects": [
+		"**/*.css",
+		"./dist/directives.js"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pngwn/MDsveX.git",
+		"directory": "plugins/tabs"
+	},
+	"keywords": [
+		"mdsvex",
+		"mdsvex-plugin",
+		"svelte",
+		"markdown",
+		"tabs",
+		"code-group"
+	],
+	"author": "pngwn <hello@pngwn.io>",
+	"license": "MIT",
+	"peerDependencies": {
+		"mdsvex": "^1.0.0-next.2",
+		"svelte": "^5.20.0"
+	},
+	"devDependencies": {
+		"@mdsvex/plugin-steps": "workspace:^",
+		"@sveltejs/package": "^3.0.0",
+		"@sveltejs/vite-plugin-svelte": "^6.2.4",
+		"mdsvex": "workspace:^",
+		"npm-run-all2": "^7.0.2",
+		"svelte": "^5.55.0",
+		"vite": "^7.3.1"
+	}
+}
