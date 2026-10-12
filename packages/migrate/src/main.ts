@@ -6,6 +6,7 @@ import type { Nodes, Root } from "mdast";
 
 import { serialize, type SerializeOptions } from "./serialize.js";
 import { migrate_frontmatter, split_frontmatter } from "./frontmatter.js";
+import { protect } from "./svelte.js";
 
 export interface MigrateOptions extends SerializeOptions {}
 
@@ -87,15 +88,18 @@ function parse_math(body: string): Root {
  * `_`/`*` emphasis/strong, backslash hard breaks, fully-prefixed blockquotes,
  * explicit reference links with hoisted definitions, and GFM tables/strike.
  *
- * frontmatter is kept, with its layout key renamed to template
+ * frontmatter is kept, with its layout key renamed to template, and svelte
+ * expressions, blocks and tags are kept as written
  *
  * with the math option the document is read as remark-math read it, and its
  * `$x$` and `$$x$$` are written as inline math and math fences
  */
 export function migrate(markdown: string, options: MigrateOptions = {}): string {
 	const { frontmatter, body } = split_frontmatter(markdown);
-	const tree = options.math === true ? parse_math(body) : (processor.parse(body) as Root);
-	const out = serialize(tree, options);
+	const guard = protect(body);
+	const tree =
+		options.math === true ? parse_math(guard.text) : (processor.parse(guard.text) as Root);
+	const out = guard.restore(serialize(tree, options));
 	if (frontmatter === "") return out;
 
 	let head = migrate_frontmatter(frontmatter).code;
