@@ -47,9 +47,17 @@ export interface SerializeOptions {
 	 * them as written
 	 */
 	smartypants?: LegacySmartypants;
+	/**
+	 * true when the documents were written for remark-math, `$x$` is then
+	 * written as inline math and `$$x$$` as a math fence, with the latex as it
+	 * is, unset leaves a dollar a dollar
+	 */
+	math?: boolean;
 }
 
 interface Context {
+	/** in a table cell, where a pipe has to be escaped and latex has to spell its double bar */
+	cell: boolean;
 	bullet: string;
 	/** inverted swaps two and three hyphens, em makes two into three and keeps three literal */
 	dashes: "em" | "inverted" | false;
@@ -65,6 +73,7 @@ export function serialize(tree: Root, options: SerializeOptions = {}): string {
 	const set = typeof smart === "object" && smart !== null ? smart : {};
 	const dashes = set.dashes ?? true;
 	const ctx: Context = {
+		cell: false,
 		bullet: options.bullet ?? "-",
 		// oldschool is what next does
 		dashes: !on || dashes === false || dashes === "oldschool" ? false : dashes === "inverted" ? "inverted" : "em",
@@ -124,6 +133,8 @@ function serialize_block(node: RootContent, ctx: Context): string {
 			return serialize_definition(node);
 		case "footnoteDefinition":
 			return serialize_footnote_definition(node, ctx);
+		case "math":
+			return fenced(node.value ?? "", node.meta ? "math " + node.meta : "math");
 		default:
 			// yaml, frontmatter and anything unrecognised pass through as their raw value
 			return "value" in node && typeof node.value === "string"
@@ -146,21 +157,26 @@ function serialize_heading(node: Heading, ctx: Context): string {
 	return "#".repeat(node.depth) + " " + serialize_inline(node.children, ctx);
 }
 
-function serialize_code(node: Code): string {
-	// Indented code blocks become fenced — PFM has fenced code only.
-	const value = node.value ?? "";
+/** a fence long enough to hold any run of backticks in value */
+function fenced(value: string, info: string): string {
 	let fence_len = 3;
 	const runs = value.match(/`+/g);
 	if (runs) {
 		for (const r of runs) fence_len = Math.max(fence_len, r.length + 1);
 	}
 	const fence = "`".repeat(fence_len);
+	return fence + info + "\n" + value + "\n" + fence;
+}
+
+function serialize_code(node: Code): string {
+	// Indented code blocks become fenced — PFM has fenced code only.
+	const value = node.value ?? "";
 	let meta = node.meta ?? "";
 	// remark-code-import names the file with file=, mdsvex with src=, which
 	// takes no code of its own, so a fence that has some is left alone
 	if (value.trim() === "") meta = meta.replace(/(^|\s)file=/, "$1src=");
 	const info = node.lang ? node.lang + (meta ? " " + meta : "") : "";
-	return fence + info + "\n" + value + "\n" + fence;
+	return fenced(value, info);
 }
 
 function serialize_blockquote(node: Blockquote, ctx: Context): string {
@@ -240,7 +256,10 @@ function serialize_table_row(row: TableRow, ctx: Context): string {
 
 function serialize_table_cell(cell: TableCell, ctx: Context): string {
 	// Escape pipes so they don't break the cell boundary.
-	const text = serialize_inline(cell.children, ctx).replace(/\|/g, "\\|");
+	const text = serialize_inline(cell.children, { ...ctx, cell: true }).replace(
+		/\|/g,
+		"\\|",
+	);
 	// a lone > merges left in pfm, escape_inline already escapes ^
 	return text.trim() === ">" ? "\\>" : text;
 }
@@ -272,7 +291,41 @@ function serialize_footnote_definition(
 }
 
 function serialize_inline(nodes: PhrasingContent[], ctx: Context): string {
-	return nodes.map((n) => serialize_phrasing(n, ctx)).join("");
+	let out = "";
+	for (let i = 0; i < nodes.length; i++) {
+		const part = serialize_phrasing(nodes[i], ctx);
+		// a dollar, a code span and a dollar is math in pfm, the first dollar is escaped to keep all three
+		if (
+			nodes[i].type === "inlineCode" &&
+			out.endsWith("$") &&
+			!out.endsWith("\\$") &&
+			next_starts_with_dollar(nodes[i + 1])
+		)
+			out = out.slice(0, -1) + "\\$";
+		out += part;
+	}
+	return out;
+}
+
+function next_starts_with_dollar(node: PhrasingContent | undefined): boolean {
+	return node !== undefined && node.type === "text" && node.value.startsWith("$");
+}
+
+/**
+ * inline math as pfm writes it, a code span in dollars on one line, pfm has
+ * spans of one and two backticks, latex with a run of each stays text
+ */
+function serialize_inline_math(value: string, ctx: Context): string {
+	let latex = value.replace(/\s*\n\s*/g, " ");
+	// a cell reads an escaped pipe as a bar, so the double bar of latex is spelled out
+	if (ctx.cell)
+		latex = latex.replace(/\\\|(?=[A-Za-z])/g, "\\Vert ").replace(/\\\|/g, "\\Vert");
+	const runs: string[] = latex.match(/`+/g) ?? [];
+	const ticks = !runs.includes("`") ? "`" : !runs.includes("``") ? "``" : "";
+	if (ticks === "") return "\\$" + escape_inline(latex) + "\\$";
+	const pad =
+		latex.startsWith("`") || latex.endsWith("`") || /^ | $/.test(latex) ? " " : "";
+	return "$" + ticks + pad + latex + pad + ticks + "$";
 }
 
 function serialize_phrasing(node: PhrasingContent, ctx: Context): string {
@@ -304,6 +357,8 @@ function serialize_phrasing(node: PhrasingContent, ctx: Context): string {
 			return node.value;
 		case "footnoteReference":
 			return footnote_marker(node);
+		case "inlineMath":
+			return serialize_inline_math(node.value ?? "", ctx);
 		default:
 			// anything unrecognised emits its raw value
 			return "value" in node && typeof (node as { value?: unknown }).value === "string"

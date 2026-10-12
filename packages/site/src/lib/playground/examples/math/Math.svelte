@@ -1,5 +1,5 @@
 <script>
-	let { code, children } = $props();
+	let { code, display = false, children } = $props();
 
 	let copied = $state(false);
 
@@ -10,10 +10,14 @@
 	}
 </script>
 
-<figure class="equation">
+{#if display}
+	<figure class="equation">
+		{@render children()}
+		<button onclick={copy}>{copied ? 'copied' : 'copy LaTeX'}</button>
+	</figure>
+{:else}
 	{@render children()}
-	<button onclick={copy}>{copied ? 'copied' : 'copy LaTeX'}</button>
-</figure>
+{/if}
 
 <style>
 	.equation {

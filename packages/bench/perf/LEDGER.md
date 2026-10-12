@@ -271,6 +271,23 @@ delete it.
   parser mark the text node an escaped brace opens, so the renderer tests a
   bit it already reads.
 
+### a dollar in prose
+
+- **Source:** inline math, the `$` entry in `TEXT_BREAK` and `math_scan`.
+- **Measured:** `fixtures/textual_content:parse` -4.3% (490ns to 514ns, -5.5%
+  and -4.3% by pass), `core --repeat 2` against the commit below with the
+  default 3.0% floor. The fixture is 52 bytes and holds one dollar. Geomean
+  over the 238 workloads +0.09%, parse +0.26%, no other row past the floor,
+  parity all outputs identical.
+- **Cause:** a text run stops at a dollar, the text state reads the character
+  after it and starts the next run. About 24ns a dollar that opens no math. A
+  document with no dollar pays nothing.
+- **Ideas:**
+  - Look back from the backtick in place of the break, which is free for a
+    dollar in prose and has to deal with a text node that would be empty. The
+    design note measured both (`design/syntax-highlighting.md`, 14.3). Not
+    built.
+
 ## Closed
 
 ### id map and undo logs with parse plugins

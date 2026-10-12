@@ -44,6 +44,7 @@ The view exposes:
 - `pending` — `true` while the parser may still revoke the node, see [Pending nodes](#pending-nodes)
 - Type-specific properties surfaced directly (`depth` for headings, `info` for code fences, etc.)
 - `info` — the info string of a code fence, its language and everything after it, see [The info string of a fence](#the-info-string-of-a-fence). `lang` is the same string under its older name.
+- `math` — `true` for a `code_span` written as inline math (`` $`x`$ ``), whose text is the LaTeX, `false` for any other code span and `undefined` for any other node. A `code_span` handler sees both.
 
 **Writable properties**
 - `attrs` — a key-value bag for arbitrary attributes. Proxied so setter calls flow through to the SoA and trigger dirty marking.

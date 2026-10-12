@@ -260,6 +260,8 @@ These appear inside paragraphs, headings, list items, and other inline container
 | `hard_break`      | ,              | ,               | `\` at end of line -> `<br>`                        |
 | `soft_break`      | ,              | ,               | Line break within a paragraph -> space or `\n`      |
 
+A `code_span` whose `extra` is `1` is inline math, written ``$`x`$``. Its content is the LaTeX, without the dollars. A client with no math renderer shows it as it shows any other code span.
+
 ### Table structure
 
 A `table` node contains `table_header` and `table_row` children. Each of those contains `table_cell` children. Alignments are on the table node, indexed by column:

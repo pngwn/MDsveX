@@ -23,10 +23,13 @@ const pfm = migrate("Hello\n=====\n\nSome *emphasis* and **strength**.");
 migrate(source, {
 	bullet: "-", // unordered list marker: "-" (default), "+" or "*"
 	smartypants: true, // the 0.x smartypants option the documents were written for
+	math: true, // the documents were written for remark-math
 });
 ```
 
 `smartypants` is off unless you pass it. See [Smart punctuation](#smart-punctuation).
+
+`math` is off unless you pass it. See [Math](#math).
 
 ## What it changes
 
@@ -45,6 +48,35 @@ migrate(source, {
 
 Superscript, subscript and the PFM table extensions have no CommonMark
 equivalent, so nothing maps onto them; raw HTML is passed through untouched.
+
+## Math
+
+PFM writes inline math as a code span in dollars and display math as a `math`
+fence. Plain `$x$` and `$$x$$` are text there, so a dollar never needs
+escaping. Without the `math` option a dollar in your documents stays a dollar
+and the text between two of them is migrated as markdown.
+
+Pass `math: true` for a project that used `remark-math`. The document is then
+read with `remark-math`, so math is found exactly where your old build found
+it, and the LaTeX is copied as written, with no markdown escaping:
+
+| with remark-math                  | PFM output                               |
+| --------------------------------- | ---------------------------------------- |
+| `$e^{i\pi}$`                      | `` $`e^{i\pi}`$ ``                       |
+| `$$` on a line, LaTeX, `$$`       | a ```` ```math ```` fence                |
+| `$$x$$` alone in a paragraph      | a ```` ```math ```` fence                |
+| `$$x$$` in a sentence             | `` $`x`$ ``                              |
+| `\$5`                             | `$5`                                     |
+| `$a\|b$` in a table cell          | `` $`a\Vert b`$ `` (`\|` is a cell bar)  |
+
+`remark-math` reads `$5 and $10` as the math `5 and `. The migration leaves a
+pair like that as two prices: math whose first dollar has a digit after it,
+and whose closing dollar has a space before it or a digit after it, stays
+text, and what is between the two dollars is migrated as markdown. Math that
+starts with a digit and closes tightly, such as `$2x + 1$`, is still math.
+
+In either mode, a code span that already had a dollar on each side
+(`` \$`x`\$ ``) gets its first dollar escaped, so PFM does not read it as math.
 
 ## Legacy layouts to templates
 

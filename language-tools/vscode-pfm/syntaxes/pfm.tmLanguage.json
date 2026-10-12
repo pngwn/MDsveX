@@ -264,6 +264,7 @@
 				{ "include": "#svelte-expression" },
 				{ "include": "#component-tag" },
 				{ "include": "#html-tag" },
+				{ "include": "#math-span" },
 				{ "include": "#code-span" },
 				{ "include": "#emphasis" },
 				{ "include": "#strong" },
@@ -350,6 +351,18 @@
 					}
 				}
 			]
+		},
+
+		"math-span": {
+			"name": "markup.math.inline.pfm",
+			"match": "(\\$)(`{1,2})(?!`)(.+?)(?<!`)(\\2)(?!`)(\\$)",
+			"captures": {
+				"1": { "name": "punctuation.definition.math.begin.pfm" },
+				"2": { "name": "punctuation.definition.raw.begin.pfm" },
+				"3": { "name": "meta.embedded.math.pfm markup.raw.inline.pfm" },
+				"4": { "name": "punctuation.definition.raw.end.pfm" },
+				"5": { "name": "punctuation.definition.math.end.pfm" }
+			}
 		},
 
 		"code-span": {

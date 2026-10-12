@@ -13,6 +13,9 @@ export const QUOTE = 34;
 /** ascii code for the octothorpe character (`#`). */
 export const OCTOTHERP = 35;
 
+/** ascii code for the dollar character (`$`). */
+export const DOLLAR = 36;
+
 /** ascii code for the apostrophe character (`'`). */
 export const APOSTROPHE = 39;
 

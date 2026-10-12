@@ -406,6 +406,28 @@ describe("pfmToSvelte compile diagnostics", () => {
 		expect(r.code).toContain("<h2>after</h2>");
 	});
 
+	it("reports invalid inline latex at the latex and shows it as written", () => {
+		const source = "# t\n\na $`x + \\frac{a}{`$ and $`y`$\n\n## after\n";
+		const r = pfmToSvelte(source, { compile: { math: temml_math(temml) } });
+		expect(r.diagnostics).toHaveLength(1);
+		const d = r.diagnostics[0];
+		expect(d.message).toContain("(inline math at line 3)");
+		expect(d.start).toBeGreaterThan(source.indexOf("$`x"));
+		expect(d.start).toBeLessThanOrEqual(source.indexOf("`$ and"));
+		expect(r.code).toContain(
+			'<span class="math math-inline" translate="no"><code class="language-math">y</code></span>',
+		);
+		expect(r.code).toContain("<h2>after</h2>");
+	});
+
+	it("valid inline math compiles as the config has it, with no diagnostic", () => {
+		const r = pfmToSvelte("a $`x`$ b\n", { compile: { math: temml_math(temml) } });
+		expect(r.diagnostics).toEqual([]);
+		expect(r.code).toContain(
+			'<span class="math math-inline" translate="no"><math><mi>x</mi></math></span>',
+		);
+	});
+
 	it("valid math compiles as the config has it, with no diagnostic", () => {
 		const r = pfmToSvelte("```math\nx\n```\n", { compile: { math: temml_math(temml) } });
 		expect(r.diagnostics).toEqual([]);

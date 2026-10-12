@@ -106,6 +106,11 @@ export interface CodeHighlighter {
 	 * takes the math replacement and never pre, its block has no <pre>
 	 */
 	readonly math?: boolean;
+	/**
+	 * inline math, a code span in dollars, asked only while math is true, the
+	 * body is the whole span and the math replacement takes it as children
+	 */
+	inline_math?(code: string, start: number): HighlightedCode;
 }
 
 /** reads the fence meta conventions for a pre replacement the highlighter left plain */
@@ -4039,7 +4044,7 @@ function comp_name(c: Cursor): string {
 		case K.LIST_ITEM:
 			return 'li';
 		case K.CODE_SPAN:
-			return 'code';
+			return c.extra === 1 && hl !== null && hl.math === true ? 'math' : 'code';
 		case K.CODE_FENCE:
 			return hl !== null && hl.math === true && is_math(c) ? 'math' : 'pre';
 		case K.LINK:
@@ -4581,7 +4586,11 @@ function comp_node(
 		case K.CODE_SPAN: {
 			if (hl !== null) {
 				const h = hl_span(c);
-				if (h !== null) return comp_hl_code(c, sink, p, h, open, close);
+				if (h !== null)
+					// comp_name picked the replacement, math or code
+					return ref.name === 'math'
+						? comp_hl_span_math(c, sink, p, h, open, close)
+						: comp_hl_code(c, sink, p, h, open, close);
 			}
 			p = cm_put(p, open + _attrs(c) + '>');
 			const ao = mo.length;
@@ -5980,8 +5989,13 @@ function hl_block(
 	);
 }
 
-/** the code span at c through the highlighter when it has a #! hint */
+/**
+ * the code span at c through the highlighter when it has a #! hint, or as
+ * inline math when it is one, without a math renderer that is plain code
+ */
 function hl_span(c: Cursor): HighlightedCode | null {
+	if (c.extra === 1)
+		return hl!.math === true ? hl!.inline_math!(c.text(), c.start) : null;
 	const lang = fence_info(c, c.meta());
 	if (!lang) return null;
 	let code = c.text();
@@ -6162,6 +6176,20 @@ function comp_hl_math(
 	open += b.props + js_prop('code', b.code);
 	if (meta) open += js_prop('meta', meta);
 	return cm_hl(c, sink, p, pre, open + _attrs(c) + '>', b.body, close, null);
+}
+
+/** inline math as the math replacement, which takes code and no display */
+function comp_hl_span_math(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	h: HighlightedCode,
+	open: string,
+	close: string
+): number {
+	const pre = mo.length;
+	open += js_prop('code', c.text()) + _attrs(c) + '>';
+	return cm_hl(c, sink, p, pre, open, h.body, close, null);
 }
 
 /** a highlighted code span as the code replacement, which also takes lang */

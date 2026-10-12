@@ -66,6 +66,37 @@ describe('vite plugin math', () => {
 		expect(warned).toEqual([]);
 	});
 
+	test('temml loads for a document whose only math is inline', async () => {
+		const INLINE =
+			'<span class="math math-inline" translate="no"><math><mi>x</mi></math></span>';
+		for (const highlight of [false, undefined] as const) {
+			const { transform, warned } = plugin({ highlight });
+			const first = transform('a $`x`$ b\n');
+			expect(first).toBeInstanceOf(Promise);
+			expect((await first).code).toBe(`<p>a ${INLINE} b</p>`);
+			const second = transform('# $`x`$\n');
+			expect(second).not.toBeInstanceOf(Promise);
+			expect(second.code).toBe(`<h1>${INLINE}</h1>`);
+			expect(warned).toEqual([]);
+		}
+	});
+
+	test('a dollar that opens no math loads nothing', () => {
+		const { transform } = plugin({ highlight: false });
+		const out = transform('it costs $5, or $`x` and `y`$\n');
+		expect(out).not.toBeInstanceOf(Promise);
+		expect(out.code).toBe(
+			'<p>it costs $5, or $<code>x</code> and <code>y</code>$</p>'
+		);
+	});
+
+	test('false leaves inline math a code span and loads nothing', () => {
+		const { transform } = plugin({ highlight: false, math: false });
+		const out = transform('a $`x`$\n');
+		expect(out).not.toBeInstanceOf(Promise);
+		expect(out.code).toBe('<p>a <code>x</code></p>');
+	});
+
 	test('documents that meet math while the renderer loads share the load', async () => {
 		const { transform } = plugin({ highlight: false });
 		const first = transform(MATH);

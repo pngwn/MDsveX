@@ -289,6 +289,24 @@ export function take_src(): boolean {
 	return true;
 }
 
+let math_made = false;
+
+/** @internal the parser made an inline math span */
+export function note_math(): void {
+	math_made = true;
+}
+
+/**
+ * @internal true once when a parse made an inline math span since the last
+ * call, so a compile gets a math renderer only for a document that has one,
+ * the note is shared between documents as the note of take_src is
+ */
+export function take_math(): boolean {
+	if (!math_made) return false;
+	math_made = false;
+	return true;
+}
+
 // every fence gets an info_start and an info_end, they differ when it has an
 // info string, the info_end arm notes where each one is, as pairs, a parse
 // nobody asks about must not grow the list, so past the cap the count says
@@ -1677,7 +1695,9 @@ export class NodeBuffer {
 		const extra_string = extra_to_string(kind);
 		const extras_object = extra_string
 			? { [extra_string]: this.extra_at(index) }
-			: {};
+			: kind === NodeKind.code_span && this.extra_at(index) === 1
+				? { math: true }
+				: {};
 
 		const _children = [];
 

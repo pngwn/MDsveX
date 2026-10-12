@@ -269,6 +269,18 @@ describe('vite plugin src=', () => {
 		expect(warned.length).toBe(2);
 	});
 
+	test('a document with src= and inline math loads the renderer before its one render', async () => {
+		const { transform, warned } = plugin();
+		const out = await transform(
+			'a $`x`$\n\n```ts src=../lib/math.ts#L2\n```\n'
+		);
+		expect(out.code).toContain(
+			'<span class="math math-inline" translate="no"><math><mi>x</mi></math></span>'
+		);
+		expect(out.code).toContain('\treturn a + b;</code></pre>');
+		expect(warned).toEqual([]);
+	});
+
 	test('twinkleplop highlights the file by default', async () => {
 		const [pre] = mdsvex() as any[];
 		const { ctx } = context(root);
