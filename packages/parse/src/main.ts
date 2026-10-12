@@ -7385,8 +7385,9 @@ export class PFMParser {
 						}
 
 						case OPEN_ANGLE_BRACKET: {
-							// a tag, a comment or an autolink in a table cell ends on its row
-							const row = this.in_table ? this.row_end() : -1;
+							// a tag, a comment or an autolink in a table cell or a heading ends on its line
+							const lined = this.in_table || this.in_heading;
+							const row = lined ? this.row_end() : -1;
 							// in incremental mode, stall if the tag might be incomplete
 							if (
 								row === -1 &&
@@ -7497,7 +7498,7 @@ export class PFMParser {
 								if (row === -1) break main_loop;
 								this.wait_kind = WAIT_NONE;
 							}
-							if (open_tag !== null && this.in_table) {
+							if (open_tag !== null && lined) {
 								const fits = this.tag_fits_row(open_tag, row);
 								if (fits === -1) break main_loop;
 								if (fits === 0) open_tag = null;
@@ -7556,7 +7557,11 @@ export class PFMParser {
 							if (!this.finished) {
 								expr_end = this.probe_matching_brace(this.cursor + 1);
 								if (expr_end === -1) {
-									if (!this.in_table || this.row_end() === -1) break main_loop;
+									if (
+										!(this.in_table || this.in_heading) ||
+										this.row_end() === -1
+									)
+										break main_loop;
 									this.wait_kind = WAIT_NONE;
 								}
 							} else if (
@@ -7569,8 +7574,8 @@ export class PFMParser {
 							} else {
 								expr_end = this.find_matching_brace(this.cursor + 1);
 							}
-							// an expression in a table cell ends on its row
-							if (expr_end !== -1 && this.in_table) {
+							// an expression in a table cell or a heading ends on its line
+							if (expr_end !== -1 && (this.in_table || this.in_heading)) {
 								const row = this.row_end();
 								if (row !== -1 && expr_end > row) expr_end = -1;
 							}
