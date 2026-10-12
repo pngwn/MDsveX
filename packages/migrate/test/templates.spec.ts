@@ -5,9 +5,20 @@ import { parse_markdown_svelte } from "@mdsvex/parse";
 import {
 	check_template,
 	migrate,
-	migrate_config,
+	migrate_config as migrate_whole_config,
 	migrate_frontmatter,
 } from "../src/main";
+
+/** without the smart_punctuation option every 0.x config gains, and its note */
+function migrate_config(source: string): ReturnType<typeof migrate_whole_config> {
+	const { code, notes } = migrate_whole_config(source);
+	return {
+		code: code
+			.replace(/\{ smart_punctuation: true \}/, "{}")
+			.replace(/,\s*smart_punctuation: true(?!,)|\s*smart_punctuation: true,?/, ""),
+		notes: notes.filter((n) => n.kind !== "smart_punctuation"),
+	};
+}
 
 function config_without_notes(source: string): string {
 	const { code, notes } = migrate_config(source);

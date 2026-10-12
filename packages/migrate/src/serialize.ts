@@ -24,21 +24,53 @@ import type {
 
 import { escape_inline, escape_line_starts } from "./escape.js";
 
+/** the smartypants option of mdsvex 0.x, which was on unless it was false */
+export type LegacySmartypants =
+	| boolean
+	| {
+			quotes?: boolean;
+			ellipses?: boolean;
+			backticks?: boolean | "all";
+			dashes?: boolean | "oldschool" | "inverted";
+	  };
+
 export interface SerializeOptions {
 	/**
 	 * Bullet marker for unordered lists. PFM permits `-`, `+` or `*`; we default
 	 * to `-` as the least ambiguous (`*` collides with strong emphasis).
 	 */
 	bullet?: "-" | "+" | "*";
+	/**
+	 * the smartypants option the documents were written for, true for a 0.x
+	 * config that never set it, dashes and backtick quotes are rewritten so
+	 * the smart_punctuation option of next renders what 0.x did, unset leaves
+	 * them as written
+	 */
+	smartypants?: LegacySmartypants;
 }
 
 interface Context {
 	bullet: string;
+	/** inverted swaps two and three hyphens, em makes two into three and keeps three literal */
+	dashes: "em" | "inverted" | false;
+	backticks: boolean | "all";
+	/** false when nothing curls a straight quote, a backtick quote is then written curly */
+	quotes: boolean;
 }
 
 /** Serialise a parsed mdast tree to a PFM document string. */
 export function serialize(tree: Root, options: SerializeOptions = {}): string {
-	const ctx: Context = { bullet: options.bullet ?? "-" };
+	const smart = options.smartypants;
+	const on = smart !== undefined && smart !== false;
+	const set = typeof smart === "object" && smart !== null ? smart : {};
+	const dashes = set.dashes ?? true;
+	const ctx: Context = {
+		bullet: options.bullet ?? "-",
+		// oldschool is what next does
+		dashes: !on || dashes === false || dashes === "oldschool" ? false : dashes === "inverted" ? "inverted" : "em",
+		backticks: on ? (set.backticks ?? true) : false,
+		quotes: set.quotes !== false,
+	};
 	return serialize_root(tree, ctx);
 }
 
@@ -246,7 +278,7 @@ function serialize_inline(nodes: PhrasingContent[], ctx: Context): string {
 function serialize_phrasing(node: PhrasingContent, ctx: Context): string {
 	switch (node.type) {
 		case "text":
-			return escape_inline(node.value);
+			return legacy_dashes(escape_inline(legacy_backticks(node.value, ctx)), ctx);
 		case "emphasis":
 			// PFM: `_` is emphasis.
 			return "_" + serialize_inline(node.children, ctx) + "_";
@@ -323,4 +355,34 @@ function serialize_image_reference(node: ImageReference): string {
 function format_url(url: string): string {
 	// Angle-bracket wrap URLs containing characters that would break parsing.
 	return /[\s()]/.test(url) ? `<${url}>` : url;
+}
+
+const BACKTICK_QUOTES = /(?<!`)``(?!`)|(?<!')''(?!')/g;
+
+/** the backtick quotes 0.x curled, as the quotes next curls, or curly when it curls none */
+function legacy_backticks(value: string, ctx: Context): string {
+	if (ctx.backticks === false) return value;
+	let text = value.replace(BACKTICK_QUOTES, (pair) =>
+		ctx.quotes ? '"' : pair === "``" ? "\u201c" : "\u201d",
+	);
+	// all also took a lone backtick for an opening single quote
+	if (ctx.backticks === "all")
+		text = text.replace(/`/g, ctx.quotes ? "'" : "\u2018");
+	return text;
+}
+
+const HYPHEN_RUN = /-{2,}/g;
+
+/**
+ * 0.x made two hyphens an em dash and left three alone, or swapped the two
+ * when inverted, next makes two an en dash and three an em dash
+ */
+function legacy_dashes(text: string, ctx: Context): string {
+	const mode = ctx.dashes;
+	if (mode === false) return text;
+	return text.replace(HYPHEN_RUN, (run) => {
+		if (run.length === 2) return "---";
+		if (run.length !== 3) return run;
+		return mode === "inverted" ? "--" : "\\---";
+	});
 }
