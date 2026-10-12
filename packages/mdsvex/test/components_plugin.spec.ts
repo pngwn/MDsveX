@@ -538,7 +538,6 @@ describe('components resolution failure', () => {
 					await server.close();
 					return 'started';
 				},
-				// under vitest reading the stack maps it through the sourceMappingURL template in main.ts and throws
 				(e: Error) => e.message
 			);
 			expect(message).toBe(
@@ -548,6 +547,16 @@ describe('components resolution failure', () => {
 		} finally {
 			rmSync(root, { recursive: true, force: true });
 		}
+	});
+
+	test('the stack of an error from the plugin can be read', () => {
+		let error: Error | undefined;
+		try {
+			mdsvex({ component_mode: 'every' as any });
+		} catch (e) {
+			error = e as Error;
+		}
+		expect(error?.stack).toContain('component_mode');
 	});
 
 	test('an unknown component_mode throws when the plugin is made', () => {

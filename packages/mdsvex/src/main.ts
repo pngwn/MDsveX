@@ -1119,7 +1119,9 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 
 					// inject as inline sourceMappingURL since vite ignores
 					// post-transform map return values
-					const comment = `\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,${mapBase64}\n`;
+					// joined at run time so no tool reads this text as the map of this file
+					const marker = ['//# source', 'MappingURL='].join('');
+					const comment = `\n${marker}data:application/json;charset=utf-8;base64,${mapBase64}\n`;
 
 					return { code: code + comment, map: { mappings: '' as const } };
 				} finally {
