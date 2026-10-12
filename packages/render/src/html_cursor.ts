@@ -125,6 +125,19 @@ export type UrlLookup = (
 	image: boolean
 ) => UrlSource | null | undefined;
 
+/** what a fence renders in place of what the document has */
+export interface FenceSource {
+	/** the code, in place of the body of the fence */
+	text: string;
+	/** the info string in place of the written one, '' for none, undefined keeps it */
+	info?: string;
+	/** props text for a pre replacement, each as ' name={value}', after its own props */
+	props?: string;
+}
+
+/** the fences that take their code from elsewhere, by node index */
+export type FenceSources = ReadonlyMap<number, FenceSource>;
+
 // must equal NONE in @mdsvex/parse
 const enum Slot {
 	NONE = 0xffffffff,
@@ -388,12 +401,14 @@ function strip_bq(text: string, depth: number): string {
 }
 
 function fence_text(c: Cursor): string {
+	if (fs !== null) return fence_text_from(c);
 	const depth = bq_depth(c.words, c.index);
 	return depth === 0 ? c.text() : strip_bq(c.text(), depth);
 }
 
 /** equals escape_code of fence_text */
 function escape_fence_text(c: Cursor): string {
+	if (fs !== null) return escape_code(fence_text_from(c));
 	const depth = bq_depth(c.words, c.index);
 	if (depth === 0) return escape_code_text(c);
 	return escape_code(strip_bq(c.text(), depth));
@@ -4426,6 +4441,7 @@ function js_prop(key: string, value: string): string {
  * resolves it, the tree builder path keeps byte offsets
  */
 function fence_info(c: Cursor, meta: Record<string, unknown> | undefined) {
+	if (fs !== null) return fence_info_from(c, meta);
 	let info = meta?.info as string | undefined;
 	if (!info) {
 		const info_start = meta?.info_start as number | undefined;
@@ -4576,6 +4592,7 @@ function comp_node(
 			}
 			// children are the element, svelte keeps whitespace only inside a <pre>
 			// it can see, code is the raw text
+			if (fs !== null) open += fence_props(c);
 			p = cm_put(p, open + js_prop('code', fence_text(c)) + '><pre>' + inner);
 			const ao = mo.length;
 			p = cm_text(c, sink, p, escape_fence_text(c));
@@ -5366,6 +5383,11 @@ export class CursorHTMLRenderer {
 	declare imports?: readonly string[];
 	/** replaces the src of images and the href of links in the next renders, unset keeps every url */
 	declare urls?: UrlLookup;
+	/**
+	 * the fences of the next renders that take their code, info string or pre
+	 * props from elsewhere, unset reads every fence from the source
+	 */
+	declare fences?: FenceSources;
 
 	constructor(opts?: { cache?: boolean }) {
 		this.cache = opts?.cache ?? true;
@@ -5390,6 +5412,8 @@ export class CursorHTMLRenderer {
 		pm = this.pre_meta;
 		const urls = this.urls;
 		if (urls !== undefined) ul = urls;
+		const fences = this.fences;
+		if (fences !== undefined) fs = fences;
 
 		// no caching, single-pass full render
 		if (!this.cache) {
@@ -5423,6 +5447,7 @@ export class CursorHTMLRenderer {
 				hl = null;
 				pm = null;
 				if (urls !== undefined) ul = null;
+				if (fences !== undefined) fs = null;
 				esc_prebuilt = true;
 				esc_bits = null;
 				if (dir_strict) dir_strict = false;
@@ -5441,6 +5466,7 @@ export class CursorHTMLRenderer {
 			hl = null;
 			pm = null;
 			if (urls !== undefined) ul = null;
+			if (fences !== undefined) fs = null;
 			if (code) module_end();
 		}
 		return this.blocks;
@@ -5498,6 +5524,8 @@ export class CursorHTMLRenderer {
 		pm = this.pre_meta;
 		const urls = this.urls;
 		if (urls !== undefined) ul = urls;
+		const fences = this.fences;
+		if (fences !== undefined) fs = fences;
 
 		if (this.template !== undefined) {
 			this.html = this.render_wrapped(c, buf, sink, trace, code);
@@ -5536,6 +5564,7 @@ export class CursorHTMLRenderer {
 			hl = null;
 			pm = null;
 			if (urls !== undefined) ul = null;
+			if (fences !== undefined) fs = null;
 			esc_prebuilt = true;
 			esc_bits = null;
 			if (dir_strict) dir_strict = false;
@@ -5600,6 +5629,7 @@ export class CursorHTMLRenderer {
 			hl = null;
 			pm = null;
 			ul = null;
+			fs = null;
 			esc_prebuilt = true;
 			esc_bits = null;
 			if (dir_strict) dir_strict = false;
@@ -5726,6 +5756,7 @@ export class CursorHTMLRenderer {
 		if (this.template !== undefined) this.template = undefined;
 		if (this.imports !== undefined) this.imports = undefined;
 		if (this.urls !== undefined) this.urls = undefined;
+		if (this.fences !== undefined) this.fences = undefined;
 		// the escape index is module state and would keep the source alive,
 		// every render resets it, a zero length clamps any text of '' to empty
 		esc_src = '';
@@ -5817,6 +5848,40 @@ function url_swap(url: string, image: boolean): string {
 	if (typeof to !== 'string') return name + '{' + to.value + '}';
 	// an empty url of the source has no attribute either
 	return to === '' ? '' : name + '"' + escape_text_html(to) + '"';
+}
+
+/** the fences of the render in progress that take their code from elsewhere, null reads every one from the source */
+let fs: FenceSources | null = null;
+
+/** fence_text of a render with fence sources */
+function fence_text_from(c: Cursor): string {
+	const from = fs!.get(c.index);
+	if (from !== undefined) return from.text;
+	const depth = bq_depth(c.words, c.index);
+	return depth === 0 ? c.text() : strip_bq(c.text(), depth);
+}
+
+/** fence_info of a render with fence sources */
+function fence_info_from(
+	c: Cursor,
+	meta: Record<string, unknown> | undefined
+): string | undefined {
+	const given = fs!.get(c.index)?.info;
+	if (given !== undefined) return given;
+	let info = meta?.info as string | undefined;
+	if (!info) {
+		const info_start = meta?.info_start as number | undefined;
+		const info_end = meta?.info_end as number | undefined;
+		if (info_start != null && info_end != null)
+			info = c.slice(info_start, info_end);
+	}
+	return info;
+}
+
+/** the extra props of the pre replacement of the fence at c */
+function fence_props(c: Cursor): string {
+	const props = fs!.get(c.index)?.props;
+	return props === undefined ? '' : props;
 }
 
 /** the first space or tab of an info string, -1 for none */
@@ -6001,6 +6066,7 @@ function comp_hl_pre(
 	if (dropped !== null)
 		for (let i = 0; i < dropped.length; i++)
 			hl!.warn('meta_prop_ignored', dropped[i], c.start);
+	if (fs !== null) open += fence_props(c);
 	open +=
 		b.props +
 		(b.code_template === null
@@ -6106,8 +6172,21 @@ function hl_live_records(
 	body: string,
 	live: number[]
 ): void {
-	const text = fence_text(c);
 	const idx = c.index;
+	// code from elsewhere has no source to map an expression to
+	if (fs !== null && fs.has(idx)) {
+		put_record(
+			sink,
+			at,
+			at + body.length,
+			c.value_start,
+			c.value_end,
+			idx,
+			Code.CODE_CONTENT
+		);
+		return;
+	}
+	const text = fence_text(c);
 	let gen = at;
 	let src = c.value_start;
 	for (let i = 0; i < live.length; i += 3) {
@@ -6133,6 +6212,10 @@ function hl_live_trace(
 	body: string,
 	live: number[]
 ): void {
+	if (fs !== null && fs.has(c.index)) {
+		if (body.length !== 0) tr_point(sink, at, c.value_start);
+		return;
+	}
 	const text = fence_text(c);
 	let gen = at;
 	let src = c.value_start;
