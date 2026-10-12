@@ -29,6 +29,8 @@ A markdown variant for mdsvex. Uses CommonMark as baseline. Goals: remove ambigu
 
 The definition must appear **before** the reference is used. Forward references are a parse error. This enables true streaming and incremental parsing.
 
+A definition may sit in any container. In a block quote it is written on one line, the destination and the title do not move to the next line there.
+
 A label cannot start with `^`. `[^note]: text` is how a footnote definition is written, so the line is never a link reference definition and stays text.
 
 **Headings**, Only ATX style (`#` prefix). Setext style (`===`/ `---` underlines) removed. Trailing `#` characters are treated as heading text, not syntax.
@@ -99,8 +101,8 @@ The exceptions:
 
 The parser does not hold to this everywhere yet. Where it still differs from the top of a document:
 
-- In a block quote: a table and a Svelte block do not open, an HTML element holds its lines as inline content, a directive or an element does not end a paragraph, and a link reference definition is a paragraph.
-- In a list item: an HTML element and a Svelte block do not open, a line of only a comment or of only tags keeps a paragraph, a table loses its body rows, `- - a` is an empty item and a second item, a container directive runs past the item, and a link reference definition is a paragraph.
+- In a block quote: an HTML element holds its lines as inline content.
+- In a list item: an HTML element and a Svelte block do not open, a line of only a comment or of only tags keeps a paragraph, `- - a` is an empty item and a second item, a container directive runs past the item, and a link reference definition is a paragraph.
 - A value that runs over lines (the code of a fence, a comment) keeps the `>` or the indent of each line in a block quote or a list item.
 
 **Blockquotes**, No lazy continuation. Every line inside a blockquote must be explicitly prefixed with `>`. The first line without a `>` prefix terminates the blockquote; there is no implicit inheritance of blockquote context from a previous line. This enables line-local parsing decisions without tracking open paragraphs in parent containers.
@@ -119,7 +121,7 @@ bar
 
 -> blockquote containing `foo`, followed by a separate root-level paragraph `bar`.
 
-A paragraph in a blockquote ends at a marked line that is blank or starts another block: a nested blockquote, a heading, a thematic break, a fence, the close of a container directive, or a list item. A list item ends it as it does outside a blockquote: a bullet or `1.` with text after it, and any marker when the paragraph is in a list. Emphasis, link text, an inline HTML element or a code span still open at that line ends there too and its opening marker is literal text. Over any other marked line it carries on, as it does over a line outside a blockquote, and the `>` markers of the lines a code span runs over are not part of its code:
+A paragraph in a blockquote ends at a marked line that is blank or starts another block, the same lines that end a paragraph outside a blockquote: a nested blockquote, a heading, a thematic break, a fence, a directive or the close of one, a block level HTML tag, a Svelte block, or a list item. A list item ends it as it does outside a blockquote: a bullet or `1.` with text after it, and any marker when the paragraph is in a list. Emphasis, link text, an inline HTML element or a code span still open at that line ends there too and its opening marker is literal text. Over any other marked line it carries on, as it does over a line outside a blockquote, and the `>` markers of the lines a code span runs over are not part of its code:
 
 ```markdown
 > some _emphasis
