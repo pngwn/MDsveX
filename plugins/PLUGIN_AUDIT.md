@@ -92,7 +92,7 @@ Turning paths and URLs into the right module or route. **Shared state:** the doc
 
 | Feature | Plugins | Delivery | Notes |
 | --- | --- | --- | --- |
-| **External link policy** | rehype-external-links (10M) | `plugin` today, Vite option later | `rel`, `target`, an optional icon, and screen-reader text for "opens in a new tab". |
+| **External link policy** | rehype-external-links (10M) | `plugin`, exists (`@mdsvex/plugin-external-links`), Vite option later | `rel`, `target`, an optional icon, and a screen-reader label for "opens in a new tab". |
 | **Relative images become imports** | no direct equivalent; remark-embed-images (39k), remark-copy-linked-files (2k), rehype-inline-svg and rehype-svgo are workarounds | `vite` | `![](./a.png)` → `import a from './a.png'`, so Vite hashes and optimises it. `?inline` and `?raw` cover the SVG cases. Pairs with `@sveltejs/enhanced-img`. |
 | **Image size and loading** | rehype-img-size (32k), rehype-plugin-image-native-lazy-loading (11k), rehype-picture, rehype-resolution | `vite` | Intrinsic `width` and `height` (#611), `loading=lazy`, `decoding=async`, available once images are imports. |
 | **Links to routes and the base path** | remark-link-rewrite (40k), rehype-urls (53k), rehype-url-inspector (8k), remark-prepend-url, remark-relative-links, remark-remove-url-trailing-slash, remark-img-links | `vite`, with a `rewrite(url, ctx)` option | `./guide.md` → `/guide`, SvelteKit `base`, trailing slashes (#389). One option replaces seven plugins. |
@@ -241,7 +241,7 @@ Ranked on usefulness to mdsvex users × popularity × cost. Items tagged `core` 
 | --- | --- | --- | --- | --- |
 | 1 | Heading ids | Navigation | core option | 17.6M |
 | 2 | Heading anchors | Navigation | plugin, exists | 9.9M |
-| 3 | External link policy | Resolution | plugin | 10M |
+| 3 | External link policy | Resolution | plugin, exists | 10M |
 | 4 | Footnotes | Reference apparatus | core | remark-gfm 181M; migration blocker |
 | 5 | Task lists | Presentation | core | remark-gfm 181M |
 | 6 | Math | Reference apparatus | core | 36M + 32M; issue #302 |
