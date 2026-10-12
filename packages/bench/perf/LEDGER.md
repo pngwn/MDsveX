@@ -187,6 +187,24 @@ delete it.
     could ask the probe about the raw line before it calls `line_start`, and
     hand `item_lf` the answer with the marker.
 
+### text run call
+
+- **Source:** step 9 of `design/parser-structure.md`, `text_run` and
+  `text_run_after` in `packages/parse/src/main.ts`, which seven scans of plain
+  text now call.
+- **Measured:** `core --repeat 2` against the step below with the default 3.0%
+  floor. Geomean over 238 workloads +0.00%, `parse` -0.35%, every other mode
+  within 0.3%. One row is slower past the floor, `fixtures/atx_headings:parse`
+  -3.2%. Slower in both passes under the floor: `fixtures/inlines:parse` -2.0%,
+  `micro/directive:parse` -2.0%, `fixtures/soft_line_breaks:parse` -1.9%.
+  `_run` is 26,390 bytes of bytecode, from 29,425.
+- **Cause:** a call where there was a loop in place. A heading takes it twice,
+  once for its first run in `start_heading` and once a run in the main loop.
+  Not isolated with a stub.
+- **Ideas:** guess, not measured. `para_text` and the text state are the two
+  hot callers, giving those two their loop back would cost about 20 lines and
+  need an invariant against `text_run`.
+
 ### attrs on pending emphasis
 
 - **Source:** #950 and #956.
