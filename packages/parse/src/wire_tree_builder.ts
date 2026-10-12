@@ -323,13 +323,16 @@ export class WireTreeBuilder {
 		if (idx === undefined) return;
 
 		// plugin revoke: undo mutations before handle_repair
+		let lifted: number[] | null = null;
 		if (this.dispatcher) {
 			this.dispatcher.dispatch_revoke(idx, this.buf);
 			// a plugin took the node out of the tree, there is nothing to repair
 			if (this.buf.parent_at(idx) === NONE) return;
+			lifted = this.dispatcher.lifted(idx, this.buf);
 		}
 
 		this.buf.handle_repair(idx, delimiter || undefined);
+		if (lifted !== null) this.dispatcher!.dispatch_lifted(lifted, this.buf);
 		if (this.buf.kind_at(idx) === NodeKind.text) {
 			if (this.repaired === null) this.repaired = new Set();
 			this.repaired.add(idx);

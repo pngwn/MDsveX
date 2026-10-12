@@ -249,7 +249,7 @@ describe('the any child handler of a directive', () => {
 
 	it('gives its index back when the child it ran for is revoked', () => {
 		// fed in pieces, the element opens in a paragraph that is revoked at its
-		// close, a whole parse opens no paragraph for it
+		// close and the handler runs for it then, a whole parse opens no paragraph
 		for (const [name, run] of PATHS) {
 			const log: string[] = [];
 			run(
@@ -266,9 +266,9 @@ describe('the any child handler of a directive', () => {
 					},
 				})
 			);
-			// the paragraph gave its 1 back to the paragraph after it
-			const fed = ['0 paragraph', '1 paragraph', '1 paragraph', 'last 1'];
+			// the paragraph gave its 1 back to the element it held
 			const whole = ['0 paragraph', '1 html', '2 paragraph', 'last 2'];
+			const fed = [whole[0], '1 paragraph', ...whole.slice(1)];
 			expect([fed, whole], name).toContainEqual(log);
 		}
 	});
