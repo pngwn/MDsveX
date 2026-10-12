@@ -138,6 +138,22 @@ export interface FenceSource {
 /** the fences that take their code from elsewhere, by node index */
 export type FenceSources = ReadonlyMap<number, FenceSource>;
 
+/** the opening and closing double quote, then the opening and closing single quote */
+export type SmartQuotes = readonly [string, string, string, string];
+
+/** each kind is on unless it is false */
+export interface SmartPunctuationOptions {
+	/** straight quotes to curly ones, four strings replace the english ones */
+	quotes?: boolean | SmartQuotes;
+	/** two hyphens to an en dash and three to an em dash */
+	dashes?: boolean;
+	/** three dots to an ellipsis */
+	ellipses?: boolean;
+}
+
+/** true is every kind with english quotes, false is none */
+export type SmartPunctuation = boolean | SmartPunctuationOptions;
+
 // must equal NONE in @mdsvex/parse
 const enum Slot {
 	NONE = 0xffffffff,
@@ -448,6 +464,10 @@ function escape_text_at(
 	const src = c.source;
 	if (src !== esc_src) esc_reset(src);
 	if (ve > esc_len) {
+		// a render with smart punctuation keeps the length at zero, so every
+		// value comes here and a render without it pays nothing
+		if (sp_on)
+			return code ? escape_code(src.slice(vs, ve)) : smart_text(c, i, vs, ve);
 		ve = esc_len;
 		if (ve <= vs) return '';
 	}
@@ -5338,6 +5358,11 @@ export class CursorHTMLRenderer {
 	 * props from elsewhere, unset reads every fence from the source
 	 */
 	declare fences?: FenceSources;
+	/**
+	 * curly quotes, dashes and ellipses in the prose of the next renders, unset
+	 * leaves text as written, as does a text node that holds a stored string
+	 */
+	declare smart_punctuation?: SmartPunctuation;
 
 	constructor(opts?: { cache?: boolean }) {
 		this.cache = opts?.cache ?? true;
@@ -5358,6 +5383,9 @@ export class CursorHTMLRenderer {
 		const c = this.cursor;
 		c.reset();
 		esc_reset(source);
+		// ahead of the rest, it throws for an option it can not read
+		const smart = this.smart_punctuation;
+		if (smart !== undefined) sp_begin(smart);
 		hl = this.highlight;
 		pm = this.pre_meta;
 		const urls = this.urls;
@@ -5398,6 +5426,7 @@ export class CursorHTMLRenderer {
 				pm = null;
 				if (urls !== undefined) ul = null;
 				if (fences !== undefined) fs = null;
+				if (smart !== undefined) sp_end();
 				esc_prebuilt = true;
 				esc_bits = null;
 				if (dir_strict) dir_strict = false;
@@ -5417,6 +5446,7 @@ export class CursorHTMLRenderer {
 			pm = null;
 			if (urls !== undefined) ul = null;
 			if (fences !== undefined) fs = null;
+			if (smart !== undefined) sp_end();
 			if (code) module_end();
 		}
 		return this.blocks;
@@ -5470,6 +5500,9 @@ export class CursorHTMLRenderer {
 		const c = this.cursor;
 		c.reset();
 		esc_reset(source);
+		// ahead of the rest, it throws for an option it can not read
+		const smart = this.smart_punctuation;
+		if (smart !== undefined) sp_begin(smart);
 		hl = this.highlight;
 		pm = this.pre_meta;
 		const urls = this.urls;
@@ -5515,6 +5548,7 @@ export class CursorHTMLRenderer {
 			pm = null;
 			if (urls !== undefined) ul = null;
 			if (fences !== undefined) fs = null;
+			if (smart !== undefined) sp_end();
 			esc_prebuilt = true;
 			esc_bits = null;
 			if (dir_strict) dir_strict = false;
@@ -5580,6 +5614,7 @@ export class CursorHTMLRenderer {
 			pm = null;
 			ul = null;
 			fs = null;
+			if (sp_on) sp_end();
 			esc_prebuilt = true;
 			esc_bits = null;
 			if (dir_strict) dir_strict = false;
@@ -5707,6 +5742,8 @@ export class CursorHTMLRenderer {
 		if (this.imports !== undefined) this.imports = undefined;
 		if (this.urls !== undefined) this.urls = undefined;
 		if (this.fences !== undefined) this.fences = undefined;
+		if (this.smart_punctuation !== undefined)
+			this.smart_punctuation = undefined;
 		// the escape index is module state and would keep the source alive,
 		// every render resets it, a zero length clamps any text of '' to empty
 		esc_src = '';
@@ -6179,4 +6216,574 @@ function hl_live_trace(
 	}
 	const end = at + body.length;
 	if (end > gen) tr_run(sink, gen, end, src, c.value_end);
+}
+
+// smart punctuation is off for most renders, so its bindings sit last too
+
+/** true while a render with smart punctuation runs, its text goes through smart_text */
+let sp_on = false;
+/** the option the fields below were read from */
+let sp_opt: SmartPunctuation | undefined;
+let sp_quotes = false;
+let sp_dashes = false;
+let sp_dots = false;
+let sp_open2 = '“';
+let sp_close2 = '”';
+let sp_open1 = '‘';
+let sp_close1 = '’';
+
+// an escape index of its own, as esc_src and its pointers, so a render
+// without the option reads and writes none of it
+let sp_src = '';
+let sp_len = 0;
+let sp_lo = 0;
+let sp_amp = -1;
+let sp_lt = -1;
+let sp_gt = -1;
+let sp_quot = -1;
+let sp_apos = -1;
+let sp_dash = -1;
+let sp_dot = -1;
+
+/** the parent whose text sp_plain answered last, text nodes arrive in runs of one parent */
+let sp_parent = -1;
+let sp_parent_plain = false;
+
+// a child list has no back links, the walk moves forward, so the pair the
+// last search found is where the next one starts
+let sp_trail: number = Slot.NONE;
+let sp_trail_prev: number = Slot.NONE;
+
+/** how a neighbour of a quote reads */
+const enum Side {
+	/** renders nothing, the neighbour is further on */
+	NOTHING = -1,
+	/** whitespace, a break, or the edge of the block */
+	SPACE = 0,
+	/** an opening bracket or a dash, a quote after one opens */
+	OPENER = 1,
+	/** a letter or a digit, or an inline node that is not text */
+	WORD = 2,
+	OTHER = 3,
+}
+
+/** what a quote becomes */
+const enum Quote {
+	STRAIGHT = 0,
+	OPEN = 1,
+	CLOSE = 2,
+	/** a closing quote with a word on both sides */
+	APOSTROPHE = 3,
+}
+
+/** typed html that starts and ends a block, so no text reads on across its tags */
+const SP_BLOCK_TAGS = new Set([
+	'address',
+	'article',
+	'aside',
+	'blockquote',
+	'br',
+	'caption',
+	'dd',
+	'details',
+	'dialog',
+	'div',
+	'dl',
+	'dt',
+	'fieldset',
+	'figcaption',
+	'figure',
+	'footer',
+	'form',
+	'h1',
+	'h2',
+	'h3',
+	'h4',
+	'h5',
+	'h6',
+	'header',
+	'hr',
+	'li',
+	'main',
+	'nav',
+	'ol',
+	'p',
+	'pre',
+	'section',
+	'summary',
+	'table',
+	'tbody',
+	'td',
+	'tfoot',
+	'th',
+	'thead',
+	'tr',
+	'ul',
+]);
+
+/** typed html whose text is code, or is read as written */
+const SP_PLAIN_TAGS = new Set([
+	'code',
+	'kbd',
+	'pre',
+	'samp',
+	'var',
+	'tt',
+	'textarea',
+	'script',
+	'style',
+]);
+
+/** after esc_reset, sp_end follows it, in a finally */
+function sp_begin(opt: SmartPunctuation): void {
+	if (opt !== sp_opt) sp_read(opt);
+	if (!(sp_quotes || sp_dashes || sp_dots)) return;
+	sp_on = true;
+	sp_parent = -1;
+	sp_trail = Slot.NONE;
+	// every value is then past the end, which is where escape_text_at asks for sp_on
+	esc_len = 0;
+}
+
+function sp_end(): void {
+	sp_on = false;
+	// the indexes would keep the source alive, and the next text resets esc_len
+	sp_src = '';
+	sp_len = 0;
+	esc_src = '';
+}
+
+/** a quote string is text, a brace in it would start an expression */
+function sp_quote(s: unknown): string {
+	if (typeof s !== 'string')
+		throw new TypeError('smart_punctuation.quotes takes four strings');
+	const text = escape_text_html(s);
+	return BRACE_TEST.test(text) ? text.replace(BRACE_MATCH, code_replace) : text;
+}
+
+function sp_read(opt: SmartPunctuation): void {
+	// a throw below leaves no half read option behind
+	sp_opt = undefined;
+	sp_open2 = '“';
+	sp_close2 = '”';
+	sp_open1 = '‘';
+	sp_close1 = '’';
+	if (typeof opt === 'boolean') {
+		sp_quotes = sp_dashes = sp_dots = opt;
+	} else {
+		const quotes = opt.quotes;
+		sp_quotes = quotes !== false;
+		sp_dashes = opt.dashes !== false;
+		sp_dots = opt.ellipses !== false;
+		if (typeof quotes === 'object') {
+			if (!Array.isArray(quotes) || quotes.length !== 4)
+				throw new TypeError('smart_punctuation.quotes takes four strings');
+			sp_open2 = sp_quote(quotes[0]);
+			sp_close2 = sp_quote(quotes[1]);
+			sp_open1 = sp_quote(quotes[2]);
+			sp_close1 = sp_quote(quotes[3]);
+		}
+	}
+	sp_opt = opt;
+}
+
+function sp_reset(src: string): void {
+	sp_src = src;
+	const len = (sp_len = src.length);
+	sp_lo = 0;
+	sp_amp = -1;
+	sp_lt = -1;
+	sp_gt = -1;
+	sp_quot = -1;
+	// a kind that is off never hits
+	sp_apos = sp_quotes ? -1 : len;
+	sp_dash = sp_dashes ? -1 : len;
+	sp_dot = sp_dots ? -1 : len;
+}
+
+function sp_next(needle: string, from: number): number {
+	const i = sp_src.indexOf(needle, from);
+	return i === -1 ? sp_len : i;
+}
+
+/**
+ * escape_text_at for the prose of a render with smart punctuation, the slice
+ * is node i or a run of text and soft breaks from it, as fold_children joins
+ * them, a quote at either end of the slice asks the tree
+ */
+function smart_text(c: Cursor, i: number, vs: number, ve: number): string {
+	// empty cases must match Cursor.text
+	if (vs === Slot.NONE || ve === Slot.NONE || ve <= vs) return '';
+	const src = c.source;
+	if (src !== sp_src || vs < sp_lo) sp_reset(src);
+	if (ve > sp_len) {
+		ve = sp_len;
+		if (ve <= vs) return '';
+	}
+	if (sp_amp < vs) sp_amp = sp_next('&', vs);
+	if (sp_lt < vs) sp_lt = sp_next('<', vs);
+	if (sp_gt < vs) sp_gt = sp_next('>', vs);
+	if (sp_quot < vs) sp_quot = sp_next('"', vs);
+	if (sp_apos < vs) sp_apos = sp_next("'", vs);
+	if (sp_dash < vs) sp_dash = sp_next('--', vs);
+	if (sp_dot < vs) sp_dot = sp_next('...', vs);
+	sp_lo = vs;
+	let m = sp_amp;
+	if (sp_lt < m) m = sp_lt;
+	if (sp_gt < m) m = sp_gt;
+	if (sp_quot < m) m = sp_quot;
+	if (sp_apos < m) m = sp_apos;
+	if (sp_dash < m) m = sp_dash;
+	if (sp_dot < m) m = sp_dot;
+	const first = src.charCodeAt(vs);
+	if ((first === 123 || first === 125) && brace_escaped(src, vs)) {
+		const brace = first === 123 ? '&#123;' : '&#125;';
+		if (m >= ve) return brace + src.slice(vs + 1, ve);
+		return brace + smart_hits(c, i, src, vs, ve, m, vs + 1);
+	}
+	if (m >= ve) return src.slice(vs, ve);
+	return smart_hits(c, i, src, vs, ve, m, vs);
+}
+
+/** m is the first hit at or after vs, the text is copied from pos */
+function smart_hits(
+	c: Cursor,
+	i: number,
+	src: string,
+	vs: number,
+	ve: number,
+	m: number,
+	pos: number
+): string {
+	// asked once a node has a hit, a node with none never walks up
+	const smart = !sp_plain(c, i);
+	// an escape opens its text node at the escaped char
+	const escaped = brace_escaped(src, vs);
+	let text = '';
+	while (m < ve) {
+		const ch = src.charCodeAt(m);
+		text += src.slice(pos, m);
+		pos = m + 1;
+		if (ch === 38) {
+			sp_amp = sp_next('&', m + 1);
+			if (text_reference(src, vs, ve, m)) pos = m;
+			else text += '&amp;';
+		} else if (ch === 60) {
+			text += '&lt;';
+			sp_lt = sp_next('<', m + 1);
+		} else if (ch === 62) {
+			text += '&gt;';
+			sp_gt = sp_next('>', m + 1);
+		} else if (ch === 34 || ch === 39) {
+			if (ch === 34) sp_quot = sp_next('"', m + 1);
+			else sp_apos = sp_next("'", m + 1);
+			const side =
+				smart && sp_quotes && !(escaped && m === vs)
+					? quote_side(c, i, src, vs, ve, m)
+					: Quote.STRAIGHT;
+			if (side === Quote.STRAIGHT) {
+				if (ch === 34) text += '&quot;';
+				else pos = m;
+			} else if (side === Quote.OPEN) text += ch === 34 ? sp_open2 : sp_open1;
+			else if (ch === 34) text += sp_close2;
+			else text += side === Quote.APOSTROPHE ? '’' : sp_close1;
+		} else {
+			// a run of hyphens or dots, only one of an exact length is replaced
+			let end = m + 1;
+			while (end < ve && src.charCodeAt(end) === ch) end++;
+			const dash = ch === 45;
+			if (dash) sp_dash = sp_next('--', end);
+			else sp_dot = sp_next('...', end);
+			const run = end - m;
+			if (
+				smart &&
+				(run === 3 || (run === 2 && dash)) &&
+				!(escaped && m === vs) &&
+				// the run goes on in the next text node, behind a backslash
+				!(
+					end === ve &&
+					src.charCodeAt(ve) === 92 &&
+					src.charCodeAt(ve + 1) === ch
+				) &&
+				!(run === 2 && is_flag(c, i, src, vs, ve, m))
+			)
+				text += dash ? (run === 2 ? '–' : '—') : '…';
+			else text += src.slice(m, end);
+			pos = end;
+		}
+		m = sp_amp;
+		if (sp_lt < m) m = sp_lt;
+		if (sp_gt < m) m = sp_gt;
+		if (sp_quot < m) m = sp_quot;
+		if (sp_apos < m) m = sp_apos;
+		if (sp_dash < m) m = sp_dash;
+		if (sp_dot < m) m = sp_dot;
+	}
+	// every pointer is now at or past ve
+	sp_lo = ve;
+	return text + src.slice(pos, ve);
+}
+
+/** two hyphens after a space and before a letter are a command line flag */
+function is_flag(
+	c: Cursor,
+	i: number,
+	src: string,
+	vs: number,
+	ve: number,
+	m: number
+): boolean {
+	if (m + 2 >= ve) return false;
+	const after = src.charCodeAt(m + 2) | 32;
+	if (after < 97 || after > 122) return false;
+	const before = m > vs ? sp_side(src.charCodeAt(m - 1)) : sp_left(c, i);
+	return before === Side.SPACE;
+}
+
+/**
+ * which way the quote at m faces, from the character before it and the one
+ * after, in an unbroken run of quotes each takes the side of the first
+ */
+function quote_side(
+	c: Cursor,
+	i: number,
+	src: string,
+	vs: number,
+	ve: number,
+	m: number
+): number {
+	let q = m;
+	while (q > vs) {
+		const ch = src.charCodeAt(q - 1);
+		if (ch !== 34 && ch !== 39) break;
+		q--;
+	}
+	let before: number;
+	if (q > vs) before = sp_side(src.charCodeAt(q - 1));
+	else if (q < m && brace_escaped(src, vs)) {
+		// the run starts at a quote a backslash escaped, which stays as written
+		before = Side.OTHER;
+		q = m;
+	} else before = sp_left(c, i);
+	const after =
+		m + 1 < ve
+			? sp_side(src.charCodeAt(m + 1))
+			: sp_right(c, sp_last(c, i, ve));
+	if (q < m)
+		return (before === Side.SPACE || before === Side.OPENER) &&
+			after !== Side.SPACE
+			? Quote.OPEN
+			: Quote.CLOSE;
+	if (before === Side.SPACE)
+		return after === Side.SPACE ? Quote.STRAIGHT : Quote.OPEN;
+	if (before === Side.OPENER && after !== Side.SPACE) return Quote.OPEN;
+	return before === Side.WORD && after === Side.WORD
+		? Quote.APOSTROPHE
+		: Quote.CLOSE;
+}
+
+/** how a character reads beside a quote, only the apostrophe asks for a word */
+function sp_side(ch: number): number {
+	if (ch <= 32 || ch === 0xa0) return Side.SPACE;
+	if (ch < 128) {
+		if (ch === 40 || ch === 91 || ch === 123 || ch === 45) return Side.OPENER;
+		if (ch >= 48 && ch <= 57) return Side.WORD;
+		const lower = ch | 32;
+		return lower >= 97 && lower <= 122 ? Side.WORD : Side.OTHER;
+	}
+	if (ch === 0x2013 || ch === 0x2014) return Side.OPENER;
+	if (ch < 0xc0) return Side.OTHER;
+	if (ch >= 0x2000 && ch <= 0x206f)
+		return ch <= 0x200a ||
+			ch === 0x2028 ||
+			ch === 0x2029 ||
+			ch === 0x202f ||
+			ch === 0x205f
+			? Side.SPACE
+			: Side.OTHER;
+	if (ch === 0x1680 || ch === 0x3000) return Side.SPACE;
+	if (ch > 0x3000 && ch <= 0x303f) return Side.OTHER;
+	// a letter of any script, no table says which of the rest are not
+	return Side.WORD;
+}
+
+/** an inline node whose children read on from what is beside it */
+function sp_inline(c: Cursor, node: number): boolean {
+	const kind = c.words[node * W.stride] & 0xff;
+	if (kind === K.HTML) {
+		const at = c.index;
+		c.move_to(node);
+		const tag = c.meta()?.tag;
+		c.move_to(at);
+		return typeof tag !== 'string' || !SP_BLOCK_TAGS.has(tag);
+	}
+	return (
+		kind === K.EMPHASIS ||
+		kind === K.STRONG ||
+		kind === K.STRIKETHROUGH ||
+		kind === K.SUPERSCRIPT ||
+		kind === K.SUBSCRIPT ||
+		kind === K.LINK ||
+		kind === K.DIRECTIVE_INLINE
+	);
+}
+
+/** the sibling before node i, or NONE */
+function sp_before(n: Uint32Array, i: number): number {
+	const parent = n[i * W.stride + W.parent];
+	if (parent === Slot.NONE) return Slot.NONE;
+	const first = n[parent * W.stride + W.first_child];
+	let at = sp_trail;
+	let prev = sp_trail_prev;
+	if (at === Slot.NONE || n[at * W.stride + W.parent] !== parent) {
+		at = first;
+		prev = Slot.NONE;
+	}
+	// the second pass is for a node before the trail
+	for (let pass = 0; pass < 2; pass++) {
+		while (at !== Slot.NONE && n[at * W.stride + W.parent] === parent) {
+			if (at === i) {
+				sp_trail = at;
+				sp_trail_prev = prev;
+				return prev;
+			}
+			prev = at;
+			at = n[at * W.stride + W.next];
+		}
+		at = first;
+		prev = Slot.NONE;
+	}
+	return Slot.NONE;
+}
+
+/** how the text before node i ends, in the sibling before it or before its inline parent */
+function sp_left(c: Cursor, i: number): number {
+	const n = c.words;
+	for (;;) {
+		let prev = sp_before(n, i);
+		while (prev !== Slot.NONE) {
+			const side = sp_edge(c, prev, true);
+			if (side !== Side.NOTHING) return side;
+			prev = sp_before(n, prev);
+		}
+		const parent = n[i * W.stride + W.parent];
+		if (parent === Slot.NONE || !sp_inline(c, parent)) return Side.SPACE;
+		i = parent;
+	}
+}
+
+/** the text node of a run from i whose value ends at ve */
+function sp_last(c: Cursor, i: number, ve: number): number {
+	const n = c.words;
+	const parent = n[i * W.stride + W.parent];
+	for (;;) {
+		const b = i * W.stride;
+		const kind = n[b] & 0xff;
+		if (kind === K.TEXT) {
+			if (n[b + W.value_end] >= ve) return i;
+		} else if (kind !== K.SOFT_BREAK) return i;
+		const next = n[b + W.next];
+		if (next === Slot.NONE || n[next * W.stride + W.parent] !== parent)
+			return i;
+		i = next;
+	}
+}
+
+/** how the text after node i starts, in the sibling after it or after its inline parent */
+function sp_right(c: Cursor, i: number): number {
+	const n = c.words;
+	for (;;) {
+		const parent = n[i * W.stride + W.parent];
+		let next = n[i * W.stride + W.next];
+		while (next !== Slot.NONE && n[next * W.stride + W.parent] === parent) {
+			const side = sp_edge(c, next, false);
+			if (side !== Side.NOTHING) return side;
+			next = n[next * W.stride + W.next];
+		}
+		if (parent === Slot.NONE || !sp_inline(c, parent)) return Side.SPACE;
+		i = parent;
+	}
+}
+
+/** how a node reads from outside, at its end when last is set, at its start otherwise */
+function sp_edge(c: Cursor, node: number, last: boolean): number {
+	const n = c.words;
+	const b = node * W.stride;
+	const kind = n[b] & 0xff;
+	if (kind === K.TEXT) {
+		const s = c.prebuilt_at(node);
+		if (s !== undefined) {
+			if (s.length === 0) return Side.NOTHING;
+			return sp_side(s.charCodeAt(last ? s.length - 1 : 0));
+		}
+		const vs = n[b + W.value_start];
+		let ve = n[b + W.value_end];
+		const src = c.source;
+		if (ve !== Slot.NONE && ve > src.length) ve = src.length;
+		if (vs === Slot.NONE || ve === Slot.NONE || ve <= vs) return Side.NOTHING;
+		if (!last) return sp_side(src.charCodeAt(vs));
+		const ch = src.charCodeAt(ve - 1);
+		// a quote that opened is an opener for the quote after it
+		if (
+			(ch === 34 || ch === 39) &&
+			sp_quotes &&
+			!(ve - 1 === vs && brace_escaped(src, vs)) &&
+			!sp_plain(c, node)
+		)
+			return quote_side(c, node, src, vs, ve, ve - 1) === Quote.OPEN
+				? Side.OPENER
+				: Side.OTHER;
+		return sp_side(ch);
+	}
+	if (kind === K.SOFT_BREAK || kind === K.HARD_BREAK || kind === K.LINE_BREAK)
+		return Side.SPACE;
+	if (kind === K.HTML_COMMENT) return Side.NOTHING;
+	if (
+		kind === K.CODE_SPAN ||
+		kind === K.MUSTACHE ||
+		kind === K.IMAGE ||
+		kind === K.SVELTE_TAG
+	)
+		return Side.WORD;
+	if (!sp_inline(c, node)) return Side.SPACE;
+	let child = n[b + W.first_child];
+	if (child === Slot.NONE) return Side.WORD;
+	if (last)
+		for (;;) {
+			const next = n[child * W.stride + W.next];
+			if (next === Slot.NONE || n[next * W.stride + W.parent] !== node) break;
+			child = next;
+		}
+	const side = sp_edge(c, child, last);
+	// an empty text or a comment at the edge, what is past it is not asked
+	return side === Side.NOTHING ? Side.WORD : side;
+}
+
+/**
+ * true when the text of node i is not prose, the url of an autolink or the
+ * text of typed html that holds code, at any depth
+ */
+function sp_plain(c: Cursor, i: number): boolean {
+	const n = c.words;
+	let p = n[i * W.stride + W.parent];
+	if (p === sp_parent) return sp_parent_plain;
+	sp_parent = p;
+	let plain = false;
+	if (
+		p !== Slot.NONE &&
+		(n[p * W.stride] & 0xff) === K.LINK &&
+		c.source.charCodeAt(n[p * W.stride + W.start]) === 60
+	)
+		plain = true;
+	const at = c.index;
+	while (!plain && p !== Slot.NONE) {
+		if ((n[p * W.stride] & 0xff) === K.HTML) {
+			c.move_to(p);
+			const tag = c.meta()?.tag;
+			if (typeof tag === 'string' && SP_PLAIN_TAGS.has(tag)) plain = true;
+		}
+		p = n[p * W.stride + W.parent];
+	}
+	c.move_to(at);
+	return (sp_parent_plain = plain);
 }
