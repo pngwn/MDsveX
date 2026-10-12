@@ -1239,13 +1239,18 @@ import { mdsvex } from 'mdsvex';
 import { anchors } from '@mdsvex/plugin-anchors';
 import { external_links } from '@mdsvex/plugin-external-links';
 import { steps } from '@mdsvex/plugin-steps';
+import { tabs } from '@mdsvex/plugin-tabs';
 
-mdsvex({ heading_ids: true, plugins: [steps(), anchors(), external_links()] });
+mdsvex({
+	heading_ids: true,
+	plugins: [steps(), tabs(), anchors(), external_links()]
+});
 ```
 
 | package | what it adds |
 | --- | --- |
 | [`@mdsvex/plugin-steps`](docs#steps) | numbered steps, one for each heading inside `:::steps` |
+| [`@mdsvex/plugin-tabs`](docs#tabs) | tabs and code groups, one tab for each heading or code fence inside `:::tabs` |
 | [`@mdsvex/plugin-anchors`](docs#anchors) | a link to itself on every heading that has an id |
 | [`@mdsvex/plugin-external-links`](docs#external-links) | `rel` and `target` on every link that leaves the site |
 
@@ -1333,6 +1338,101 @@ export { default as step } from './Step.svelte';
 ```
 
 The plugin's own components can be imported from `@mdsvex/plugin-steps/Steps.svelte` and `@mdsvex/plugin-steps/Step.svelte`, to wrap one in yours.
+
+### Tabs
+
+```bash
+pnpm add --save-dev @mdsvex/plugin-tabs@next
+```
+
+```js
+import { tabs } from '@mdsvex/plugin-tabs';
+
+mdsvex({ plugins: [tabs()] });
+```
+
+Each heading written directly inside `:::tabs` starts a tab. The text of the heading is its label, and what follows, up to the next such heading, is its panel:
+
+````svx
+:::tabs
+
+## macOS
+
+Install it with Homebrew.
+
+## Windows
+
+Run the installer.
+
+:::
+````
+
+```html
+<div class="tabs">
+	<div class="tabs-list" role="tablist">
+		<button class="tab" role="tab" aria-selected="true">macOS</button>
+		<button class="tab" role="tab" aria-selected="false">Windows</button>
+	</div>
+	<div class="tab-panel" role="tabpanel"><p>Install it with Homebrew.</p></div>
+	<div class="tab-panel" role="tabpanel" hidden><p>Run the installer.</p></div>
+</div>
+```
+
+- **The first heading sets the depth**, as it does for [steps](docs#steps). A heading of any other depth is content of the panel it is in, and one in a block quote, a list or another directive starts no tab.
+- **A label is not a heading in the page.** It is rendered inside the tab button as inline content, with its emphasis, code and expressions kept. It gets no id from [`heading_ids`](docs#heading_ids) and no [anchor](docs#anchors), since a panel that may be hidden is not a section a reader can jump to.
+- **`:::tabs[Pick your system]`** renders that text in a `<p class="tabs-label">` above the tabs and names the tab list with it.
+- **Tabs nest** when the outer container uses more colons.
+
+**A code group** is the same directive around code fences. When the first thing in the container is a fence, each fence written directly inside is a tab, labelled by its name (`[npm]` or `title="npm"`, as [fence meta](docs#fence-meta) reads them) or, with neither, by its language:
+
+````svx
+:::tabs
+
+```sh [npm]
+npm install mdsvex
+```
+
+```sh [pnpm]
+pnpm add mdsvex
+```
+
+:::
+````
+
+The fence is rendered as it is anywhere else, by the highlighter or by a [replaced `pre`](docs#code-block-components), which still gets `title`. The stylesheet hides the `<figcaption>` the highlighter makes for a title, since the tab shows it. Anything after a fence is in its panel, up to the next fence.
+
+**`(group=name)`** makes tab sets switch together. Choosing a tab in one set chooses the tab with the same label in every set of that group, and the choice is kept in `localStorage` for the next page:
+
+```svx
+:::tabs(group=pm)
+
+## npm
+
+## pnpm
+
+:::
+```
+
+The server never knows the choice. It renders the first tab open, the first render in the browser does too, and the stored choice is applied after hydration, so the two never disagree.
+
+The components follow the [WAI-ARIA tabs pattern](https://www.w3.org/WAI/ARIA/apg/patterns/tabs/): the roles, `aria-selected` and `aria-controls`, one tab in the tab order, the arrow keys to move between tabs with <kbd>Home</kbd> and <kbd>End</kbd>, and a panel that takes focus.
+
+**Without JavaScript** the stylesheet hides the tab list and shows every panel, one after another, each under its label, since buttons that can't be pressed would hide all but the first. It uses the `scripting` media query, so an older browser shows the first panel only. Before a page hydrates a reader sees the first panel, laid out as it will stay.
+
+The build warns, with the line, about a `:::tabs` with no tabs (`no_tabs`), a tab with no label (`tab_without_label`, the tab is labelled by its number) and content before the first tab (`content_before_first_tab`, it stays above the panels).
+
+The stylesheet that comes with the components has selectors with no specificity, so any rule of yours wins, and reads these custom properties from `.tabs`:
+
+| property | default |
+| --- | --- |
+| `--tabs-gap` | `0.25rem` |
+| `--tabs-padding` | `0.5rem 0.75rem` |
+| `--tabs-line` | the text colour at 20% |
+| `--tabs-color` | the text colour at 70% |
+| `--tabs-selected-color` | `inherit` |
+| `--tabs-selected-line` | the text colour |
+
+`tabs({ css: false })` leaves it out and keeps the markup. To change the markup, export your own `tabs` and `tab` from a [directives module](docs#declaring-directives). They get `label` and `children`, a `tabs` also gets `group` and `code` (`"true"` for a code group), and a `tab` gets `index` and, for a fence, `title`. The plugin's own are at `@mdsvex/plugin-tabs/Tabs.svelte` and `@mdsvex/plugin-tabs/Tab.svelte`. It needs Svelte 5.20 or later.
 
 ### Anchors
 
@@ -2196,6 +2296,7 @@ To also convert CommonMark documents to mdsvex's markdown, use `migrate`, which 
 | `rehype-slug` | [`heading_ids: true`](docs#heading_ids) |
 | `rehype-autolink-headings` | [`@mdsvex/plugin-anchors`](docs#anchors) |
 | `rehype-external-links` | [`@mdsvex/plugin-external-links`](docs#external-links) |
+| `rehype-code-group` | [`@mdsvex/plugin-tabs`](docs#tabs) |
 | `mdsvex-relative-images` | built in, see [`import_images`](docs#import_images) |
 | `remark-link-rewrite`, `rehype-urls`, `remark-prepend-url` | [`rewrite`](docs#rewrite), or [`links`](docs#links) for routes and the base path |
 | `remark-code-import`, ```` ```js file=./a.js#L1-L5 ```` | built in as [`src=`](docs#code-from-a-file), the migrator renames `file=` on a fence with no code |
