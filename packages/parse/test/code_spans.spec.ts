@@ -1016,7 +1016,7 @@ describe('a padded code span that runs over a line', () => {
 				'root',
 				'  list ordered=false start=0 tight=true',
 				'    list_item',
-				'      code_span "a\\n  b"',
+				'      code_span "a\\nb"',
 				'  line_break'
 			)
 		);
@@ -1255,7 +1255,7 @@ describe('a code span ends where its paragraph ends', () => {
 				'  list ordered=false start=0 tight=true',
 				'    list_item',
 				'      text "x "',
-				'      code_span "a\\n  b"',
+				'      code_span "a\\nb"',
 				'      text " c"',
 				'  line_break'
 			)

@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 
 import { parse_markdown_svelte } from '../src/main';
+import { NodeKind } from '../src/utils';
 import { print_ast } from './print';
 import {
 	every_path,
@@ -193,9 +194,119 @@ describe('a continuation line of a quoted paragraph', () => {
 	});
 });
 
+describe('a continuation line inside a code span', () => {
+	const code = (source: string): string[] => {
+		const { nodes } = parse_markdown_svelte(source);
+		return nodes.get_kinds(NodeKind.code_span).map((index) => {
+			const [start, end] = nodes.get_node(index).value;
+			return nodes._strings[index] ?? source.slice(start, end);
+		});
+	};
+
+	test('gives its indent no code in a list item', () => {
+		expect(every_path('- x `a\n  b`\n')).toBe(
+			item('text "x "', 'code_span "a\\nb"')
+		);
+		expect(every_path('- x `a\n      b` c\n')).toBe(
+			item('text "x "', 'code_span "a\\nb"', 'text " c"')
+		);
+		expect(every_path('1. x ``a\n   b\n   c``\n')).toContain(
+			'code_span "a\\nb\\nc"'
+		);
+		expect(every_path('- x\n  - y `a\n    b`\n')).toContain(
+			'code_span "a\\nb"'
+		);
+	});
+
+	test('gives it none in a paragraph', () => {
+		expect(every_path('x `a\n  b`\n')).toBe(
+			lines(
+				'root',
+				'  paragraph',
+				'    text "x "',
+				'    code_span "a\\nb"',
+				'  line_break'
+			)
+		);
+		expect(every_path('x `a\n  b\n    c` d')).toBe(
+			lines(
+				'root',
+				'  paragraph',
+				'    text "x "',
+				'    code_span "a\\nb\\nc"',
+				'    text " d"'
+			)
+		);
+	});
+
+	test('gives it none in a block quote', () => {
+		expect(every_path('> x `a\n>   b`\n')).toBe(
+			quoted('paragraph', '  text "x "', '  code_span "a\\nb"')
+		);
+		expect(every_path('> - x `a\n>   b`\n')).toBe(
+			quoted(
+				'list ordered=false start=0 tight=true',
+				'  list_item',
+				'    text "x "',
+				'    code_span "a\\nb"'
+			)
+		);
+	});
+
+	test('with a language hint or padding', () => {
+		expect(every_path('- `#!js a\n  b`\n')).toBe(
+			item('code_span info="js" "a\\nb"')
+		);
+		expect(every_path('- ` a\n  b `\n')).toBe(item('code_span "a\\nb"'));
+		expect(every_path('- `  a\n  b  `\n')).toBe(item('code_span " a\\nb "'));
+	});
+
+	test('keeps the spaces before the line end and after the code', () => {
+		expect(code('- x `a  \n  b  c`\n')).toEqual(['a  \nb  c']);
+		expect(code('x `a \n b `\n')).toEqual(['a \nb ']);
+	});
+
+	test('keeps a tab, as text does', () => {
+		expect(code('- x `a\n\tb`\n')).toEqual(['a\n\tb']);
+		expect(code('x `a\n\tb`\n')).toEqual(['a\n\tb']);
+	});
+
+	test('a line of only its indent leaves the line end', () => {
+		expect(code('- x `a\n  `\n')).toEqual(['a\n']);
+		expect(code('x ` a\n   `\n')).toEqual(['a\n']);
+	});
+
+	test('the value still covers the source as written', () => {
+		const source = '- x `a\n  b`\n';
+		const { nodes } = parse_markdown_svelte(source);
+		const span = nodes.get_node(nodes.get_kinds(NodeKind.code_span)[0]);
+		expect(source.slice(span.value[0], span.value[1])).toBe('a\n  b');
+		expect(source.slice(span.start, span.end)).toBe('`a\n  b`');
+	});
+
+	test('a span with no indent to drop stores no string', () => {
+		const source = 'x `a\nb`\n';
+		const { nodes } = parse_markdown_svelte(source);
+		const index = nodes.get_kinds(NodeKind.code_span)[0];
+		expect(nodes._strings[index]).toBeUndefined();
+	});
+});
+
 describe('random indented continuation lines', () => {
-	// no backtick, the indent of a line inside a code span is code
-	const PIECES = ['a', 'b c', ' ', '*', '_', '[', '](u)', '{x}', '<b>'];
+	const PIECES = [
+		'a',
+		'b c',
+		' ',
+		'*',
+		'_',
+		'[',
+		'](u)',
+		'{x}',
+		'<b>',
+		'`',
+		'`',
+		'``',
+	];
 
 	function inline(source: string, drop: number): string {
 		return print_ast(parse_markdown_svelte(source).nodes, source)
@@ -208,7 +319,7 @@ describe('random indented continuation lines', () => {
 	test('hold the inline nodes of a paragraph with the same lines', () => {
 		const rand = random(986);
 		const differ: string[] = [];
-		for (let i = 0; i < 300; i++) {
+		for (let i = 0; i < 600; i++) {
 			const rows: string[] = [];
 			const count = 2 + Math.floor(rand() * 2);
 			for (let l = 0; l < count; l++) {
@@ -219,20 +330,24 @@ describe('random indented continuation lines', () => {
 			}
 			const indent = ' '.repeat(2 + Math.floor(rand() * 3));
 			const plain = rows.join('\n') + '\n';
+			// three backticks may be a fence
+			if (plain.includes('```')) continue;
+			const indented = rows.join('\n' + indent) + '\n';
 			const list = '- ' + rows.join('\n' + indent) + '\n';
 			const quote = '> ' + rows.join('\n>' + indent) + '\n';
 			const quoted_list = '> - ' + rows.join('\n> ' + indent) + '\n';
 			const want = inline(plain, 2);
+			if (inline(indented, 2) !== want) differ.push(JSON.stringify(indented));
 			if (inline(list, 3) !== want) differ.push(JSON.stringify(list));
 			if (inline(quote, 3) !== want) differ.push(JSON.stringify(quote));
 			if (inline(quoted_list, 4) !== want)
 				differ.push(JSON.stringify(quoted_list));
-			for (const source of [list, quote, quoted_list]) {
+			for (const source of [indented, list, quote, quoted_list]) {
 				expect(problems(source, 0), JSON.stringify(source)).toEqual([]);
 				expect(problems(source, 1), JSON.stringify(source)).toEqual([]);
 				expect(fed_mismatch(source), JSON.stringify(source)).toBe('');
 			}
 		}
 		expect(differ).toEqual([]);
-	});
+	}, 30_000);
 });

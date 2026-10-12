@@ -782,7 +782,7 @@ describe('a line that ends a paragraph in a block quote, with something open', (
 		expect(every_path('> ``a\n>b\n>  c`` d\n')).toBe(
 			quote(
 				'    paragraph',
-				'      code_span "a\\nb\\n c"',
+				'      code_span "a\\nb\\nc"',
 				'      text " d"',
 				'  line_break'
 			)
@@ -819,8 +819,8 @@ describe('a line that ends a paragraph in a block quote, with something open', (
 	test('the code is the same fed in chunks and over the wire', () => {
 		for (const [source, code] of [
 			['> x `a\n> b` c\n', ['a\nb']],
-			['> ``a\n>b\n>  c`` d `e`\n', ['a\nb\n c', 'e']],
-			['> > `a\n> > b`\n> > `c\n>  >   d`', ['a\nb', 'c\n  d']],
+			['> ``a\n>b\n>  c`` d `e`\n', ['a\nb\nc', 'e']],
+			['> > `a\n> > b`\n> > `c\n>  >   d`', ['a\nb', 'c\nd']],
 			['- > `#!js a\n  > b`\n', ['a\nb']],
 		] as [string, string[]][]) {
 			expect(code_of(source), JSON.stringify(source)).toEqual(code);
