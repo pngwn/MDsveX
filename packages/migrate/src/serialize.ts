@@ -389,7 +389,13 @@ function serialize_inline_code(node: InlineCode): string {
 	return ticks + pad + value + pad + ticks;
 }
 
+const AUTOLINK = /^[A-Za-z][A-Za-z0-9+.-]{1,31}:[^\s<>]*$/;
+
 function serialize_link(node: Link, ctx: Context): string {
+	// a url written out as its own text is an autolink, which pfm reads in angle brackets only
+	const only = node.children.length === 1 ? node.children[0] : undefined;
+	if (!node.title && only?.type === "text" && only.value === node.url && AUTOLINK.test(node.url))
+		return "<" + node.url + ">";
 	const text = serialize_inline(node.children, ctx);
 	const url = format_url(node.url);
 	const title = node.title ? ` "${node.title}"` : "";
