@@ -5,6 +5,7 @@ import {
 	TILDE,
 	LINEFEED,
 	OCTOTHERP,
+	DOLLAR,
 	OPEN_ANGLE_BRACKET,
 	OPEN_BRACE,
 	SPACE,
@@ -35,7 +36,7 @@ import type { ParseOptions, SyntaxOptions } from './types';
 import type { PluginData, PluginDocument, PluginWarning } from './plugin_types';
 
 import type { Emitter } from './opcodes';
-import { NodeKind, is_raw_text_tag } from './utils';
+import { NodeKind, is_raw_text_tag, note_math } from './utils';
 import { NodeBuffer, ErrorCollector } from './utils';
 import { TreeBuilder } from './tree_builder';
 import { PluginDispatcher, has_directive_handlers } from './plugin_dispatch';
@@ -382,6 +383,7 @@ TEXT_BREAK[BACKTICK] = 1;
 TEXT_BREAK[PIPE] = 1;
 TEXT_BREAK[OPEN_BRACE] = 1;
 TEXT_BREAK[COLON] = 1;
+TEXT_BREAK[DOLLAR] = 1;
 
 /**
  * a run the inline state reads with no construct that could hold a tag as text,
@@ -515,6 +517,10 @@ function tag_rec_put(
 // token starts a memo backed open tag scan passed through
 const tag_marks: number[] = [];
 let tag_fail_p = 0;
+// the value range and the end of the inline math math_scan found
+let math_vs = 0;
+let math_ve = 0;
+let math_end = 0;
 // in feed mode what a scan that ran off the end waits for, a closing quote, brace or angle bracket
 let tag_need = '>';
 let tag_self_closing = false;
@@ -2378,6 +2384,86 @@ export class PFMParser {
 		);
 		this.node_stack.push(cs_id);
 		this.span_start(cs_id, this.cursor);
+	}
+
+	/**
+	 * inline math at the dollar at pos, a dollar, a code span and a dollar with nothing between them on one line
+	 * sets math_vs, math_ve and math_end
+	 * @returns 1 for math, 0 when the dollar is text, -1 while a feed has not shown the end of it or of its line
+	 */
+	private math_scan(pos: number): number {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		let p = pos + 1;
+		if (p >= length) return this.finished ? 0 : -1;
+		if (char_code_at.call(source, p - base) !== BACKTICK) return 0;
+		let ticks = 1;
+		if (char_code_at.call(source, p + 1 - base) === BACKTICK) {
+			if (char_code_at.call(source, p + 2 - base) === BACKTICK) return 0;
+			ticks = 2;
+		}
+		const start = p + ticks;
+		const cell = this.in_table;
+		p = start;
+		for (;;) {
+			if (p >= length) return this.finished ? 0 : -1;
+			const ch = char_code_at.call(source, p - base);
+			if (ch === LINEFEED) return 0;
+			if (ch === BACKTICK) {
+				let run = 1;
+				while (char_code_at.call(source, p + run - base) === BACKTICK) run++;
+				if (p + run >= length && !this.finished) return -1;
+				if (run === ticks) break;
+				p += run;
+				continue;
+			}
+			if (ch === PIPE && cell) {
+				// a pipe ends the cell unless a backslash that is not itself escaped is before it
+				let q = p;
+				while (
+					q > start &&
+					char_code_at.call(source, q - 1 - base) === BACKSLASH
+				)
+					q--;
+				if (((p - q) & 1) === 0) return 0;
+			}
+			p++;
+		}
+		const after = p + ticks;
+		if (after >= length) return this.finished ? 0 : -1;
+		if (char_code_at.call(source, after - base) !== DOLLAR) return 0;
+		let vs = start;
+		let ve = p;
+		// a space at each end is padding, as in any code span, unless it is all spaces
+		if (
+			ve - vs > 2 &&
+			char_code_at.call(source, vs - base) === SPACE &&
+			char_code_at.call(source, ve - 1 - base) === SPACE
+		) {
+			for (let q = vs + 1; q < ve - 1; q++) {
+				if (char_code_at.call(source, q - base) !== SPACE) {
+					vs++;
+					ve--;
+					break;
+				}
+			}
+		}
+		math_vs = vs;
+		math_ve = ve;
+		math_end = after + 1;
+		return 1;
+	}
+
+	/** the math math_scan found at the cursor, a code span with extra 1 that is never pending */
+	private math_emit(parent: number): void {
+		const id = this.emit_open(NodeKind.code_span, this.cursor, parent, 1);
+		this.span_start(id, math_vs);
+		if (this.in_table) this.cell_span_text(id, math_ve);
+		this.out.set_value_end(id, math_ve);
+		this.emit_close(id, math_end);
+		note_math();
+		this.chomp(math_end, true);
 	}
 
 	/**
@@ -7787,6 +7873,14 @@ export class PFMParser {
 									continue;
 								}
 							}
+							if (code === DOLLAR) {
+								const math = this.math_scan(this.cursor);
+								if (math < 0) break main_loop;
+								if (math !== 0) {
+									this.math_emit(current_node);
+									continue;
+								}
+							}
 							const t_id = this.emit_open(
 								NodeKind.text,
 								this.cursor,
@@ -8004,6 +8098,18 @@ export class PFMParser {
 						this.states.pop();
 
 						continue;
+					}
+					if (code === DOLLAR) {
+						const math = this.math_scan(this.cursor);
+						if (math < 0) break main_loop;
+						if (math !== 0) {
+							this.states.pop();
+							this.emit_close(current_node, this.cursor);
+							this.out.set_value_end(current_node, this.cursor);
+							this.node_stack.pop();
+							this.math_emit(this.node_stack[this.node_stack.length - 1]);
+							continue;
+						}
 					}
 					// skip plain text in one scan instead of re-entering the main loop per character
 					this.cursor = this.text_run(this.cursor + 1);

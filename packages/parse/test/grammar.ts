@@ -77,7 +77,19 @@ interface InlineContext {
 const MARKERS = ['-', '*', '+', '1.', '7.'];
 const HTML_BLOCKS = ['<div>', '<section class="note">', '<Box>', '<details>'];
 const BREAKS = ['---', '***', '___'];
-const ESCAPES = ['\\*', '\\_', '\\{', '\\[', '\\<', '\\`', '&amp;', '\\~'];
+const ESCAPES = [
+	'\\*',
+	'\\_',
+	'\\{',
+	'\\[',
+	'\\<',
+	'\\`',
+	'&amp;',
+	'\\~',
+	'\\$',
+];
+/** how many spellings of a dollar that opens no math there are */
+const DOLLARS = 6;
 
 export class Grammar {
 	private rand: () => number;
@@ -107,7 +119,7 @@ export class Grammar {
 
 	private inline_one(ctx: InlineContext): Piece {
 		const deep = { ...ctx, depth: ctx.depth + 1 };
-		const roll = ctx.depth >= 2 ? 0 : this.int(40);
+		const roll = ctx.depth >= 2 ? 0 : this.int(43);
 		const holder = (kind: string, form = 0, words = 0): Piece =>
 			this.with_words(piece(kind, form, this.inline(deep)), words);
 		switch (roll) {
@@ -178,6 +190,12 @@ export class Grammar {
 				return this.with_words(piece('pipe'), 1);
 			case 37:
 				return this.with_words(piece('punctuated', this.int(4)), 1);
+			case 38:
+			case 39:
+				return this.with_words(piece('math', this.int(2)), 2);
+			case 40:
+			case 41:
+				return this.with_words(piece('dollar', this.int(DOLLARS)), 2);
 		}
 		return this.with_words(piece('word'), 1);
 	}
@@ -402,6 +420,17 @@ function inline_one(p: Piece): string {
 			return `| ${a}`;
 		case 'punctuated':
 			return [`${a}.`, `(${a})`, `"${a}",`, `${a}:`][p.form];
+		case 'math':
+			return p.form === 1 ? `$\`\`${a} \` ${b}\`\`$` : `$\`${a}\`$`;
+		case 'dollar':
+			return [
+				`$${a}`,
+				`$\`${a}\``,
+				`\`${a}\`$`,
+				`$ \`${a}\`$`,
+				`${a}$ ${b}`,
+				`$$\`${a}\`$$`,
+			][p.form];
 	}
 	return a;
 }
