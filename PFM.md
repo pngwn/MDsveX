@@ -172,6 +172,15 @@ A block level element such as `<div>` that starts a line is a block and is in no
 
 Later in a line a block level tag is a tag like any other.
 
+An element of phrasing content such as `<b>`, `<span>` or `<a>` that starts a line with content after its open tag is inline, and starts a paragraph, also when it closes on a later line:
+
+```markdown
+<b>bold over
+two lines</b> and text   -> <p><b>bold over\ntwo lines</b> and text</p>
+```
+
+When its open tag ends the line it holds what its lines hold, as a block level element and a component do.
+
 A tag that stays literal text counts as text here: an open tag whose element never closes, as in `<Badge /> <b>new`, and a close tag that closes nothing, as in `<Badge /></b>`. A block level tag that never closes is literal text too, so its line is a paragraph. A close tag closes the last open element of its name and every element opened inside it, so `<Badge /><b><i></b>` leaves nothing open and gets no `<p>`.
 
 An image is text by default, so a paragraph of one image is `<p><img /></p>`. The `unwrap_images` option, off by default, makes an image count as a tag does here. A paragraph of only images and whitespace then has no paragraph node, and the images are children of whatever held it: the document, a block quote, a list item, a container directive or an HTML element.

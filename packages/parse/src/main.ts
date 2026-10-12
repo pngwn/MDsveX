@@ -4879,16 +4879,51 @@ export class PFMParser {
 			this.chomp(tag.end, true);
 			return;
 		}
-		this.states.push(StateKind.inline);
-		const html_id = this.emit_open_pending(NodeKind.html, this.cursor, para);
-		this.out.attr(html_id, 'tag', tag.tag);
-		if (tag.has_attrs) this.tag_attributes(html_id, tag);
+		const html_id = this.open_inline_tag(tag, para);
 		// the paragraph is there in case the element never closes, and ends with it when it does
 		if (!alone && block) this.spec_block = html_id;
+	}
+
+	/** open the element of a tag at the cursor under parent, with the states the inline state gives one */
+	private open_inline_tag(
+		tag: {
+			tag: string;
+			attributes: object;
+			repeated: unknown[] | null;
+			end: number;
+			has_attrs: boolean;
+		},
+		parent: number
+	): number {
+		this.states.push(StateKind.inline);
+		const html_id = this.emit_open_pending(NodeKind.html, this.cursor, parent);
+		this.out.attr(html_id, 'tag', tag.tag);
+		if (tag.has_attrs) this.tag_attributes(html_id, tag);
 		this.html_tag_stack.push({ id: html_id, tag: tag.tag });
 		this.node_stack.push(html_id);
 		this.states.push(StateKind.html_element);
 		this.chomp(tag.end, true);
+		return html_id;
+	}
+
+	/**
+	 * whether the element of a tag that starts a line and stays open past it is inline and starts a paragraph
+	 * an element of phrasing content with content after its open tag on that line is
+	 * one whose open tag ends its line holds what its lines hold, as a block level element and a component do
+	 */
+	private inline_past_line(tag: { tag: string; end: number }): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		let p = tag.end;
+		let ch = char_code_at.call(source, p - base);
+		while (ch === SPACE || ch === TAB)
+			ch = char_code_at.call(source, ++p - base);
+		return (
+			p < this.source_end &&
+			ch !== LINEFEED &&
+			this.is_phrasing_tag(tag.tag) &&
+			!this.is_block_html_tag(tag.tag)
+		);
 	}
 
 	/**
@@ -9788,6 +9823,9 @@ export class PFMParser {
 			this.open_spec_tag(tag, close_end, parent, this.in_phrasing(parent));
 		} else if (this.is_raw_text_tag(tag.tag)) {
 			this.open_raw_text(tag, parent);
+		} else if (this.inline_past_line(tag)) {
+			this.open_spec_para(parent, this.in_phrasing(parent));
+			this.open_inline_tag(tag, this.spec_para);
 		} else {
 			const html_id = this.emit_open_pending(
 				NodeKind.html,

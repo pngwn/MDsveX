@@ -22,7 +22,7 @@ describe('a tag left open at the start of a line', () => {
 		expect(sound_tree('<span>a b\n')).toBe(
 			lines('paragraph', '  "<span>a b"', 'line_break')
 		);
-		expect(sound_tree('<span> a b')).toBe(lines('paragraph', '  "<span>a b"'));
+		expect(sound_tree('<span> a b')).toBe(lines('paragraph', '  "<span> a b"'));
 	});
 
 	it('keeps the text after an unclosed delimiter once', () => {
