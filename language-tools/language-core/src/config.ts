@@ -19,6 +19,7 @@ import type {
 	ManifestTemplate,
 	MathRenderer,
 	MdsvexManifest,
+	SmartPunctuation,
 	TemplateEntry,
 } from 'mdsvex';
 import { create_highlight } from 'mdsvex/highlight';
@@ -54,6 +55,8 @@ export interface JsonConfig {
 	plugins?: { name?: string; module: string; directives: string[] }[];
 	/** every heading gets an id, as the option of the plugin does with true */
 	heading_ids?: boolean;
+	/** curly quotes, dashes and ellipses, as the option of the plugin takes it */
+	smart_punctuation?: SmartPunctuation;
 	/** false leaves a math fence a code block, else the renderer and its options as the plugin takes them */
 	math?:
 		| false
@@ -210,6 +213,9 @@ export function document_options(
 	if (manifest.unwrap_images === true) compile.unwrap_images = true;
 	// the id is a prop of a replaced heading, the default slug stands in for a function
 	if (manifest.heading_ids === true) compile.heading_ids = true;
+	// the text an editor maps is the text the build renders
+	const smart = smart_from_json(manifest.smart_punctuation);
+	if (smart !== undefined) compile.smart_punctuation = smart;
 	const math = math_of(manifest);
 	if (math !== undefined) compile.math = math;
 	if (manifest.select_template) {
@@ -279,6 +285,24 @@ function math_from_json(
 	return { renderer, options };
 }
 
+/** the smart_punctuation of a json config or a manifest, undefined when it is off or not the option */
+function smart_from_json(smart: unknown): SmartPunctuation | undefined {
+	if (smart === true) return true;
+	if (typeof smart !== 'object' || smart === null || Array.isArray(smart))
+		return undefined;
+	const { quotes, dashes, ellipses } = smart as Record<string, unknown>;
+	const flag = (v: unknown) => v === undefined || typeof v === 'boolean';
+	const four =
+		Array.isArray(quotes) &&
+		quotes.length === 4 &&
+		quotes.every((q) => typeof q === 'string');
+	if (!flag(dashes) || !flag(ellipses) || !(flag(quotes) || four))
+		return undefined;
+	if (quotes === false && dashes === false && ellipses === false)
+		return undefined;
+	return smart as SmartPunctuation;
+}
+
 function union(a: readonly string[], b: readonly string[]): string[] {
 	const out = a.slice();
 	for (const n of b) if (!out.includes(n)) out.push(n);
@@ -310,6 +334,8 @@ export function from_json(
 	};
 	if (config.unwrap_images === true) manifest.unwrap_images = true;
 	if (config.heading_ids === true) manifest.heading_ids = true;
+	const smart = smart_from_json(config.smart_punctuation);
+	if (smart !== undefined) manifest.smart_punctuation = smart;
 	if (config.plugins !== undefined && config.plugins.length !== 0)
 		manifest.plugin_data = true;
 	const math = math_from_json(config.math);

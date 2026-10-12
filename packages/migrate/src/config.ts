@@ -26,11 +26,17 @@ interface Context {
 	bindings: Map<string, Node>;
 	/** local names of functions imported from mdsvex */
 	functions: Set<string>;
+	/** local names of the mdsvex function itself */
+	plugins: Set<string>;
 	/** local names bound to the whole mdsvex module */
 	namespaces: Set<string>;
 	edits: Edit[];
 	notes: MigrationNote[];
 	seen: Set<Node>;
+	/** properties an edit removes */
+	removed: Set<Node>;
+	/** properties to add once every removal is known */
+	additions: { object: Node; text: string }[];
 }
 
 // expressions that evaluate to the path of a single layout
@@ -54,6 +60,9 @@ const TS_WRAPPERS = new Set([
 
 /** where the migration guide explains the highlight changes */
 export const HIGHLIGHT_GUIDE = "https://mdsvex.com/docs#syntax-highlighting-in-0x";
+
+/** where the migration guide explains smart punctuation */
+export const SMART_GUIDE = "https://mdsvex.com/docs#smart-punctuation-in-0x";
 
 // twinkleplop languages and the aliases mdsvex has for them, alias targets
 // outside this list are prism languages that next can not highlight
@@ -105,8 +114,9 @@ const LANGUAGES = new Set([
 ]);
 
 /**
- * rewrite the legacy layout and highlight options in a js or ts config, and
- * flag escapeSvelte, throws a SyntaxError when the source does not parse
+ * rewrite the legacy layout, highlight and smartypants options in a js or ts
+ * config, and flag escapeSvelte, throws a SyntaxError when the source does
+ * not parse
  */
 export function migrate_config(source: string): MigrateResult {
 	const program = TSParser.parse(source, {
@@ -119,10 +129,13 @@ export function migrate_config(source: string): MigrateResult {
 		source,
 		bindings: new Map(),
 		functions: new Set(),
+		plugins: new Set(),
 		namespaces: new Set(),
 		edits: [],
 		notes: [],
 		seen: new Set(),
+		removed: new Set(),
+		additions: [],
 	};
 
 	collect_top_level(ctx, program);
@@ -138,7 +151,16 @@ export function migrate_config(source: string): MigrateResult {
 			escape_svelte_note(ctx, node);
 			return;
 		}
-		if (!is_mdsvex_call(ctx, node) || !node.arguments[0]) return;
+		if (!is_mdsvex_call(ctx, node)) return;
+		if (!node.arguments[0]) {
+			// 0.x had smart punctuation on with no options at all
+			if (is_plugin_call(ctx, node)) {
+				found = true;
+				edit(ctx, node.end - 1, node.end - 1, "{ smart_punctuation: true }");
+				smart_note(ctx, node, ADDED, DASHES, true);
+			}
+			return;
+		}
 		const options = resolve(ctx, node.arguments[0]);
 		if (options.type !== "ObjectExpression") return;
 		found = true;
@@ -152,6 +174,8 @@ export function migrate_config(source: string): MigrateResult {
 			if (options.type === "ObjectExpression") migrate_options(ctx, options);
 		}
 	}
+
+	for (const { object, text } of ctx.additions) add_property(ctx, object, text);
 
 	return { code: apply_edits(source, ctx.edits), notes: ctx.notes };
 }
@@ -169,6 +193,8 @@ function collect_top_level(ctx: Context, program: Node): void {
 						continue;
 					}
 					ctx.functions.add(specifier.local.name);
+					if (key_name_of(specifier.imported) === "mdsvex")
+						ctx.plugins.add(specifier.local.name);
 				}
 			}
 			continue;
@@ -191,6 +217,7 @@ function collect_top_level(ctx: Context, program: Node): void {
 							escape_svelte_note(ctx, p);
 						} else if (p.type === "Property" && p.value.type === "Identifier") {
 							ctx.functions.add(p.value.name);
+							if (key_name(p) === "mdsvex") ctx.plugins.add(p.value.name);
 						}
 					}
 				}
@@ -221,6 +248,13 @@ function is_mdsvex_call(ctx: Context, node: Node): boolean {
 		callee.object.type === "Identifier" &&
 		ctx.namespaces.has(callee.object.name)
 	);
+}
+
+/** a call of the mdsvex function itself, by the name it is exported under */
+function is_plugin_call(ctx: Context, node: Node): boolean {
+	const callee = node.callee as Node;
+	if (callee.type === "Identifier") return ctx.plugins.has(callee.name);
+	return key_name_of(callee.property) === "mdsvex";
 }
 
 function default_export(program: Node): Node | undefined {
@@ -300,6 +334,8 @@ function migrate_options(ctx: Context, options: Node): void {
 
 	const highlight = find("highlight");
 	if (highlight) migrate_highlight(ctx, options, highlight);
+
+	migrate_smartypants(ctx, options, find("smartypants"), find("smart_punctuation"));
 
 	const layout = find("layout");
 	if (!layout) return;
@@ -421,6 +457,145 @@ function migrate_layout_map(ctx: Context, map: Node, layout: Node): void {
 	}
 }
 
+const DASHES =
+	"`--` was an em dash in mdsvex 0.x. It is an en dash now, and `---` is the em dash.";
+const INVERTED =
+	"`dashes: 'inverted'` is gone. `--` is an en dash now and `---` an em dash.";
+const BACKTICKS = "Backtick quotes are gone.";
+const REWRITE =
+	"Pass your old `smartypants` value to `migrate`, `migrate(source, { smartypants: true })` for the default, and your documents are rewritten to render as they did.";
+
+/** what the documents of a 0.x config need, the default had both */
+function smart_note(ctx: Context, node: Node, lead: string, dashes: string, backticks: boolean): void {
+	const parts = [lead, dashes, backticks ? BACKTICKS : ""].filter((p) => p !== "");
+	if (dashes !== "" || backticks) parts.push(REWRITE);
+	if (parts.length === 0) return;
+	note(ctx, node, "smart_punctuation", `${parts.join(" ")} See ${SMART_GUIDE}`);
+}
+
+const ADDED =
+	"mdsvex 0.x turned smart punctuation on by default. It is off by default now, so `smart_punctuation: true` was added. Remove it for text as written.";
+
+/** smartypants was on unless it was false, smart_punctuation is off unless it is set */
+function migrate_smartypants(
+	ctx: Context,
+	options: Node,
+	legacy: Node | undefined,
+	current: Node | undefined,
+): void {
+	if (!legacy) {
+		// a config that already has the new option was migrated before
+		if (current) return;
+		ctx.additions.push({ object: options, text: "smart_punctuation: true" });
+		smart_note(ctx, options, ADDED, DASHES, true);
+		return;
+	}
+	if (current) {
+		note(
+			ctx,
+			legacy,
+			"manual",
+			"Both `smartypants` and `smart_punctuation` are set. Remove `smartypants` by hand.",
+		);
+		return;
+	}
+
+	const value = unwrap(legacy.value);
+	// off is the default of smart_punctuation
+	if (value.type === "Literal" && value.value === false) {
+		remove_property(ctx, options, legacy);
+		return;
+	}
+	if (value.type === "Literal" && value.value === true) {
+		edit(ctx, legacy.start, legacy.end, "smart_punctuation: true");
+		smart_note(ctx, legacy, "", DASHES, true);
+		return;
+	}
+
+	const target = resolve(ctx, value);
+	if (target.type !== "ObjectExpression") {
+		note(
+			ctx,
+			legacy,
+			"manual",
+			`Can't rewrite this \`smartypants\` value. The option is now \`smart_punctuation\`, with \`quotes\`, \`dashes\` and \`ellipses\`. \`backticks\` is gone and \`dashes\` is true or false. See ${SMART_GUIDE}`,
+		);
+		return;
+	}
+	if (ctx.seen.has(target)) return;
+	ctx.seen.add(target);
+
+	if (legacy.shorthand) {
+		edit(ctx, legacy.start, legacy.end, "smart_punctuation: smartypants");
+	} else {
+		edit(ctx, legacy.key.start, legacy.key.end, "smart_punctuation");
+	}
+
+	const properties = target.properties as Node[];
+	const find = (name: string) => properties.find((p) => key_name(p) === name);
+
+	// 0.x had both on unless the object turned them off
+	let dashes = DASHES;
+	const dash = find("dashes");
+	if (dash) {
+		const mode = unwrap(dash.value);
+		if (mode.type !== "Literal") {
+			dashes = "";
+			note(
+				ctx,
+				dash,
+				"manual",
+				`Can't tell what \`dashes\` holds. It is true or false now, \`--\` is an en dash and \`---\` an em dash. See ${SMART_GUIDE}`,
+			);
+		} else if (mode.value === false) {
+			dashes = "";
+		} else if (mode.value === "oldschool") {
+			// the dashes of next
+			dashes = "";
+			edit(ctx, dash.value.start, dash.value.end, "true");
+		} else if (mode.value === "inverted") {
+			dashes = INVERTED;
+			edit(ctx, dash.value.start, dash.value.end, "true");
+		}
+	}
+
+	let backticks = true;
+	const backtick = find("backticks");
+	if (backtick) {
+		const mode = unwrap(backtick.value);
+		backticks = !(mode.type === "Literal" && mode.value === false);
+		remove_property(ctx, target, backtick);
+	}
+	smart_note(ctx, legacy, "", dashes, backticks);
+}
+
+/** a new last property, on its own line when the last one has its own */
+function add_property(ctx: Context, object: Node, text: string): void {
+	const properties = object.properties as Node[];
+	const before_close = object.end - 1;
+	if (properties.length === 0) {
+		edit(ctx, object.start, object.end, `{ ${text} }`);
+		return;
+	}
+	// nothing is left to follow, it takes the place of the first, whose removal is applied first
+	if (properties.every((p) => ctx.removed.has(p))) {
+		edit(ctx, properties[0].start, properties[0].start, text);
+		return;
+	}
+	const last = properties[properties.length - 1];
+	const line_start = ctx.source.lastIndexOf("\n", last.start - 1) + 1;
+	const indent = ctx.source.slice(line_start, last.start);
+	const comma = ctx.source.slice(last.end, before_close).indexOf(",");
+	// after the trailing comma when there is one, a removed last property takes the comma before it along
+	const at = comma === -1 ? last.end : last.end + comma + 1;
+	const lead = comma === -1 ? "," : "";
+	if (/^[ \t]*$/.test(indent) && line_start > object.start) {
+		edit(ctx, at, at, `${lead}\n${indent}${text}${comma === -1 ? "" : ","}`);
+	} else {
+		edit(ctx, at, at, `${lead} ${text}`);
+	}
+}
+
 function migrate_highlight(ctx: Context, options: Node, highlight: Node): void {
 	const value = unwrap(highlight.value);
 	// false still turns highlighting off
@@ -522,12 +697,15 @@ function comment_before(ctx: Context, node: Node, text: string): void {
 function remove_property(ctx: Context, object: Node, property: Node): void {
 	const properties = object.properties as Node[];
 	const i = properties.indexOf(property);
+	ctx.removed.add(property);
 	if (i < properties.length - 1) {
 		edit(ctx, property.start, properties[i + 1].start, "");
 	} else if (i > 0) {
 		edit(ctx, properties[i - 1].end, property.end, "");
 	} else {
-		edit(ctx, property.start, property.end, "");
+		// the only property takes its trailing comma with it
+		const comma = ctx.source.slice(property.end, object.end - 1).indexOf(",");
+		edit(ctx, property.start, comma === -1 ? property.end : property.end + comma + 1, "");
 	}
 }
 

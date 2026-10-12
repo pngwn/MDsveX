@@ -1,7 +1,7 @@
 # @mdsvex/migrate
 
 Migrate **CommonMark / GFM** markdown to **Penguin-Flavoured Markdown (PFM)**,
-and mdsvex 0.x layouts and highlight options to mdsvex next.
+and mdsvex 0.x layouts, highlight options and smart punctuation to mdsvex next.
 
 The source document is parsed with the [remark](https://github.com/remarkjs/remark)
 (unified) ecosystem into an `mdast` tree, then re-serialised under PFM's rules.
@@ -22,8 +22,11 @@ const pfm = migrate("Hello\n=====\n\nSome *emphasis* and **strength**.");
 ```ts
 migrate(source, {
 	bullet: "-", // unordered list marker: "-" (default), "+" or "*"
+	smartypants: true, // the 0.x smartypants option the documents were written for
 });
 ```
+
+`smartypants` is off unless you pass it. See [Smart punctuation](#smart-punctuation).
 
 ## What it changes
 
@@ -99,6 +102,49 @@ The comment links to the
 An alias to a Prism language that twinkleplop doesn't have, such as `markup`,
 gets a note too.
 
+### Smart punctuation
+
+mdsvex 0.x ran smartypants over every document unless `smartypants` was
+`false`. mdsvex next has `smart_punctuation`, which is off by default.
+`migrate_config` turns it on for a config that relied on the old default, and
+maps the old option onto the new one.
+
+| mdsvex 0.x                              | mdsvex next                                     |
+| --------------------------------------- | ----------------------------------------------- |
+| no `smartypants` option                 | `smart_punctuation: true` is added              |
+| `smartypants: true`                     | `smart_punctuation: true`                       |
+| `smartypants: false`                    | removed                                         |
+| `smartypants: { quotes, ellipses }`     | `smart_punctuation: { quotes, ellipses }`       |
+| `dashes: 'oldschool'`                   | `dashes: true`                                  |
+| `dashes: 'inverted'`                    | `dashes: true`, with a note                     |
+| `backticks`                             | removed, with a note unless it was `false`      |
+
+A config that already has `smart_punctuation` is left alone.
+
+Two things changed meaning, and both are in the documents rather than the
+config. With the 0.x default, `--` was an em dash and `---` was left alone.
+Now `--` is an en dash and `---` is the em dash. And 0.x curled backtick
+quotes, <code>&#96;&#96;like this''</code>, which next does not read as
+quotes. `migrate` rewrites both when it is given the old option, so the pages
+render what they did:
+
+```ts
+migrate(source, { smartypants: true }); // the 0.x default
+migrate(source, { smartypants: { dashes: "inverted", backticks: "all" } });
+```
+
+| 0.x `smartypants`             | in text                                                        |
+| ----------------------------- | -------------------------------------------------------------- |
+| `true`, or `dashes: true`     | `--` becomes `---`, and `---` becomes `\---` to stay literal   |
+| `dashes: 'inverted'`          | `--` and `---` swap                                            |
+| `dashes: 'oldschool'`, `false` | dashes are left as they are                                    |
+| `backticks: true`             | <code>&#96;&#96;a''</code> becomes `"a"`                       |
+| `backticks: 'all'`            | a lone backtick becomes `'` as well                            |
+| `quotes: false`               | backtick quotes are written as curly quotes, nothing else would curl them |
+
+Only text changes. Code, urls, titles, alt text and raw HTML are left as they
+are. The notes from `migrate_config` say which of these apply to a config.
+
 ### Documents
 
 `migrate_frontmatter` renames a document's frontmatter `layout` key to
@@ -135,7 +181,8 @@ const notes = check_template(source);
 Every note has a `kind`, a `message`, and the 1 based `line` and `column` it
 refers to. The kinds are `select_template`, `layout_prop_forwarding`, `slot`,
 `legacy_props`, `template_key`, `highlighter`, `highlight_language`,
-`escape_svelte`, and `manual` for anything that couldn't be rewritten safely.
+`escape_svelte`, `smart_punctuation`, and `manual` for anything that couldn't
+be rewritten safely.
 
 ## Notes
 

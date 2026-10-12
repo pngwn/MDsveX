@@ -4,6 +4,7 @@ import {
 	SourceError,
 	type CompileOptions,
 	type ComponentMode,
+	type SmartPunctuation,
 } from 'mdsvex/compile';
 import {
 	create_highlight,
@@ -79,6 +80,8 @@ export interface ReplConfig {
 	plugins?: { name?: string; module: string; directives: string[] }[];
 	/** json holds no slug function, so only the default slug */
 	heading_ids?: boolean;
+	/** as the vite plugin takes it, true, false or the kinds and the four quote strings */
+	smart_punctuation?: SmartPunctuation;
 	math?: ReplMath | false;
 }
 
@@ -107,6 +110,7 @@ export interface ResolvedConfig {
 	highlight: ReplHighlight | false;
 	unwrap_images: boolean;
 	heading_ids: boolean;
+	smart_punctuation: SmartPunctuation;
 	math: ReplMath | false;
 }
 
@@ -155,6 +159,7 @@ function empty_config(): ResolvedConfig {
 		highlight: {},
 		unwrap_images: false,
 		heading_ids: false,
+		smart_punctuation: false,
 		math: {},
 	};
 }
@@ -196,6 +201,8 @@ export function prepare(files: FileMap): Prepared {
 				throw new Error(`${CONFIG_FILE}: heading_ids must be true or false`);
 			config.heading_ids = parsed.heading_ids;
 		}
+		if (parsed.smart_punctuation !== undefined)
+			config.smart_punctuation = check_smart(parsed.smart_punctuation);
 		if (parsed.highlight !== undefined)
 			config.highlight = check_highlight(parsed.highlight);
 		if (parsed.math !== undefined) config.math = check_math(parsed.math);
@@ -254,6 +261,8 @@ export function prepare(files: FileMap): Prepared {
 	};
 	if (config.unwrap_images) options.unwrap_images = true;
 	if (config.heading_ids) options.heading_ids = true;
+	if (config.smart_punctuation !== false)
+		options.smart_punctuation = config.smart_punctuation;
 
 	if (config.templates.size > 0) {
 		options.templates = {};
@@ -326,6 +335,36 @@ function check_highlight(highlight: unknown): ReplHighlight | false {
 		for (const name of annotations) annotation_plugin(name);
 	}
 	return highlight as ReplHighlight;
+}
+
+function check_smart(smart: unknown): SmartPunctuation {
+	if (typeof smart === 'boolean') return smart;
+	if (typeof smart !== 'object' || smart === null || Array.isArray(smart))
+		throw new Error(
+			`${CONFIG_FILE}: smart_punctuation must be true, false or an object`
+		);
+	const { quotes, dashes, ellipses } = smart as Record<string, unknown>;
+	for (const [key, value] of [
+		['dashes', dashes],
+		['ellipses', ellipses],
+	] as const)
+		if (value !== undefined && typeof value !== 'boolean')
+			throw new Error(
+				`${CONFIG_FILE}: smart_punctuation.${key} must be true or false`
+			);
+	if (
+		quotes !== undefined &&
+		typeof quotes !== 'boolean' &&
+		!(
+			Array.isArray(quotes) &&
+			quotes.length === 4 &&
+			quotes.every((q) => typeof q === 'string')
+		)
+	)
+		throw new Error(
+			`${CONFIG_FILE}: smart_punctuation.quotes must be true, false or four strings`
+		);
+	return smart as SmartPunctuation;
 }
 
 function check_math(math: unknown): ReplMath | false {

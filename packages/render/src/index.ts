@@ -7,6 +7,9 @@ export type {
 	HighlightedCode,
 	HighlightWarningCode,
 	PreMeta,
+	SmartPunctuation,
+	SmartPunctuationOptions,
+	SmartQuotes,
 } from './html_cursor';
 export {
 	_emit,

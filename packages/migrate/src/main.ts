@@ -31,7 +31,11 @@ export function migrate(markdown: string, options: MigrateOptions = {}): string 
 	return out === "\n" ? head : head + "\n" + out;
 }
 
-export { serialize, type SerializeOptions } from "./serialize.js";
+export {
+	serialize,
+	type LegacySmartypants,
+	type SerializeOptions,
+} from "./serialize.js";
 export { migrate_frontmatter } from "./frontmatter.js";
 export { migrate_config } from "./config.js";
 export { check_template } from "./template.js";

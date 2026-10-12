@@ -562,3 +562,51 @@ describe('heading_ids', () => {
 			);
 	});
 });
+
+describe('smart_punctuation', () => {
+	const config_with = (smart_punctuation: unknown) =>
+		prepare(
+			files({ 'mdsvex.config.json': JSON.stringify({ smart_punctuation }) })
+		);
+	const source = '"a" -- b...\n';
+
+	test('is off without the key and on when the config says so', () => {
+		const off = prepare(files({ 'mdsvex.config.json': '{}' }));
+		expect(off.config.smart_punctuation).toBe(false);
+		expect('smart_punctuation' in off.options).toBe(false);
+		expect(compile_markdown(source, 'App.svx', off.options).code).toBe(
+			'<p>&quot;a&quot; -- b...</p>'
+		);
+
+		const on = config_with(true);
+		expect(on.error).toBeNull();
+		expect(on.options.smart_punctuation).toBe(true);
+		expect(compile_markdown(source, 'App.svx', on.options).code).toBe(
+			'<p>\u201ca\u201d \u2013 b\u2026</p>'
+		);
+		expect('smart_punctuation' in config_with(false).options).toBe(false);
+	});
+
+	test('takes the kinds and the four quote strings', () => {
+		const set = config_with({
+			quotes: ['\u00ab', '\u00bb', '\u2039', '\u203a'],
+			dashes: false,
+		});
+		expect(set.error).toBeNull();
+		expect(compile_markdown(source, 'App.svx', set.options).code).toBe(
+			'<p>\u00aba\u00bb -- b\u2026</p>'
+		);
+	});
+
+	test('anything else is an error', () => {
+		expect(config_with('on').error?.message).toBe(
+			'mdsvex.config.json: smart_punctuation must be true, false or an object'
+		);
+		expect(config_with({ dashes: 'em' }).error?.message).toBe(
+			'mdsvex.config.json: smart_punctuation.dashes must be true or false'
+		);
+		expect(config_with({ quotes: ['a', 'b'] }).error?.message).toBe(
+			'mdsvex.config.json: smart_punctuation.quotes must be true, false or four strings'
+		);
+	});
+});
