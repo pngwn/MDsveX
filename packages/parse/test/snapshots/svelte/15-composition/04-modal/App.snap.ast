@@ -58,9 +58,6 @@ root
         line_break
         html tag="a" href="https://www.merriam-webster.com/dictionary/modal"
           text "merriam-webster.com"
-          text "</a"
-          line_break
-          block_quote
-          line_break
+        line_break
       line_break
   line_break
