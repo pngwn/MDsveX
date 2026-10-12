@@ -8456,13 +8456,14 @@ export class PFMParser {
 							// sets both value_start and value_end with correct boundaries.
 
 							// a space at the end of the input leaves nothing to skip after it,
-							// a line end or cell pipe after it is the next state's to see
+							// a line end, cell pipe or backtick after it is the next state's to see
 							const after_space =
 								this.cursor + 1 >= length
 									? LINEFEED
 									: char_code_at.call(source, this.cursor + 1 - base);
 							this.chomp(
 								after_space === LINEFEED ||
+									after_space === BACKTICK ||
 									(after_space === PIPE && this.in_table)
 									? 1
 									: 2
