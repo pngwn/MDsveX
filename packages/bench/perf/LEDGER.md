@@ -153,6 +153,29 @@ delete it.
   every feed.
 - **Ideas:** none recorded.
 
+### escaped brace check in text
+
+- **Source:** #1033, the first character test in `escape_text_at` in
+  `packages/render/src/html_cursor.ts`.
+- **Measured:** `quick` with `--repeat 2`, the top of the stack #1029 to #1037
+  against 3826a17a, default 3.0% floor, anchor drift +0.2%. No row is past
+  the floor. By mode, pass 1 and pass 2: `parse` +0.04% and +0.15%,
+  `render-mapped` -1.61% and -1.65%, `vite-transform` -0.81% and -1.42%.
+  25 of the 39 render rows read slower in both passes, 2 of the 20 parse
+  rows do. Worst in both passes: `real/bench-benchmarks-fixture-tables`
+  `render-mapped` -4.3% and -2.5%, `real/migrate-readme` `render-mapped`
+  -3.0% and -3.0%.
+- **Cause:** not isolated with a stub. This is the only change to the
+  renderer in the stack and the parse rows are level, so it is read off the
+  modes. Every text node now loads its first character and compares it with
+  the two braces, and the function calls itself for the rest of a node that
+  starts at an escaped brace.
+- **Ideas:** guesses, none built. Move the escaped case into a function of
+  its own, so the hot one holds a load, two compares and no call to itself,
+  which may be what keeps it from being inlined into the walks. Or have the
+  parser mark the text node an escaped brace opens, so the renderer tests a
+  bit it already reads.
+
 ## Closed
 
 ### id map and undo logs with parse plugins
