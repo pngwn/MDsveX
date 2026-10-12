@@ -89,6 +89,7 @@ const nav = [
 		[
 			["steps", "docs#steps", false],
 			["anchors", "docs#anchors", false],
+			["external links", "docs#external-links", false],
 		],
 	],
 	[
