@@ -282,6 +282,14 @@ again.
   arguments of `compile_doc`, or one more pass over the text in `transform`
   each cost documents that never use the feature. Diagnose with
   `node --trace-turbo-inlining`, not by bisecting lines.
+- **The renderer's text escape sits at the inline limit.** `escape_text_at` is
+  446 bytecodes and V8 never inlines a function over 460. Three lines added to
+  a branch of it that a plain render never takes made it 509, and with nothing
+  else changed `render` read -1.5% and `micro/directive:render` -7.6% in both
+  passes of `core --modes render,render-mapped --repeat 2`. `quick` has no
+  `render` mode and read level. Check the length with
+  `node --print-bytecode --print-bytecode-filter=<name>` when the function
+  changes, and move new work behind a call.
 - **Fed modes.** `quick` has none. Use `--suite core --modes incremental`.
 - **`real/bench-benchmarks-fixture-code:incremental-64` reads fast.** It read
   +5.5% and +4.8%, both passes, for two changes that do not reach fence code.
