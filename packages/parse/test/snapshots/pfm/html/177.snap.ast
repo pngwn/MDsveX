@@ -1,6 +1,6 @@
 root
-  html_comment " foo "
   paragraph
+    html_comment " foo "
     strong_emphasis
       text "bar"
     soft_break

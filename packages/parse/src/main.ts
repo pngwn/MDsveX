@@ -10385,6 +10385,18 @@ export class PFMParser {
 					return -1;
 				}
 				if (comment) {
+					// alone on its line it is a block, with more after it on the line it starts a paragraph as a tag does
+					let after = comment.end;
+					let ch = char_code_at.call(source, after - base);
+					while (ch === SPACE || ch === TAB) {
+						ch = char_code_at.call(source, ++after - base);
+					}
+					if (after >= length) {
+						if (!this.finished) return -1;
+					} else if (ch !== LINEFEED) {
+						this.open_spec_para(current_node, this.in_phrasing(current_node));
+						current_node = this.spec_para;
+					}
 					const c_id = this.emit_open(
 						NodeKind.html_comment,
 						this.cursor,
