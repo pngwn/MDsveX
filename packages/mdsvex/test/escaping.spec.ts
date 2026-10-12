@@ -223,7 +223,7 @@ describe('braces in code (#839)', () => {
 	const nested: [string, string, string, string[]][] = [
 		['block quote', '> `{a}`\n>\n> ```\n> {b}\n> ```', 'code', ['{a}', '{b}']],
 		['nested block quote', '> > ```\n> > {a}\n> > ```', 'code', ['{a}']],
-		['list', '- `{a}`\n- ```\n  {b}\n  ```', 'code', ['{a}', '  {b}']],
+		['list', '- `{a}`\n- ```\n  {b}\n  ```', 'code', ['{a}', '{b}']],
 		['heading', '# `{a}`', 'code', ['{a}']],
 		['link text', '[`{a}`](/x)', 'code', ['{a}']],
 		['table cell', '| `{a}` |\n|-|\n| `{b}` |', 'code', ['{a}', '{b}']],

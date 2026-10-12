@@ -217,9 +217,9 @@ describe('a tag left open at the start of a line', () => {
 			'<p>&lt;span&gt;&lt;b&gt;a</p>',
 		],
 		[
-			'keeps the lines of a block quote in one paragraph',
+			'reads the lines of a block quote as the document does',
 			'> <div>\n> [a] b\n\nc\n',
-			'<blockquote>\n<p>&lt;div&gt;\n[a] b</p>\n</blockquote><p>c</p>',
+			'<blockquote>\n<p>&lt;div&gt;</p><p>[a] b</p>\n</blockquote><p>c</p>',
 		],
 		[
 			'leaves the blocks after it as they were',

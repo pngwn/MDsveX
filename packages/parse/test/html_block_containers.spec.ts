@@ -325,9 +325,17 @@ describe('unclosed inline html at the end of a block quote', () => {
 			'- > <l>\nfoo',
 			[['list', ['list_item', ['block_quote', ['paragraph', 'text:<l>']]]]],
 		],
+		// an element holds blocks in a quote, one that never closes leaves its lines as they were read
 		[
 			'> <l>\n> bar\nfoo',
-			[['block_quote', ['paragraph', 'text:<l>', 'soft_break', 'text:bar']]],
+			[
+				[
+					'block_quote',
+					['paragraph', 'text:<l>'],
+					'line_break',
+					['paragraph', 'text:bar'],
+				],
+			],
 		],
 	];
 

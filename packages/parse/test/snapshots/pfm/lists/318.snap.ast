@@ -3,7 +3,7 @@ root
     list_item
       text "a"
     list_item
-      code_fence "  b\n\n"
+      code_fence "b\n\n"
     list_item
       text "c"
   line_break

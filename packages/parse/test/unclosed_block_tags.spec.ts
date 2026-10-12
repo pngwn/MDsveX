@@ -182,13 +182,13 @@ describe('a tag left open at the start of a line', () => {
 	});
 
 	it('does the same in a block quote', () => {
-		// no element holds blocks in a quote, the lines are one paragraph
 		expect(sound_tree('> <div>\n> [a] b\n')).toBe(
 			lines(
 				'block_quote',
 				'  paragraph',
 				'    "<div>"',
-				'    soft_break',
+				'  line_break',
+				'  paragraph',
 				'    "[a] b"',
 				'line_break'
 			)

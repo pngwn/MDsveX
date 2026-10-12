@@ -184,17 +184,39 @@ function around(container: Container, kids: Shape[], tight: boolean): Shape {
 }
 
 /** a list item is loose when a blank line sits between two of its blocks, two lists of one marker are one list */
+// a line of these goes on with a paragraph that is open above it
+const LINES = ['paragraph', 'component', 'svelte_tag', 'comment'];
+
+/** the last piece a list ends with */
+function tail(piece: Piece): Piece {
+	const last = piece.kids[piece.kids.length - 1];
+	return (piece.kind === 'list' || piece.kind === 'list_item') &&
+		last !== undefined
+		? tail(last)
+		: piece;
+}
+
 export function is_tight(blocks: Piece[]): boolean {
-	return blocks.every((block, i) => {
-		if (i === 0 || block.join === '\n') return true;
-		const before = blocks[i - 1];
-		// the ordered markers are the two last forms, 1. and 7. are one list
-		return (
-			block.kind === 'list' &&
-			before.kind === 'list' &&
-			(block.form === before.form || (block.form > 2 && before.form > 2))
-		);
-	});
+	// the block a blank line would stand after, a line of text or tags under a list goes on with its last item
+	let last: Piece | null = null;
+	for (const block of blocks) {
+		if (last !== null && block.join !== '\n') {
+			// the ordered markers are the two last forms, 1. and 7. are one list
+			const one_list =
+				block.kind === 'list' &&
+				last.kind === 'list' &&
+				(block.form === last.form || (block.form > 2 && last.form > 2));
+			if (!one_list) return false;
+		}
+		const lazy =
+			last !== null &&
+			last.kind === 'list' &&
+			block.join === '\n' &&
+			LINES.includes(block.kind) &&
+			LINES.includes(tail(last).kind);
+		if (!lazy) last = block;
+	}
+	return true;
 }
 
 /**

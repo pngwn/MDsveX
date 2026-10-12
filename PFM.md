@@ -99,11 +99,7 @@ The exceptions:
 - A table cell is not a container. It holds inline content only.
 - A block quote has no lazy continuation, and a paragraph in a list item still continues onto a line that is not indented.
 
-The parser does not hold to this everywhere yet. Where it still differs from the top of a document:
-
-- In a block quote: an HTML element holds its lines as inline content.
-- In a list item: an HTML element that stays open past its line does not open.
-- A value that runs over lines (the code of a fence, a comment) keeps the `>` or the indent of each line in a block quote or a list item.
+A leaf that runs over lines (the code of a fence, a comment, the content of `<script>` or `<style>`, a code span) does not hold what the containers put before its lines: the `>` markers and the indent of a list item are not part of its text. A fence, a comment or an element left open ends where its container ends.
 
 **Blockquotes**, No lazy continuation. Every line inside a blockquote must be explicitly prefixed with `>`. The first line without a `>` prefix terminates the blockquote; there is no implicit inheritance of blockquote context from a previous line. This enables line-local parsing decisions without tracking open paragraphs in parent containers.
 

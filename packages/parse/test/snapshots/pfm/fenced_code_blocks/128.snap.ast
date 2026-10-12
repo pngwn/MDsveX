@@ -1,9 +1,6 @@
 root
   block_quote
-    paragraph
-      text "```"
-      soft_break
-      text "aaa"
+    code_fence "aaa"
   line_break
   line_break
   paragraph

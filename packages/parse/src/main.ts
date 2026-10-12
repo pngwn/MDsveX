@@ -190,8 +190,6 @@ const WAIT_NEEDLE = 4;
 const enum FeedWait {
 	// an unclosed code span past the trim gap, a chunk with no backtick and no possibly blank line cannot end it
 	code_span = 5,
-	// a block quote fence, a chunk with no backtick whose lines all carry the quote markers decides nothing
-	bq_fence = 6,
 	// a cell start at the input end may be a lone > or ^, the next chunk rereads it from wait_cursor
 	table_cell = 7,
 }
@@ -777,6 +775,9 @@ interface ColdState {
 	raw_node: number;
 	raw_needle: string;
 	raw_scan: number;
+	// in a block quote or a list item, where the raw text starts and the line of it read last
+	raw_start: number;
+	raw_line: number;
 	// saved brace probe scan, start or -1, resume point, state, quote and frames of brace depth or 0 for a template
 	bp_start: number;
 	bp_p: number;
@@ -792,8 +793,8 @@ interface ColdState {
 	wait_needle: string;
 	wait_cursor: number;
 	// the stalled block quote fence scan, fence cursor or -1 and the first line it has not passed
-	bqf_at: number;
-	bqf_line: number;
+	// the code of a fence in a block quote or a list item so far, without what they put before its lines
+	fence_text: string;
 	// the cut, window base and kept html openers of the last trim_keeping_html, an equal trim keeps the window
 	kept_cut: number;
 	kept_base: number;
@@ -844,6 +845,8 @@ export class PFMParser {
 		raw_node: 0,
 		raw_needle: '',
 		raw_scan: 0,
+		raw_start: 0,
+		raw_line: 0,
 		bp_start: -1,
 		bp_p: 0,
 		bp_mode: 0,
@@ -855,8 +858,7 @@ export class PFMParser {
 		tag_memo_base: 0,
 		wait_needle: '',
 		wait_cursor: -1,
-		bqf_at: -1,
-		bqf_line: 0,
+		fence_text: '',
 		kept_cut: -1,
 		kept_base: 0,
 		kept_count: 0,
@@ -1087,7 +1089,7 @@ export class PFMParser {
 			this.out.open(0, NodeKind.root, 0, -1, 0, false);
 		} else this._init(ID_MIN_CAPACITY);
 		this.cold.kept_cut = -1;
-		this.cold.bqf_at = -1;
+		this.cold.fence_text = '';
 		this.finished = false;
 		this.one_shot = false;
 	}
@@ -1355,110 +1357,6 @@ export class PFMParser {
 		this.cold.wait_cursor = this.cursor;
 	}
 
-	/** bq_fence_scan for unfinished input, resumes at the first line the last stalled scan of this fence did not pass */
-	private bq_fence_feed(
-		start_pos: number,
-		fence_len: number,
-		depth: number
-	): number {
-		const source = this.source;
-		const base = this.source_base;
-		const length = this.source_end;
-		const cold = this.cold;
-		let line = start_pos;
-		if (cold.bqf_at === this.cursor && cold.bqf_line > line)
-			line = cold.bqf_line;
-		for (;;) {
-			let marked = false;
-			if (line < length) {
-				let pos = line;
-				let i = 0;
-				for (; i < depth; i++) {
-					while (pos < length) {
-						const c = char_code_at.call(source, pos - base);
-						if (c !== SPACE && c !== TAB) break;
-						pos++;
-					}
-					if (pos >= length) break;
-					if (char_code_at.call(source, pos - base) !== CLOSE_ANGLE_BRACKET) {
-						cold.bqf_at = -1;
-						return -1;
-					}
-					pos++;
-					if (pos < length && char_code_at.call(source, pos - base) === SPACE)
-						pos++;
-				}
-				if (i === depth) {
-					marked = true;
-					while (pos < length) {
-						const c = char_code_at.call(source, pos - base);
-						if (c !== SPACE && c !== TAB) break;
-						pos++;
-					}
-					let bt = 0;
-					while (
-						pos < length &&
-						char_code_at.call(source, pos - base) === BACKTICK
-					) {
-						bt++;
-						pos++;
-					}
-					if (bt >= fence_len) {
-						cold.bqf_at = -1;
-						return 1;
-					}
-					const nl = string_index_of.call(source, '\n', pos - base);
-					if (nl !== -1) {
-						line = nl + base + 1;
-						continue;
-					}
-				}
-			}
-			cold.bqf_at = this.cursor;
-			cold.bqf_line = line;
-			// the next chunk decides nothing without a backtick or an unmarked line
-			if (line >= length || marked) {
-				this.wait_kind = FeedWait.bq_fence;
-				cold.wait_cursor = this.cursor;
-			}
-			return 0;
-		}
-	}
-
-	/** false only when the chunk has no backtick and every line starting in it starts with all the quote markers */
-	private bq_fence_may_decide(chunk: string, len: number): boolean {
-		if (string_index_of.call(chunk, '`') !== -1) return true;
-		const depth = this.block_quote_depth;
-		const pending = this.wait_chunks;
-		const prev =
-			pending.length !== 0 ? pending[pending.length - 1] : this.source;
-		let line = char_code_at.call(prev, prev.length - 1) === LINEFEED ? 0 : -1;
-		if (line === -1) {
-			const lf = string_index_of.call(chunk, '\n');
-			if (lf === -1) return false;
-			line = lf + 1;
-		}
-		while (line < len) {
-			let pos = line;
-			for (let i = 0; i < depth; i++) {
-				while (pos < len) {
-					const c = char_code_at.call(chunk, pos);
-					if (c !== SPACE && c !== TAB) break;
-					pos++;
-				}
-				// markers cut by the chunk end, let _run look
-				if (pos >= len || char_code_at.call(chunk, pos) !== CLOSE_ANGLE_BRACKET)
-					return true;
-				pos++;
-				if (pos < len && char_code_at.call(chunk, pos) === SPACE) pos++;
-			}
-			const lf = string_index_of.call(chunk, '\n', pos);
-			if (lf === -1) return false;
-			line = lf + 1;
-		}
-		return false;
-	}
-
 	/** false only when the chunk has no backtick and no line starting in it starts with a space, tab or linefeed */
 	private code_span_may_end(chunk: string, len: number): boolean {
 		if (len === 0 || string_index_of.call(chunk, '`') !== -1) return true;
@@ -1696,9 +1594,7 @@ export class PFMParser {
 						? !this.brace_scan(chunk, end, end + len)
 						: kind === WAIT_NEEDLE
 							? !this.needle_in(chunk, len)
-							: kind === FeedWait.code_span
-								? !this.code_span_may_end(chunk, len)
-								: !this.bq_fence_may_decide(chunk, len)
+							: !this.code_span_may_end(chunk, len)
 				) {
 					if (pending === NO_STACK) this.wait_chunks = [chunk];
 					else pending.push(chunk);
@@ -2268,8 +2164,8 @@ export class PFMParser {
 		if (padded && this.block_quote_depth > 0) {
 			// the space after a quote marker is not code
 			const lf = string_last_index_of.call(source, '\n', end - 1 - base);
-			padded =
-				this.skip_bq_markers(lf + 1 + base, this.block_quote_depth) < end;
+			this.line_start(lf + 1 + base);
+			padded = this.line_quote < end;
 		}
 		this.span_start(id, padded ? start + 1 : start);
 		return padded ? end - 1 : end;
@@ -2293,15 +2189,15 @@ export class PFMParser {
 		let from = this.span_vs - base;
 		let lf = string_index_of.call(source, '\n', from);
 		if (lf === -1 || lf >= to) return;
-		const depth = this.block_quote_depth;
+		const quoted = this.block_quote_depth > 0;
 		let text = '';
 		let stripped = false;
 		while (lf !== -1 && lf < to) {
 			text += string_slice.call(source, from, lf + 1);
 			from = lf + 1;
-			if (depth > 0) {
-				const past = this.skip_bq_markers(from + base, depth);
-				if (past !== -1) from = past - base;
+			if (quoted) {
+				this.line_start(from + base);
+				if (this.line_quote - base <= to) from = this.line_quote - base;
 			}
 			while (from < to && char_code_at.call(source, from) === SPACE) from++;
 			if (from !== lf + 1) stripped = true;
@@ -3065,7 +2961,7 @@ export class PFMParser {
 	}
 
 	/**
-	 * the linefeed at the cursor inside a svelte branch or a container directive in a block quote or a list item
+	 * the linefeed at the cursor inside an element, a svelte branch or a container directive in a block quote or a list item
 	 * @returns 1 when the next line stays in them, the cursor is then past what they put before it,
 	 * 0 when it leaves one and so ends the container, -1 while a feed cannot tell yet
 	 */
@@ -3524,6 +3420,27 @@ export class PFMParser {
 		return i;
 	}
 
+	/**
+	 * the text from from to to with what the block quotes and list items put before its lines left out
+	 * null when a line in it leaves one of them
+	 */
+	private framed_text(from: number, to: number): string | null {
+		const source = this.source;
+		const base = this.source_base;
+		const frames = this.frames.length;
+		let text = '';
+		let p = from;
+		for (;;) {
+			const lf = string_index_of.call(source, '\n', p - base);
+			if (lf === -1 || lf + base >= to) break;
+			text += string_slice.call(source, p - base, lf + 1);
+			if (this.line_start(lf + base + 1) < frames) return null;
+			p = this.line_pos;
+			if (p > to) return null;
+		}
+		return text + string_slice.call(source, p - base, to - base);
+	}
+
 	/** a block quote is among the frames from kept on, a line that continues only kept frames ends it */
 	private quote_ends(kept: number): boolean {
 		const frames = this.frames;
@@ -3531,94 +3448,6 @@ export class PFMParser {
 			if (frames[i] === 0) return true;
 		}
 		return false;
-	}
-
-	private skip_bq_markers(pos: number, depth: number): number {
-		const source = this.source;
-		const base = this.source_base;
-		const length = this.source_end;
-		for (let i = 0; i < depth; i++) {
-			while (
-				pos < length &&
-				(char_code_at.call(source, pos - base) === SPACE ||
-					char_code_at.call(source, pos - base) === TAB)
-			) {
-				pos++;
-			}
-			if (
-				pos >= length ||
-				char_code_at.call(source, pos - base) !== CLOSE_ANGLE_BRACKET
-			)
-				return -1;
-			pos++;
-			if (pos < length && char_code_at.call(source, pos - base) === SPACE)
-				pos++;
-		}
-		return pos;
-	}
-
-	/**
-	 * check whether a code fence opening inside a blockquote can close
-	 * cleanly (whether every line up to the closing fence has matching
-	 * `>` markers). returns:
-	 *   1  - fence is valid (closing fence found, or eof in finished mode)
-	 *   0  - more input needed (stall)
-	 *  -1  - fence is invalid (unmarked line encountered before closing fence)
-	 *
-	 * `start_pos` is the position of the first character of the first content
-	 * line (past the info line's linefeed). `fence_len` is the number of
-	 * backticks in the opener.
-	 */
-	private bq_fence_scan(
-		start_pos: number,
-		fence_len: number,
-		bq_depth: number
-	): number {
-		const source = this.source;
-		const base = this.source_base;
-		const length = this.source_end;
-		let line_start = start_pos;
-		while (line_start <= length) {
-			if (line_start >= length) {
-				// reached eof. in finished mode, treat as valid (unclosed
-				// fence at eof is acceptable). in streaming mode, stall.
-				return this.finished ? 1 : 0;
-			}
-			const stripped = this.skip_bq_markers(line_start, bq_depth);
-			if (stripped === -1) {
-				// can't strip markers. in streaming mode, the absence of
-				// markers might be because the line is incomplete - but
-				// `>` detection only needs the first few chars, so if the
-				// first non-whitespace char is not `>`, we can commit to
-				// "unmarked" even without seeing the full line.
-				return -1;
-			}
-			// closing fence: optional whitespace then >= fence_len backticks.
-			let fp = stripped;
-			while (
-				fp < length &&
-				(char_code_at.call(source, fp - base) === SPACE ||
-					char_code_at.call(source, fp - base) === TAB)
-			)
-				fp++;
-			let bt = 0;
-			while (fp < length && char_code_at.call(source, fp - base) === BACKTICK) {
-				bt++;
-				fp++;
-			}
-			if (bt >= fence_len) return 1;
-			// advance to next line.
-			let nl = stripped;
-			while (nl < length && char_code_at.call(source, nl - base) !== LINEFEED)
-				nl++;
-			if (nl >= length) {
-				// reached eof mid-line. in finished mode, no close found -
-				// treat as valid (unclosed at eof). in streaming mode, stall.
-				return this.finished ? 1 : 0;
-			}
-			line_start = nl + 1;
-		}
-		return this.finished ? 1 : 0;
 	}
 
 	private is_blank_at_pos(pos: number): boolean {
@@ -4380,6 +4209,8 @@ export class PFMParser {
 		this.cold.raw_node = html_id;
 		this.cold.raw_needle = '</' + open_tag.tag + '>';
 		this.cold.raw_scan = open_tag.end;
+		this.cold.raw_start = open_tag.end;
+		this.cold.raw_line = open_tag.end;
 		this.states.push(StateKind.raw_text);
 		this.chomp(open_tag.end, true);
 	}
@@ -4743,10 +4574,14 @@ export class PFMParser {
 	 * pos should point to the `!` in `<!--`.
 	 * returns the content start, content end, and end position.
 	 */
-	private try_parse_html_comment(
-		pos: number
-	):
-		| { content_start: number; content_end: number; end: number }
+	private try_parse_html_comment(pos: number):
+		| {
+				content_start: number;
+				content_end: number;
+				end: number;
+				/** the content without what the frames put before its lines, null when the source range is it */
+				text: string | null;
+		  }
 		| null
 		| false {
 		const source = this.source;
@@ -4770,7 +4605,16 @@ export class PFMParser {
 		const close = string_index_of.call(source, '-->', p - base);
 		if (close !== -1) {
 			const content_end = close + base;
-			return { content_start, content_end, end: content_end + 3 };
+			let text: string | null = null;
+			if (this.frames.length !== 0) {
+				const lf = string_index_of.call(source, '\n', p - base);
+				if (lf !== -1 && lf < close) {
+					// a comment whose lines leave a block quote or a list item is no comment
+					text = this.framed_text(content_start, content_end);
+					if (text === null) return null;
+				}
+			}
+			return { content_start, content_end, end: content_end + 3, text };
 		}
 
 		if (!this.finished) return false; // need more input
@@ -5008,7 +4852,7 @@ export class PFMParser {
 			(p >= length || string_index_of.call(source, '\n', p - base) === -1)
 		)
 			return false;
-		return this.line_interrupts(p);
+		return this.para_line(pos) === 1;
 	}
 
 	/** the paragraph keeps its wrapper only with text outside tags and no block level tag */
@@ -5058,8 +4902,9 @@ export class PFMParser {
 				case LINEFEED: {
 					p++;
 					if (this.block_quote_depth > 0 && p < limit) {
-						const q = this.next_line(p);
-						if (q >= p && q <= limit) p = q;
+						// what the frames put before a line the paragraph went on over is no text
+						this.line_start(p);
+						if (this.line_pos <= limit) p = this.line_pos;
 					}
 					break;
 				}
@@ -7616,6 +7461,8 @@ export class PFMParser {
 									comment.content_end,
 									NodeKind.html_comment
 								);
+								if (comment.text !== null)
+									this.out.attr(c_id, 'text', comment.text);
 								this.emit_close(c_id, comment.end);
 								this.chomp(comment.end, true);
 								this.states.pop();
@@ -8657,7 +8504,7 @@ export class PFMParser {
 		if (
 			!this.finished
 				? !this.fence_open(parent)
-				: this.block_quote_depth > 0 || !this.fence_whole(parent)
+				: this.frames.length !== 0 || !this.fence_whole(parent)
 		) {
 			if (this.finished && this.span_para(parent)) return;
 			this.states.push(StateKind.code_fence_start);
@@ -8689,7 +8536,7 @@ export class PFMParser {
 
 	/** incremental fence opener once the info line and the char after it are visible, emits what the start and info states would */
 	private fence_open(parent: number): boolean {
-		if (this.block_quote_depth > 0) return false;
+		if (this.frames.length !== 0) return false;
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
@@ -8744,7 +8591,7 @@ export class PFMParser {
 						out.set_value_end(cf_id, line - 1);
 						this.emit_close(cf_id, lp);
 						this.node_stack.pop();
-						this.cursor = this.frames.length === 0 ? lp + 1 : lp;
+						this.cursor = lp + 1;
 						return true;
 					}
 					break;
@@ -8835,7 +8682,7 @@ export class PFMParser {
 		if (ch === -1 || ch === LINEFEED) {
 			this.emit_close(cf_id, end);
 			this.node_stack.pop();
-			this.cursor = ch === -1 || this.frames.length !== 0 ? end : end + 1;
+			this.cursor = ch === -1 ? end : end + 1;
 			return true;
 		}
 		// the fence ends at the closing run, the rest of its line is skipped
@@ -8857,52 +8704,6 @@ export class PFMParser {
 			this.cursor++;
 			return false;
 		} else if (this.extra >= 3) {
-			// pfm: inside a blockquote, the fence is only valid if
-			// all content lines up to the closing fence have `>`
-			// markers. otherwise, the opening backticks become
-			// paragraph text.
-			if (this.block_quote_depth > 0) {
-				// find end of info line.
-				let info_end = this.cursor;
-				while (
-					info_end < length &&
-					char_code_at.call(source, info_end - base) !== LINEFEED
-				)
-					info_end++;
-				if (info_end >= length && !this.finished) return true;
-				const scan = this.finished
-					? this.bq_fence_scan(info_end + 1, this.extra, this.block_quote_depth)
-					: this.bq_fence_feed(
-							info_end + 1,
-							this.extra,
-							this.block_quote_depth
-						);
-				if (scan === 0) return true;
-				if (scan === -1) {
-					// fence cannot close inside the blockquote -
-					// treat the opening backticks as literal text.
-					// emit a paragraph with a text node containing
-					// the backticks, then let the paragraph state
-					// continue parsing the rest of the line.
-					this.states.pop();
-					const bq_fp_id = this.emit_open(
-						NodeKind.paragraph,
-						this.cursor - this.extra,
-						current_node
-					);
-					this.node_stack.push(bq_fp_id);
-					this.emit_leaf(
-						NodeKind.text,
-						this.cursor - this.extra,
-						bq_fp_id,
-						this.cursor - this.extra,
-						this.cursor,
-						this.cursor
-					);
-					this.states.push(StateKind.paragraph);
-					return false;
-				}
-			}
 			this.states.pop();
 			this.states.push(StateKind.code_fence_info);
 			const cf_id = this.emit_open(
@@ -8927,6 +8728,91 @@ export class PFMParser {
 			this.chomp(this.cursor - this.extra, true);
 			return false;
 		}
+	}
+
+	/**
+	 * the content of a fence in a block quote or a list item, a line at a time through line_start
+	 * it ends at its closing fence, at the linefeed before a line that leaves a frame or at the end of the input
+	 * the code goes out as a string, without what the frames put before its lines
+	 * @returns true while a feed cannot tell yet
+	 */
+	private framed_fence_lines(current_node: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		const cold = this.cold;
+		const frames = this.frames.length;
+		const fence_len = this.extra;
+		const value_start = this.cursor;
+		let line = this.fence_scan;
+		// the cursor waits at the first line while the scan moves on
+		let text = line === value_start ? '' : cold.fence_text;
+		let value_end = length;
+		let end = length;
+		let next = length;
+		for (;;) {
+			if (line >= length) {
+				if (this.finished) break;
+				return this.fence_stall(line, text);
+			}
+			const kept = this.line_start(line);
+			if (kept < frames) {
+				if (kept < 0) {
+					return this.fence_stall(line, text);
+				}
+				value_end = end = next = line - 1;
+				break;
+			}
+			const content = this.line_pos;
+			let p = content;
+			let ch = char_code_at.call(source, p - base);
+			while (ch === SPACE || ch === TAB) {
+				ch = char_code_at.call(source, ++p - base);
+			}
+			const run = p;
+			while (ch === BACKTICK) ch = char_code_at.call(source, ++p - base);
+			const lf = string_index_of.call(source, '\n', p - base);
+			if (lf === -1 && !this.finished) {
+				return this.fence_stall(line, text);
+			}
+			if (p - run >= fence_len) {
+				// the rest of the closing line is skipped, its lf stays for the frames
+				value_end = line - 1;
+				end = p;
+				next = lf === -1 ? length : lf + base;
+				break;
+			}
+			if (lf === -1) {
+				text += string_slice.call(source, content - base);
+				break;
+			}
+			text += string_slice.call(source, content - base, lf + 1);
+			line = lf + base + 1;
+		}
+		const out = this.out;
+		if (value_end > value_start) {
+			// the linefeed before the close is not code
+			if (value_end < length || end < length)
+				text = string_slice.call(text, 0, text.length - 1);
+			out.attr(current_node, 'text', text);
+		}
+		cold.fence_text = '';
+		out.set_value_end(current_node, value_end);
+		this.emit_close(current_node, end);
+		this.node_stack.pop();
+		this.states.pop();
+		this.chomp(next, true);
+		return false;
+	}
+
+	/** a feed ran out inside a framed fence, the lines before line are read and need not stay in the window */
+	private fence_stall(line: number, text: string): boolean {
+		this.cold.fence_text = text;
+		this.fence_scan = line;
+		// a line that leaves a frame ends the fence at the lf before line, the item there reads the char before it
+		if (line - 1 > this.trim_point && this.can_trim(this.node_stack.length - 1))
+			this.trim_point = line - 1;
+		return true;
 	}
 
 	private _run_code_fence_info(code: number, current_node: number): boolean {
@@ -8992,6 +8878,7 @@ export class PFMParser {
 	}
 
 	private _run_code_fence_content(current_node: number): boolean {
+		if (this.frames.length !== 0) return this.framed_fence_lines(current_node);
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
@@ -8999,9 +8886,7 @@ export class PFMParser {
 		// optional whitespace followed by >= extra backticks.
 		// resume at fence_scan, a line is ruled out only once its backtick run ends inside the buffer
 		// jump between backticks, only a line whose first non whitespace char is a backtick can close
-		// in a block quote the markers come first, as bq_fence_scan reads them
 		const fence_len = this.extra;
-		const depth = this.block_quote_depth;
 		let line = this.fence_scan;
 		let found_index = -1;
 
@@ -9019,11 +8904,6 @@ export class PFMParser {
 				if (lf !== -1 && lf + base + 1 > line) line = lf + base + 1;
 			}
 			let lp = line;
-			if (depth > 0) {
-				// a line missing its markers cannot close
-				const q = this.skip_bq_markers(line, depth);
-				lp = q === -1 ? bt + 1 : q;
-			}
 			while (lp < bt) {
 				const ch = char_code_at.call(source, lp - base);
 				if (ch !== SPACE && ch !== TAB) break;
@@ -9074,7 +8954,52 @@ export class PFMParser {
 		return false;
 	}
 
+	/**
+	 * raw text in a block quote or a list item, line by line through line_start
+	 * it ends at its close tag, at the linefeed before a line that leaves a frame or at the end of the input
+	 */
+	private framed_raw_text(): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		const cold = this.cold;
+		const needle = cold.raw_needle;
+		const id = cold.raw_node;
+		let value_end = length;
+		let end = length;
+		for (;;) {
+			const line = cold.raw_line;
+			const lf = string_index_of.call(source, '\n', line - base);
+			const rel = string_index_of.call(source, needle, line - base);
+			if (rel !== -1 && (lf === -1 || rel < lf)) {
+				value_end = rel + base;
+				end = value_end + needle.length;
+				break;
+			}
+			if (lf === -1) {
+				if (this.finished) break;
+				return true;
+			}
+			const kept = this.line_start(lf + base + 1);
+			if (kept < 0) return true;
+			if (kept < this.frames.length) {
+				value_end = end = lf + base;
+				break;
+			}
+			cold.raw_line = this.line_pos;
+		}
+		const text = this.framed_text(cold.raw_start, value_end);
+		if (text !== null && text.length !== value_end - cold.raw_start)
+			this.out.attr(id, 'text', text);
+		this.out.set_value_end(id, value_end);
+		this.emit_close(id, end);
+		this.states.pop();
+		this.chomp(end, true);
+		return false;
+	}
+
 	private _run_raw_text(): boolean {
+		if (this.frames.length !== 0) return this.framed_raw_text();
 		const base = this.source_base;
 		const length = this.source_end;
 		const needle = this.cold.raw_needle;
@@ -9953,12 +9878,6 @@ export class PFMParser {
 			this.wait_for('\n');
 			return -1;
 		}
-		// the element state reads whole lines, right under a list item an element that stays open is paragraph text
-		if (
-			close_end === 0 &&
-			this.states[this.states.length - 1] === StateKind.list_item
-		)
-			return 0;
 		if (close_end > 0) {
 			this.open_spec_tag(tag, close_end, parent, this.in_phrasing(parent));
 		} else if (this.is_raw_text_tag(tag.tag)) {
@@ -10011,6 +9930,16 @@ export class PFMParser {
 		return 1;
 	}
 
+	/** unwinds an element that never closed, at the end of the input or of a frame around it, the sweep revokes its node */
+	private leave_html_block(current_node: number): void {
+		const tags = this.html_tag_stack;
+		if (tags.length > 0 && tags[tags.length - 1].id === current_node)
+			tags.pop();
+		this.html_block_depth--;
+		this.states.pop();
+		this.node_stack.pop();
+	}
+
 	private _run_html_block_element(code: number, current_node: number): boolean {
 		const source = this.source;
 		const base = this.source_base;
@@ -10020,16 +9949,7 @@ export class PFMParser {
 
 		if (!code) {
 			if (!this.finished) return true;
-			// eof: unwind stacks - _finalize will revoke the pending node
-			if (
-				this.html_tag_stack.length > 0 &&
-				this.html_tag_stack[this.html_tag_stack.length - 1].id === current_node
-			) {
-				this.html_tag_stack.pop();
-			}
-			this.html_block_depth--;
-			this.states.pop();
-			this.node_stack.pop();
+			this.leave_html_block(current_node);
 			return false;
 		}
 
@@ -10076,6 +9996,13 @@ export class PFMParser {
 
 		// skip linefeeds - they act as separators
 		if (code === LINEFEED) {
+			if (this.frames.length !== 0) {
+				const stays = this.container_lf(current_node);
+				if (stays < 0) return true;
+				// a line that leaves a frame ends the element where the input would, it never closed
+				if (stays === 0) this.leave_html_block(current_node);
+				return false;
+			}
 			this.emit_bare_leaf(
 				NodeKind.line_break,
 				this.cursor,
@@ -10098,7 +10025,11 @@ export class PFMParser {
 			}
 			// a chunk end inside the run may still be followed by a linefeed
 			if (pos >= length && !this.finished) return true;
-			if (pos < length && char_code_at.call(source, pos - base) === LINEFEED) {
+			if (
+				pos < length &&
+				char_code_at.call(source, pos - base) === LINEFEED &&
+				this.frames.length === 0
+			) {
 				this.emit_bare_leaf(
 					NodeKind.line_break,
 					this.cursor,
@@ -10532,11 +10463,6 @@ export class PFMParser {
 
 			case OPEN_ANGLE_BRACKET: {
 				if (probe) return this.tag_interrupts(pos) ? 1 : 0;
-				// the element state reads whole lines, in a block quote a tag stays inline in a paragraph
-				if (this.block_quote_depth > 0) {
-					this.open_spec_para(current_node, false);
-					return 1;
-				}
 				if (
 					!this.finished &&
 					string_index_of.call(source, '>', this.cursor + 1 - base) === -1
@@ -10562,6 +10488,7 @@ export class PFMParser {
 						comment.content_end,
 						NodeKind.html_comment
 					);
+					if (comment.text !== null) this.out.attr(c_id, 'text', comment.text);
 					this.emit_close(c_id, comment.end);
 					this.chomp(comment.end, true);
 					return 1;
