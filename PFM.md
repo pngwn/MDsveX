@@ -207,6 +207,8 @@ x~1~ -> x<sub>1</sub>
 
 A table ends where a paragraph would: at a blank line, at a line that starts a block which may interrupt a paragraph (a heading, a fence, a block quote, a thematic break, a list item, a block level HTML tag, a directive, a Svelte block), and at the line that closes the element, Svelte block or container directive the table is in.
 
+A row is one line, and nothing in a cell reads past it. An HTML tag, a comment, a Svelte expression or a `<script>` that does not end on its row is literal text.
+
 A pipe escaped with a backslash (`\|`) does not end a cell. Inside a code span in a cell the backslash is not part of the code, so `` `string \| number` `` is the code `string | number`.
 
 Header columns via a `||` separator. The delimiter row decides: a `||` between two delimiter cells, with an empty `||` cell at the same place in the header row, splits the columns. One `||` makes the side with fewer columns the header columns, the left side on a tie. Two `||` make header columns on both sides. In body rows, the cells in header columns render as row headers (`<th scope="row">`). In body rows a `||` at the split is one separator and a single `|` there works too. A `||` anywhere else is an empty cell, as in GFM.

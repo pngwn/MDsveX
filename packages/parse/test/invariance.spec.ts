@@ -145,15 +145,6 @@ const KNOWN: Known[] = [
 		example: { site: 'table_cell', source: '<b>`<b>`</b>' },
 	},
 	{
-		issue: 1061,
-		what: 'an open tag or a comment at the end of a table row reads into the next line, which is then lost',
-		edited: ['content', /<\w+\n>|<!--\n/],
-		example: {
-			site: 'root',
-			source: '| a | b |\n|---|---|\n| c | <i\n> | q000 |\n',
-		},
-	},
-	{
 		issue: 1076,
 		what: 'a paragraph that opens at a tag loses its wrapper when a backtick in an autolink or a link destination pairs with one after the element',
 		edited: ['placed', /`[>)]<\/\w+>`/],
