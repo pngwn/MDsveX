@@ -885,6 +885,20 @@ function expr_attr(k: string, value: string): string {
 		: ' ' + k + '={' + value + '}';
 }
 
+/** the later values of the names a tag writes again, written so that svelte reports them */
+function repeated_attrs(repeated: [string, unknown][], typed: boolean): string {
+	let s = '';
+	for (let i = 0; i < repeated.length; i++) {
+		const k = repeated[i][0];
+		const v = repeated[i][1];
+		if (v === true) s += ' ' + k;
+		else if (typeof v === 'object' && v !== null)
+			s += expr_attr(k, meta_str((v as any).value));
+		else s += ' ' + k + '="' + escape_attr(meta_str(v), typed) + '"';
+	}
+	return s;
+}
+
 function _attrs(c: Cursor, skip?: Set<string>): string {
 	const meta = c.meta();
 	if (!meta) return '';
@@ -1685,6 +1699,8 @@ function render_node(c: Cursor, sink?: MapSink): void {
 							s += ' ' + k + '="' + escape_attr(v as string, typed) + '"';
 						}
 					}
+					if (meta!.repeated !== undefined)
+						s += repeated_attrs(meta!.repeated as [string, unknown][], typed);
 				}
 				mo += self_closing ? s + ' />' : s + '>';
 			}
@@ -2615,7 +2631,14 @@ function fold_html(c: Cursor, p: number): number {
 
 	p = push_static(p, S_LT);
 	p = push_dyn(p, tag);
-	if (html_attrs) p = fold_html_attrs(html_attrs, !c.synthetic, p);
+	if (html_attrs) {
+		p = fold_html_attrs(html_attrs, !c.synthetic, p);
+		if (meta!.repeated !== undefined)
+			p = push_dyn(
+				p,
+				repeated_attrs(meta!.repeated as [string, unknown][], !c.synthetic)
+			);
+	}
 	p = push_static(p, S_GT);
 	// raw text elements keep their content as the node value range, see _node
 	if (is_raw_text_tag(tag)) {
@@ -3213,6 +3236,8 @@ function tr_html(c: Cursor, sink: MapSink, p: number): number {
 					s += ' ' + k + '="' + escape_attr(v as string, typed) + '"';
 				}
 			}
+			if (meta!.repeated !== undefined)
+				s += repeated_attrs(meta!.repeated as [string, unknown][], typed);
 		}
 		if (self_closing) {
 			mo += s;
@@ -3773,6 +3798,8 @@ function mp_html(c: Cursor, sink: MapSink, p: number): number {
 					s += ' ' + k + '="' + escape_attr(v as string, typed) + '"';
 				}
 			}
+			if (meta!.repeated !== undefined)
+				s += repeated_attrs(meta!.repeated as [string, unknown][], typed);
 		}
 		mo += s;
 		if (self_closing) {
@@ -4620,6 +4647,8 @@ function comp_node(
 						open += expr_attr(k, meta_str((v as any).value));
 					else open += ' ' + k + '="' + escape_attr(meta_str(v), typed) + '"';
 				}
+				if (meta.repeated !== undefined)
+					open += repeated_attrs(meta.repeated as [string, unknown][], typed);
 			}
 			if (typed) open += typed_extras(tag, attrs);
 			const shut = meta.self_closing ? ' />' : '>';
