@@ -234,6 +234,9 @@ function compile_leniently(
 		...options.compile,
 		sourcemap: true,
 		strict_directives: options.report_directives === true,
+		// the editor serves no module, so a block that runs is only shown,
+		// with no import for typescript to look for
+		snippets: false,
 	};
 	let metadata_known = true;
 	let last: unknown;

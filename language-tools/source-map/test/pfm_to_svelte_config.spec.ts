@@ -353,6 +353,26 @@ describe("pfmToSvelte compile diagnostics", () => {
 		expect(r.code).toContain("<h2>after</h2>");
 	});
 
+	it("a block that runs is shown without the import of its module", () => {
+		const source =
+			"# t\n\n```svelte run wrap\n<b>hi</b>\n```\n\n```ts run=client\nlet a;\n```\n\n## after\n";
+		const r = pfmToSvelte(source, {
+			compile: {
+				components: [{ specifier: "mdsvex:components", names: ["pre"] }],
+			},
+			resolve: (id) => FILES[id],
+		});
+		expect(r.diagnostics).toEqual([]);
+		expect(r.code).not.toContain("snippet");
+		expect(r.code).not.toContain("module=");
+		expect(r.code).not.toContain("load=");
+		// the flag is no prop and no part of the meta
+		expect(r.code).toContain('lang={"svelte"} meta={"wrap"} wrap={true} code={');
+		expect(r.code).toContain("<h2>after</h2>");
+		// without a component for pre the build fails, the editor only shows the code
+		expect(pfmToSvelte(source, { resolve: (id) => FILES[id] }).diagnostics).toEqual([]);
+	});
+
 	it("reports a fence with src= and code of its own at the fence", () => {
 		const source = "# t\n\n```ts src=./math.ts\nlet mine;\n```\n\n## after\n";
 		const r = pfmToSvelte(source, { resolve: (id) => FILES[id] });

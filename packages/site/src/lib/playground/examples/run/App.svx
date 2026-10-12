@@ -1,0 +1,36 @@
+# Code that runs
+
+A fence marked `run` is shown and is also a module the page imports.
+`Pre.svelte` replaces `pre`, gets that module and renders it.
+
+```svelte run
+<script>
+	let count = $state(0);
+</script>
+
+<button onclick={() => count++}>clicked {count}</button>
+```
+
+The default export of a script block is called for its result. Imports
+resolve from this document:
+
+```ts run
+import { add } from './math.js';
+
+const total: number = add(40, 2);
+
+export default () => `the answer is ${total}`;
+```
+
+`run=client` hands the component a function that imports the block when
+it is asked for:
+
+```js run=client
+export default () => `loaded at ${new Date().toLocaleTimeString()}`;
+```
+
+A block without the flag is only shown:
+
+```js
+export default () => 'never called';
+```

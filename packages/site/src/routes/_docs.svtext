@@ -2005,6 +2005,7 @@ The info string after the language takes the conventions of Shiki, VitePress and
 | `caption="…"` | a caption |
 | `twoslash` | uses [twoslash](docs#twoslash) |
 | `src=./math.ts`, `src=./math.ts#L5-L20` | shows [a file](docs#code-from-a-file), or some of its lines |
+| `run`, `run=client` | [runs the block](docs#code-that-runs) as a module, with the page or when asked |
 
 ````md
 ```ts title="math.ts" {2} :line-numbers
@@ -2033,7 +2034,7 @@ const titled = {
 };
 ```
 
-It gives the language, the rest as `meta`, the `title` and `caption`, what `src=` names, the `key=value` pairs and bare flags no convention claims as `props`, and every part as it was written as `parts`.
+It gives the language, the rest as `meta`, the `title` and `caption`, what `src=` names, `run` for a fence that [runs](docs#code-that-runs), the `key=value` pairs and bare flags no convention claims as `props`, and every part as it was written as `parts`.
 
 ### Code from a file
 
@@ -2138,6 +2139,8 @@ A [`pre` replacement](docs#custom-components) wraps the highlighted block. It ge
 | `code` | the text a reader sees, without directive markers, with [live values](docs#live-code) in place |
 | `title`, `caption` | from the [fence meta](docs#fence-meta), when it has them |
 | `src` | the path a fence [takes its code from](docs#code-from-a-file), as written, slice included |
+| `module` | the module of a fence marked [`run`](docs#code-that-runs) |
+| `load` | a function that imports the module of a fence marked [`run=client`](docs#running-on-the-client) |
 | meta props | each part of the meta that no convention claims |
 
 `children` is the `<pre>` itself, not its `<code>`, because Svelte only keeps whitespace inside a `<pre>` it can see. Render it with `{@render children()}` inside your own markup, never inside another `<pre>`. A replaced `pre` gets no `<figure>`, so the title, caption and anything else around the code are up to the component.
@@ -2180,7 +2183,7 @@ Meta that no convention claims becomes props. `key="value"`, `key='value'` and `
 ```
 ````
 
-That fence gives `playground={true}` and `height="300"`, as well as `title`. Expression values, `key={…}`, aren't read. A meta prop named `lang`, `meta`, `code`, `title`, `caption`, `class`, `children` or `src` is dropped with a warning. Meta props, `title` and `caption` don't depend on the highlighter, so a `pre` gets them with `highlight: false` too.
+That fence gives `playground={true}` and `height="300"`, as well as `title`. Expression values, `key={…}`, aren't read. A meta prop named `lang`, `meta`, `code`, `title`, `caption`, `class`, `children`, `src`, `module` or `load` is dropped with a warning. Meta props, `title` and `caption` don't depend on the highlighter, so a `pre` gets them with `highlight: false` too.
 
 See the [code blocks playground example](/playground/code).
 
@@ -2559,6 +2562,143 @@ The flag makes every top-level group in the block live. That suits commands, con
 A [replaced `pre`](docs#code-block-components) gets the code as its `code` prop, with live values in place. The prop is a template literal, such as ``code={`${install_command} @pkg/my-pkg`}``, so a copy button copies what the reader sees.
 
 A [custom highlighter](docs#custom-highlighters) doesn't support live code yet. A fence with the `eval` flag warns and its braces stay text.
+
+## Code that runs
+
+A fence marked `run` is shown as code and is also a module the page imports. The component that [replaces `pre`](docs#code-block-components) gets that module as a prop and decides what running means: render a component, call an export, print a result.
+
+````svx
+```svelte run
+<script>
+	let count = $state(0);
+</script>
+
+<button onclick={() => count++}>clicked {count}</button>
+```
+````
+
+The block is a real module in the Vite graph, not a string that is evaluated. TypeScript is compiled, a Svelte block is compiled by vite-plugin-svelte, and its styles are scoped as in any component. Imports in the block resolve as they would in the document, so `./Button.svelte` is a file beside it, and aliases and `#lib/…` work. The server renders it with the page, and a content security policy has nothing to object to.
+
+A block can't see the document's `<script>`. It is a module of its own, as a file would be, so share values by importing them in both, or let your component pass props to what the block exports.
+
+See the [code that runs playground example](/playground/run).
+
+### A component for `pre`
+
+mdsvex hands over the module and nothing else, so a document with a block that runs needs a `pre` replacement, from a [`components` module](docs#the-components-option) or a [template](docs#replacing-elements-in-a-template). Without one the build fails at the fence.
+
+This one renders a Svelte block as a component and calls the default export of a script block, each above its code:
+
+```svelte
+<!-- src/lib/markdown/Pre.svelte -->
+<script>
+	let { lang, module, load, children } = $props();
+
+	let loaded = $state();
+	const ran = $derived(module ?? loaded);
+	const Demo = $derived(lang === 'svelte' ? ran?.default : undefined);
+	const result = $derived(
+		lang !== 'svelte' && typeof ran?.default === 'function'
+			? ran.default()
+			: undefined
+	);
+</script>
+
+{#if Demo}
+	<div class="demo"><Demo /></div>
+{:else if result !== undefined}
+	<output class="demo">{String(result)}</output>
+{:else if load}
+	<button onclick={async () => (loaded = await load())}>run</button>
+{/if}
+{@render children()}
+```
+
+```js
+// src/lib/markdown.js
+export { default as pre } from './markdown/Pre.svelte';
+```
+
+````svx
+```ts run
+import { format } from './dates';
+
+export default () => format(new Date(2026, 0, 1));
+```
+````
+
+`module` is the namespace of the block, so `module.default` is its default export and its named exports are beside it. A block without the flag gets no `module`, so the same component serves every fence.
+
+Layout around a demo is a job for a [directive](docs#directives): the `pre` inside it renders the demo, and the directive's component puts a frame, a title or tabs around it.
+
+````svx
+:::Example[A counter]
+
+```svelte run
+<button>…</button>
+```
+
+:::
+````
+
+### Languages that run
+
+`js`, `ts`, `jsx`, `tsx` and `svelte` blocks run, as do `javascript` and `typescript`. The language picks the extension of the module, which is how Vite knows what to do with it. `run` on a block in any other language, or on one with no language, fails the build.
+
+### Running on the client
+
+A block that touches `window` when it loads can't render on the server, and a heavy demo below the fold is better fetched late. `run=client` leaves the module out of the page and hands the component a function that imports it:
+
+````svx
+```js run=client
+export default () => window.innerWidth;
+```
+````
+
+The component gets `load` in place of `module`. Call it from an event handler or an effect, and it resolves to the same namespace `module` would hold. The block becomes a chunk of its own in a build.
+
+### Running a file
+
+With [`src=`](docs#code-from-a-file) a block shows a file, and with `run` as well the page imports that file. The component gets `src` and `module` both.
+
+````svx
+```svelte src=./Counter.svelte run
+```
+````
+
+The module is the whole file, also when a slice shows only some of its lines.
+
+### Editing a block
+
+The id of a block's module is a hash of its language and code. In dev, an edit to one block changes only that block's import, so the page updates and every other block keeps the module it has: its top-level code doesn't run again and nothing it fetched is fetched again. Two blocks with the same code share one module.
+
+An error in a block, at build time or in the browser, points at its line of the document.
+
+### When a block can't run
+
+These fail the build, each at the fence:
+
+- no component replaces `pre`;
+- the language is not one that runs;
+- the block is also [live code](docs#live-code), with the `eval` flag or an `[!eval]` marker, since braces mean different things in each;
+- `run=` has a value other than `client`.
+
+### Running with `compile`
+
+`compile()` emits the import, but it has no bundler to serve the module from, so by default a block that runs throws a `RunError`. Say how the block is imported with `snippets`:
+
+```js
+const { code, snippets } = compile(source, {
+	filename: 'guide.md',
+	snippets: true
+});
+```
+
+`true` imports each block as a sibling of `filename`, `./guide.md.snippet-<hash>.<extension>`, the id the Vite plugin uses. A function gets the snippet and returns the specifier. Either way the result has `snippets`, one for each module, with its `hash`, `lang`, `extension`, `code` and the `line` of the document the code starts on, for your bundler's resolve and load hooks to serve. `snippets: false` runs no block: the flag is taken out of the meta and the fence is only shown.
+
+A `RunError` has a `code` (`run_module`, `run_pre`, `run_lang`, `run_eval` or `run_value`) and a `line` and `column`. A block with `src=` imports its file, so it needs no `snippets`.
+
+The editor shows a block that runs as code. It doesn't check the code as a module yet.
 
 ## Migrating from mdsvex 0.x
 

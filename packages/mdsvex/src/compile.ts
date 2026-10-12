@@ -56,8 +56,14 @@ import { image_imports } from './image_imports';
 import type { ImageImports, ImageNeed } from './image_imports';
 import { link_urls, links_of, with_images } from './link_urls';
 import type { LinkOptions, Links, Rewrite } from './link_urls';
-import { fence_sources, source_fences, sources_met } from './fence_sources';
-import type { SourceFences, SourceNeed } from './fence_sources';
+import {
+	fence_sources,
+	pre_error,
+	source_fences,
+	sources_met,
+} from './fence_sources';
+import type { Fenced, SourceFences, SourceNeed } from './fence_sources';
+import type { Snippet, SnippetsOption } from './run_blocks';
 
 export type {
 	DirectiveContext,
@@ -92,6 +98,8 @@ export { heading_slug } from './heading_ids';
 export type { ImageNeed } from './image_imports';
 export { SourceError } from './fence_sources';
 export type { SourceErrorCode, SourceNeed } from './fence_sources';
+export { RunError } from './run_blocks';
+export type { RunErrorCode, Snippet, SnippetsOption } from './run_blocks';
 export type {
 	BaseImport,
 	LinkOptions,
@@ -252,6 +260,23 @@ export interface CompileOptions
 	 * });
 	 */
 	sources?: Readonly<Record<string, string>> | false;
+	/**
+	 * how a fence marked run is imported, the block is a module and compile
+	 * serves none, so without this a block that runs throws a RunError, true
+	 * imports each as a sibling of filename, ./name.snippet-hash.extension,
+	 * a function gives the specifier, either way the snippets of the result
+	 * hold the code to serve, false runs no block, a fence with src= that
+	 * runs imports its file and needs none of this
+	 *
+	 * @example
+	 * const { code, snippets } = compile('```svelte run\n<b>hi</b>\n```', {
+	 *   filename: 'a.md',
+	 *   components: [{ specifier: './md.js', names: ['pre'] }],
+	 *   snippets: true,
+	 * });
+	 * // code imports ./a.md.snippet-0f3c9a1b22.svelte, snippets[0].code is its text
+	 */
+	snippets?: SnippetsOption;
 	/** the document, highlighters, math renderers and their errors see it */
 	filename?: string;
 }
@@ -309,6 +334,8 @@ export interface CompileResult {
 	warnings?: CompileWarning[];
 	/** what plugins left in ctx.data, by plugin name, undefined when none left any */
 	data?: PluginData;
+	/** the code of the fences that run, one per module the document imports, undefined when none runs */
+	snippets?: Snippet[];
 }
 
 export interface CompileV3Result {
@@ -323,6 +350,8 @@ export interface CompileV3Result {
 	warnings?: CompileWarning[];
 	/** what plugins left in ctx.data, by plugin name, undefined when none left any */
 	data?: PluginData;
+	/** the code of the fences that run, one per module the document imports, undefined when none runs */
+	snippets?: Snippet[];
 }
 
 export interface CompileTraceResult {
@@ -339,6 +368,8 @@ export interface CompileTraceResult {
 	warnings?: CompileWarning[];
 	/** what plugins left in ctx.data, by plugin name, undefined when none left any */
 	data?: PluginData;
+	/** the code of the fences that run, one per module the document imports, undefined when none runs */
+	snippets?: Snippet[];
 }
 
 /**
@@ -379,6 +410,8 @@ export interface CompileInputs {
 	 * file, the document then waits in the waiting field of its target
 	 */
 	await_sources: boolean;
+	/** how a fence marked run is imported, false runs none, undefined makes one an error */
+	snippets: SnippetsOption | undefined;
 }
 
 /** @internal every inputs object comes from here, so they share one shape */
@@ -403,6 +436,7 @@ export function compile_inputs(): CompileInputs {
 		links: undefined,
 		sources: undefined,
 		await_sources: false,
+		snippets: undefined,
 	};
 }
 
@@ -431,6 +465,7 @@ function inputs_of(options: CompileOptions): CompileInputs {
 	const rewrite = options.rewrite;
 	const links = options.links;
 	const sources = options.sources;
+	const snippets = options.snippets;
 	// options that set none need no inputs of their own
 	if (
 		bundles === undefined &&
@@ -450,7 +485,8 @@ function inputs_of(options: CompileOptions): CompileInputs {
 		import_images === undefined &&
 		rewrite === undefined &&
 		links === undefined &&
-		sources === undefined
+		sources === undefined &&
+		snippets === undefined
 	)
 		return no_inputs;
 	const inputs = compile_inputs();
@@ -472,6 +508,7 @@ function inputs_of(options: CompileOptions): CompileInputs {
 	if (rewrite !== undefined || links !== undefined)
 		inputs.links = links_of(rewrite, links);
 	inputs.sources = sources;
+	inputs.snippets = snippets;
 	return inputs;
 }
 
@@ -1349,16 +1386,22 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 		);
 	const given = inputs.sources;
 	const shown =
-		given !== false &&
-		(take_info(source, 'src=') ||
+		(given !== false || inputs.snippets !== false) &&
+		(take_info(source, 'src=', 'run') ||
 			inputs.parse_plugins !== undefined ||
 			inputs.directive_handlers !== undefined)
-			? source_fences(nodes, source, inputs.filename)
+			? fences_of(nodes, source, inputs)
 			: null;
 	const fenced =
 		shown === null
 			? null
-			: fence_sources(shown, given as Sources, source, inputs.filename);
+			: fence_sources(
+					shown,
+					given as Sources,
+					source,
+					inputs.filename,
+					inputs.snippets
+				);
 	const renderer = take_renderer();
 	const math = inputs.math;
 	const mathy = math !== undefined && math !== false;
@@ -1388,7 +1431,14 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 		renderer.imports = images.lines;
 		renderer.urls = images.lookup;
 	}
-	if (fenced !== null) renderer.fences = fenced;
+	if (fenced !== null) {
+		try {
+			give_fences(renderer, fenced, inputs.filename, source);
+		} catch (e) {
+			give_renderer(renderer);
+			throw e;
+		}
+	}
 	const smart = inputs.smart_punctuation;
 	if (smart !== undefined) renderer.smart_punctuation = smart;
 
@@ -1414,6 +1464,7 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 			metadata,
 			template,
 		};
+		if (fenced !== null) done.snippets = fenced.snippets;
 		unbind(done, renderer, source);
 		if (host !== null) host.leave(done, false);
 		give_renderer(renderer);
@@ -1428,10 +1479,47 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 		math_run(renderer, math, inputs.filename, source)
 	);
 	const done: CompileResult = { code: renderer.html, metadata, template };
+	if (fenced !== null) done.snippets = fenced.snippets;
 	unbind(done, renderer, source);
 	if (host !== null) host.leave(done, false);
 	give_renderer(renderer);
 	return done;
+}
+
+/** the walk for src= and the run flag, with what the inputs turn off */
+function fences_of(
+	nodes: NodeBuffer,
+	source: string,
+	inputs: CompileInputs
+): SourceFences | null {
+	return source_fences(
+		nodes,
+		source,
+		inputs.filename,
+		inputs.sources !== false,
+		inputs.snippets !== false
+	);
+}
+
+/**
+ * gives a bound renderer the fences of its document and the imports of the
+ * blocks that run, after any the urls brought, a block that runs needs a
+ * component for pre, which only the scope bind left can say
+ */
+function give_fences(
+	renderer: CursorHTMLRenderer,
+	fenced: Fenced,
+	filename: string | undefined,
+	source: string
+): void {
+	if (fenced.runs !== -1 && renderer.scope?.get('pre') === undefined)
+		throw pre_error(filename, source, fenced.runs);
+	renderer.fences = fenced.fences;
+	const lines = fenced.lines;
+	if (lines === undefined) return;
+	const before = renderer.imports;
+	renderer.imports =
+		before === undefined || before.length === 0 ? lines : before.concat(lines);
 }
 
 /** true when handlers of a plugin may run, which keeps a document off a shared session */
@@ -1487,8 +1575,10 @@ export class Parsed {
 	needs: readonly Need[] | undefined = undefined;
 	/** @internal the imports the needs of type image render with */
 	_images: ImageImports | null = null;
-	/** @internal the fences the needs of type source are for */
+	/** @internal the fences the needs of type source are for, and those that run */
 	_sources: SourceFences | null = null;
+	/** the code of the fences that run their own, one per module, undefined when none does */
+	snippets: readonly Snippet[] | undefined = undefined;
 	/** true when the document has inline math, or shows a file and has a math fence, a caller that loads the math renderer late loads it first */
 	math = false;
 	/** @internal the parser noted inline math, so the render starts with a math run */
@@ -1722,8 +1812,8 @@ export class CompilerSession {
 		if (plugged) this.plugin_arena!.host.wait(parsed);
 		if (inputs.import_images === true)
 			this.need_images(parsed, image_imports(nodes, source));
-		if (inputs.sources !== false)
-			this.need_sources(parsed, source_fences(nodes, source, inputs.filename));
+		if (inputs.sources !== false || inputs.snippets !== false)
+			this.need_sources(parsed, fences_of(nodes, source, inputs));
 		return this.lend(parsed, plugged);
 	}
 
@@ -1737,6 +1827,9 @@ export class CompilerSession {
 		if (shown === null) return;
 		parsed._sources = shown;
 		if (shown.math) parsed.math = true;
+		if (shown.snippets !== null) parsed.snippets = shown.snippets;
+		// a document that only runs blocks asks for nothing
+		if (shown.needs.length === 0) return;
 		const needs = parsed.needs;
 		parsed.needs =
 			needs === undefined ? shown.needs : [...needs, ...shown.needs];
@@ -2012,10 +2105,13 @@ export class CompilerSession {
 			if (inputs.import_images === true && (take_src() || plugged))
 				images = image_imports(nodes, source);
 			// the parser notes where the info strings are, only a document with
-			// src= in one is walked
+			// src= or the run flag in one is walked
 			const given = inputs.sources;
-			if (given !== false && (take_info(source, 'src=') || plugged))
-				shown = source_fences(nodes, source, inputs.filename);
+			if (
+				(given !== false || inputs.snippets !== false) &&
+				(take_info(source, 'src=', 'run') || plugged)
+			)
+				shown = fences_of(nodes, source, inputs);
 			if (
 				kind === Kind.PARSE ||
 				(shown !== null &&
@@ -2074,7 +2170,8 @@ export class CompilerSession {
 						shown,
 						inputs.sources as Sources,
 						source,
-						inputs.filename
+						inputs.filename,
+						inputs.snippets
 					);
 		if (out !== undefined) out.metadata = metadata;
 		const template = bind(
@@ -2107,12 +2204,13 @@ export class CompilerSession {
 			renderer.imports = swaps.lines;
 			renderer.urls = swaps.lookup;
 		}
-		if (fenced !== null) renderer.fences = fenced;
 		const smart = inputs.smart_punctuation;
 		if (smart !== undefined) renderer.smart_punctuation = smart;
 		// the session keeps its renderer, a render that throws must not leave
 		// the imports of this document for the next
 		try {
+			if (fenced !== null)
+				give_fences(renderer, fenced, inputs.filename, source);
 			// again only when a math fence rendered as code for want of a run
 			do {
 				switch (kind) {
@@ -2200,9 +2298,13 @@ export class CompilerSession {
 				renderer.imports = undefined;
 				renderer.urls = undefined;
 			}
-			if (fenced !== null) renderer.fences = undefined;
+			if (fenced !== null) {
+				renderer.fences = undefined;
+				renderer.imports = undefined;
+			}
 			if (smart !== undefined) renderer.smart_punctuation = undefined;
 		}
+		if (fenced !== null) done!.snippets = fenced.snippets;
 		// one call site for every kind, each more is another callee to inline
 		unbind(done!, renderer, source);
 		if (host !== null) host.leave(done!, out !== undefined);
@@ -2225,6 +2327,8 @@ export interface TraceTarget extends MapTrace {
 	 * source, see await_sources, nothing else of the target is written then
 	 */
 	waiting?: Parsed;
+	/** the code of the fences that run, set by every compile that has fences to look at */
+	snippets?: Snippet[];
 }
 
 // a session keeps its arena at its largest document size, so large documents
