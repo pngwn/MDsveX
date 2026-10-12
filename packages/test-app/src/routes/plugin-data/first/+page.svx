@@ -1,0 +1,17 @@
+---
+title: The first post
+template: post
+---
+
+The `toc` and `reading_time` plugins of this app write to `ctx.data`. This page
+exports what they left as `plugin_data`, and the `post` template gets it as a
+prop, which is where the list of headings above comes from.
+
+## Reading the export
+
+This page has <span class="words">{plugin_data.reading_time.words}</span> words
+and <span class="headings">{plugin_data.toc.headings.length}</span> headings.
+
+## With `code` in a heading
+
+The entry of a heading holds its text as a reader sees it.

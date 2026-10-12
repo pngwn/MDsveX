@@ -10,4 +10,12 @@ declare global {
 	}
 }
 
+// what the plugins of this app leave in ctx.data, by plugin name
+declare module "mdsvex" {
+	interface PluginData {
+		toc: { headings: { depth: number; text: string; id: string }[] };
+		reading_time: { words: number; minutes: number };
+	}
+}
+
 export {};

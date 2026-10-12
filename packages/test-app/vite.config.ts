@@ -5,6 +5,8 @@ import { anchors } from "@mdsvex/plugin-anchors";
 import { external_links } from "@mdsvex/plugin-external-links";
 import { steps } from "@mdsvex/plugin-steps";
 import { tabs } from "@mdsvex/plugin-tabs";
+import { reading_time } from "./src/lib/plugins/reading_time.js";
+import { toc } from "./src/lib/plugins/toc.js";
 
 export default defineConfig({
 	plugins: [
@@ -21,10 +23,13 @@ export default defineConfig({
 					icon: true,
 					new_tab_label: "opens in a new tab",
 				}),
+				toc(),
+				reading_time(),
 			],
 			templates: {
 				article: "$lib/templates/Article.svelte",
 				guide: "$lib/templates/Guide.svelte",
+				post: "$lib/templates/Post.svelte",
 			},
 		}),
 		sveltekit(),
