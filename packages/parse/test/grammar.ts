@@ -235,7 +235,7 @@ export class Grammar {
 			case 16:
 				return this.with_words(piece('comment', this.int(2)), 2);
 			case 17:
-				return piece('raw_element', this.int(2));
+				return piece('raw_element', this.int(4));
 			case 18:
 			case 19: {
 				const form = this.int(4);
@@ -461,9 +461,13 @@ function block_rows(p: Piece): string[] {
 		case 'comment':
 			return p.form === 1 ? [`<!-- ${a}`, `${b} -->`] : [`<!-- ${a} ${b} -->`];
 		case 'raw_element':
-			return p.form === 1
-				? ['<style>', 'p { color: red; }', '</style>']
-				: ['<script>', 'let v = 1 < 2;', '</script>'];
+			return [
+				['<script>', 'let v = 1 < 2;', '</script>'],
+				['<style>', 'p { color: red; }', '</style>'],
+				// lines that would be blocks in any other element
+				['<pre>', '# one', '', '  - two *x*', '</pre>'],
+				['<textarea>', '> one', '- two', '</textarea>'],
+			][p.form];
 		case 'directive_leaf': {
 			const text = inline_text(p.kids);
 			return [

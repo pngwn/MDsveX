@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { is_raw_text_tag } from '@mdsvex/parse/utils';
 	import type { NodeBuffer } from '@mdsvex/parse/utils';
 	import {
 		buf_children,
@@ -311,7 +312,7 @@
 			)
 		: {}}
 	{@const CustomComponent = components?.[tag]}
-	{@const is_raw_text = tag === 'script' || tag === 'style'}
+	{@const is_raw_text = is_raw_text_tag(tag)}
 	{#if CustomComponent}
 		<CustomComponent {...spread}>
 			{#if !meta?.self_closing}

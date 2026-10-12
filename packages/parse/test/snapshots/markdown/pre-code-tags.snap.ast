@@ -1,11 +1,5 @@
 root
   html tag="pre"
-    line_break
-    html tag="code"
-      line_break
-      text "foobar"
-      line_break
-    line_break
   line_break
   line_break
   paragraph
@@ -13,20 +7,7 @@ root
   line_break
   line_break
   html tag="pre" nhaca="zulu"
-    line_break
-    html tag="code" bla="bla"
-      line_break
-      text "foobar"
-      line_break
-    line_break
   line_break
   line_break
   html tag="pre"
-    line_break
-    html tag="code"
-      line_break
-      html tag="div"
-        text "some html code"
-      line_break
-    line_break
   line_break

@@ -10,9 +10,4 @@ root
   line_break
   line_break
   html tag="pre"
-    html tag="code"
-      line_break
-      html tag="div"
-        text "foo"
-      line_break
   line_break

@@ -35,7 +35,7 @@ import type { ParseOptions, SyntaxOptions } from './types';
 import type { PluginData, PluginDocument, PluginWarning } from './plugin_types';
 
 import type { Emitter } from './opcodes';
-import { NodeKind } from './utils';
+import { NodeKind, is_raw_text_tag } from './utils';
 import { NodeBuffer, ErrorCollector } from './utils';
 import { TreeBuilder } from './tree_builder';
 import { PluginDispatcher, has_directive_handlers } from './plugin_dispatch';
@@ -4147,14 +4147,6 @@ export class PFMParser {
 	}
 
 	/**
-	 * returns true for html "raw text" elements whose content should not be
-	 * parsed - just scanned for the matching close tag.
-	 */
-	private is_raw_text_tag(tag: string): boolean {
-		return tag === 'script' || tag === 'style';
-	}
-
-	/**
 	 * html void elements - never have content or a close tag.
 	 * matches the html living standard set.
 	 */
@@ -4237,6 +4229,7 @@ export class PFMParser {
 			case 'option':
 			case 'p':
 			case 'param':
+			case 'pre':
 			case 'section':
 			case 'source':
 			case 'summary':
@@ -7564,7 +7557,7 @@ export class PFMParser {
 									this.emit_close(html_id, open_tag.end);
 									this.chomp(open_tag.end, true);
 									this.states.pop();
-								} else if (this.is_raw_text_tag(open_tag.tag)) {
+								} else if (is_raw_text_tag(open_tag.tag)) {
 									// inline goes first so raw_text returns to the enclosing block when it closes
 									this.states.pop();
 									this.open_raw_text(open_tag, current_node);
@@ -9918,7 +9911,7 @@ export class PFMParser {
 		const close_end =
 			tag.self_closing || this.is_void_tag(tag.tag)
 				? tag.end
-				: this.is_raw_text_tag(tag.tag)
+				: is_raw_text_tag(tag.tag)
 					? 0
 					: this.closes_on_line(tag.tag, tag.end);
 		if (close_end === -1) {
@@ -9927,7 +9920,7 @@ export class PFMParser {
 		}
 		if (close_end > 0) {
 			this.open_spec_tag(tag, close_end, parent, this.in_phrasing(parent));
-		} else if (this.is_raw_text_tag(tag.tag)) {
+		} else if (is_raw_text_tag(tag.tag)) {
 			this.open_raw_text(tag, parent);
 		} else if (this.inline_past_line(tag)) {
 			this.open_spec_para(parent, this.in_phrasing(parent));
@@ -11933,7 +11926,7 @@ export class PFMParser {
 	 */
 	private tag_fits_row(tag: { tag: string; end: number }, row: number): number {
 		if (row !== -1 && tag.end > row) return 0;
-		if (!this.is_raw_text_tag(tag.tag)) return 1;
+		if (!is_raw_text_tag(tag.tag)) return 1;
 		const base = this.source_base;
 		const close = string_index_of.call(
 			this.source,
