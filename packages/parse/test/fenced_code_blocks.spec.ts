@@ -336,8 +336,9 @@ end`);
 		const { nodes } = parse_markdown_svelte(input);
 
 		expect(nodes.size).toBe(2);
+		// a closing fence holds no text, so the second line is code
 		expect(input.slice(nodes.get_node(1).start, nodes.get_node(1).end)).toBe(
-			'````;\n````'
+			'````;\n````aaa'
 		);
 
 		const node_info = nodes.get_node(1);
@@ -348,8 +349,8 @@ end`);
 		expect(
 			input.slice(node_info.metadata.info_start, node_info.metadata.info_end)
 		).toBe(`;`);
-		expect(input.slice(node_info.value[0], node_info.value[1])).toBe(``);
-		expect(node_info.value).toEqual([6, 5]);
+		expect(input.slice(node_info.value[0], node_info.value[1])).toBe('````aaa');
+		expect(node_info.value).toEqual([6, 13]);
 	});
 
 	test("pfm example 145 i don't know", () => {

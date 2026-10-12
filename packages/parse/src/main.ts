@@ -8583,6 +8583,21 @@ export class PFMParser {
 		return true;
 	}
 
+	/**
+	 * the end of a closing fence line whose backticks end at p, only spaces and tabs may follow them
+	 * -1 when the line holds more, which makes it code, -2 while a feed has not shown the line end
+	 */
+	private fence_close_end(p: number): number {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		let ch = char_code_at.call(source, p - base);
+		while (ch === SPACE || ch === TAB)
+			ch = char_code_at.call(source, ++p - base);
+		if (p >= length) return this.finished ? length : -2;
+		return ch === LINEFEED ? p : -1;
+	}
+
 	private fence_whole(parent: number): boolean {
 		const source = this.source;
 		const base = this.source_base;
@@ -8628,7 +8643,7 @@ export class PFMParser {
 			if (lp === bt) {
 				while (lp < length && char_code_at.call(source, lp - base) === BACKTICK)
 					lp++;
-				if (lp - bt >= fence_len) {
+				if (lp - bt >= fence_len && this.fence_close_end(lp) >= 0) {
 					found_index = bt;
 					break;
 				}
@@ -8748,8 +8763,8 @@ export class PFMParser {
 			if (lf === -1 && !this.finished) {
 				return this.fence_stall(line, text);
 			}
-			if (p - run >= fence_len) {
-				// the rest of the closing line is skipped, its lf stays for the frames
+			if (p - run >= fence_len && this.fence_close_end(p) >= 0) {
+				// the lf of the closing line stays for the frames
 				value_end = line - 1;
 				end = p;
 				next = lf === -1 ? length : lf + base;
@@ -8886,8 +8901,16 @@ export class PFMParser {
 				while (lp < length && char_code_at.call(source, lp - base) === BACKTICK)
 					lp++;
 				if (lp - bt >= fence_len) {
-					found_index = bt;
-					break;
+					const close = this.fence_close_end(lp);
+					if (close >= 0) {
+						found_index = bt;
+						break;
+					}
+					if (close === -2) {
+						// the run is whole and its line is not, no chunk may be skipped until it is
+						this.fence_scan = line;
+						return true;
+					}
 				}
 			}
 			const nl = string_index_of.call(source, '\n', lp - base);

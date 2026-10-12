@@ -145,12 +145,6 @@ const KNOWN: Known[] = [
 		example: { site: 'table_cell', source: '<b>`<b>`</b>' },
 	},
 	{
-		issue: 1063,
-		what: 'text after a closing fence on its line is lost',
-		edited: ['content', /\n[> ]*`{3,}[ \t]*[^\s`]/],
-		example: { site: 'root', source: '```\na\n``` q000\n' },
-	},
-	{
 		issue: 1061,
 		what: 'an open tag or a comment at the end of a table row reads into the next line, which is then lost',
 		edited: ['content', /<\w+\n>|<!--\n/],
@@ -180,7 +174,7 @@ const KNOWN: Known[] = [
 	{
 		issue: 1072,
 		what: 'a repeated attribute on a tag keeps the last value and loses the first',
-		edited: ['content', /\s(\w+)=\S*\s+\1=/],
+		edited: ['content', /\s([^\s=<>]+)=\S*\s+\1=/],
 		example: { site: 'root', source: '<img alt=q000 alt="">\n' },
 	},
 ];
