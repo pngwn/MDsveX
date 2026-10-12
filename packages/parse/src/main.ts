@@ -10199,26 +10199,54 @@ export class PFMParser {
 	}
 
 	/**
-	 * revokes the elements left open between this state and the svelte branch they opened in
-	 * each is the text of its open tag, false when another container sits between them
+	 * ends what is left open between this state and the svelte branch it opened in
+	 * an element is revoked to the text of its open tag, a container directive closes
+	 * false when a block quote or a list item sits between them
 	 */
-	private revoke_branch_elements(): boolean {
+	private end_branch_containers(): boolean {
 		const states = this.states;
 		let s = states.length - 1;
-		while (s >= 0 && states[s] === StateKind.html_block_element) s--;
+		while (
+			s >= 0 &&
+			(states[s] === StateKind.html_block_element ||
+				states[s] === StateKind.directive_container)
+		)
+			s--;
 		if (s < 0 || states[s] !== StateKind.svelte_branch) return false;
 		const tags = this.html_tag_stack;
+		let stale = false;
 		for (let i = states.length - 1; i > s; i--) {
 			const id = this.node_stack.pop()!;
+			if (states.pop() === StateKind.directive_container) {
+				// a directive closes after what it holds is revoked
+				if (stale) this.revoke_stale_pending(false);
+				stale = false;
+				this.emit_close(id, this.cursor);
+				this.directive_colon_counts.pop();
+				continue;
+			}
 			let t = tags.length - 1;
 			while (t >= 0 && tags[t].id !== id) t--;
 			if (t !== -1) tags.length = t;
 			this.html_block_depth--;
-			states.pop();
+			stale = true;
 		}
 		// off the node stack they are stale, the sweep revokes what they hold first
-		this.revoke_stale_pending(false);
+		if (stale) this.revoke_stale_pending(false);
 		return true;
+	}
+
+	/**
+	 * a branch or close token at the cursor ends the container directive it is read in
+	 * when the token is for a svelte block around the directive
+	 * @returns 1 when it ended, 0 when it did not, -1 while the token is not all here
+	 */
+	private branch_token_ends(): number {
+		if (!this.finished && this.probe_matching_brace(this.cursor + 1) === -1)
+			return -1;
+		const token = this.try_parse_svelte_block_token(this.cursor);
+		if (token === null || token.kind === '#') return 0;
+		return this.end_branch_containers() ? 1 : 0;
 	}
 
 	/**
@@ -10438,7 +10466,7 @@ export class PFMParser {
 				return false;
 			}
 			// a branch or close token is for a block around this element, which never closed
-			if (token && this.svelte_block_depth > 0 && this.revoke_branch_elements())
+			if (token && this.svelte_block_depth > 0 && this.end_branch_containers())
 				return false;
 		}
 
@@ -11765,6 +11793,10 @@ export class PFMParser {
 				if (code === OPEN_ANGLE_BRACKET && this.html_tag_stack.length !== 0) {
 					const closed = this.close_outer_tag();
 					if (closed !== 0) return closed === -1;
+				}
+				if (code === OPEN_BRACE && this.svelte_block_depth > 0) {
+					const ended = this.branch_token_ends();
+					if (ended !== 0) return ended === -1;
 				}
 				if (code === PLUS || (code >= 48 && code <= 57)) {
 					// stall only while the marker prefix is still being read

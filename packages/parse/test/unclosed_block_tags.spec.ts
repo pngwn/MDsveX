@@ -11,6 +11,7 @@ import {
 	joined_tree,
 	lines,
 	pick,
+	problems,
 	random,
 	sound_tree,
 	misplaced_text,
@@ -528,6 +529,168 @@ describe('a tag left open in a svelte block', () => {
 					}
 				};
 				walk(0);
+			}
+		}
+	}, 30_000);
+});
+
+describe('a container directive left open in a svelte block', () => {
+	const block = (...rows: string[]) =>
+		lines(
+			'root',
+			'  svelte_block tag="if"',
+			'    svelte_branch tag="if" "x"',
+			...rows.map((row) => `      ${row}`)
+		);
+	const after = [
+		'  line_break',
+		'  line_break',
+		'  paragraph',
+		'    text "after"',
+		'  line_break',
+	];
+	const held = [
+		'line_break',
+		'directive_container name="y"',
+		'  paragraph',
+		'    text "a"',
+		'  line_break',
+	];
+
+	it('ends where the block closes', () => {
+		expect(every_path('{#if x}\n:::y[]\na\n{/if}\n\nafter\n')).toBe(
+			lines(block(...held), ...after)
+		);
+		expect(every_path('{#if x}\n:::y\na\n{/if}\n\nafter\n')).toBe(
+			lines(block(...held), ...after)
+		);
+	});
+
+	it('ends at the next branch', () => {
+		expect(every_path('{#if x}\n:::y[]\na\n{:else}\nb\n{/if}\n')).toBe(
+			lines(
+				block(...held),
+				'    svelte_branch tag="else"',
+				'      line_break',
+				'      paragraph',
+				'        text "b"',
+				'      line_break',
+				'  line_break'
+			)
+		);
+	});
+
+	it('with a second directive left open inside it', () => {
+		expect(every_path('{#if x}\n::::y[]\n:::z[]\na\n{/if}\n\nafter\n')).toBe(
+			lines(
+				block(
+					'line_break',
+					'directive_container name="y"',
+					'  directive_container name="z"',
+					'    paragraph',
+					'      text "a"',
+					'    line_break'
+				),
+				...after
+			)
+		);
+	});
+
+	it('in an element left open, which is text', () => {
+		expect(every_path('{#if x}\n<n>\n:::y[]\na\n{/if}\n\nafter\n')).toBe(
+			lines(block('line_break', 'paragraph', '  text "<n>"', ...held), ...after)
+		);
+	});
+
+	it('an expression in the directive is still an expression', () => {
+		expect(every_path('{#if x}\n:::y[]\n{a}\n:::\n{/if}\n')).toBe(
+			lines(
+				block(
+					'line_break',
+					'directive_container name="y"',
+					'  paragraph',
+					'    mustache "a"',
+					'  line_break'
+				),
+				'  line_break'
+			)
+		);
+	});
+
+	it('a directive that closes in the branch is not touched', () => {
+		expect(every_path('{#if x}\n:::y[]\na\n:::\n{/if}\n\nafter\n')).toBe(
+			lines(block(...held), ...after)
+		);
+	});
+
+	it('a close token with no block around the directive is an expression', () => {
+		expect(every_path(':::y[]\na\n{/if}\n:::\n')).toBe(
+			lines(
+				'root',
+				'  directive_container name="y"',
+				'    paragraph',
+				'      text "a"',
+				'      soft_break',
+				'      mustache "/if"',
+				'    line_break'
+			)
+		);
+	});
+
+	it('in a quoted block, the directive ends at the quoted close', () => {
+		expect(every_path('{#if x}\n> :::y[]\n> a\n{/if}\n\nafter\n')).toBe(
+			lines(
+				block(
+					'line_break',
+					'block_quote',
+					'  directive_container name="y"',
+					'    paragraph',
+					'      text "a"',
+					'line_break'
+				),
+				...after
+			)
+		);
+	});
+
+	it('at the end of the input', () => {
+		expect(every_path('{#if x}\n:::y[]\na\n')).toBe(block(...held));
+	});
+
+	it('random blocks close past the directives left open in them', () => {
+		const rand = random(999);
+		const rows = [
+			':::y[]',
+			':::y',
+			'::::z[]',
+			':::',
+			'<n>',
+			'<div>',
+			'</n>',
+			'a',
+			'b *c*',
+			'# h',
+			'- i',
+			'{a}',
+			'',
+		];
+		for (let i = 0; i < 600; i++) {
+			let inner = '';
+			const count = 1 + Math.floor(rand() * 5);
+			for (let k = 0; k < count; k++) inner += `${pick(rand, rows)}\n`;
+			const close = pick(rand, ['{/if}', '{/if}', '{:else}\nz\n{/if}']);
+			const source = `{#if x}\n${inner}${close}\n\nafter\n`;
+			const label = JSON.stringify(source);
+			expect(fed_mismatch(source), label).toBe('');
+			expect(problems(source, 0), label).toEqual([]);
+			expect(problems(source, 1), label).toEqual([]);
+			for (const [name, nodes] of every_tree(source)) {
+				const root = nodes.get_node(0).children.map((c) => nodes.get_node(c));
+				const blocks = root.filter((node) => node.kind !== 'line_break');
+				expect(
+					blocks.map((node) => node.kind),
+					`${label} ${name}`
+				).toEqual(['svelte_block', 'paragraph']);
 			}
 		}
 	}, 30_000);
