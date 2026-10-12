@@ -1,5 +1,5 @@
 root
   paragraph
-    link href="\\(foo\\)"
+    link href="(foo)"
       text "link"
   line_break

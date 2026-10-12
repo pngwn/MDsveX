@@ -238,6 +238,22 @@ function append_flat(head: string, tail: string): string {
 	return joined;
 }
 
+const LINK_ESCAPE = /\\([!-/:-@[-`{-~])/g;
+
+function link_escape(_: string, char: string): string {
+	// a bare brace in a destination or a title is an expression and a bare ampersand may start a reference
+	if (char === '{') return '&#123;';
+	if (char === '}') return '&#125;';
+	return char === '&' ? '&amp;' : char;
+}
+
+/** a link destination or title without the backslashes of its escapes */
+function unescape_link(value: string): string {
+	return string_index_of.call(value, '\\') === -1
+		? value
+		: value.replace(LINK_ESCAPE, link_escape);
+}
+
 // what the states take a nul at the cursor for, a char with no meaning to any of them
 const NUL_TEXT = 0xfffd;
 
@@ -6148,7 +6164,12 @@ export class PFMParser {
 		if (normalized) {
 			let refs = this.ref_map;
 			if (refs === NO_REFS) refs = this.ref_map = new Map();
-			if (!refs.has(normalized)) refs.set(normalized, { url, title });
+			if (!refs.has(normalized)) {
+				refs.set(normalized, {
+					url: unescape_link(url),
+					title: unescape_link(title),
+				});
+			}
 		}
 
 		return p;
@@ -9511,10 +9532,8 @@ export class PFMParser {
 					p++; // skip )
 					// success - set attrs and close
 					const n_id = current_node;
-					const url = string_slice.call(
-						source,
-						url_start - base,
-						url_end - base
+					const url = unescape_link(
+						string_slice.call(source, url_start - base, url_end - base)
 					);
 					const is_image = this.kind_of(n_id) === NodeKind.image;
 					this.out.attr(n_id, is_image ? 'src' : 'href', url);
@@ -9522,7 +9541,9 @@ export class PFMParser {
 						this.out.attr(
 							n_id,
 							'title',
-							string_slice.call(source, title_start - base, title_end - base)
+							unescape_link(
+								string_slice.call(source, title_start - base, title_end - base)
+							)
 						);
 					}
 					this.out.set_value_end(n_id, this.cursor);
