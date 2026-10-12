@@ -157,7 +157,7 @@ export class Grammar {
 			}
 			case 27:
 			case 28: {
-				const form = this.int(3);
+				const form = this.int(ctx.lines ? 4 : 3);
 				return holder('html_inline', form, 2);
 			}
 			case 29:
@@ -386,6 +386,7 @@ function inline_one(p: Piece): string {
 		case 'html_inline':
 			if (p.form === 1) return `<span class="${a}">${inner()}</span>`;
 			if (p.form === 2) return `<Badge value={${a}}>${inner()}</Badge>`;
+			if (p.form === 3) return `<span\nclass="${a}">${inner()}</span>`;
 			return `<b>${inner()}</b>`;
 		case 'html_void':
 			return ['<br />', `<Badge value="${a}" />`, `<img alt="${a}">`][p.form];
