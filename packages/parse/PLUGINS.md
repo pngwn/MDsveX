@@ -146,7 +146,7 @@ link: {
 - **`text_content` reads it**, on the node and on everything that holds it.
 - **It is revoked like any node a handler made.** When the node whose handler added it is revoked, the text goes.
 
-No handler runs for a text node, the parser's or a plugin's.
+No node handler runs for a text node, the parser's or a plugin's. Text has a handler of its own shape, see [Text Handlers](#text-handlers).
 
 ### Removing a node
 
@@ -488,6 +488,84 @@ Sequential plugins run their own pass after the main fused pass completes. In st
 
 Fused is the fast path. Sequential is the escape hatch for plugins that genuinely need it — ToC generators, cross-reference resolvers, things that depend on having seen the whole document.
 
+## Text Handlers
+
+A sequential plugin can take the text of the document, to replace part of it or to put nodes in its place:
+
+```js
+const emoji = {
+  name: 'emoji',
+  sequential: true,
+  text(run, ctx) {
+    for (const match of run.text.matchAll(/:([a-z0-9_+-]+):/g)) {
+      const to = table[match[1]];
+      if (to === undefined) continue;
+      run.replace(match.index, match.index + match[0].length, 'text', to);
+    }
+  }
+};
+```
+
+The handler is a function on the plugin, not a `{ parse }` entry. It gets a run, not a node view, and returns nothing.
+
+### Runs
+
+A run is the text of the text nodes that sit next to each other under one parent, joined into one string.
+
+- **It is the same on every path.** The batch builder holds `10:30:00` as three text nodes, since the parser starts a new one at each character it stops to look at, and the wire builder holds one. Both give the handler `10:30:00`. Text a revoke left behind is part of the run it landed in: `*a :tada:` is one run that starts with the star.
+- **It stays on its line.** A line end is a node, so the two lines of a paragraph are two runs.
+- **It is as written.** `run.text` holds `&amp;` for a reference, as `text_content` does.
+- **`run.parent`** is the view of the node that holds the run. Walk up from it to ask where the text is.
+- **A run belongs to its document,** like a view. Used after it, it throws.
+
+### `run.replace`
+
+```js
+run.replace(start, end, 'text', 'some text');
+run.replace(start, end, type, attrs);
+```
+
+It puts a new node in place of `run.text.slice(start, end)` and returns its view. After the range it takes what `append` takes: the text of a text node, the attrs of any other.
+
+```js
+// #12 becomes a link
+const link = run.replace(start, end, 'link', { href: '/issues/12' });
+link.append('text', '#12');
+```
+
+- **`start` and `end` index `run.text` as the handler got it,** after any number of replacements and in any order. So the offsets of a `matchAll` can be used as they come.
+- **An empty range puts the node in at that point** and replaces nothing. A second node at the same point goes after the first.
+- **Ranges do not overlap.** A range that takes part of one already replaced, or that holds a node put in at a point, throws a `RangeError`. So does a range outside the run. A `start` or `end` that is not a whole number throws a `TypeError`.
+- **Replacement text is a plugin's text,** as with [`append('text', ...)`](#adding-text): a renderer escapes every character of it, so `{` and `&amp;` come out as typed.
+- **The text around it stays the author's.** It is still read from the source, so a reference in it is a reference, smart punctuation applies to it, and it maps as it did.
+- **The new node spans the source it replaced.** Its `position` is `undefined`, as for any node a plugin made, but a mapped render maps it to that range.
+
+### What a text handler is not given
+
+Most of what must not be rewritten is not text in the tree: code spans, fences, math, comments, expressions, the value of an attribute, the url and title of a link or an image, and the content of `script`, `style`, `pre` and `textarea`. A handler for `code_span` or `code_fence` sees code, a text handler never does.
+
+Four more things are held back from a text handler unless its plugin sets `all_text: true`:
+
+```js
+const plugin = { sequential: true, all_text: true, text(run) {} };
+```
+
+- **A character the author escaped.** It is left out of every run, so `\:tada:` gives the run `tada:`. Nothing matches across it and nothing replaces it. Over the wire the client is told which characters these are, see `T` in `WIRE_FORMAT.md`.
+- **The text of a link that is its url,** as an autolink `<https://a.b>` is.
+- **The alt text of an image.**
+- **Text inside an element that holds code:** `code`, `kbd`, `samp`, `var` and `tt`.
+
+### When it runs
+
+In the sequential pass of its plugin, when the tree is complete. Text is whole only then: an emphasis that never closes is revoked after its paragraph closed, and its text joins the text of the paragraph.
+
+- **Only a sequential plugin has a text handler.** A `text` function on any other plugin throws a `TypeError` when the plugin is registered, and so does a `text` that is not a function, or a `text` key in a table of bound handlers.
+- **Nothing is undone.** No revoke follows the pass.
+- **While a document streams, text is as written.** The handler runs when the stream ends.
+- **The other handlers of the plugin run in the same pass.** They are not called for a node its text handler made. A plugin later in the list sees those nodes.
+- **Each plugin sees the text the ones before it left.** Text an earlier plugin wrote is part of a later one's runs, and the label of a link it made is a run of its own. A plugin that makes links from urls goes ahead of one that rewrites text, so the url is held back from the second.
+- **A fused handler reads the text as written,** since it ran during the parse.
+
 ## Handlers Bound to a Directive
 
 A plugin above is global: its `heading` handler runs for every heading in the document, and one that only cares about headings inside `:::steps` has to check the parent itself. A handler can be bound to a directive name instead. It is then called only for nodes inside a directive of that name.
@@ -521,7 +599,7 @@ An entry can hold three keys. Any other key is ignored, so a layer above can kee
 | `descendants` | the same, for nodes at any depth inside it |
 | `parse` | a handler for the directive itself |
 
-A handler is a function, not a `{ parse }` object. Like a plugin handler it may return a function, which runs when the node closes. A key that is not a node type throws when the tables are first used, and so does `text`: neither builder dispatches text nodes. The one key of `children` that is no node type is `'*'`, see [A child of any type](#a-child-of-any-type).
+A handler is a function, not a `{ parse }` object. Like a plugin handler it may return a function, which runs when the node closes. A key that is not a node type throws when the tables are first used, and so does `text`: text goes to the [text handler](#text-handlers) of a sequential plugin. The one key of `children` that is no node type is `'*'`, see [A child of any type](#a-child-of-any-type).
 
 `directive_handlers` is an array of tables. When two tables have an entry for the same name the later one replaces the earlier one whole. The tables are read once per array, so pass the same array for every document and build a new one to change a handler.
 
@@ -664,6 +742,7 @@ Multiple plugins on the same node type are composed into a single function at re
 - Inject synthetic children via `wrap_inner`/`prepend`/`append` on any reachable node, text nodes with their text included
 - Group a node and the siblings after it under a synthetic parent via `wrap_from`
 - Remove a node that closed for good, from its close callback or a sequential pass, via `remove`
+- Replace a range of text with text or with a node, from the text handler of a sequential plugin, via `run.replace`
 - Register close callbacks via return value
 - Capture state in closures between open and close
 
@@ -672,6 +751,7 @@ Multiple plugins on the same node type are composed into a single function at re
 - Reparent existing nodes across unrelated parts of the tree (`wrap_from` puts later siblings under the wrapper as they arrive and never moves one that came before)
 - Remove a node that may still be revoked, or one outside the node whose handler is running (see [Removing a node](#removing-a-node))
 - Modify the parser itself or affect how tokens become nodes
+- Rewrite text from a fused handler, or rewrite code, an attribute value or raw text from a text handler (see [Text Handlers](#text-handlers))
 - Do work outside their registered node types — if a plugin only has a `heading` entry, it never sees other node types. The one handler for any type is `children['*']` of a directive, for the nodes written directly inside it
 
 **Guarantees:**
@@ -715,6 +795,8 @@ For each mutation, the builder records enough information to reverse it:
 Only the tree is restored. What a plugin keeps in its own variables is not, so a plugin that remembers "the wrapper I opened last" from a `table_cell` or `code_span` handler may hold a wrapper that no longer exists. Calling `close()` on it does nothing.
 
 **`remove`.** A removal is not captured, because it is only allowed where it cannot need undoing, see [Removing a node](#removing-a-node).
+
+**`run.replace`.** Not captured either. A text handler only runs in a sequential pass, see [Text Handlers](#when-it-runs).
 
 **Bound handler state.** A write to `ctx.state` and the `index` a bound handler used are logged the same way, see [Handlers Bound to a Directive](#revocation).
 

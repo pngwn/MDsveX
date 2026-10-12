@@ -37,7 +37,17 @@ export interface TextSource {
 	get_string(index: number): string | undefined;
 	/** the line and column of an offset, only a source that has offsets has it */
 	point?(offset: number): Point;
+	/**
+	 * where in the text of a text node the characters the author escaped
+	 * are, in order, null for none
+	 */
+	escapes(buf: NodeBuffer, index: number): readonly number[] | null;
+	/** a text node was cut in two at an offset of its text, tail took the rest */
+	split?(index: number, at: number, tail: number): void;
 }
+
+/** an escape opens its text node at the escaped character */
+const FIRST_ESCAPED: readonly number[] = [0];
 
 /** treebuilder text source: slices from the source string. */
 export class SourceTextSource implements TextSource {
@@ -52,6 +62,17 @@ export class SourceTextSource implements TextSource {
 	}
 	get_string(_index: number): string | undefined {
 		return undefined;
+	}
+	escapes(buf: NodeBuffer, index: number): readonly number[] | null {
+		// a stored string is a repair or the text of a plugin, neither is escaped
+		if (buf._strings[index] !== undefined) return null;
+		const start = buf.value_start_at(index);
+		const end = buf.value_end_at(index);
+		if (start === NONE || end === NONE || end <= start) return null;
+		const source = this.source;
+		let at = start;
+		while (at > 0 && source.charCodeAt(at - 1) === 92) at--;
+		return ((start - at) & 1) === 1 ? FIRST_ESCAPED : null;
 	}
 	/** update source for incremental parsing. */
 	set_source(source: string): void {
@@ -85,6 +106,8 @@ export class SourceTextSource implements TextSource {
 /** wiretreebuilder text source: reads from _strings array. */
 export class WireTextSource implements TextSource {
 	private strings: (string | undefined)[];
+	/** by text node, the offsets the wire flagged as escaped, null until the first */
+	private escaped: Map<number, number[]> | null = null;
 	constructor(strings: (string | undefined)[]) {
 		this.strings = strings;
 	}
@@ -93,6 +116,36 @@ export class WireTextSource implements TextSource {
 	}
 	get_string(index: number): string | undefined {
 		return this.strings[index];
+	}
+	escapes(_buf: NodeBuffer, index: number): readonly number[] | null {
+		const escaped = this.escaped;
+		return escaped === null ? null : (escaped.get(index) ?? null);
+	}
+	/** the wire sent text that starts at an escaped character, it landed at this offset of a text node */
+	escape(index: number, at: number): void {
+		let escaped = this.escaped;
+		if (escaped === null) escaped = this.escaped = new Map();
+		const list = escaped.get(index);
+		if (list === undefined) escaped.set(index, [at]);
+		else list.push(at);
+	}
+	/** the text of a node was cleared */
+	forget(index: number): void {
+		if (this.escaped !== null) this.escaped.delete(index);
+	}
+	split(index: number, at: number, tail: number): void {
+		const escaped = this.escaped;
+		if (escaped === null) return;
+		const list = escaped.get(index);
+		if (list === undefined) return;
+		let keep = 0;
+		while (keep < list.length && list[keep] < at) keep++;
+		if (keep === list.length) return;
+		const moved: number[] = [];
+		for (let i = keep; i < list.length; i++) moved.push(list[i] - at);
+		escaped.set(tail, moved);
+		if (keep === 0) escaped.delete(index);
+		else list.length = keep;
 	}
 }
 
@@ -145,7 +198,7 @@ function check_args(kind: NodeKind, args: unknown): void {
  * what prepend and append take after the type, the text of a text node, the
  * attrs of any other, a text node with no text throws, as does text for another type
  */
-function content_of(
+export function content_of(
 	kind: NodeKind,
 	type: string,
 	given: Record<string, any> | string | undefined

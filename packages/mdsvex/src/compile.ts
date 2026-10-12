@@ -75,6 +75,13 @@ export type {
 	SyntaxOptions,
 	WrapperView,
 } from '@mdsvex/parse';
+/**
+ * a run of text as the text handler of a sequential plugin gets it
+ *
+ * @example
+ * text(run) { run.replace(0, 6, 'text', 'party') }
+ */
+export type TextRun = Parameters<NonNullable<ParsePlugin['text']>>[0];
 export type { Mapping, MappingData, SourceMapV3, MapTrace };
 export type { ComponentSource };
 export type { FrontmatterOptions };
