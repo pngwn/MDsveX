@@ -17,6 +17,8 @@ A markdown variant for mdsvex. Uses CommonMark as baseline. Goals: remove ambigu
 
 ### Changes from CommonMark
 
+**Characters**, A NUL character (U+0000) in the source is ordinary text. It means nothing to the parser and is kept as written. CommonMark replaces it with U+FFFD, which would mean reading the whole source once more before every parse to look for one.
+
 **Indentation**, Indented code blocks removed. Fenced code blocks only. Indentation is now insignificant.
 
 **Link references**, Shorthand references must be explicit. `[ref]` alone is ambiguous (is it a link or plain text?). Required form:

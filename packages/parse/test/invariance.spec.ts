@@ -1,5 +1,5 @@
 import { writeFileSync } from 'node:fs';
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { describe, expect, test } from 'vitest';
 
 import {
 	CONTAINERS,
@@ -15,12 +15,11 @@ import type { Container, Level, Piece, Seen } from './grammar';
 import {
 	broken_by,
 	cell_mismatch,
+	container_broken,
 	container_mismatch,
-	guard_trips,
 	is_tight,
 	placed,
 	shrink,
-	watch_guard,
 } from './invariance';
 import type { Invariant, Rule, Site } from './invariance';
 
@@ -202,18 +201,15 @@ type Check = (blocks: Piece[], only?: Invariant) => Map<Invariant, string>;
 /** the container invariant, and the invariants of a file on the document inside the container */
 function check_container(site: Container, blocks: Piece[], only?: Invariant) {
 	const rows = rows_of(blocks);
-	const before = guard_trips();
 	const found =
 		only === undefined || only === 'container'
-			? container_mismatch(site, rows, is_tight(blocks), RULES)
-			: '';
+			? container_broken(site, rows, is_tight(blocks), RULES)
+			: null;
 	const out =
 		only === 'container'
 			? new Map<Invariant, string>()
 			: broken_by(`${contained(site, rows).join('\n')}\n`, only);
-	if (found !== '') out.set('container', found);
-	if (guard_trips() !== before)
-		out.set('guard', 'the loop guard stopped the parse');
+	if (found !== null) out.set(found[0], found[1]);
 	return out;
 }
 
@@ -265,12 +261,6 @@ function subjects(seed: number): Subject[] {
 	});
 	return out;
 }
-
-let unwatch: () => void;
-beforeAll(() => {
-	unwatch = watch_guard();
-});
-afterAll(() => unwatch());
 
 /** the known failure an edited source shows, read off the smallest source that still fails */
 function known_edit(

@@ -66,3 +66,14 @@ describe("compile with \\r line endings", () => {
 		);
 	});
 });
+
+describe("compile with a nul character", () => {
+	test.each(["# a\0b\n\npara\n", "a\0b\r\n\r\npara\r\n", "`a\0b` and {x}\n"])(
+		"keeps it as text and the rest of the document: %j",
+		(raw) => {
+			const { code } = compile(raw);
+			expect(code).toBe(compile(raw.replaceAll("\0", "N")).code.replace("aNb", "a\0b"));
+			expect(code).toContain("a\0b");
+		},
+	);
+});

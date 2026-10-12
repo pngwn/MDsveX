@@ -238,6 +238,9 @@ function append_flat(head: string, tail: string): string {
 	return joined;
 }
 
+// what the states take a nul at the cursor for, a char with no meaning to any of them
+const NUL_TEXT = 0xfffd;
+
 /**
  * normalize line endings to `\n`. per commonmark 2.1, a line ending is
  * `\n`, `\r`, or `\r\n`. the state machine only recognizes `\n`, so we
@@ -815,6 +818,20 @@ interface ColdState {
 	spec_names: string[] | null;
 	// pending_html when the tag paragraph opened, more at its close are elements in it that never closed
 	spec_html: number;
+}
+
+/** the parser stopped moving through its input, which is a bug in the parser and never the fault of a document */
+export class ParseStallError extends Error {
+	/** where it stopped, an offset into the normalized source */
+	readonly offset: number;
+
+	constructor(offset: number) {
+		super(
+			`the parser stopped at offset ${offset} without reading on, please report this with the document`
+		);
+		this.name = 'ParseStallError';
+		this.offset = offset;
+	}
 }
 
 /**
@@ -6483,14 +6500,15 @@ export class PFMParser {
 			const active = this.states[this.states.length - 1];
 			// keeps the builtin call in bounds so turbofan never deopts it, a cursor behind source_base reads nan too
 			const code_at = this.cursor - base;
-			const code =
+			const read =
 				code_at >>> 0 < window_len ? char_code_at.call(source, code_at) : NaN;
+			// 0 is no char to a state, a nul in the source is text like any other
+			const code = read === 0 ? NUL_TEXT : read;
 
 			const current_node = this.node_stack[this.node_stack.length - 1];
 
 			if ((++iter_count & 63) === 0 && this.stalled()) {
-				console.error('Infinite loop detected');
-				break;
+				throw new ParseStallError(this.cursor);
 			}
 
 			switch (active) {
@@ -8511,9 +8529,6 @@ export class PFMParser {
 		if (nl_rel === -1) return false;
 		const info_end = nl_rel + base;
 		if (info_end + 1 >= length) return false;
-		for (let q = p0; q < info_end; q++) {
-			if (char_code_at.call(source, q - base) === 0) return false;
-		}
 		const out = this.out;
 		const cf_id = this.emit_open(NodeKind.code_fence, start, parent);
 		this.node_stack.push(cf_id);
@@ -8582,9 +8597,6 @@ export class PFMParser {
 		if (nl_rel === -1) return false;
 		const info_end = nl_rel + base;
 		if (info_end + 1 >= length) return false;
-		for (let q = p0; q < info_end; q++) {
-			if (char_code_at.call(source, q - base) === 0) return false;
-		}
 
 		const out = this.out;
 		const cf_id = this.emit_open(NodeKind.code_fence, start, parent);
