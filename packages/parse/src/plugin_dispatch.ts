@@ -745,6 +745,9 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	/** the node whose handler or close callback is running */
 	private running = NONE;
 
+	/** a directive whose open handlers wait for its name, the parser sends it next */
+	private held = NONE;
+
 	/** the tree is complete, a wrapper has no later children to take */
 	private sequential_pass = false;
 
@@ -954,6 +957,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	/** a close needs no dispatch */
 	quiet(): boolean {
 		return (
+			this.held === NONE &&
 			this.close_cbs.live === 0 &&
 			this.links === 0 &&
 			this.undo.empty &&
@@ -967,7 +971,12 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	 * callback or a wrapper that waits on a child can sit anywhere
 	 */
 	plain_from(): number {
-		if (this.close_cbs.live !== 0 || this.close_with !== null) return PAST_END;
+		if (
+			this.close_cbs.live !== 0 ||
+			this.close_with !== null ||
+			this.held !== NONE
+		)
+			return PAST_END;
 		let from = this.floor;
 		const scope = this.scope;
 		// scopes nest, so the innermost has the highest directive
@@ -984,6 +993,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	plain_close(buf_idx: number): boolean {
 		const scope = this.scope;
 		return (
+			this.held === NONE &&
 			this.close_cbs.live === 0 &&
 			(this.links === 0 || this.slot(buf_idx) === 0) &&
 			this.close_with === null &&
@@ -1315,10 +1325,39 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	}
 
 	/**
-	 * dispatch fused plugin handlers on node open.
-	 * creates a ViewCache, runs handlers, stores close callbacks.
+	 * true when the name of a directive starts something, the handlers bound
+	 * to it or the open handlers that waited for it
+	 */
+	wants_name(): boolean {
+		return this.binds || this.held !== NONE;
+	}
+
+	/**
+	 * dispatch fused plugin handlers on node open, those of a directive wait
+	 * for its name, which the parser sends before anything else of the node
 	 */
 	dispatch_open(buf_idx: number, kind: NodeKind, buf: NodeBuffer): void {
+		if (this.held !== NONE) this.unhold(buf);
+		if (
+			kind === NodeKind.directive_container ||
+			kind === NodeKind.directive_leaf ||
+			kind === NodeKind.directive_inline
+		) {
+			this.held = buf_idx;
+			return;
+		}
+		this.run_open(buf_idx, kind, buf);
+	}
+
+	/** the open handlers of a directive that got no name run without one */
+	private unhold(buf: NodeBuffer): void {
+		const held = this.held;
+		this.held = NONE;
+		this.run_open(held, buf.kind_at(held), buf);
+	}
+
+	/** runs handlers, stores close callbacks */
+	private run_open(buf_idx: number, kind: NodeKind, buf: NodeBuffer): void {
 		const cache = this.views(buf);
 		const view = cache.get(buf_idx)!;
 
@@ -1472,11 +1511,16 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	}
 
 	/**
-	 * the name of a directive arrived, after its open handlers ran, a container
-	 * with children or descendants handlers opens a scope and the parse handler
-	 * of the name runs for any directive
+	 * the name of a directive arrived, its open handlers run now and read it, a
+	 * container with children or descendants handlers then opens a scope and
+	 * the parse handler of the name runs for any directive
 	 */
 	dispatch_name(buf_idx: number, name: unknown, buf: NodeBuffer): void {
+		const held = this.held;
+		if (held !== NONE) {
+			this.held = NONE;
+			this.run_open(held, buf.kind_at(held), buf);
+		}
 		const bound = this.bound;
 		if (bound === null || typeof name !== 'string') return;
 		const entry = bound.get(name);
@@ -1577,6 +1621,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	 * follows, or a paragraph, which a commit or a revoke settles later
 	 */
 	dispatch_close(buf_idx: number, buf: NodeBuffer, hold = false): void {
+		if (this.held !== NONE) this.unhold(buf);
 		// take and fire close callbacks with undo attribution
 		const cbs = this.close_cbs.take(buf_idx);
 		// callbacks cannot change the pending flag
@@ -1628,6 +1673,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	 * must be called BEFORE handle_repair().
 	 */
 	dispatch_revoke(buf_idx: number, buf: NodeBuffer): void {
+		if (this.held !== NONE) this.unhold(buf);
 		// nothing recorded, so nothing to undo
 		if (
 			this.links === 0 &&
@@ -1659,6 +1705,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	 * each sequential plugin gets its own tree walk.
 	 */
 	run_sequential(buf: NodeBuffer): void {
+		if (this.held !== NONE) this.unhold(buf);
 		if (this.sequential.length === 0) return;
 		this.sequential_pass = true;
 		for (const pass of this.sequential) {
@@ -1758,6 +1805,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		this.close_with = null;
 		// a throw in a handler leaves these set
 		this.running = NONE;
+		this.held = NONE;
 		this.sequential_pass = false;
 		// a document that ended whole closed every scope
 		if (this.scope !== null) {

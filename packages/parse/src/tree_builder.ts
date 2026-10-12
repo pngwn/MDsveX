@@ -435,10 +435,10 @@ export class TreeBuilder implements Emitter {
 		}
 	}
 
-	/** only a directive gets a name, the handlers bound to it start here */
+	/** only a directive gets a name, its open handlers and the handlers bound to it start here */
 	private named(idx: number, name: unknown): void {
 		const dispatcher = this.dispatcher!;
-		if (!dispatcher.binds) return;
+		if (!dispatcher.wants_name()) return;
 		const nodes = this.nodes;
 		const size = nodes._size;
 		dispatcher.dispatch_name(idx, name, nodes);

@@ -295,9 +295,9 @@ export class WireTreeBuilder {
 			this.buf.set_metadata(idx, make_meta(key, value));
 		}
 
-		// only a directive gets a name, the handlers bound to it start here
+		// only a directive gets a name, its open handlers and the handlers bound to it start here
 		const dispatcher = this.dispatcher;
-		if (dispatcher !== null && key === 'name' && dispatcher.binds) {
+		if (dispatcher !== null && key === 'name' && dispatcher.wants_name()) {
 			dispatcher.dispatch_name(idx, value, this.buf);
 		}
 	}

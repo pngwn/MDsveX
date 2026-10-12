@@ -284,6 +284,20 @@ The `parse` function fires when the builder encounters a node's open opcode. At 
 
 This is the window for structural mutations. `wrap_inner` works because the children haven't been emitted downstream yet — the builder can inject the synthetic node's open opcode immediately, and subsequent children stream through it naturally.
 
+**A directive has its name by then.** The parser sends the name of a directive straight after its open, ahead of its label and its content, so the open handlers of a `directive_container`, `directive_leaf` or `directive_inline` node wait for it:
+
+```js
+directive_container: {
+  parse(node) {
+    if (node.attrs.name === 'note') node.wrap_inner('html', { tag: 'aside' });
+  }
+}
+```
+
+- **A block directive has its `args` too**, as the parser sends them ahead of the name. The `(key=val)` list of an inline directive follows its closing bracket, so its open handlers see no args and its close callback sees them.
+- **Nothing else changes for the node.** It has no children yet, and it is placed [as any handled node is](#where-a-node-is-placed), after its handlers ran.
+- **With an emitter of your own**, a directive that is sent no name runs its open handlers without one, before the next node opens or anything closes.
+
 ### Where a Node Is Placed
 
 A parent can have an open wrapper that takes its later children, from `wrap_inner` or `wrap_from`. A node whose type has a handler is placed in three steps:
@@ -462,6 +476,19 @@ A nested directive of the same name is a new scope with a new `state` and its ow
 
 For one node, the innermost open directive goes first: its `children` handler when the node is a child, then its `descendants` handler, then the `descendants` handlers of each directive further out. Global plugins run after all of them, so a global `heading` handler sees the wrapper a bound handler made. Close callbacks fire in the same order.
 
+A handler for a directive kind reads the name of the directive it is given, so one container can tell its child directives apart:
+
+```js
+tabs: {
+  children: {
+    directive_container(node, ctx) {
+      // a written out :::tab ends the tab a heading opened
+      if (node.attrs.name === 'tab') ctx.state.tab?.close();
+    }
+  }
+}
+```
+
 ### The directive's own `parse`
 
 `parse(directive, ctx)` runs once for each directive of the name, of any of the three forms, and the function it returns runs when the directive closes. `ctx.index` is 0 and `ctx.directive` is the node itself.
@@ -482,7 +509,7 @@ tabs: {
 }
 ```
 
-- **It runs when the name is known**, which is after the directive's open. A global `directive_container` handler has already run by then, without a name to read. The close callback of `parse` runs ahead of the callbacks those handlers left.
+- **It runs when the name is known**, straight after the open handlers of the directive, which [wait for the name](#open-time-execution) as well. So the handlers of the directives around it and the global ones go first, and `parse` sees what they did. Its close callback runs ahead of the callbacks they left.
 - **A block directive has its args by then.** The parser emits `args` and then `name`, and the scope starts at the name.
 - **An inline directive does not.** Its `(key=val)` list follows the closing bracket, so `parse` sees no args and its close callback sees them.
 - **`node.parent` is the parent in the tree**, such as an open wrapper, since the node was placed before its name arrived.
