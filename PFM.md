@@ -46,6 +46,8 @@ A definition may sit in any container. In a block quote or a list item it is wri
 
 A label cannot start with `^`. `[^note]: text` is how a footnote definition is written, so the line is never a link reference definition and stays text.
 
+**Link destinations and titles**, A backslash escape works in a link destination and a link title as it does in text, in an inline link, an image and a definition: `[a](/u\)b "t \" u")` links to `/u)b` with the title `t " u`. An escaped brace is a literal brace there, where a bare one is a Svelte expression (`[a](/docs/{slug})`).
+
 **Headings**, Only ATX style (`#` prefix). Setext style (`===`/ `---` underlines) removed. Trailing `#` characters are treated as heading text, not syntax.
 
 **Lists**, Non-sequential numbers supported (`11.`, `27.` etc.). Tight vs. loose is determined locally and per-list: no blank lines between items = tight (no `<p>` wrappers), all items separated by blank lines = loose (with `<p>` wrappers). Mixed blank lines are treated as loose. No cascade behaviour, a blank line in one list never affects another.
