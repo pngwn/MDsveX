@@ -485,10 +485,15 @@ export class TreeBuilder implements Emitter {
 			// a plugin took the node out of the tree, there is nothing to repair
 			if (nodes.parent_at(idx) === NONE) return;
 			const kind = nodes.kind_at(idx);
+			const lifted = this.dispatcher.lifted(idx, nodes);
 			nodes.handle_repair(idx, source_text, text_start);
 			if (nodes.kind_at(idx) !== kind) this.dispatcher.log_kind(idx, kind);
 			// a block repair pushes the text of the open tag
 			if (nodes._size !== size) this.pushed();
+			if (lifted !== null) {
+				this.dispatcher.dispatch_lifted(lifted, nodes);
+				this.refresh(this.dispatcher);
+			}
 			return;
 		}
 
