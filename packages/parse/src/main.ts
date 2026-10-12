@@ -1003,9 +1003,8 @@ export class PFMParser {
 	// the node whose children decide it, the paragraph or with unwrap_images a link right under it
 	private spec_watch: number = -1;
 	private spec_text: boolean = false;
-	private spec_block: boolean = false;
-	// a block level element right under the paragraph, a block once it has closed
-	private spec_block_id: number = -1;
+	// the block level element the paragraph opened at, the paragraph ends where it closes
+	private spec_block: number = -1;
 	// where a text child starts while it may still be only spaces, or -1
 	private spec_gap: number = -1;
 	// in a phrasing element, the wrapper always goes
@@ -1805,6 +1804,7 @@ export class PFMParser {
 		this.spec_watch = -1;
 		this.spec_link = -1;
 		this.spec_image = -1;
+		this.spec_block = -1;
 		this.svelte_block_depth = 0;
 		this.svelte_block_tag = '';
 		this.svelte_branch_id = 0;
@@ -4734,8 +4734,7 @@ export class PFMParser {
 		// nothing in a phrasing element decides, its wrapper always goes
 		this.spec_watch = never ? -1 : id;
 		this.spec_text = false;
-		this.spec_block = false;
-		this.spec_block_id = -1;
+		this.spec_block = -1;
 		this.spec_gap = -1;
 		this.spec_never = never;
 		this.spec_link = -1;
@@ -4817,13 +4816,6 @@ export class PFMParser {
 		if (!closed) this.spec_text = true;
 	}
 
-	/** a block level element opens right under the tag paragraph, it makes the paragraph one that keeps no wrapper once it has closed */
-	private spec_block_child(id: number, leaf: boolean): void {
-		const open = this.spec_block_id;
-		if (leaf || (open !== -1 && this.is_closed(open))) this.spec_block = true;
-		else this.spec_block_id = id;
-	}
-
 	/** 1 for an image at pos or a link that opens at one, 0 for neither, -1 when a feed has to wait */
 	private image_start(pos: number): number {
 		const source = this.source;
@@ -4866,23 +4858,17 @@ export class PFMParser {
 	): void {
 		const leaf = tag.self_closing || this.is_void_tag(tag.tag);
 		const ends = this.line_ends_block(close_end);
-		// unknown until asked, the answer is a long switch
-		let block = -1;
 		// an element that may not close at close_end may yet be literal text
-		let sure = leaf;
-		if (!leaf) {
-			if (!ends) block = this.is_block_html_tag(tag.tag) ? 1 : 0;
-			// a block level one that is not alone decides its paragraph when it closes, wherever that is
-			if (block !== 1) sure = this.sure_to_close(tag.end, close_end);
-		}
+		const sure = leaf || this.sure_to_close(tag.end, close_end);
+		// a block level element is a block wherever its line goes on, asked last as the answer is a long switch
+		let block = !ends && !never && this.is_block_html_tag(tag.tag);
 		// a paragraph of just this element keeps no wrapper, so it gets none, literal text needs one to hold it
-		const alone = sure && ends;
+		const alone = sure && (ends || block);
 		let para = parent;
 		if (!alone) {
 			this.open_spec_para(parent, never);
 			para = this.spec_para;
-			// a block level element cannot sit in a <p>
-			if (block === -1) block = this.is_block_html_tag(tag.tag) ? 1 : 0;
+			if (ends && !never) block = this.is_block_html_tag(tag.tag);
 		}
 		if (leaf) {
 			const html_id = this.emit_open(NodeKind.html, this.cursor, para);
@@ -4890,7 +4876,6 @@ export class PFMParser {
 			if (tag.has_attrs) this.tag_attributes(html_id, tag);
 			this.out.attr(html_id, 'self_closing', true);
 			this.emit_close(html_id, tag.end);
-			if (!alone && block === 1) this.spec_block_child(html_id, true);
 			this.chomp(tag.end, true);
 			return;
 		}
@@ -4898,11 +4883,24 @@ export class PFMParser {
 		const html_id = this.emit_open_pending(NodeKind.html, this.cursor, para);
 		this.out.attr(html_id, 'tag', tag.tag);
 		if (tag.has_attrs) this.tag_attributes(html_id, tag);
-		if (!alone && block === 1) this.spec_block_child(html_id, false);
+		// the paragraph is there in case the element never closes, and ends with it when it does
+		if (!alone && block) this.spec_block = html_id;
 		this.html_tag_stack.push({ id: html_id, tag: tag.tag });
 		this.node_stack.push(html_id);
 		this.states.push(StateKind.html_element);
 		this.chomp(tag.end, true);
+	}
+
+	/**
+	 * the block level element a tag paragraph opened at has closed at end, so it is a block
+	 * the paragraph that held it in case it stayed literal text goes, and what follows on the line starts a line
+	 */
+	private end_block_para(end: number): void {
+		const para = this.spec_para;
+		this.spec_never = true;
+		this.emit_close(para, end);
+		this.states.pop();
+		this.node_stack.pop();
 	}
 
 	/**
@@ -4946,14 +4944,12 @@ export class PFMParser {
 		this.spec_watch = -1;
 		this.spec_link = -1;
 		this.spec_image = -1;
+		this.spec_block = -1;
 		let drop = this.spec_never;
 		if (!drop) {
 			if (this.spec_gap !== -1) this.spec_gap_end(end);
 			// what is still pending in it never closed, and is the literal text that opened it
-			const text =
-				this.spec_text || this.pending_count > this.cold.spec_pending;
-			const open = this.spec_block_id;
-			drop = !text || this.spec_block || (open !== -1 && this.is_closed(open));
+			drop = !this.spec_text && this.pending_count <= this.cold.spec_pending;
 		}
 		if (this.spec_item && !drop) {
 			// tight or loose decides it from here, as for any list paragraph
@@ -7400,6 +7396,8 @@ export class PFMParser {
 									const opener = this.html_tag_stack.pop()!;
 									this.close_html_inline(opener.id, close.end);
 									this.chomp(close.end, true);
+									if (opener.id === this.spec_block)
+										this.end_block_para(close.end);
 									continue;
 								}
 								// no matching opener - treat as text
@@ -7428,11 +7426,6 @@ export class PFMParser {
 										this.tag_attributes(html_id, open_tag);
 									this.out.attr(html_id, 'self_closing', true);
 									this.emit_close(html_id, open_tag.end);
-									if (
-										current_node === this.spec_para &&
-										this.is_block_html_tag(open_tag.tag)
-									)
-										this.spec_block_child(html_id, true);
 									this.chomp(open_tag.end, true);
 									this.states.pop();
 								} else if (this.is_raw_text_tag(open_tag.tag)) {
@@ -7448,11 +7441,6 @@ export class PFMParser {
 									this.out.attr(html_id, 'tag', open_tag.tag);
 									if (open_tag.has_attrs)
 										this.tag_attributes(html_id, open_tag);
-									if (
-										current_node === this.spec_para &&
-										this.is_block_html_tag(open_tag.tag)
-									)
-										this.spec_block_child(html_id, false);
 									this.html_tag_stack.push({ id: html_id, tag: open_tag.tag });
 									this.node_stack.push(html_id);
 									this.states.push(StateKind.html_element);
@@ -9624,6 +9612,7 @@ export class PFMParser {
 					if (this.states[this.states.length - 1] === StateKind.inline) {
 						this.states.pop();
 					}
+					if (current_node === this.spec_block) this.end_block_para(close.end);
 					return false;
 				}
 			}

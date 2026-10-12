@@ -93,7 +93,7 @@ describe('html block closing containers opened inside it', () => {
 	test('inline element followed by a stray angle bracket', () => {
 		expect(root_shape('<p>- </p><\n')).toEqual([
 			['html', 'text:- '],
-			'text:<',
+			['paragraph', 'text:<'],
 			'line_break',
 		]);
 	});
