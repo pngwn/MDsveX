@@ -735,6 +735,18 @@ importers:
         specifier: ^0.3.4
         version: 0.3.4
 
+  plugins/page-data:
+    devDependencies:
+      mdsvex:
+        specifier: workspace:^
+        version: link:../../packages/mdsvex
+      npm-run-all2:
+        specifier: ^7.0.2
+        version: 7.0.2
+      shx:
+        specifier: ^0.3.4
+        version: 0.3.4
+
   plugins/steps:
     devDependencies:
       '@sveltejs/package':
