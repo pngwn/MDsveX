@@ -443,14 +443,16 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		else compiler.render_into(parsed, inputs, doc);
 		doc.raw = code;
 		if (doc.warnings !== undefined) {
-			for (const w of doc.warnings) {
-				if (w.code === 'unknown_language') {
-					const key = clean_id(id) + '\0' + w.message;
-					if (unknown_warned.has(key)) continue;
-					unknown_warned.add(key);
+			// a document that met math without its renderer renders again and warns then
+			if (!math_needed)
+				for (const w of doc.warnings) {
+					if (w.code === 'unknown_language') {
+						const key = clean_id(id) + '\0' + w.message;
+						if (unknown_warned.has(key)) continue;
+						unknown_warned.add(key);
+					}
+					ctx.warn(w.message, w.start);
 				}
-				ctx.warn(w.message, w.start);
-			}
 			doc.warnings = undefined;
 		}
 
