@@ -44,6 +44,8 @@ import { has_code, plugin_highlight } from './plugin_highlight';
 import { check_math, manifest_math } from './plugin_math';
 import { metadata_query } from './metadata_query';
 import type { MetadataDev } from './metadata_query';
+import { links_of } from './link_urls';
+import type { BaseImport, Rewrite } from './link_urls';
 
 export * from './compile';
 export {
@@ -144,7 +146,53 @@ export interface MdsvexOptions extends SyntaxOptions, HeadingOptions {
 	 * ![a diagram](./diagram.png?url)
 	 */
 	import_images?: boolean;
+	/**
+	 * called for the url of every markdown link and of every markdown image
+	 * that is not imported, after links.routes and before links.base, a string
+	 * replaces the url and nothing keeps it, a url with a svelte expression is
+	 * never offered, nor is the href or src of an element typed as html
+	 *
+	 * @example
+	 * rewrite: (url, { type }) => (type === 'link' && url.startsWith('/') ? url + '/' : undefined)
+	 */
+	rewrite?: Rewrite;
+	/**
+	 * turns relative links to documents into routes and puts the base path in
+	 * front of root urls, without a function
+	 *
+	 * @example
+	 * links: { routes: 'src/routes', base: { import: 'resolve', from: '$app/paths' } }
+	 */
+	links?: PluginLinkOptions;
 }
+
+export interface PluginLinkOptions {
+	/**
+	 * the directory whose files are served by path, relative to the vite root,
+	 * a relative link to a document in it becomes the route of that document,
+	 * the extension goes, as do a last index or +page and any (group), the
+	 * query and fragment stay, the extensions option says which files are documents
+	 *
+	 * @example
+	 * // in src/routes/guide/+page.svx, [setup](../setup/+page.svx#install) links to /setup#install
+	 * links: { routes: 'src/routes' }
+	 */
+	routes?: string;
+	/**
+	 * goes in front of every url that starts with one slash, of links and of
+	 * images, true is the base of vite, a string is a fixed prefix,
+	 * { import, from } names a function that adds it where the page renders
+	 *
+	 * @example
+	 * links: { base: true }
+	 * @example
+	 * links: { base: { import: 'resolve', from: '$app/paths' } }
+	 */
+	base?: true | string | BaseImport;
+}
+
+const ABSOLUTE = /^(?:[\\/]|[a-zA-Z]:[\\/])/;
+const ROOTED = /^(?:\/|[a-zA-Z][a-zA-Z0-9+.-]*:)/;
 
 export interface PluginHighlightOptions extends Omit<
 	HighlightOptions,
@@ -243,6 +291,35 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	)
 		throw new Error('[mdsvex] import_images must be true or false');
 	inputs.import_images = options.import_images !== false;
+	const written_links = options.links;
+	if (
+		written_links !== undefined &&
+		(typeof written_links !== 'object' || written_links === null)
+	)
+		throw new Error('[mdsvex] links must be an object');
+	/** routes is read from the vite root and base: true is the base of vite */
+	function set_links(root: string, base: string): void {
+		const routes = written_links?.routes;
+		const based = written_links?.base;
+		inputs.links = links_of(
+			options.rewrite,
+			written_links === undefined
+				? undefined
+				: {
+						routes:
+							typeof routes !== 'string' ||
+							routes === '' ||
+							ABSOLUTE.test(routes)
+								? routes
+								: root + '/' + routes,
+						extensions,
+						// a relative base says nothing about where the site is served
+						base: based === true ? (ROOTED.test(base) ? base : '') : based,
+					}
+		);
+	}
+	// throws here for an option of the wrong type, not at the first document
+	set_links('', '');
 
 	const written_highlight = options.highlight;
 	if (
@@ -512,6 +589,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				plugins?.set_root(config.root);
 				command = config.command;
 				root = config.root;
+				set_links(config.root, config.base);
 				log = (message) => config.logger.warn('[mdsvex] ' + message);
 				manifest.set_root(config.root);
 				manifest.schedule();

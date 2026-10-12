@@ -209,6 +209,14 @@ interface MdsvexOptions {
 	math?: MathOptions | MathRenderer | false;
 	unwrap_images?: boolean;
 	import_images?: boolean;
+	rewrite?: (
+		url: string,
+		ctx: { filename?: string; type: 'link' | 'image'; written: string }
+	) => string | null | undefined | void;
+	links?: {
+		routes?: string;
+		base?: true | string | { import: string; from: string };
+	};
 	heading_ids?:
 		| boolean
 		| { slug?: (text: string, heading: { depth: number }) => string };
@@ -517,6 +525,108 @@ mdsvex({ import_images: false });
 ```
 
 `compile()` takes the option too. It is off there by default, because the import only means something to a bundler that takes image files. The editor compiles without it, so a replaced `img` always sees a string `src` there.
+
+### `links`
+
+```ts
+links: {
+	routes?: string;
+	base?: true | string | { import: string; from: string };
+}
+```
+
+Turns the links you write between documents into the urls your site serves, with no function to write. Both keys are off until you set them.
+
+`routes` is the directory whose files are served by their path, relative to the Vite root. A relative link to a document in it becomes that document's route, so a link works on GitHub and in an editor as well as on the site.
+
+```js
+mdsvex({ links: { routes: 'src/routes' } });
+```
+
+```svx
+<!-- src/routes/guide/+page.svx -->
+[Install](../setup/+page.svx#install) and then read [the rest](./advanced/+page.svx).
+```
+
+```html
+<p><a href="/setup#install">Install</a> and then read <a href="/guide/advanced">the rest</a>.</p>
+```
+
+How a file becomes a route:
+
+| link, from `src/routes/guide/+page.svx` | route |
+| --- | --- |
+| `./other.svx`, `other.svx` | `/guide/other`, the extension goes |
+| `../setup/+page.svx` | `/setup`, a last `+page` or `index` goes |
+| `../+page.svx`, `../index.svx` | `/` |
+| `../(marketing)/pricing/+page.svx` | `/pricing`, a `(group)` goes |
+| `./other.svx?tab=a#x` | `/guide/other?tab=a#x`, the query and the fragment stay |
+| `../[slug]/+page.svx` | left as written, nothing says which page it is |
+| `../../lib/notes.svx` | left as written, the file is outside `routes` |
+| `./chart.png`, `./data.json` | left as written, only a file with one of your [`extensions`](docs#extensions) is a document |
+
+`base` goes in front of every url that starts with one `/`, for links and for images, and after `routes` has made its routes. It takes one of three things:
+
+```js
+// the base of your vite config
+mdsvex({ links: { base: true } });
+// a prefix of your own
+mdsvex({ links: { base: '/docs' } });
+// a function the page calls where it renders, such as resolve from SvelteKit
+mdsvex({ links: { base: { import: 'resolve', from: '$app/paths' } } });
+```
+
+```svx
+[Guide](/guide) ![Logo](/logo.png)
+```
+
+```svelte
+<!-- base: '/docs' -->
+<p><a href="/docs/guide">Guide</a> <img src="/docs/logo.png" alt="Logo" /></p>
+
+<!-- base: { import: 'resolve', from: '$app/paths' } -->
+<script>
+	import { resolve as __mdsvex_base } from '$app/paths';
+</script>
+
+<p><a href={__mdsvex_base('/guide')}>Guide</a> <img src={__mdsvex_base('/logo.png')} alt="Logo" /></p>
+```
+
+Use the function form in SvelteKit, where the base is only known when the page renders. Any module works: the export is called with the url and returns the url to use. `import: 'default'` names a default export. A document with no root url imports nothing. `base: true` does nothing when Vite's base is relative or `/`.
+
+Neither key touches a url with a scheme (`https:`, `mailto:`), a `//host` url, a `#fragment` or `?query` alone, or a url with a Svelte expression such as `/posts/{slug}`. Only markdown links and images are changed. An `<a href>` or `<img src>` you type as HTML stays as written, and so does an image that [`import_images`](docs#import_images) imports.
+
+`compile()` takes `links` too. There `routes` is compared with `filename` as written, so give both as absolute paths or both relative to one directory, `extensions` inside `links` says which files are documents (`.md` and `.svx` by default), and `base: true` is an error since there is no Vite config to read.
+
+### `rewrite`
+
+```ts
+rewrite: (
+	url: string,
+	ctx: { filename?: string; type: 'link' | 'image'; written: string }
+) => string | null | undefined | void;
+```
+
+A function for whatever [`links`](docs#links) does not cover. It is called for the url of every markdown link and of every markdown image that is not imported. A string replaces the url, and returning nothing keeps it.
+
+```js
+mdsvex({
+	rewrite(url, { type }) {
+		// [the repo](gh:pngwn/MDsveX)
+		if (url.startsWith('gh:')) return 'https://github.com/' + url.slice(3);
+		// a trailing slash on every internal link
+		if (type === 'link' && /^\/(?!\/)[^?#]*[^/?#]$/.test(url)) return url + '/';
+	}
+});
+```
+
+`ctx.filename` is the document, `ctx.type` says whether the url is the `href` of a link or the `src` of an image, and `ctx.written` is the url as the document has it.
+
+It runs after `links.routes` and before `links.base`. So `url` is already a route for a link to a document, and a root url you return still gets the base. It sees external urls and `#fragment` links too, since some sites rewrite those, so return nothing for a url you do not mean to change. It never sees a url with a Svelte expression, an empty url, or the `href` or `src` of an element typed as HTML. Returning `''` leaves the attribute out.
+
+The url is the text of the document, with character references such as `&amp;` not decoded. What you return is written the same way, so returning `url` changes nothing. It is called once for each different url in a document, and it must be synchronous.
+
+`compile()` takes the option too.
 
 ### `heading_ids`
 
@@ -1972,6 +2082,7 @@ To also convert CommonMark documents to mdsvex's markdown, use `migrate`, which 
 | `rehype-slug` | [`heading_ids: true`](docs#heading_ids) |
 | `rehype-autolink-headings` | [`@mdsvex/plugin-anchors`](docs#anchors) |
 | `mdsvex-relative-images` | built in, see [`import_images`](docs#import_images) |
+| `remark-link-rewrite`, `rehype-urls`, `remark-prepend-url` | [`rewrite`](docs#rewrite), or [`links`](docs#links) for routes and the base path |
 | `![alt](./a.png)` served from the page's url | imported from beside the document, write `/a.png` for a file in `static`, or set [`import_images: false`](docs#import_images) |
 
 The migrator handles the `layout` rows and flags `<slot />` and `layoutPropForwarding`. The other rows are yours to change.

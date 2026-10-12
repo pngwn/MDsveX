@@ -64,6 +64,14 @@ function reference(
 	return String.fromCodePoint(code);
 }
 
+/** a url with its character references decoded, null when it has a named one this module has no value for */
+export function decoded_references(url: string): string | null {
+	if (url.indexOf('&') === -1) return url;
+	unknown_reference = false;
+	const s = url.replace(REFERENCE, reference);
+	return unknown_reference ? null : s;
+}
+
 /**
  * the import specifier of an image url, null for one that stays as written
  *
@@ -80,12 +88,8 @@ export function image_specifier(url: string): string | null {
 	if (first === 47 || first === 63) return null;
 	if (first === 35 && !SUBPATH.test(url)) return null;
 	if (SCHEME.test(url)) return null;
-	let s = url;
-	if (s.indexOf('&') !== -1) {
-		unknown_reference = false;
-		s = s.replace(REFERENCE, reference);
-		if (unknown_reference) return null;
-	}
+	const s = decoded_references(url);
+	if (s === null) return null;
 	// the query and fragment go to vite as written, the path names a file
 	let end = s.length;
 	const subpath = first === 35;
@@ -131,7 +135,7 @@ function escaped(ch: string): string {
 	}
 }
 
-function js_string(s: string): string {
+export function js_string(s: string): string {
 	return "'" + s.replace(ESCAPED, escaped) + "'";
 }
 
