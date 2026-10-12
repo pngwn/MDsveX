@@ -80,6 +80,11 @@ export interface MdsvexManifest {
 	/** true when heading_ids is on in any form, a manifest without it means off */
 	heading_ids?: boolean;
 	/**
+	 * true when a plugin could leave data, which a document then exports as
+	 * plugin_data, a manifest without it means none can
+	 */
+	plugin_data?: boolean;
+	/**
 	 * how math fences render, false leaves them code blocks, custom is a
 	 * renderer function, a manifest without it means temml with no options
 	 */

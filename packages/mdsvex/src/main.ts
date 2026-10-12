@@ -531,6 +531,8 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			}
 			// a slug function can not be written, an editor slugs as the default does
 			if (inputs.heading_ids !== undefined) out.heading_ids = true;
+			// handlers do not run in an editor, which declares the export they may add
+			if (can_plug) out.plugin_data = true;
 			// left out for temml without options, the default
 			const math = manifest_math(written_math);
 			if (math !== undefined) out.math = math;

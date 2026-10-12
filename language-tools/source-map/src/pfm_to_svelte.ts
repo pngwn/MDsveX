@@ -84,6 +84,11 @@ export interface PfmToSvelteOptions {
 	report_directives?: boolean;
 	/** a custom frontmatter parser runs at build, so built in parse failures are not reported */
 	lenient_frontmatter?: boolean;
+	/**
+	 * the handlers of a plugin run at build and may leave data, which the
+	 * document then exports, so the export is declared
+	 */
+	declare_plugin_data?: boolean;
 }
 
 export interface PfmToSvelteResult {
@@ -326,6 +331,33 @@ function compile_leniently(
 }
 
 const METADATA_EXPORT = 'export const metadata = ';
+const PLUGIN_DATA_EXPORT = 'export const plugin_data = ';
+// typed by what plugins add to the interface, the editor can not work the value out
+const PLUGIN_DATA_DECLARATION =
+	"export declare const plugin_data: import('mdsvex').PluginData;\n";
+const MODULE_SCRIPT = /<script\b[^>]*\bmodule\b[^>]*>/;
+
+/** declares the plugin_data export in the module script of code, which gets one when it has none */
+function declare_plugin_data(
+	code: string,
+	metadata_at: number
+): Edit<MappingData> {
+	if (metadata_at >= 0)
+		return {
+			start: metadata_at,
+			end: metadata_at,
+			text: PLUGIN_DATA_DECLARATION,
+		};
+	const own = MODULE_SCRIPT.exec(code);
+	if (own === null)
+		return {
+			start: 0,
+			end: 0,
+			text: '<script module>\n' + PLUGIN_DATA_DECLARATION + '</script>',
+		};
+	const at = own.index + own[0].length;
+	return { start: at, end: at, text: '\n' + PLUGIN_DATA_DECLARATION };
+}
 const IMPORT_LINE = /^import (.+) from '(mdsvex:[^']*)';$/gm;
 const NAMED = /^\{ (.*) \}$/;
 const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
@@ -755,6 +787,12 @@ export function pfmToSvelte(
 			});
 		}
 	}
+
+	if (
+		options.declare_plugin_data === true &&
+		original.indexOf(PLUGIN_DATA_EXPORT) < 0
+	)
+		edits.push(declare_plugin_data(original, exported));
 
 	const imported = rewrite_imports(original, options.resolve, edits);
 

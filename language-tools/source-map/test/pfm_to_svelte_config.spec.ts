@@ -445,3 +445,43 @@ describe("template_value_at", () => {
 		expect(value(source.length)).toBeNull();
 	});
 });
+
+describe("the plugin_data export", () => {
+	const DECLARATION =
+		"export declare const plugin_data: import('mdsvex').PluginData;\n";
+	const declared: PfmToSvelteOptions = { declare_plugin_data: true };
+
+	it("is declared ahead of the metadata export", () => {
+		const source = "---\ntitle: x\n---\n\n{plugin_data.toc}\n";
+		const r = pfmToSvelte(source, declared);
+		expect(r.code).toContain(
+			"<script module>\n" + DECLARATION + "export const metadata = {",
+		);
+		valid(source, r);
+	});
+
+	it("goes into the module script the document wrote", () => {
+		const source =
+			'<script module lang="ts">\n\texport const a = 1;\n</script>\n\n# One\n';
+		const r = pfmToSvelte(source, declared);
+		expect(r.code).toContain(
+			'<script module lang="ts">\n' + DECLARATION + "\n\texport const a = 1;",
+		);
+		valid(source, r);
+	});
+
+	it("gets a module script in a document with none", () => {
+		const source = "# One\n\n{plugin_data.toc}\n";
+		const r = pfmToSvelte(source, declared);
+		expect(r.code.startsWith("<script module>\n" + DECLARATION + "</script>")).toBe(
+			true,
+		);
+		valid(source, r);
+		const heading = r.mappings.find((m) => src_of(source, m) === "One");
+		expect(heading && gen_of(r.code, heading)).toBe("One");
+	});
+
+	it("is left out when no plugin can leave data", () => {
+		expect(pfmToSvelte("# One\n").code).not.toContain("plugin_data");
+	});
+});
