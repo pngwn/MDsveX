@@ -281,12 +281,11 @@ interface Footnote {
 }
 
 /**
- * the label pfm reads for each footnote of the document: any character but
+ * the label pfm reads for each footnote of the document, any character but
  * whitespace, a bracket and a caret, matched exactly, so a reference takes
  * the label of its definition as that is written, with what pfm excludes
- * replaced, a definition whose text does not start with a paragraph has no
- * pfm form yet and stays literal with its references, as a second definition
- * of a label does
+ * replaced, a definition with no content has no pfm form and stays literal
+ * with its references, as a second definition of a label does
  */
 function footnote_labels(root: Root): Map<string, Footnote> {
 	const notes = new Map<string, Footnote>();
@@ -294,7 +293,8 @@ function footnote_labels(root: Root): Map<string, Footnote> {
 	const walk = (n: Nodes): void => {
 		if (n.type === "footnoteDefinition" && !notes.has(n.identifier)) {
 			let label: string | null = null;
-			if (n.children[0]?.type === "paragraph") {
+			// a definition needs text on the line of its label
+			if (n.children.length > 0) {
 				const base = (n.label ?? n.identifier).replace(/[\s[\]^\\]+/g, "-") || "note";
 				label = base;
 				for (let i = 2; taken.has(label); i++) label = base + "-" + i;
@@ -327,15 +327,24 @@ function serialize_footnote_definition(
 	const note = ctx.notes.get(node.identifier);
 	// pfm rejects a second definition of a label, so only the first is one
 	const written = note !== undefined && note.label !== null && note.definition === node;
-	const marker = (written ? `[^${note.label}]` : footnote_literal(node)) + ":";
 	const blocks = node.children
 		.map((c) => serialize_block(c, ctx))
 		.filter((b) => b.length > 0);
-	// a definition holds one paragraph, the blocks after it follow the definition
-	if (node.children[0]?.type === "paragraph" && blocks.length > 0)
-		blocks[0] = marker + " " + blocks[0];
-	else blocks.unshift(marker);
-	return blocks.join("\n\n");
+	if (!written || blocks.length === 0) {
+		const marker = footnote_literal(node) + ":";
+		// a list or fence on the marker line would stop being a block
+		if (node.children[0]?.type === "paragraph" && blocks.length > 0)
+			blocks[0] = marker + " " + blocks[0];
+		else blocks.unshift(marker);
+		return blocks.join("\n\n");
+	}
+	// the first block starts on the line of the label, every other line is indented to the definition
+	const lines = blocks.join("\n\n").split("\n");
+	return lines
+		.map((line, i) =>
+			i === 0 ? `[^${note.label}]: ${line}` : line.length === 0 ? "" : "    " + line,
+		)
+		.join("\n");
 }
 
 function serialize_inline(nodes: PhrasingContent[], ctx: Context): string {

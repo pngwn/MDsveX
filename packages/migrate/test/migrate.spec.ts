@@ -283,16 +283,38 @@ describe("footnotes", () => {
 		expect(pfm_notes(out)).toEqual({ references: ["a"], definitions: ["a"] });
 	});
 
-	test("later blocks of a definition follow it", () => {
-		const out = m("x[^a]\n\n[^a]: one\n\n    two\n\n    - three");
-		expect(out).toBe("x[^a]\n\n[^a]: one\n\ntwo\n\n- three");
-		expect(pfm_notes(out)).toEqual({ references: ["a"], definitions: ["a"] });
+	/** the kinds of the blocks of the first definition PFM reads in out */
+	function pfm_blocks(out: string): string[] {
+		const { nodes } = parse_markdown_svelte(out + "\n");
+		for (let i = 0; i < nodes.size; i++) {
+			const node = nodes.get_node(i);
+			if (node.kind === "footnote_definition")
+				return node.children
+					.map((child) => nodes.get_node(child).kind)
+					.filter((kind) => kind !== "line_break");
+		}
+		return [];
+	}
+
+	test("later blocks of a definition are indented to it", () => {
+		const out = m("x[^a]\n\n[^a]: one\n\n    two\n\n    - three\n\nafter");
+		expect(out).toBe("x[^a]\n\n[^a]: one\n\n    two\n\n    - three\n\nafter");
+		expect(pfm_blocks(out)).toEqual(["paragraph", "paragraph", "list"]);
 	});
 
-	test("a definition that opens with a block stays literal, with its references", () => {
-		const out = m("x[^a]\n\n[^a]:\n    - one\n    - two");
-		expect(out).toBe("x\\[\\^a\\]\n\n\\[\\^a\\]:\n\n- one\n- two");
-		expect(pfm_notes(out)).toEqual({ references: [], definitions: [] });
+	test("a definition that opens with a block starts it on the line of the label", () => {
+		const out = m("x[^a]\n\n[^a]:\n    - one\n    - two\n\n[^b]:\n    ```js\n    let c;\n    ```\n\ny[^b]");
+		expect(out).toBe(
+			"x[^a]\n\n[^a]: - one\n    - two\n\n[^b]: ```js\n    let c;\n    ```\n\ny[^b]",
+		);
+		expect(pfm_notes(out)).toEqual({ references: ["a", "b"], definitions: ["a", "b"] });
+		expect(pfm_blocks(out)).toEqual(["list"]);
+	});
+
+	test("a definition in a blockquote keeps its later blocks", () => {
+		const out = m("> x[^a]\n>\n> [^a]: one\n>\n>     two");
+		expect(out).toBe("> x[^a]\n>\n> [^a]: one\n>\n>     two");
+		expect(pfm_blocks(out)).toEqual(["paragraph", "paragraph"]);
 	});
 
 	test("a definition with no content stays literal", () => {
