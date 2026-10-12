@@ -181,7 +181,7 @@ A handler bound to a directive gets the same four members beside `directive`, `i
 
 ### `ctx.filename` and `ctx.frontmatter`
 
-The parser knows neither. Whoever runs the parse tells the dispatcher, see [For whoever runs the parse](#for-whoever-runs-the-parse). `mdsvex` passes its `filename` option, which in the Vite plugin is the id of the document without its query, and parses the frontmatter with its `frontmatter.parse` option. A bare `parse_markdown_svelte` gives `undefined` for both.
+The parser knows neither. Whoever runs the parse tells the dispatcher, see [For whoever runs the parse](#for-whoever-runs-the-parse). `mdsvex` passes its `filename` option, which in the Vite plugin is the id of the document without its query, and parses the frontmatter with its `frontmatter.parse` option. `parse_markdown_svelte` takes them as its `filename` and `frontmatter` options, and gives `undefined` for one it was not given.
 
 - **The frontmatter is read when a handler first asks.** A plugin that never reads it costs a document nothing, and the parser of the `frontmatter.parse` option still runs once for a document however many handlers read it.
 - **It is available to every handler but one.** Frontmatter is only ever the first node of a document, and the parser closes it before it opens anything else, however the source is fed. The one handler that runs earlier is the open handler of the `frontmatter` node itself, which gets `undefined`. Its close callback has it.
@@ -231,7 +231,20 @@ dispatcher.data();   // { [plugin name]: object } or undefined
 - **`warnings` and `data()` are for the document just parsed** and start empty at the next reset. Read them after `run_sequential`. The objects in `data()` are the plugin's own, not copies.
 - **A wire consumer has no frontmatter in its tree.** The wire sends a frontmatter node with no text, so `frontmatter` is whatever the consumer was sent beside the stream.
 - **A plugin's name** is its `name` key. A table of bound handlers gets one as `{ name, directives }` in place of the bare table.
-- **`parse_markdown_svelte` returns neither** yet, and has no option for the document. Build a dispatcher as above to use them.
+
+`parse_markdown_svelte` does the same for a parse in one call:
+
+```js
+const { nodes, warnings, data } = parse_markdown_svelte(source, {
+  plugins,
+  filename: '/docs/intro.svx',
+  // called once with the text between the fences, when a handler first reads ctx.frontmatter
+  frontmatter: (text) => yaml.parse(text),
+});
+```
+
+- **`frontmatter` is the parser of the frontmatter,** not its value. The parser does not read YAML, so without the option `ctx.frontmatter` is `undefined`.
+- **`warnings` and `data` are `undefined`** when no handler left any, and always without plugins.
 
 ## Handler Lifecycle
 

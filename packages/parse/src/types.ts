@@ -31,6 +31,15 @@ export interface ParseOptions extends SyntaxOptions {
 	 * the name of its plugin, as { name, directives }
 	 */
 	directive_handlers?: DirectiveTable[];
+
+	/** the path of the document, plugin handlers read it as ctx.filename */
+	filename?: string;
+
+	/**
+	 * parses the frontmatter for plugin handlers, called once with the text
+	 * between the fences when a handler first reads ctx.frontmatter
+	 */
+	frontmatter?: (text: string) => Record<string, unknown> | undefined;
 }
 
 /** structured output produced by the markdown parser. */

@@ -32,6 +32,7 @@ import {
 } from './constants';
 
 import type { ParseOptions, SyntaxOptions } from './types';
+import type { PluginData, PluginDocument, PluginWarning } from './plugin_types';
 
 import type { Emitter } from './opcodes';
 import { NodeKind } from './utils';
@@ -49,8 +50,14 @@ export type {
 	DirectiveEntry,
 	DirectiveHandler,
 	DirectiveHandlers,
+	DirectiveTable,
+	DocumentContext,
+	NamedDirectiveHandlers,
+	PluginData,
+	PluginDocument,
+	PluginWarning,
 } from './plugin_types';
-export type { NodeView, WrapperView } from './node_view';
+export type { NodeView, WrapperView, Point, Position } from './node_view';
 export { NodeKind, NodeBuffer, take_src } from './utils';
 export { PluginDispatcher, has_directive_handlers } from './plugin_dispatch';
 export { SourceTextSource, WireTextSource } from './node_view';
@@ -12872,6 +12879,40 @@ let spare_parser: PFMParser | null = null;
 let spare_parser_busy = false;
 let idle_tree: TreeBuilder | null = null;
 
+/** what the handlers of a one shot parse learn about their document */
+function plugin_document(
+	options: ParseOptions,
+	tree: TreeBuilder,
+	source: string
+): PluginDocument | undefined {
+	const filename = options.filename;
+	const parse = options.frontmatter;
+	if (parse === undefined) {
+		return filename === undefined ? undefined : { filename };
+	}
+	let read = false;
+	let metadata: Record<string, unknown> | undefined;
+	return {
+		filename,
+		frontmatter() {
+			if (read) return metadata;
+			const nodes = tree.get_buffer();
+			// frontmatter can only be the first node, only its own open handler runs before it has an end
+			const first = nodes.first_child_at(0);
+			if (
+				first === 0xffffffff ||
+				nodes.kind_at(first) !== NodeKind.frontmatter ||
+				nodes.end_at(first) === 0xffffffff
+			)
+				return undefined;
+			read = true;
+			return (metadata = parse(
+				source.slice(nodes.value_start_at(first), nodes.value_end_at(first))
+			));
+		},
+	};
+}
+
 /**
  * parse markdown that may include svelte syntax into tokens and nodes.
  *
@@ -12882,12 +12923,19 @@ let idle_tree: TreeBuilder | null = null;
  *
  * @param input source markdown string.
  * @param options parser configuration and reusable storage.
- * @returns arena-backed parse result, the normalized source, and errors.
+ * @returns arena-backed parse result, the normalized source, errors, and
+ * what plugin handlers warned about and left in ctx.data.
  */
 export function parse_markdown_svelte(
 	input: string,
 	options?: ParseOptions
-): { nodes: NodeBuffer; errors: ErrorCollector; source: string } {
+): {
+	nodes: NodeBuffer;
+	errors: ErrorCollector;
+	source: string;
+	warnings: PluginWarning[] | undefined;
+	data: PluginData | undefined;
+} {
 	const source = normalize_newlines(input);
 
 	let dispatcher: PluginDispatcher | undefined;
@@ -12908,6 +12956,9 @@ export function parse_markdown_svelte(
 		len < 512 ? (len >> 2) + 16 : len >> 3,
 		dispatcher
 	);
+	if (dispatcher !== undefined) {
+		dispatcher.set_document(plugin_document(options!, tree, source));
+	}
 	let errors: ErrorCollector;
 	if (spare_parser_busy) {
 		// a plugin or emitter reentered parse, the spare holds the outer document
@@ -12936,10 +12987,14 @@ export function parse_markdown_svelte(
 
 	// run sequential plugins after parse completes
 	const nodes = tree.get_buffer();
+	let warnings: PluginWarning[] | undefined;
+	let data: PluginData | undefined;
 	if (dispatcher) {
 		dispatcher.run_sequential(nodes);
+		warnings = dispatcher.warnings;
+		data = dispatcher.data();
 	}
 	nodes.trim();
 
-	return { nodes, errors, source };
+	return { nodes, errors, source, warnings, data };
 }
