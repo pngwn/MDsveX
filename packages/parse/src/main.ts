@@ -833,10 +833,8 @@ interface ColdState {
 	stale_html: number[];
 	// where the content of the last opened list item starts, a task marker is only read there
 	task_pos: number;
-	// tag names of the elements the tag paragraph scan has open, outermost first, spec_depth of them are live
-	spec_names: string[] | null;
-	// pending_html when the tag paragraph opened, more at its close are elements in it that never closed
-	spec_html: number;
+	// pending_count when the tag paragraph opened, more at its close are an element, a link or a mark in it that never closed
+	spec_pending: number;
 }
 
 /** the parser stopped moving through its input, which is a bug in the parser and never the fault of a document */
@@ -904,8 +902,7 @@ export class PFMParser {
 		np_floor: 0,
 		stale_html: [],
 		task_pos: -1,
-		spec_names: null,
-		spec_html: 0,
+		spec_pending: 0,
 	};
 	// these stalls emit nothing until their close arrives, so feed can skip a chunk that cannot hold it
 	private wait_kind: number = 0;
@@ -1003,16 +1000,20 @@ export class PFMParser {
 	// a paragraph opened at a tag stays pending, it keeps its wrapper only with
 	// text outside tags and no block level tag
 	private spec_para: number = -1;
-	// source before spec_scan is scanned, spec_depth elements are open there
-	// with spec_block set it stays at the block level tag, which may yet be literal
-	private spec_scan: number = 0;
-	private spec_depth: number = 0;
+	// the node whose children decide it, the paragraph or with unwrap_images a link right under it
+	private spec_watch: number = -1;
 	private spec_text: boolean = false;
 	private spec_block: boolean = false;
+	// a block level element right under the paragraph, a block once it has closed
+	private spec_block_id: number = -1;
+	// where a text child starts while it may still be only spaces, or -1
+	private spec_gap: number = -1;
 	// in a phrasing element, the wrapper always goes
 	private spec_never: boolean = false;
-	// a link right under the paragraph that holds an image, text unless it closes
+	// with unwrap_images a link right under the paragraph that holds only images so far, and an image
+	// under either, each is text unless it closes
 	private spec_link: number = -1;
+	private spec_image: number = -1;
 	// opened in a list item, a paragraph that keeps its wrapper goes back to the list
 	private spec_item: boolean = false;
 
@@ -1179,9 +1180,6 @@ export class PFMParser {
 		if (this.trim_point - 1 > this.source_base) {
 			this.trim_before_indent();
 		}
-		// the scan rereads from spec_scan at the paragraph close
-		if (this.spec_para !== -1 && this.trim_point > this.spec_scan)
-			this.trim_point = this.spec_scan;
 		if (this.trim_point - 1 > this.source_base) {
 			if (
 				this.pending_count !== this.pending_para_count &&
@@ -1208,16 +1206,6 @@ export class PFMParser {
 		this.source_end += len;
 		if (wait === FeedWait.table_cell) this.table_cell_resume();
 		this._run();
-		if (this.spec_para !== -1) {
-			// a code span that fails goes back to its backticks, the lines it took may belong to a later block
-			const top = this.states[this.states.length - 1];
-			this.spec_scan_to(
-				top >= StateKind.code_span_start && top <= StateKind.code_span_end
-					? this.code_span_open_pos
-					: this.cursor,
-				false
-			);
-		}
 		// the root trims between blocks itself, this trims inside paragraphs and containers
 		if (this.cursor - this.trim_point > TRIM_GAP) this.trim_at_stall();
 		// a fence stall leaves the cursor at its content start while its scan line moves on
@@ -1814,6 +1802,9 @@ export class PFMParser {
 		if (this.html_tag_stack.length !== 0) this.html_tag_stack = [];
 		this.html_block_depth = 0;
 		this.spec_para = -1;
+		this.spec_watch = -1;
+		this.spec_link = -1;
+		this.spec_image = -1;
 		this.svelte_block_depth = 0;
 		this.svelte_block_tag = '';
 		this.svelte_branch_id = 0;
@@ -1862,6 +1853,7 @@ export class PFMParser {
 		}
 		const id = this.next_id++;
 		if (id >= this.id_info.length) this.grow_ids(id);
+		if (parent === this.spec_watch) this.spec_child(kind, start, -1);
 		this.out.open(id, kind, start, parent, extra, false);
 		this.id_info[id] = kind;
 		return id;
@@ -1877,6 +1869,7 @@ export class PFMParser {
 	): void {
 		const id = this.next_id++;
 		if (id >= this.id_info.length) this.grow_ids(id);
+		if (parent === this.spec_watch) this.spec_child(kind, start, -1);
 		const out = this.out;
 		if (out.leaf !== undefined) {
 			out.leaf(id, kind, start, parent, value_start, value_end, end);
@@ -1894,6 +1887,7 @@ export class PFMParser {
 	): void {
 		const id = this.next_id++;
 		if (id >= this.id_info.length) this.grow_ids(id);
+		if (parent === this.spec_watch) this.spec_child(kind, start, -1);
 		const out = this.out;
 		// a fresh node has value words of 0, as leaf writes them
 		if (out.leaf !== undefined) out.leaf(id, kind, start, parent, 0, 0, end);
@@ -1937,6 +1931,7 @@ export class PFMParser {
 	): number {
 		const id = this.next_id++;
 		if (id >= this.id_info.length) this.grow_ids(id);
+		if (parent === this.spec_watch) this.spec_child(kind, start, id);
 		if (start === this.lead_mark) {
 			this.lead_mark = -1;
 			this.out.open(id, kind, start - 1, parent, extra, true);
@@ -2039,6 +2034,8 @@ export class PFMParser {
 	/** swap-remove an id from the  pending_ids array. */
 	private pending_remove(id: number): void {
 		if (!this.pending_has(id)) return;
+		if (id === this.spec_link || id === this.spec_image)
+			this.spec_media_end(id, false);
 		const ids = this.pending_ids;
 		const slots = this.id_slots;
 		const i = slots[id];
@@ -4734,18 +4731,97 @@ export class PFMParser {
 	private open_spec_para(parent: number, never: boolean): void {
 		const id = this.emit_open_pending(NodeKind.paragraph, this.cursor, parent);
 		this.spec_para = id;
-		this.spec_scan = this.cursor;
-		this.spec_depth = 0;
+		// nothing in a phrasing element decides, its wrapper always goes
+		this.spec_watch = never ? -1 : id;
 		this.spec_text = false;
 		this.spec_block = false;
+		this.spec_block_id = -1;
+		this.spec_gap = -1;
 		this.spec_never = never;
 		this.spec_link = -1;
+		this.spec_image = -1;
 		const states = this.states;
 		this.spec_item = states[states.length - 1] === StateKind.list_item;
-		const cold = this.cold;
-		cold.spec_html = cold.pending_html;
+		this.cold.spec_pending = this.pending_count;
 		states.push(StateKind.paragraph);
 		this.node_stack.push(id);
+	}
+
+	/**
+	 * a node opens right under the tag paragraph, or under the link it watches
+	 * a tag, a comment and a line end are no text, with unwrap_images an image and a link of only images are none
+	 * @param id the node when it opens pending, -1 for any other
+	 */
+	private spec_child(kind: NodeKind, start: number, id: number): void {
+		if (this.spec_text) return;
+		if (this.spec_gap !== -1) this.spec_gap_end(start);
+		switch (kind) {
+			case NodeKind.text:
+				this.spec_gap = start;
+				return;
+			case NodeKind.html:
+			case NodeKind.html_comment:
+			case NodeKind.svelte_tag:
+			case NodeKind.soft_break:
+				return;
+			case NodeKind.mustache: {
+				// a block token left in a paragraph is structure, as a {@tag} is
+				const sigil = char_code_at.call(
+					this.source,
+					start + 1 - this.source_base
+				);
+				if (sigil === OCTOTHERP || sigil === COLON || sigil === SLASH) return;
+				break;
+			}
+			case NodeKind.image:
+				if (id !== -1 && this.unwrap_images) {
+					this.spec_image = id;
+					return;
+				}
+				break;
+			case NodeKind.link:
+				if (id !== -1 && this.unwrap_images && this.spec_link === -1) {
+					this.spec_link = id;
+					this.spec_watch = id;
+					return;
+				}
+				break;
+		}
+		this.spec_text = true;
+	}
+
+	/** the text child that started at spec_gap ends before to or at its line end, any char but a space or a tab in it is text */
+	private spec_gap_end(to: number): void {
+		const source = this.source;
+		const base = this.source_base;
+		let p = this.spec_gap;
+		this.spec_gap = -1;
+		let ch = char_code_at.call(source, p - base);
+		while (p < to && (ch === SPACE || ch === TAB)) {
+			ch = char_code_at.call(source, ++p - base);
+		}
+		if (p < to && ch !== LINEFEED) this.spec_text = true;
+	}
+
+	/**
+	 * a link or an image ends, one the tag paragraph watches is no text when it closed
+	 * and is the literal text that opened it when it did not
+	 */
+	private spec_media_end(id: number, closed: boolean): void {
+		if (id === this.spec_image) this.spec_image = -1;
+		else if (id === this.spec_link) {
+			if (this.spec_gap !== -1) this.spec_gap_end(this.cursor);
+			this.spec_link = -1;
+			this.spec_watch = this.spec_para;
+		} else return;
+		if (!closed) this.spec_text = true;
+	}
+
+	/** a block level element opens right under the tag paragraph, it makes the paragraph one that keeps no wrapper once it has closed */
+	private spec_block_child(id: number, leaf: boolean): void {
+		const open = this.spec_block_id;
+		if (leaf || (open !== -1 && this.is_closed(open))) this.spec_block = true;
+		else this.spec_block_id = id;
 	}
 
 	/** 1 for an image at pos or a link that opens at one, 0 for neither, -1 when a feed has to wait */
@@ -4769,52 +4845,6 @@ export class PFMParser {
 		const image = this.image_start(this.cursor);
 		if (image > 0) this.open_spec_para(parent, this.in_phrasing(parent));
 		return image;
-	}
-
-	/**
-	 * a pending link or image about to close at end, an image right under the spec
-	 * paragraph is no text, nor is a link there that holds only images
-	 */
-	private spec_image(id: number, end: number): void {
-		// the scan waits at a block level tag, the paragraph is decided there
-		if (this.spec_block) return;
-		const stack = this.node_stack;
-		const top = stack.length - 1;
-		const para = this.spec_para;
-		if (stack[top] !== id || !this.pending_has(id)) return;
-		if (this.kind_of(id) !== NodeKind.image) {
-			if (id !== this.spec_link) return;
-			// its ] is at the cursor, the destination is no text
-			this.spec_skip(this.cursor, end);
-			this.spec_link = -1;
-			return;
-		}
-		const parent = stack[top - 1];
-		if (parent !== para) {
-			if (
-				stack[top - 2] !== para ||
-				this.kind_of(parent) !== NodeKind.link ||
-				!this.pending_has(parent)
-			)
-				return;
-			if (parent !== this.spec_link) {
-				// an earlier link that never closed left its [ as text
-				if (this.spec_link !== -1) this.spec_text = true;
-				const open = this.pending_starts[this.id_slots[parent]];
-				if (open < this.spec_scan) return;
-				this.spec_skip(open, open + 1);
-				this.spec_link = parent;
-			}
-		}
-		const start = this.pending_starts[this.id_slots[id]];
-		if (start < this.spec_scan) return;
-		this.spec_skip(start, end);
-	}
-
-	/** scan the spec paragraph up to from and pass over what ends at to, a block level tag before it holds the scan */
-	private spec_skip(from: number, to: number): void {
-		this.spec_scan_to(from, true);
-		if (!this.spec_block) this.spec_scan = to;
 	}
 
 	/**
@@ -4851,15 +4881,8 @@ export class PFMParser {
 		if (!alone) {
 			this.open_spec_para(parent, never);
 			para = this.spec_para;
-			// a block level element cannot sit in a <p>, the scan waits at its tag
-			if (block === -1 ? this.is_block_html_tag(tag.tag) : block === 1)
-				this.spec_block = true;
-			// or it skips the element, or reads what it holds to find where it closes
-			else if (sure) this.spec_scan = close_end;
-			else {
-				this.spec_scan = tag.end;
-				this.spec_open(tag.tag);
-			}
+			// a block level element cannot sit in a <p>
+			if (block === -1) block = this.is_block_html_tag(tag.tag) ? 1 : 0;
 		}
 		if (leaf) {
 			const html_id = this.emit_open(NodeKind.html, this.cursor, para);
@@ -4867,6 +4890,7 @@ export class PFMParser {
 			if (tag.has_attrs) this.tag_attributes(html_id, tag);
 			this.out.attr(html_id, 'self_closing', true);
 			this.emit_close(html_id, tag.end);
+			if (!alone && block === 1) this.spec_block_child(html_id, true);
 			this.chomp(tag.end, true);
 			return;
 		}
@@ -4874,36 +4898,11 @@ export class PFMParser {
 		const html_id = this.emit_open_pending(NodeKind.html, this.cursor, para);
 		this.out.attr(html_id, 'tag', tag.tag);
 		if (tag.has_attrs) this.tag_attributes(html_id, tag);
+		if (!alone && block === 1) this.spec_block_child(html_id, false);
 		this.html_tag_stack.push({ id: html_id, tag: tag.tag });
 		this.node_stack.push(html_id);
 		this.states.push(StateKind.html_element);
 		this.chomp(tag.end, true);
-	}
-
-	/** the scan takes the element of tag for open */
-	private spec_open(tag: string): void {
-		const cold = this.cold;
-		let names = cold.spec_names;
-		if (names === null) names = cold.spec_names = [];
-		// the array is never cut back, a shorter one would allocate again at the next open tag
-		const depth = this.spec_depth;
-		if (depth < names.length) names[depth] = tag;
-		else names.push(tag);
-		this.spec_depth = depth + 1;
-	}
-
-	/** the block level tag the scan waits at is no block when its element is still pending, it never closed */
-	private spec_unblock(): void {
-		const at = this.spec_scan;
-		for (let pi = this.pending_count - 1; pi >= 0; pi--) {
-			if (
-				this.pending_starts[pi] === at &&
-				this.kind_of(this.pending_ids[pi]) === NodeKind.html
-			) {
-				this.spec_block = false;
-				return;
-			}
-		}
 	}
 
 	/**
@@ -4944,17 +4943,18 @@ export class PFMParser {
 	private end_spec_para(end: number): void {
 		const id = this.spec_para;
 		this.spec_para = -1;
-		if (!this.spec_never) {
-			this.spec_scan_to(end, true);
-			// an element that never closed is pending until its revoke, it is its literal open tag
-			// one the scan has open that is not pending was closed by a close tag of its container
-			const cold = this.cold;
-			const literal = cold.pending_html > cold.spec_html;
-			if (literal && this.spec_block) this.spec_unblock();
-			// a link that never closed is its [
-			if (literal || this.spec_link !== -1) this.spec_text = true;
+		this.spec_watch = -1;
+		this.spec_link = -1;
+		this.spec_image = -1;
+		let drop = this.spec_never;
+		if (!drop) {
+			if (this.spec_gap !== -1) this.spec_gap_end(end);
+			// what is still pending in it never closed, and is the literal text that opened it
+			const text =
+				this.spec_text || this.pending_count > this.cold.spec_pending;
+			const open = this.spec_block_id;
+			drop = !text || this.spec_block || (open !== -1 && this.is_closed(open));
 		}
-		const drop = this.spec_never || !this.spec_text || this.spec_block;
 		if (this.spec_item && !drop) {
 			// tight or loose decides it from here, as for any list paragraph
 			this.track_list_pending_para(id);
@@ -4964,172 +4964,6 @@ export class PFMParser {
 		if (drop) this.out.revoke(id);
 		// no list decides on it later, so say now that it stays
 		else this.out.commit(id);
-	}
-
-	/**
-	 * scan the spec paragraph up to limit for text outside tags and block level tags,
-	 * stopping before a construct that is not whole below limit, settled when no
-	 * link or image below limit can still close
-	 */
-	private spec_scan_to(limit: number, settled: boolean): void {
-		// either decides the paragraph already
-		if (this.spec_never || this.spec_block) return;
-		const source = this.source;
-		const base = this.source_base;
-		let p = this.spec_scan;
-		scan: while (p < limit) {
-			const ch = char_code_at.call(source, p - base);
-			switch (ch) {
-				case SPACE:
-				case TAB:
-					p++;
-					break;
-				case LINEFEED: {
-					p++;
-					if (this.block_quote_depth > 0 && p < limit) {
-						// what the frames put before a line the paragraph went on over is no text
-						this.line_start(p);
-						if (this.line_pos <= limit) p = this.line_pos;
-					}
-					break;
-				}
-				case OPEN_ANGLE_BRACKET: {
-					const end = this.spec_tag(p, limit);
-					if (end === -1) break scan;
-					if (end === -2) {
-						if (this.spec_depth === 0) this.spec_text = true;
-						p++;
-					} else p = end;
-					if (this.spec_block) break scan;
-					break;
-				}
-				case OPEN_BRACE: {
-					const end = this.find_matching_brace(p + 1);
-					if (end === -1 && !this.finished) break scan;
-					if (end > limit) break scan;
-					if (this.spec_depth === 0) {
-						// a plain expression renders text, {@tag {# {: {/ are structure
-						const n = char_code_at.call(source, p + 1 - base);
-						if (
-							end === -1 ||
-							(n === AT
-								? !is_ascii_letter(char_code_at.call(source, p + 2 - base))
-								: n !== OCTOTHERP && n !== COLON && n !== SLASH)
-						)
-							this.spec_text = true;
-					}
-					p = end === -1 ? p + 1 : end;
-					break;
-				}
-				case BACKTICK: {
-					if (this.spec_depth === 0) this.spec_text = true;
-					// a code span holds no markup, a run with no closer is literal
-					let q = p + 1;
-					while (q < limit && char_code_at.call(source, q - base) === BACKTICK)
-						q++;
-					const run = q - p;
-					p = q;
-					let r = q;
-					while (r < limit) {
-						const i = string_index_of.call(source, '`', r - base);
-						if (i === -1 || i + base >= limit) break;
-						let k = i + base + 1;
-						while (
-							k < limit &&
-							char_code_at.call(source, k - base) === BACKTICK
-						)
-							k++;
-						if (k - i - base === run) {
-							p = k;
-							break;
-						}
-						r = k;
-					}
-					break;
-				}
-				case BACKSLASH:
-					if (this.spec_depth === 0) this.spec_text = true;
-					p = p + 2 < limit ? p + 2 : limit;
-					break;
-				case EXCLAMATION_MARK:
-				case OPEN_SQUARE_BRACKET:
-					if (this.spec_depth === 0) {
-						// spec_image moves the scan past one that closes, a rescan here is text
-						if (
-							!settled &&
-							this.unwrap_images &&
-							(ch === OPEN_SQUARE_BRACKET ||
-								p + 1 >= limit ||
-								char_code_at.call(source, p + 1 - base) === OPEN_SQUARE_BRACKET)
-						)
-							break scan;
-						this.spec_text = true;
-					}
-					p++;
-					break;
-				default:
-					if (this.spec_depth === 0) this.spec_text = true;
-					p++;
-			}
-		}
-		this.spec_scan = p;
-	}
-
-	/**
-	 * the end of a comment or tag at p for spec_scan_to, tracking the open elements
-	 * and spec_block, -1 when not whole below limit, -2 when not markup, p at a block
-	 * level tag
-	 */
-	private spec_tag(p: number, limit: number): number {
-		const source = this.source;
-		const base = this.source_base;
-		if (p + 1 >= limit) return -2;
-		const c1 = char_code_at.call(source, p + 1 - base);
-		if (c1 === EXCLAMATION_MARK) {
-			const comment = this.try_parse_html_comment(p + 1);
-			if (comment === false) return -1;
-			if (comment === null) return -2;
-			return comment.end > limit ? -1 : comment.end;
-		}
-		if (c1 === SLASH) {
-			const close = this.try_parse_html_close_tag(p + 1);
-			if (close === null) return this.tag_wait ? -1 : -2;
-			if (close.end > limit) return -1;
-			// one that closes nothing is text
-			if (this.spec_depth === 0) this.spec_text = true;
-			else {
-				// as the inline state, close the last open element of that name and all it holds
-				const names = this.cold.spec_names!;
-				const tag = close.tag;
-				let at = this.spec_depth - 1;
-				while (at >= 0 && names[at] !== tag) at--;
-				if (at !== -1) this.spec_depth = at;
-			}
-			return close.end;
-		}
-		if (!this.is_tag_name_start(c1)) return -2;
-		if (this.try_parse_uri_autolink(p + 1) !== -1) return -2;
-		const end = this.scan_open_tag(p + 1, null);
-		if (end < 0) {
-			return !this.finished && tag_fail_p >= this.source_end ? -1 : -2;
-		}
-		if (end > limit) return -1;
-		const tag = string_slice.call(source, p + 1 - base, tag_name_end - base);
-		// a block level element cannot sit in a <p>, the scan waits here in case it never closes
-		if (this.spec_depth === 0 && this.is_block_html_tag(tag)) {
-			this.spec_block = true;
-			return p;
-		}
-		if (tag_self_closing || this.is_void_tag(tag)) return end;
-		if (this.is_raw_text_tag(tag)) {
-			const close = string_index_of.call(source, '</' + tag, end - base);
-			if (close === -1) return -1;
-			const gt = string_index_of.call(source, '>', close);
-			if (gt === -1 || gt + base + 1 > limit) return -1;
-			return gt + base + 1;
-		}
-		this.spec_open(tag);
-		return end;
 	}
 
 	/**
@@ -7594,6 +7428,11 @@ export class PFMParser {
 										this.tag_attributes(html_id, open_tag);
 									this.out.attr(html_id, 'self_closing', true);
 									this.emit_close(html_id, open_tag.end);
+									if (
+										current_node === this.spec_para &&
+										this.is_block_html_tag(open_tag.tag)
+									)
+										this.spec_block_child(html_id, true);
 									this.chomp(open_tag.end, true);
 									this.states.pop();
 								} else if (this.is_raw_text_tag(open_tag.tag)) {
@@ -7609,6 +7448,11 @@ export class PFMParser {
 									this.out.attr(html_id, 'tag', open_tag.tag);
 									if (open_tag.has_attrs)
 										this.tag_attributes(html_id, open_tag);
+									if (
+										current_node === this.spec_para &&
+										this.is_block_html_tag(open_tag.tag)
+									)
+										this.spec_block_child(html_id, false);
 									this.html_tag_stack.push({ id: html_id, tag: open_tag.tag });
 									this.node_stack.push(html_id);
 									this.states.push(StateKind.html_element);
@@ -9571,8 +9415,7 @@ export class PFMParser {
 						);
 					}
 					this.out.set_value_end(n_id, this.cursor);
-					if (this.spec_para !== -1 && this.unwrap_images)
-						this.spec_image(n_id, p);
+					if (this.spec_para !== -1) this.spec_media_end(n_id, true);
 					this.pending_remove(n_id);
 					this.emit_close(n_id, p);
 					this.node_stack.pop();
@@ -9622,8 +9465,7 @@ export class PFMParser {
 						this.out.attr(current_node, is_image ? 'src' : 'href', def.url);
 						if (def.title) this.out.attr(current_node, 'title', def.title);
 						this.out.set_value_end(current_node, this.cursor);
-						if (this.spec_para !== -1 && this.unwrap_images)
-							this.spec_image(current_node, ref_p + 1);
+						if (this.spec_para !== -1) this.spec_media_end(current_node, true);
 						this.pending_remove(current_node);
 						this.emit_close(current_node, ref_p + 1);
 						this.node_stack.pop();
@@ -9678,8 +9520,7 @@ export class PFMParser {
 						this.out.attr(current_node, is_image ? 'src' : 'href', def.url);
 						if (def.title) this.out.attr(current_node, 'title', def.title);
 						this.out.set_value_end(current_node, this.cursor);
-						if (this.spec_para !== -1 && this.unwrap_images)
-							this.spec_image(current_node, ref_p + 1);
+						if (this.spec_para !== -1) this.spec_media_end(current_node, true);
 						this.pending_remove(current_node);
 						this.emit_close(current_node, ref_p + 1);
 						this.node_stack.pop();
