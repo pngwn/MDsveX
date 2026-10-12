@@ -1,7 +1,8 @@
 # @mdsvex/migrate
 
 Migrate **CommonMark / GFM** markdown to **Penguin-Flavoured Markdown (PFM)**,
-and mdsvex 0.x layouts, highlight options and smart punctuation to mdsvex next.
+and mdsvex 0.x layouts, highlight options, smart punctuation and plugin lists
+to mdsvex next.
 
 The source document is parsed with the [remark](https://github.com/remarkjs/remark)
 (unified) ecosystem into an `mdast` tree, then re-serialised under PFM's rules.
@@ -45,9 +46,36 @@ migrate(source, {
 | Shortcut references (`[ref]`)          | Explicit collapsed references (`[ref][]`)             |
 | Reference definitions                  | Hoisted to the top so they precede every use          |
 | GFM tables, strikethrough, task lists  | Preserved                                             |
+| A bare url (`https://example.com`)     | An autolink (`<https://example.com>`)                 |
+| Inline code that holds backticks       | A span of one or two backticks, whichever it can hold |
+| Footnotes                              | Kept as literal text, PFM does not read them yet      |
 
 Superscript, subscript and the PFM table extensions have no CommonMark
 equivalent, so nothing maps onto them; raw HTML is passed through untouched.
+
+Text that only looked like markup stays text. An escaped or encoded `<`, `{`
+or `&` (`\<b>`, `&lt;b&gt;`, `&#123;`) is written with a backslash, so it does
+not become a tag, an expression or a character reference. Inline code that
+holds a run of one backtick and a run of two has no PFM span, and is written
+as a `<code>` element.
+
+## Svelte
+
+A 0.x document is markdown with Svelte in it, and CommonMark knows nothing of
+Svelte. `migrate` keeps all of it as written:
+
+- expressions, `{items[0].name}`, whose brackets, underscores and asterisks
+  are not markdown;
+- blocks and tags, `{#if a}`, `{:else}`, `{/each}`, `{@html b}`. One on a line
+  of its own stays a line of its own, with a blank line each side;
+- `<svelte:head>` and the other `svelte:` elements, which CommonMark reads as
+  links;
+- tags with attributes CommonMark does not read: `on:click|once={go}`,
+  `{...props}`, `--gap="1rem"`, an arrow function with a `>` in it, and
+  components such as `<Tabs.Panel>`;
+- `<script>` and `<style>`.
+
+A `{` that never closes is text, and is written `\{`.
 
 ## Math
 
@@ -102,6 +130,8 @@ const { code, notes } = migrate_config(source);
 | `layout: false`                         | removed                                         |
 | folder-name matching of named layouts   | `select_template(id, metadata)`, as a note      |
 | `layoutPropForwarding`                  | flagged, as templates always forward props      |
+| `extension: '.md'`                      | `extensions: ['.md']`                           |
+| `frontmatter: { marker, type }`         | flagged, the fences are always `---`            |
 
 0.x applied a named layout to any document inside a folder with the same name.
 Templates aren't matched by folder, so when there are named layouts the notes
@@ -177,6 +207,30 @@ migrate(source, { smartypants: { dashes: "inverted", backticks: "all" } });
 Only text changes. Code, urls, titles, alt text and raw HTML are left as they
 are. The notes from `migrate_config` say which of these apply to a config.
 
+### Remark and rehype plugins
+
+mdsvex next has its own parser and runs no remark or rehype plugins.
+`migrate_config` leaves `remarkPlugins` and `rehypePlugins` where they are,
+under a `// TODO(mdsvex-migrate)` comment, and adds a note for each plugin
+that says what replaces it: core syntax, an option, a first-party plugin, a
+component, or nothing yet. It knows a plugin by the module it is imported or
+required from.
+
+| mdsvex 0.x                              | mdsvex next                                     |
+| --------------------------------------- | ----------------------------------------------- |
+| `rehype-slug`, `remark-slug`            | `heading_ids: true` is added, with a note       |
+| `remark-unwrap-images`                  | `unwrap_images: true` is added, with a note     |
+| a plugin with options, `[slug, { ... }]` | a note, the option is yours to set              |
+| any other plugin the docs list          | a note with its replacement                     |
+| a plugin the docs do not list           | a note that says so                             |
+
+The list is the one in the docs, under
+[coming from remark and rehype plugins](https://mdsvex.com/docs#coming-from-remark-and-rehype-plugins).
+
+mdsvex 0.x also put `rel="nofollow"` on every link to another site, with no
+option to turn it off. mdsvex next writes links as they are. A 0.x config gets
+a note that says how to keep it, with `@mdsvex/plugin-external-links`.
+
 ### Documents
 
 `migrate_frontmatter` renames a document's frontmatter `layout` key to
@@ -213,8 +267,8 @@ const notes = check_template(source);
 Every note has a `kind`, a `message`, and the 1 based `line` and `column` it
 refers to. The kinds are `select_template`, `layout_prop_forwarding`, `slot`,
 `legacy_props`, `template_key`, `highlighter`, `highlight_language`,
-`escape_svelte`, `smart_punctuation`, and `manual` for anything that couldn't
-be rewritten safely.
+`escape_svelte`, `smart_punctuation`, `plugin`, `external_links`, and `manual`
+for anything that couldn't be rewritten safely.
 
 ## Notes
 
