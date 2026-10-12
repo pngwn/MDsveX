@@ -10273,6 +10273,87 @@ export class PFMParser {
 		return 1;
 	}
 
+	/**
+	 * an open tag at the cursor at the start of a line of a container, the element holds
+	 * blocks when it stays open past its line and is inline in a paragraph when it closes on it
+	 * @returns 1 when it opened, 0 for no open tag, -1 while the tag or its line is not all here
+	 */
+	private open_block_tag(parent: number): number {
+		if (
+			!this.finished &&
+			string_index_of.call(
+				this.source,
+				'>',
+				this.cursor + 1 - this.source_base
+			) === -1
+		) {
+			this.wait_for('>');
+			return -1;
+		}
+		const tag = this.try_parse_html_open_tag(this.cursor + 1);
+		if (tag === null) return this.tag_wait ? -1 : 0;
+		const close_end =
+			tag.self_closing || this.is_void_tag(tag.tag)
+				? tag.end
+				: this.is_raw_text_tag(tag.tag)
+					? 0
+					: this.closes_on_line(tag.tag, tag.end);
+		if (close_end === -1) {
+			this.wait_for('\n');
+			return -1;
+		}
+		if (close_end > 0) {
+			this.open_spec_tag(tag, close_end, parent, false);
+		} else if (this.is_raw_text_tag(tag.tag)) {
+			this.open_raw_text(tag, parent);
+		} else {
+			const html_id = this.emit_open_pending(
+				NodeKind.html,
+				this.cursor,
+				parent
+			);
+			this.out.attr(html_id, 'tag', tag.tag);
+			if (tag.has_attrs) this.out.attr(html_id, 'attributes', tag.attributes);
+			this.html_tag_stack.push({ id: html_id, tag: tag.tag });
+			this.node_stack.push(html_id);
+			this.states.push(StateKind.html_block_element);
+			this.html_block_depth++;
+			this.chomp(tag.end, true);
+		}
+		return 1;
+	}
+
+	/**
+	 * the closing fence at the cursor is for a container directive around the elements
+	 * left open in it, each is revoked to the text of its open tag and the directive reads the fence
+	 * @returns 1 when they ended, 0 when the line is no such fence, -1 while it is not all here
+	 */
+	private fence_ends_elements(): number {
+		const states = this.states;
+		let s = states.length - 1;
+		while (s >= 0 && states[s] === StateKind.html_block_element) s--;
+		if (s < 0 || states[s] !== StateKind.directive_container) return 0;
+		const counts = this.directive_colon_counts;
+		const close_end = this.try_parse_directive_close(
+			this.cursor,
+			counts[counts.length - 1]
+		);
+		if (close_end === -2) return -1;
+		if (close_end < 0) return 0;
+		const tags = this.html_tag_stack;
+		for (let i = states.length - 1; i > s; i--) {
+			const id = this.node_stack.pop()!;
+			let t = tags.length - 1;
+			while (t >= 0 && tags[t].id !== id) t--;
+			if (t !== -1) tags.length = t;
+			this.html_block_depth--;
+			states.pop();
+		}
+		// off the node stack they are stale, the sweep revokes what they hold first
+		this.revoke_stale_pending(false);
+		return 1;
+	}
+
 	private _run_html_block_element(code: number, current_node: number): boolean {
 		const source = this.source;
 		const base = this.source_base;
@@ -10512,6 +10593,10 @@ export class PFMParser {
 			if (dir !== null) {
 				this.start_block_directive(dir, current_node);
 				return false;
+			}
+			if (this.directive_colon_counts.length !== 0) {
+				const ended = this.fence_ends_elements();
+				if (ended !== 0) return ended === -1;
 			}
 		}
 
@@ -11790,9 +11875,16 @@ export class PFMParser {
 			}
 
 			default: {
-				if (code === OPEN_ANGLE_BRACKET && this.html_tag_stack.length !== 0) {
-					const closed = this.close_outer_tag();
-					if (closed !== 0) return closed === -1;
+				if (code === OPEN_ANGLE_BRACKET) {
+					if (this.html_tag_stack.length !== 0) {
+						const closed = this.close_outer_tag();
+						if (closed !== 0) return closed === -1;
+					}
+					// the element state reads whole lines, in a block quote the tag stays in a paragraph
+					if (this.block_quote_depth === 0) {
+						const opened = this.open_block_tag(current_node);
+						if (opened !== 0) return opened === -1;
+					}
 				}
 				if (code === OPEN_BRACE && this.svelte_block_depth > 0) {
 					const ended = this.branch_token_ends();

@@ -757,9 +757,10 @@ describe('wrap_from: inside an unclosed html block', () => {
 		]);
 	});
 
-	it('an unclosed <div> inside a step is revoked after the container closed', () => {
+	it('an unclosed <div> inside a step is revoked at the closing fence', () => {
 		const source =
 			':::steps[]\n\n## One\n\n<div>\n\ninner\n\n## Two\n\nsecond\n:::\n\nafter\n';
+		// the second heading opened inside the element, so it started no step
 		expect(expect_parity(source, () => [steps()], NAMED)).toEqual([
 			'root',
 			[
@@ -769,14 +770,31 @@ describe('wrap_from: inside an unclosed html block', () => {
 					['directive_label', ['heading', 'text:One']],
 					['paragraph', 'text:<div>'],
 					['paragraph', 'text:inner'],
-				],
-				[
-					'directive_container name="step"',
-					['directive_label', ['heading', 'text:Two']],
+					['heading', 'text:Two'],
 					['paragraph', 'text:second'],
 				],
 			],
 			['paragraph', 'text:after'],
+		]);
+	});
+
+	it('a closed <div> inside a step keeps its blocks', () => {
+		const source =
+			':::steps[]\n\n## One\n\n<div>\n\n## Two\n\n</div>\n\n## Three\n:::\n';
+		expect(expect_parity(source, () => [steps()], NAMED)).toEqual([
+			'root',
+			[
+				'directive_container name="steps"',
+				[
+					'directive_container name="step"',
+					['directive_label', ['heading', 'text:One']],
+					['html tag="div"', ['heading', 'text:Two']],
+				],
+				[
+					'directive_container name="step"',
+					['directive_label', ['heading', 'text:Three']],
+				],
+			],
 		]);
 	});
 
