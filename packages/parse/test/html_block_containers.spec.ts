@@ -915,3 +915,245 @@ describe('a block directive inside an html element', () => {
 		}
 	}, 30_000);
 });
+
+describe('an html element inside a container directive', () => {
+	const blocks = (tree: string) =>
+		tree.split('\n').filter((row) => row.trim() !== 'line_break');
+
+	/** the tree of the lines in a directive, its blocks are those of the lines alone one level down */
+	function inside(...rows: string[]): string {
+		const plain = rows.map((row) => row + '\n').join('');
+		const source = `::::box[]\n${plain}::::\n`;
+		const outside = blocks(every_path(plain))
+			.slice(1)
+			.map((row) => '  ' + row);
+		const tree = every_path(source);
+		expect(blocks(tree).join('\n'), JSON.stringify(source)).toBe(
+			lines('root', '  directive_container name="box"', ...outside)
+		);
+		return tree;
+	}
+
+	test('an element that runs over lines opens and closes', () => {
+		expect(every_path(':::x[]\n<div>\na\n</div>\n:::\n')).toBe(
+			lines(
+				'root',
+				'  directive_container name="x"',
+				'    html tag="div"',
+				'      line_break',
+				'      paragraph',
+				'        text "a"',
+				'      line_break',
+				'    line_break'
+			)
+		);
+		inside('<div>', 'a', '</div>');
+		inside('<div>', '', 'a', '', '</div>');
+	});
+
+	test('with attributes, a component and blocks in it', () => {
+		inside('<div class="a" id="b">', '# h', '', '- c', '- d', '</div>');
+		inside('<Tabs items={list}>', 'a', '</Tabs>');
+		inside('<section>', '<div>', 'a', '</div>', '</section>');
+		inside('<span>', 'a', '</span>');
+	});
+
+	test('after a paragraph and before one', () => {
+		inside('a', '', '<div>', 'b', '</div>', 'c');
+	});
+
+	test('an element that closes on its line is inline, as it was', () => {
+		inside('<b>x</b>');
+		inside('<div>a</div>');
+		inside('<b>x</b> y');
+		inside('<br>');
+		inside('<Chart />');
+	});
+
+	test('a script or style element holds its text', () => {
+		inside('<script>', 'let a = 1;', '</script>');
+		inside('<style>', 'p { color: red; }', '</style>');
+	});
+
+	test('a directive in the element in the directive', () => {
+		expect(every_path('::::x[]\n<div>\n:::y[]\nb\n:::\n</div>\n::::\n')).toBe(
+			lines(
+				'root',
+				'  directive_container name="x"',
+				'    html tag="div"',
+				'      line_break',
+				'      directive_container name="y"',
+				'        paragraph',
+				'          text "b"',
+				'        line_break',
+				'    line_break'
+			)
+		);
+	});
+
+	test('an element left open ends at the closing fence and is text', () => {
+		expect(every_path(':::x[]\n<div>\na\n:::\n\nafter\n')).toBe(
+			lines(
+				'root',
+				'  directive_container name="x"',
+				'    paragraph',
+				'      text "<div>"',
+				'    line_break',
+				'    paragraph',
+				'      text "a"',
+				'    line_break',
+				'  line_break',
+				'  paragraph',
+				'    text "after"',
+				'  line_break'
+			)
+		);
+		inside('<div>', 'a');
+		inside('<div>', '<span>', 'a');
+		inside('<div>', '- i', '  j');
+	});
+
+	test('the fence of the inner directive ends it, the outer one stays open', () => {
+		expect(every_path('::::a[]\n:::b[]\n<div>\nx\n:::\ny\n::::\nz\n')).toBe(
+			lines(
+				'root',
+				'  directive_container name="a"',
+				'    directive_container name="b"',
+				'      paragraph',
+				'        text "<div>"',
+				'      line_break',
+				'      paragraph',
+				'        text "x"',
+				'      line_break',
+				'    paragraph',
+				'      text "y"',
+				'    line_break',
+				'  paragraph',
+				'    text "z"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('a fence in a code fence in the element is code', () => {
+		expect(every_path(':::x[]\n<div>\n```\n:::\n```\n</div>\n:::\n')).toBe(
+			lines(
+				'root',
+				'  directive_container name="x"',
+				'    html tag="div"',
+				'      line_break',
+				'      code_fence ":::"',
+				'    line_break'
+			)
+		);
+	});
+
+	test('an element left open in a directive left open in a svelte block', () => {
+		expect(every_path('{#if x}\n:::y[]\n<div>\na\n{/if}\n\nafter\n')).toBe(
+			lines(
+				'root',
+				'  svelte_block tag="if"',
+				'    svelte_branch tag="if" "x"',
+				'      line_break',
+				'      directive_container name="y"',
+				'        paragraph',
+				'          text "<div>"',
+				'        line_break',
+				'        paragraph',
+				'          text "a"',
+				'        line_break',
+				'  line_break',
+				'  line_break',
+				'  paragraph',
+				'    text "after"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('the close tag of an element around the directive closes both', () => {
+		expect(every_path('<section>\n:::x[]\n<div>\na\n</section>\nafter\n')).toBe(
+			lines(
+				'root',
+				'  html tag="section"',
+				'    line_break',
+				'    directive_container name="x"',
+				'      html tag="div"',
+				'        line_break',
+				'        paragraph',
+				'          text "a"',
+				'        line_break',
+				'  line_break',
+				'  paragraph',
+				'    text "after"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('in a directive in a list item', () => {
+		expect(every_path('- :::x[]\n  <div>\n  a\n  </div>\n  :::\n')).toBe(
+			lines(
+				'root',
+				'  list ordered=false start=0 tight=true',
+				'    list_item',
+				'      directive_container name="x"',
+				'        html tag="div"',
+				'          line_break',
+				'          paragraph',
+				'            text "a"',
+				'          line_break',
+				'        line_break'
+			)
+		);
+	});
+
+	test('at the end of the input', () => {
+		expect(every_path(':::x[]\n<div>\n')).toBe(
+			lines(
+				'root',
+				'  directive_container name="x"',
+				'    paragraph',
+				'      text "<div>"',
+				'    line_break'
+			)
+		);
+		expect(every_path(':::x[]\n<div>')).toBe(
+			lines(
+				'root',
+				'  directive_container name="x"',
+				'    paragraph',
+				'      text "<div>"'
+			)
+		);
+	});
+
+	test('random lines build the blocks they build outside the directive', () => {
+		const rand = random(1000);
+		const rows = [
+			'<div>',
+			'<div>',
+			'</div>',
+			'</div>',
+			'<section class="s">',
+			'</section>',
+			'<span>',
+			'</span>',
+			'<n>',
+			'<b>x</b>',
+			'<br>',
+			'a',
+			'b *c*',
+			'',
+			'- d',
+			'# h',
+			'::z[a]',
+		];
+		for (let i = 0; i < 400; i++) {
+			const picked: string[] = [];
+			const count = 1 + Math.floor(rand() * 6);
+			for (let k = 0; k < count; k++) picked.push(pick(rand, rows));
+			inside(...picked);
+		}
+	}, 30_000);
+});

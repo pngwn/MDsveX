@@ -935,7 +935,8 @@ export class NodeBuffer {
 			parent_kind === NodeKind.root ||
 			parent_kind === NodeKind.block_quote ||
 			parent_kind === NodeKind.list_item ||
-			parent_kind === NodeKind.svelte_branch;
+			parent_kind === NodeKind.svelte_branch ||
+			parent_kind === NodeKind.directive_container;
 
 		// frontmatter with no closing fence, the parser reads its lines again as blocks
 		if (kind === NodeKind.frontmatter && at_block_level) {
