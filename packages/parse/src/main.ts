@@ -6199,10 +6199,21 @@ export class PFMParser {
 					const ntc = char_code_at.call(source, p - base);
 					if (ntc === 34 || ntc === 39 || ntc === OPEN_PAREN) {
 						// try title on next line
-						const title_result = this.parse_ref_title(p, lines);
+						let title_result = this.parse_ref_title(p, lines);
 						if (title_result === -2) {
 							return -2; // need more input to complete title
 						} else if (title_result) {
+							// text after it on its line leaves the definition without a title
+							let after = title_result.end;
+							let ch = char_code_at.call(source, after - base);
+							while (ch === SPACE || ch === TAB) {
+								ch = char_code_at.call(source, ++after - base);
+							}
+							if (after >= length) {
+								if (!this.finished) return -2;
+							} else if (ch !== LINEFEED) title_result = null;
+						}
+						if (title_result) {
 							title = title_result.title;
 							p = title_result.end;
 						} else {
