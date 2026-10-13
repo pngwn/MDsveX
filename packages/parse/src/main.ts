@@ -391,6 +391,9 @@ TEXT_BREAK[PIPE] = 1;
 TEXT_BREAK[OPEN_BRACE] = 1;
 TEXT_BREAK[COLON] = 1;
 TEXT_BREAK[DOLLAR] = 1;
+// the break chars the text state closes its node at with no look at what follows
+const TEXT_END = new Uint8Array(128);
+for (const char of '*_~^<[]!`{') TEXT_END[char.charCodeAt(0)] = 1;
 
 /**
  * a run the inline state reads with no construct that could hold a tag as text,
@@ -2517,14 +2520,22 @@ export class PFMParser {
 	private open_text_run(p0: number, parent: number): void {
 		const source = this.source;
 		const base = this.source_base;
-		const length = this.source_end;
+		// takes the plain run the text state would, a break char or the buffer end is left for it
+		const p = this.text_run(p0 + 1);
+		this.cursor = p;
+		if (FAST && p < this.source_end) {
+			const end = char_code_at.call(source, p - base);
+			if (end < 128 && TEXT_END[end] === 1) {
+				// the text state would close the node at this char and pop inline with its own state
+				this.emit_leaf(NodeKind.text, p0, parent, p0, p, p);
+				this.states.pop();
+				return;
+			}
+		}
 		const t_id = this.emit_open(NodeKind.text, p0, parent);
 		this.out.set_value_start(t_id, p0);
 		this.node_stack.push(t_id);
 		this.states.push(StateKind.text);
-		// as in the inline default, a break char right after p0 is left for the text state
-		let p = this.text_run(p0 + 1);
-		this.cursor = p;
 	}
 
 	/** check if an id is in the pending_ids array. */
@@ -8140,18 +8151,7 @@ export class PFMParser {
 									continue;
 								}
 							}
-							const t_id = this.emit_open(
-								NodeKind.text,
-								this.cursor,
-								current_node
-							);
-							this.out.set_value_start(t_id, this.cursor);
-							this.node_stack.push(t_id);
-
-							this.states.push(StateKind.text);
-							// skip the plain run the text state would, leaving a break char or the buffer end for it
-							let p = this.text_run(this.cursor + 1);
-							this.cursor = p;
+							this.open_text_run(this.cursor, current_node);
 							continue;
 						}
 					}
