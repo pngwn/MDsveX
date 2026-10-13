@@ -142,7 +142,7 @@ The exceptions:
 - A table cell is not a container. It holds inline content only.
 - A block quote has no lazy continuation, and a paragraph in a list item still continues onto a line that is not indented.
 
-A leaf that runs over lines (the code of a fence, a comment, the content of `<script>`, `<style>`, `<pre>` or `<textarea>`, a code span) does not hold what the containers put before its lines: the `>` markers and the indent of a list item are not part of its text. A fence, a comment or an element left open ends where its container ends.
+A leaf that runs over lines (the code of a fence, a comment, the content of `<script>`, `<style>`, `<pre>` or `<textarea>`, a code span, a Svelte expression, an attribute value) does not hold what the containers put before its lines: the `>` markers and the indent of a list item are not part of its text. A fence, a comment or an element left open ends where its container ends. An expression or an attribute value does not run past its container: when one of its lines leaves the block quote or the list item, its opening brace or its tag is literal text.
 
 **Blockquotes**, No lazy continuation. Every line inside a blockquote must be explicitly prefixed with `>`. The first line without a `>` prefix terminates the blockquote; there is no implicit inheritance of blockquote context from a previous line. This enables line-local parsing decisions without tracking open paragraphs in parent containers.
 

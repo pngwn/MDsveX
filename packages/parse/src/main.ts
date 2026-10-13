@@ -530,6 +530,8 @@ let tag_need = '>';
 let tag_self_closing = false;
 // the scan passed a line end, so where the tag ends hangs on the containers open then
 let tag_lines = false;
+// an attribute value runs over a line in a block quote or a list item
+let tag_values = false;
 const TAG_ATTR_BOOL = 0;
 const TAG_ATTR_VALUE = 1;
 const TAG_ATTR_SHORTHAND = 2;
@@ -3584,6 +3586,24 @@ export class PFMParser {
 	}
 
 	/**
+	 * how the lines of a value from from to to sit in the open block quotes and list items
+	 * @returns 0 for a value on one line, 1 for lines that all stay in them, -1 when one leaves
+	 */
+	private framed_value(from: number, to: number): number {
+		const source = this.source;
+		const base = this.source_base;
+		const frames = this.frames.length;
+		let lf = string_index_of.call(source, '\n', from - base);
+		if (lf === -1 || lf + base >= to) return 0;
+		while (lf !== -1 && lf + base < to) {
+			if (this.line_start(lf + base + 1) < frames) return -1;
+			if (this.line_pos > to) return -1;
+			lf = string_index_of.call(source, '\n', this.line_pos - base);
+		}
+		return 1;
+	}
+
+	/**
 	 * the text from from to to with what the block quotes and list items put before its lines left out
 	 * null when a line in it leaves one of them
 	 */
@@ -4432,28 +4452,25 @@ export class PFMParser {
 		const attributes: Record<string, TagAttribute> = {};
 		let repeated: [string, TagAttribute][] | null = null;
 		const n = tag_rec_n;
+		// a value over lines is read without what its containers put before them
+		const framed = tag_values;
 		for (let i = 0; i < n; i += 5) {
 			const kind = rec[i];
-			const name = string_slice.call(
-				source,
-				rec[i + 1] - base,
-				rec[i + 2] - base
-			);
+			const name =
+				framed && kind === TAG_ATTR_SHORTHAND
+					? this.framed_text(rec[i + 1], rec[i + 2])!
+					: string_slice.call(source, rec[i + 1] - base, rec[i + 2] - base);
 			let value: TagAttribute;
 			if (kind === TAG_ATTR_BOOL) value = true;
-			else if (kind === TAG_ATTR_VALUE)
-				value = string_slice.call(source, rec[i + 3] - base, rec[i + 4] - base);
 			else if (kind === TAG_ATTR_SHORTHAND)
 				value = { type: 'expression', value: name };
-			else
-				value = {
-					type: 'expression',
-					value: string_slice.call(
-						source,
-						rec[i + 3] - base,
-						rec[i + 4] - base
-					),
-				};
+			else {
+				const text = framed
+					? this.framed_text(rec[i + 3], rec[i + 4])!
+					: string_slice.call(source, rec[i + 3] - base, rec[i + 4] - base);
+				value =
+					kind === TAG_ATTR_VALUE ? text : { type: 'expression', value: text };
+			}
 			if (i !== 0 && has_own.call(attributes, name)) {
 				if (repeated === null) repeated = [];
 				repeated.push([name, value]);
@@ -4514,7 +4531,8 @@ export class PFMParser {
 		if (memo !== null) marks.length = 0;
 		tag_rec_n = 0;
 		tag_need = '>';
-		tag_lines = false;
+		tag_lines = tag_values = false;
+		const framed = this.frames.length !== 0;
 		let p = pos + 1;
 		while (
 			p < length &&
@@ -4560,6 +4578,7 @@ export class PFMParser {
 					tag_need = '}';
 					return -1;
 				}
+				if (framed && !this.tag_value(p + 1, expr_end - 1)) return -1;
 				tag_rec_put(TAG_ATTR_SHORTHAND, p + 1, expr_end - 1, 0, 0);
 				p = expr_end;
 				continue;
@@ -4613,6 +4632,7 @@ export class PFMParser {
 						tag_need = '}';
 						return -1;
 					}
+					if (framed && !this.tag_value(p + 1, expr_end - 1)) return -1;
 					tag_rec_put(
 						TAG_ATTR_EXPR,
 						attr_name_start,
@@ -4631,6 +4651,7 @@ export class PFMParser {
 						tag_need = quote === QUOTE ? '"' : "'";
 						break; // unclosed quote
 					}
+					if (framed && !this.tag_value(value_start, p)) return -1;
 					tag_rec_put(
 						TAG_ATTR_VALUE,
 						attr_name_start,
@@ -4667,6 +4688,18 @@ export class PFMParser {
 
 		tag_fail_p = length;
 		return -1; // ran off end of input
+	}
+
+	/** false with tag_fail_p set when a line of the attribute value from from to to leaves a block quote or a list item */
+	private tag_value(from: number, to: number): boolean {
+		const lines = this.framed_value(from, to);
+		if (lines === 0) return true;
+		if (lines < 0) {
+			tag_fail_p = from;
+			return false;
+		}
+		tag_lines = tag_values = true;
+		return true;
 	}
 
 	/**
@@ -7751,6 +7784,12 @@ export class PFMParser {
 								const row = this.row_end();
 								if (row !== -1 && expr_end > row) expr_end = -1;
 							}
+							// in a container the lines of an expression start with what the container puts there
+							const framed =
+								expr_end !== -1 && this.frames.length !== 0
+									? this.framed_value(this.cursor + 1, expr_end - 1)
+									: 0;
+							if (framed < 0) expr_end = -1;
 							if (expr_end !== -1) {
 								// svelte void tag: {@tag ...}
 								if (char_code_at.call(source, this.cursor + 1 - base) === AT) {
@@ -7786,6 +7825,13 @@ export class PFMParser {
 										if (tp < expr_end - 1) {
 											this.out.set_value_start(st_id, tp);
 											this.out.set_value_end(st_id, expr_end - 1);
+											if (framed > 0) {
+												this.out.attr(
+													st_id,
+													'text',
+													this.framed_text(tp, expr_end - 1)
+												);
+											}
 										}
 										this.emit_close(st_id, expr_end);
 										this.chomp(expr_end, true);
@@ -7793,14 +7839,30 @@ export class PFMParser {
 									}
 								}
 								// plain svelte expression: {expr}
-								this.emit_leaf(
-									NodeKind.mustache,
-									this.cursor,
-									current_node,
-									this.cursor + 1,
-									expr_end - 1,
-									expr_end
-								);
+								if (framed > 0) {
+									const m_id = this.emit_open(
+										NodeKind.mustache,
+										this.cursor,
+										current_node
+									);
+									this.out.set_value_start(m_id, this.cursor + 1);
+									this.out.set_value_end(m_id, expr_end - 1);
+									this.out.attr(
+										m_id,
+										'text',
+										this.framed_text(this.cursor + 1, expr_end - 1)
+									);
+									this.emit_close(m_id, expr_end);
+								} else {
+									this.emit_leaf(
+										NodeKind.mustache,
+										this.cursor,
+										current_node,
+										this.cursor + 1,
+										expr_end - 1,
+										expr_end
+									);
+								}
 								this.chomp(expr_end, true);
 								continue;
 							}

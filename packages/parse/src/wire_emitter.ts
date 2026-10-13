@@ -293,6 +293,9 @@ export class WireEmitter implements Emitter {
 		// the text replaces what was sent of the range, its value_end then sends nothing
 
 		if (key === "text") {
+			// the text of an expression is not sent, as its range is not
+			const kind = this.kinds.get(id);
+			if (kind === NodeKind.mustache || kind === NodeKind.svelte_tag) return;
 			const state = this.text_state.get(id);
 			if (state && state.sent > state.start) {
 				this.batch.push([WireOp.Clear, state.target]);
