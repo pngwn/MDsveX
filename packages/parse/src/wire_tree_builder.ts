@@ -40,6 +40,8 @@ export class WireTreeBuilder {
 	private dispatcher: PluginDispatcher | null;
 	/** text nodes a revoke left in place of its node, null until the first one */
 	private repaired: Set<number> | null;
+	/** what the views of the dispatcher read text from, null without plugins */
+	private texts: WireTextSource | null = null;
 
 	constructor(capacity = 128, dispatcher?: PluginDispatcher) {
 		this.buf = new NodeBuffer(capacity);
@@ -58,7 +60,8 @@ export class WireTreeBuilder {
 		// wire mode: point the dispatcher's text source at the buffer's
 		// _strings array so NodeView.text_content resolves correctly.
 		if (this.dispatcher) {
-			this.dispatcher.set_text_source(new WireTextSource(strings));
+			this.texts = new WireTextSource(strings);
+			this.dispatcher.set_text_source(this.texts);
 		}
 	}
 
@@ -89,7 +92,7 @@ export class WireTreeBuilder {
 					this._close(op[1] as number, op[2] === 1);
 					break;
 				case 'T':
-					this._text(op[1] as number, op[2] as string);
+					this._text(op[1] as number, op[2] as string, op[3] === 1);
 					break;
 				case 'A':
 					this._attr(op[1] as number, op[2] as string, op[3]);
@@ -216,7 +219,8 @@ export class WireTreeBuilder {
 		}
 	}
 
-	private _text(id: number, content: string): void {
+	/** escaped is the flag of text that starts at a character the author escaped */
+	private _text(id: number, content: string, escaped: boolean): void {
 		let idx = this.id_to_index[id];
 		if (idx === undefined) return;
 
@@ -260,9 +264,17 @@ export class WireTreeBuilder {
 		// otherwise create a new child. this keeps clear semantics simple
 		// (remove the trailing in-progress text child) and matches the parser's
 		// model where each parser text node maps to one wire text child.
+		// only a text handler reads where the escaped characters are
+		const texts = escaped ? this.texts : null;
 		const last_text_idx = this._last_text_child(idx);
 		if (last_text_idx !== NONE) {
 			const existing = strings[last_text_idx];
+			if (texts !== null) {
+				texts.escape(
+					last_text_idx,
+					existing !== undefined ? existing.length : 0
+				);
+			}
 			strings[last_text_idx] =
 				existing !== undefined ? existing + content : content;
 			return;
@@ -271,6 +283,7 @@ export class WireTreeBuilder {
 		const text_idx = this.buf.push(NodeKind.text, 0, idx);
 		strings[text_idx] = content;
 		this.buf.set_end(text_idx, 1);
+		if (texts !== null) texts.escape(text_idx, 0);
 	}
 
 	/**
@@ -365,6 +378,7 @@ export class WireTreeBuilder {
 		const last_text_idx = this._last_text_child(idx);
 		if (last_text_idx === NONE) return;
 		delete this.buf._strings[last_text_idx];
+		if (this.texts !== null) this.texts.forget(last_text_idx);
 		// unwrap_node of a childless node removes it from the sibling chain.
 		this.buf.unwrap_node(last_text_idx);
 	}

@@ -20,6 +20,7 @@ const ORDER: [slug: string, title: string][] = [
 	['code', 'Code blocks'],
 	['run', 'Code that runs'],
 	['math', 'Math'],
+	['footnotes', 'Footnotes'],
 	['all-mode', 'All mode'],
 ];
 

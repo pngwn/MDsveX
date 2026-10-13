@@ -17,7 +17,7 @@ import type {
 	SyntaxOptions,
 } from '@mdsvex/parse';
 import { TreeBuilder } from '@mdsvex/parse/tree-builder';
-import { take_info, take_math } from '@mdsvex/parse/utils';
+import { take_footnote, take_info, take_math } from '@mdsvex/parse/utils';
 import type { NodeBuffer } from '@mdsvex/parse/utils';
 import {
 	ComponentScope,
@@ -49,6 +49,8 @@ import type {
 	MathRenderer,
 } from './highlight_run';
 import { assign_heading_ids, slug_of } from './heading_ids';
+import { footnotes_of } from './footnotes';
+import type { FootnoteOptions, Footnotes } from './footnotes';
 import type { HeadingOptions, HeadingSlug } from './heading_ids';
 import { smart_of } from './smart_punctuation';
 import type { SmartOptions, SmartPunctuation } from './smart_punctuation';
@@ -75,6 +77,13 @@ export type {
 	SyntaxOptions,
 	WrapperView,
 } from '@mdsvex/parse';
+/**
+ * a run of text as the text handler of a sequential plugin gets it
+ *
+ * @example
+ * text(run) { run.replace(0, 6, 'text', 'party') }
+ */
+export type TextRun = Parameters<NonNullable<ParsePlugin['text']>>[0];
 export type { Mapping, MappingData, SourceMapV3, MapTrace };
 export type { ComponentSource };
 export type { FrontmatterOptions };
@@ -97,6 +106,12 @@ export type {
 export { heading_slug } from './heading_ids';
 export type { ImageNeed } from './image_imports';
 export { SourceError } from './fence_sources';
+export { FootnoteError } from './footnotes';
+export type {
+	FootnoteErrorCode,
+	FootnoteOptions,
+	FootnoteProblemAt,
+} from './footnotes';
 export type { SourceErrorCode, SourceNeed } from './fence_sources';
 export { RunError } from './run_blocks';
 export type { RunErrorCode, Snippet, SnippetsOption } from './run_blocks';
@@ -224,6 +239,15 @@ export interface CompileOptions
 	 * false leaves the fence a code block, which is the default
 	 */
 	math?: MathOption;
+	/**
+	 * the accessible names of the footnotes section and of the links back
+	 * from it, strict false makes a preview of a document a compile rejects,
+	 * a document with no footnote reads none of it
+	 *
+	 * @example
+	 * footnotes: { label: 'Notes', back_label: 'Back to note {n}' }
+	 */
+	footnotes?: FootnoteOptions;
 	/**
 	 * imports every image with a relative url and gives the image what the
 	 * import gives, so a bundler hashes and optimises the file, ![a](./a.png)
@@ -399,6 +423,7 @@ export interface CompileInputs {
 	/** the smart_punctuation option, undefined when it is off */
 	smart_punctuation: SmartPunctuation | undefined;
 	math: MathOption | undefined;
+	footnotes: FootnoteOptions | undefined;
 	/** true imports relative images, anything else leaves every url */
 	import_images: boolean | undefined;
 	/** the rewrite and links options, links_of prepares them, undefined when no url changes */
@@ -432,6 +457,7 @@ export function compile_inputs(): CompileInputs {
 		heading_ids: undefined,
 		smart_punctuation: undefined,
 		math: undefined,
+		footnotes: undefined,
 		import_images: undefined,
 		links: undefined,
 		sources: undefined,
@@ -461,6 +487,7 @@ function inputs_of(options: CompileOptions): CompileInputs {
 	const heading_ids = options.heading_ids;
 	const smart = options.smart_punctuation;
 	const math = options.math;
+	const footnotes = options.footnotes;
 	const import_images = options.import_images;
 	const rewrite = options.rewrite;
 	const links = options.links;
@@ -482,6 +509,7 @@ function inputs_of(options: CompileOptions): CompileInputs {
 		heading_ids === undefined &&
 		smart === undefined &&
 		math === undefined &&
+		footnotes === undefined &&
 		import_images === undefined &&
 		rewrite === undefined &&
 		links === undefined &&
@@ -504,6 +532,7 @@ function inputs_of(options: CompileOptions): CompileInputs {
 	if (heading_ids !== undefined) inputs.heading_ids = slug_of(heading_ids);
 	if (smart !== undefined) inputs.smart_punctuation = smart_of(smart);
 	inputs.math = math;
+	if (footnotes !== undefined) inputs.footnotes = footnotes_option(footnotes);
 	inputs.import_images = import_images;
 	if (rewrite !== undefined || links !== undefined)
 		inputs.links = links_of(rewrite, links);
@@ -512,11 +541,27 @@ function inputs_of(options: CompileOptions): CompileInputs {
 	return inputs;
 }
 
+/** throws unless the footnotes option is one a compile takes */
+export function footnotes_option(written: FootnoteOptions): FootnoteOptions {
+	if (typeof written !== 'object' || written === null)
+		throw new TypeError(
+			'[mdsvex] footnotes must be an object with label, back_label or strict'
+		);
+	for (const key of ['label', 'back_label'] as const) {
+		const value = written[key];
+		if (value !== undefined && typeof value !== 'string')
+			throw new TypeError(`[mdsvex] footnotes.${key} must be a string`);
+	}
+	if (written.strict !== undefined && typeof written.strict !== 'boolean')
+		throw new TypeError('[mdsvex] footnotes.strict must be true or false');
+	return written;
+}
+
 /** the options the positional entry points take as one trailing object */
 type PositionalOptions = SyntaxOptions &
 	HeadingOptions &
 	SmartOptions &
-	Pick<CompileOptions, 'import_images'>;
+	Pick<CompileOptions, 'import_images' | 'footnotes'>;
 
 /** inputs for the positional entry points, which are always strict */
 function inputs_from(
@@ -544,6 +589,8 @@ function inputs_from(
 		inputs.heading_ids = slug_of(syntax.heading_ids);
 		inputs.smart_punctuation = smart_of(syntax.smart_punctuation);
 		inputs.import_images = syntax.import_images;
+		if (syntax.footnotes !== undefined)
+			inputs.footnotes = footnotes_option(syntax.footnotes);
 	}
 	return inputs;
 }
@@ -1292,6 +1339,19 @@ function unbind(
 	result.warnings = warnings_of(list, highlights, source);
 }
 
+/** the footnote warnings of a document go out with its result, after those of the render */
+function footnote_warnings(
+	result: { warnings?: CompileWarning[] },
+	notes: Footnotes,
+	source: string
+): void {
+	const found = notes.warnings;
+	if (found === null) return;
+	const out = result.warnings ?? (result.warnings = []);
+	for (const { code, message, start } of found)
+		out.push(warning(code, message, start, source));
+}
+
 /**
  * apart from unbind, which most documents leave before here, so unbind stays
  * small enough to inline, the offsets index source
@@ -1360,6 +1420,10 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 	);
 	const nodes = parse_once(source, host, inputs);
 	const spans = take_math();
+	// only a document the parser noted a footnote in is looked through
+	const notes = take_footnote()
+		? footnotes_of(nodes, source, inputs.footnotes, inputs.filename)
+		: null;
 	// a handler that read the frontmatter already parsed it
 	const metadata =
 		host === null
@@ -1441,6 +1505,7 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 	}
 	const smart = inputs.smart_punctuation;
 	if (smart !== undefined) renderer.smart_punctuation = smart;
+	if (notes !== null) renderer.footnotes = notes;
 
 	if (options?.sourcemap) {
 		let result;
@@ -1466,6 +1531,7 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 		};
 		if (fenced !== null) done.snippets = fenced.snippets;
 		unbind(done, renderer, source);
+		if (notes !== null) footnote_warnings(done, notes, source);
 		if (host !== null) host.leave(done, false);
 		give_renderer(renderer);
 		return done;
@@ -1481,6 +1547,7 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 	const done: CompileResult = { code: renderer.html, metadata, template };
 	if (fenced !== null) done.snippets = fenced.snippets;
 	unbind(done, renderer, source);
+	if (notes !== null) footnote_warnings(done, notes, source);
 	if (host !== null) host.leave(done, false);
 	give_renderer(renderer);
 	return done;
@@ -1583,6 +1650,8 @@ export class Parsed {
 	math = false;
 	/** @internal the parser noted inline math, so the render starts with a math run */
 	_spans = false;
+	/** @internal the footnotes of the document, null for one with none */
+	_notes: Footnotes | null = null;
 	/** @internal null once a render took them */
 	_nodes: NodeBuffer | null;
 	/** @internal the plain arena of the session, lent until the render */
@@ -1628,6 +1697,8 @@ export class CompilerSession {
 	private released = false;
 	/** the parser noted inline math in the document the session parsed last */
 	private spans = false;
+	/** the footnotes of the document the session parsed last */
+	private notes: Footnotes | null = null;
 	// apart from the plain arena, so a compile without plugins started in a
 	// plugin handler never meets a parser that is mid document
 	private plugin_arena: PluginArena | null = null;
@@ -1809,6 +1880,7 @@ export class CompilerSession {
 		const nodes = tree.get_buffer();
 		const parsed = new Parsed(raw, source, metadata, nodes);
 		parsed.math = parsed._spans = this.spans;
+		parsed._notes = this.notes;
 		if (plugged) this.plugin_arena!.host.wait(parsed);
 		if (inputs.import_images === true)
 			this.need_images(parsed, image_imports(nodes, source));
@@ -2067,6 +2139,7 @@ export class CompilerSession {
 		let images: ImageImports | null = null;
 		let shown: SourceFences | null = null;
 		let spans = false;
+		let notes: Footnotes | null = null;
 		// set when plugin handlers could run, a document without plugins never has one
 		let host: PluginHost | null = null;
 		if (parsed === undefined) {
@@ -2099,6 +2172,10 @@ export class CompilerSession {
 						: metadata_of(nodes, source, inputs.frontmatter_parse);
 			}
 			spans = this.spans = take_math();
+			// only a document the parser noted a footnote in is looked through
+			notes = this.notes = take_footnote()
+				? footnotes_of(nodes, source, inputs.footnotes, inputs.filename)
+				: null;
 			// the parser notes each image it makes, so only a document with one
 			// is walked, with plugins the walk decides, they make images unseen
 			// and a compile a handler starts takes the note
@@ -2121,6 +2198,7 @@ export class CompilerSession {
 			) {
 				const waiting = new Parsed(raw, source, metadata, nodes);
 				waiting.math = waiting._spans = spans;
+				waiting._notes = notes;
 				if (host !== null) host.wait(waiting);
 				this.need_images(waiting, images);
 				this.need_sources(waiting, shown);
@@ -2142,6 +2220,7 @@ export class CompilerSession {
 			images = parsed._images;
 			shown = parsed._sources;
 			spans = parsed._spans;
+			notes = parsed._notes;
 			// the next document of the session resets it
 			host = parsed._host;
 			parsed._host = null;
@@ -2206,6 +2285,7 @@ export class CompilerSession {
 		}
 		const smart = inputs.smart_punctuation;
 		if (smart !== undefined) renderer.smart_punctuation = smart;
+		if (notes !== null) renderer.footnotes = notes;
 		// the session keeps its renderer, a render that throws must not leave
 		// the imports of this document for the next
 		try {
@@ -2303,10 +2383,12 @@ export class CompilerSession {
 				renderer.imports = undefined;
 			}
 			if (smart !== undefined) renderer.smart_punctuation = undefined;
+			if (notes !== null) renderer.footnotes = undefined;
 		}
 		if (fenced !== null) done!.snippets = fenced.snippets;
 		// one call site for every kind, each more is another callee to inline
 		unbind(done!, renderer, source);
+		if (notes !== null) footnote_warnings(done!, notes, source);
 		if (host !== null) host.leave(done!, out !== undefined);
 		if (parsed !== undefined) this.take_back(parsed);
 		return done;

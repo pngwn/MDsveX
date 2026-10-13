@@ -158,7 +158,7 @@ How text reads. **Shared state:** one text-rewriting pass with conflict rules (s
 | Feature | Plugins | Delivery | Notes |
 | --- | --- | --- | --- |
 | **Smart punctuation** | remark-smartypants (17.7M) | `core` option, exists (`smart_punctuation`) | Off by default, 0.x had it on, and the migrator turns it on. Issue #825. |
-| **Emoji shortcodes** | remark-emoji (8.8M), remark-gemoji (861k), remark-twemoji, rehype-twemojify, rehype-accessible-emojis (8k), remark-a11y-emoji | `plugin+API` (text rewrite, in progress) | `:tada:` doesn't clash with directives, because directives need `[`. Wrap each emoji in `role="img"` with a label. Load the emoji data only when the option is on. |
+| **Emoji shortcodes** | remark-emoji (8.8M), remark-gemoji (861k), remark-twemoji, rehype-twemojify, rehype-accessible-emojis (8k), remark-a11y-emoji | `plugin`, exists (`@mdsvex/plugin-emoji`) | `:tada:` doesn't clash with directives, because directives need `[`. The `label` option wraps each emoji in `role="img"` with a label, typed emoji included. The table is gemoji's, built into the package, and the descriptions are only read when `label` is on. No emoticons and no image sets. |
 | **Typographic details** | remark-textr (193k), remark-typograf, remark-arrow (14k), remark-fix-guillemets (5k), rehype-widont, remark-plugin-autonbsp | `plugin+API` (text rewrite) | Arrows, guillemets, non-breaking spaces, widows. Locale-aware, so it needs the document's `lang` from frontmatter. |
 | **CJK text** | remark-cjk-friendly (12.8M), …-gfm-strikethrough (10.5M), remark-join-cjk-lines, rehype-join-line | `core`, the delimiter half exists | PFM's delimiter rules take Unicode punctuation, and Han, kana and hangul as a boundary. A soft break between two CJK characters still renders as a space. |
 
@@ -168,8 +168,8 @@ Text that becomes a link to something else. **Shared state:** a table of pattern
 
 | Feature | Plugins | Delivery | Notes |
 | --- | --- | --- | --- |
-| **GitHub references** | remark-github (3.2M) | `plugin+API` (text rewrite) | `#123`, `@user`, commit SHAs. |
-| **Mentions and regex linkify** | remark-mentions, remark-ping, remark-linkify-regex (9k), remark-truncate-links | `plugin+API` (text rewrite) | One pattern table covers these and remark-github. |
+| **GitHub references** | remark-github (3.2M) | `plugin`, exists (`@mdsvex/plugin-references`) | `#123`, `owner/repo#123`, `@user`, commit SHAs. The urls are templates, GitHub's by default. No `GH-123`, no `user@sha`, and nothing is checked against the host. |
+| **Mentions and regex linkify** | remark-mentions, remark-ping, remark-linkify-regex (9k), remark-truncate-links | `plugin`, exists (`@mdsvex/plugin-references`) for mentions and bare urls | The `mention` template covers remark-mentions and remark-ping. `linkify` makes links of bare `https://` and `www.` urls, which the parser never does. A pattern table of the user's own (remark-linkify-regex) and truncated link text are not built. |
 | **Wiki links** | remark-wiki-link (108k), remark-obsidian | `core` + resolver option | `[[Page]]`. The resolver is shared with Resolution's route rewriting. Decided: last, with transclusion. |
 
 ### 3.9 Reference apparatus
@@ -225,7 +225,7 @@ Resolution, Composition, Code and Collections moved to the Vite plugin, so they 
 
 | Capability | Status | Unblocks |
 | --- | --- | --- |
-| **Rewrite or split text** (replace a range with new text or nodes) | in progress. A handler can add a text node (`append('text', …)`) but can't replace part of one | Typography (emoji, typographic details), Cross-references (GitHub refs, mentions, linkify), numbering |
+| **Rewrite or split text** (replace a range with new text or nodes) | exists (the `text` handler of a sequential plugin and `run.replace`, see `design/plugin-text.md`) | Typography (emoji, typographic details), Cross-references (GitHub refs, mentions, linkify), numbering |
 | **Group siblings** (`wrap_from`: wrap a node and the siblings after it in a new parent) | exists | sectionize, and the rewrites behind steps, tabs, accordions and code groups |
 | **Plugin-owned directives** (a plugin supplies components, and handlers bound to a directive run only for the nodes inside it) | exists (the `plugins` option) | structured containers, and any kit that ships as one plugin |
 | **Remove or replace nodes** | exists (`node.remove()`, and writing `node.type`) | GitHub alerts if done as a plugin |
@@ -253,7 +253,7 @@ Ranked on usefulness to mdsvex users × popularity × cost. Items tagged `core` 
 | 8 | Relative images as imports, with size and loading | Resolution | vite, imports exist, size and loading do not | Svelte-specific; #611 |
 | 9 | Smart punctuation | Typography | core option, exists | 17.7M; issue #825 |
 | 10 | Callouts and GitHub alerts | Presentation | component + core | ~4.2M combined |
-| 11 | Emoji shortcodes | Typography | plugin+API, text rewrite in progress | 9.7M |
+| 11 | Emoji shortcodes | Typography | plugin, exists | 9.7M |
 | 12 | Styling hooks | Presentation | plugin, a recipe in the docs | 1.4M |
 | 13 | Reading time | Document data | plugin, exists | 1M |
 | 14 | Links to routes and the base path | Resolution | vite, exists | ~150k combined; issue #389 |
@@ -267,7 +267,7 @@ Ranked on usefulness to mdsvex users × popularity × cost. Items tagged `core` 
 | 22 | Copy button and code tabs (code tabs exist, `@mdsvex/plugin-tabs`) | Code | component + plugin+API | expressive-code 5.4M |
 | 23 | Definition lists | Presentation | core / component | 818k |
 | 24 | Link validation | Quality | plugin+API | 639k |
-| 25 | GitHub refs, mentions, linkify | Cross-references | plugin+API | 3.2M |
+| 25 | GitHub refs, mentions, linkify | Cross-references | plugin, exists | 3.2M |
 | 26 | CJK check | Typography | core, delimiters done, line joining not | 12.8M + 10.5M (inflated) |
 | 27 | Transclusion with heading shift (last) | Composition | vite + core | low downloads, structural gap |
 | 28 | PFM lint | Quality | tooling | remark-lint 1.5M |

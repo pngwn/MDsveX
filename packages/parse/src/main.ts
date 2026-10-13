@@ -36,7 +36,7 @@ import type { ParseOptions, SyntaxOptions } from './types';
 import type { PluginData, PluginDocument, PluginWarning } from './plugin_types';
 
 import type { Emitter } from './opcodes';
-import { NodeKind, is_raw_text_tag, note_math } from './utils';
+import { NodeKind, is_raw_text_tag, note_footnote, note_math } from './utils';
 import { NodeBuffer, ErrorCollector } from './utils';
 import { TreeBuilder } from './tree_builder';
 import { PluginDispatcher, has_directive_handlers } from './plugin_dispatch';
@@ -364,10 +364,14 @@ MARK[UNDERSCORE] = 1;
 MARK[TILDE] = 1;
 
 // the first characters block_start has an arm for, any other opens a paragraph
-// 2 marks those whose block may end a paragraph, a table, a definition and an image do not
+// 2 marks those whose block may end a paragraph, a table, a link definition and an image do not
+// a bracket is marked for the footnote definition, which does
 const BLOCK_START = new Uint8Array(128);
-for (const char of '|[!') BLOCK_START[char.charCodeAt(0)] = 1;
-for (const char of '#`*-_<>{:+0123456789') BLOCK_START[char.charCodeAt(0)] = 3;
+for (const char of '|!') BLOCK_START[char.charCodeAt(0)] = 1;
+for (const char of '#`*-_<>{:+0123456789[') BLOCK_START[char.charCodeAt(0)] = 3;
+
+// a line goes on with a footnote definition when it is indented this far past where the definition starts
+const NOTE_INDENT = 4;
 const TEXT_BREAK = new Uint8Array(128);
 TEXT_BREAK[LINEFEED] = 1;
 TEXT_BREAK[BACKSLASH] = 1;
@@ -822,6 +826,9 @@ interface ColdState {
 	tag_memo_base: number;
 	/** where the open tag of an element ends, by its start, for those that run over a line */
 	tag_ends: Map<number, number> | null;
+	/** where the text of the last footnote definition starts, and the column that text stands at */
+	note_pos: number;
+	note_column: number;
 	wait_needle: string;
 	wait_cursor: number;
 	// the stalled block quote fence scan, fence cursor or -1 and the first line it has not passed
@@ -901,6 +908,8 @@ export class PFMParser {
 		tag_memo: null,
 		tag_memo_base: 0,
 		tag_ends: null,
+		note_pos: -1,
+		note_column: 0,
 		wait_needle: '',
 		wait_cursor: -1,
 		fence_text: '',
@@ -1756,6 +1765,7 @@ export class PFMParser {
 		if (cold.brace_memo !== null) cold.brace_memo = null;
 		if (cold.tag_memo !== null) cold.tag_memo = null;
 		if (cold.tag_ends !== null) cold.tag_ends = null;
+		cold.note_pos = -1;
 		if (this.wait_chunks.length !== 0) this.wait_chunks.length = 0;
 		cold.raw_node = 0;
 		cold.raw_needle = '';
@@ -3253,6 +3263,7 @@ export class PFMParser {
 	 * start or from where skip_bq_markers leaves a block quote line, 0 otherwise
 	 */
 	private lead_columns(pos: number): number {
+		if (pos === this.cold.note_pos) return this.cold.note_column;
 		const source = this.source;
 		const base = this.source_base;
 		let p = pos;
@@ -5382,6 +5393,7 @@ export class PFMParser {
 				this.close_table_node();
 				return;
 			case NodeKind.block_quote:
+			case NodeKind.footnote_definition:
 				this.emit_close(id, this.cursor);
 				this.node_stack.pop();
 				this.block_quote_depth--;
@@ -6471,10 +6483,12 @@ export class PFMParser {
 		for (let i = states.length - 1; i > 0; i--) {
 			const state = states[i];
 			if (state === StateKind.list_item) return true;
+			// a footnote definition runs the state of a quote over a frame of its own
+			if (state === StateKind.block_quote)
+				return this.frames[this.frames.length - 1] !== 0;
 			if (
-				state === StateKind.block_quote ||
-				(state >= StateKind.html_block_element &&
-					state <= StateKind.directive_container)
+				state >= StateKind.html_block_element &&
+				state <= StateKind.directive_container
 			)
 				return false;
 		}
@@ -7442,6 +7456,14 @@ export class PFMParser {
 								this.states.push(StateKind.text);
 								this.cursor++;
 								continue;
+							}
+							{
+								const after = char_code_at.call(source, this.cursor + 1 - base);
+								if (after === CARET) {
+									const noted = this.note_reference(current_node);
+									if (noted < 0) break main_loop;
+									if (noted !== 0) continue;
+								} else if (after !== after && !this.finished) break main_loop;
 							}
 							// speculatively open a link - [ is a link until proven otherwise
 							const link_id = this.emit_open_pending(
@@ -10368,6 +10390,8 @@ export class PFMParser {
 
 		switch (code) {
 			case LINEFEED: {
+				if (this.frames[this.frames.length - 1] !== 0)
+					return this.note_lf(current_node);
 				if (!this.finished && !this.can_decide_after_lf(this.cursor)) {
 					return true;
 				}
@@ -10416,6 +10440,155 @@ export class PFMParser {
 		this.node_stack.push(para_id);
 		if (code >= 128 || (code !== 0 && TEXT_BREAK[code] === 0))
 			this.para_text(para_id);
+		return false;
+	}
+
+	/**
+	 * the close bracket of the footnote label that starts at pos, a label is one or more
+	 * chars with no whitespace, bracket or caret among them
+	 * @returns 0 when there is no label, -1 while a feed has not shown its end
+	 */
+	private note_label_end(pos: number): number {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		const cell = this.in_table;
+		let p = pos;
+		for (;;) {
+			if (p >= length) return this.finished ? 0 : -1;
+			const ch = char_code_at.call(source, p - base);
+			if (ch === CLOSE_SQUARE_BRACKET) return p === pos ? 0 : p;
+			if (
+				ch <= SPACE ||
+				ch === OPEN_SQUARE_BRACKET ||
+				ch === CARET ||
+				(ch === PIPE && cell)
+			)
+				return 0;
+			p++;
+		}
+	}
+
+	/**
+	 * a footnote reference at the cursor, a caret label in brackets, it is one by its
+	 * syntax alone, so it is a leaf that is never pending
+	 * @returns 1 when emitted, 0 when the bracket opens none, -1 while a feed has not shown its end
+	 */
+	private note_reference(parent: number): number {
+		// the alt of an image is text, a reference in it would be numbered and never rendered
+		const stack = this.node_stack;
+		for (let i = stack.length - 1; i > 0; i--) {
+			if (this.kind_of(stack[i]) === NodeKind.image) return 0;
+		}
+		const start = this.cursor;
+		const end = this.note_label_end(start + 2);
+		if (end <= 0) return end;
+		const id = this.emit_open(NodeKind.footnote_reference, start, parent);
+		this.out.attr(
+			id,
+			'label',
+			string_slice.call(
+				this.source,
+				start + 2 - this.source_base,
+				end - this.source_base
+			)
+		);
+		this.emit_close(id, end + 1);
+		note_footnote();
+		this.chomp(end + 1, true);
+		return 1;
+	}
+
+	/**
+	 * where the text of the footnote definition at pos starts, a label in brackets, a colon
+	 * and text on the line, 0 when the line is no definition
+	 */
+	private note_text_at(pos: number): number {
+		const source = this.source;
+		const base = this.source_base;
+		const end = this.note_label_end(pos + 2);
+		if (end <= 0) return 0;
+		if (char_code_at.call(source, end + 1 - base) !== COLON) return 0;
+		let p = end + 2;
+		let ch = char_code_at.call(source, p - base);
+		while (ch === SPACE || ch === TAB) {
+			ch = char_code_at.call(source, ++p - base);
+		}
+		return p >= this.source_end || ch === LINEFEED ? 0 : p;
+	}
+
+	/**
+	 * opens the footnote definition at the cursor, whose text starts at text
+	 * it holds blocks as a list item does, the line of its label and every line indented to its column
+	 */
+	private open_note(parent: number, text: number): void {
+		const base = this.source_base;
+		const start = this.cursor;
+		const column = this.lead_columns(start) + NOTE_INDENT;
+		const id = this.emit_open(NodeKind.footnote_definition, start, parent);
+		this.out.attr(
+			id,
+			'label',
+			string_slice.call(
+				this.source,
+				start + 2 - base,
+				string_index_of.call(this.source, ']', start + 2 - base)
+			)
+		);
+		note_footnote();
+		this.block_quote_depth++;
+		this.push_frame(column);
+		this.node_stack.push(id);
+		this.states.push(StateKind.block_quote);
+		// what starts on the line of the label stands at the column of the definition
+		this.cold.note_pos = text;
+		this.cold.note_column = column;
+		this.chomp(text, true);
+	}
+
+	/**
+	 * the linefeed at the cursor in a footnote definition, blank lines are passed over and the
+	 * line after them goes on with the definition when it is indented to its column
+	 * any other line ends it, with the cursor left on the linefeed for the frames around it
+	 * @returns true while a feed cannot tell yet
+	 */
+	private note_lf(current_node: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		// the frames before the last are around the definition
+		const outer = this.frames.length - 1;
+		let lf = this.cursor;
+		let stays = false;
+		for (;;) {
+			if (!this.finished && !this.can_decide_after_lf(lf)) return true;
+			const kept = this.line_start(lf + 1);
+			if (kept < 0) return true;
+			if (kept < outer) break;
+			let p = this.line_pos;
+			let ch = char_code_at.call(source, p - base);
+			while (ch === SPACE || ch === TAB) {
+				ch = char_code_at.call(source, ++p - base);
+			}
+			if (p >= length) {
+				if (!this.finished) return true;
+				break;
+			}
+			if (ch !== LINEFEED) {
+				stays = kept > outer;
+				break;
+			}
+			lf = p;
+		}
+		if (stays) {
+			this.chomp(this.line_pos, true);
+			return false;
+		}
+		this.emit_close(current_node, this.cursor);
+		this.states.pop();
+		this.node_stack.pop();
+		this.block_quote_depth--;
+		this.pop_frame();
 		return false;
 	}
 
@@ -10733,12 +10906,20 @@ export class PFMParser {
 			}
 
 			case OPEN_SQUARE_BRACKET: {
-				if (probe) return 0;
+				const noted = char_code_at.call(source, pos + 1 - base) === CARET;
+				if (probe) return noted && this.note_text_at(pos) > 0 ? 1 : 0;
 				if (
 					!this.finished &&
 					string_index_of.call(source, '\n', this.cursor - base) === -1
 				)
 					return -1;
+				if (noted) {
+					const text = this.note_text_at(pos);
+					if (text > 0) {
+						this.open_note(current_node, text);
+						return 1;
+					}
+				}
 				const def_end = this.try_parse_link_ref_definition(this.cursor);
 				if (def_end === -2) return -1;
 				if (def_end >= 0) {

@@ -69,7 +69,7 @@ An option of the wrong shape throws a `PageDataError` when the plugin is made.
 
 `words` is the number of words in the prose of the document, and `minutes` is the time to read them.
 
-- **Prose is the text a reader reads**: headings, paragraphs, list items, block quotes, table cells, the labels of directives, and what an element, a component or a `{#if}` block holds.
+- **Prose is the text a reader reads**: headings, paragraphs, list items, block quotes, table cells, footnotes, the labels of directives, and what an element, a component or a `{#if}` block holds.
 - **Not counted**: code blocks, the alt of an image, comments, `{expressions}`, HTML attributes, link urls and titles, `<script>` and `<style>`.
 - **Code in a sentence is counted**, since `` `npm install` `` is read as part of it.
 - **A word is a run of characters between spaces**, so `well-known` is one word, and markup inside a word does not split it.
@@ -109,8 +109,8 @@ This one is not.
 ```
 
 - **It is plain text.** A parse plugin sees the document before it is rendered, so there is no HTML to give. Emphasis, links and code are their text, a character reference such as `&amp;` is its character, and the lines of a paragraph are joined with a space. For a rendered excerpt, render the start of the document in the template instead.
-- **The first paragraph** is the first one with text that is not inside a block quote, a list, a table, a container directive or a Svelte block. A paragraph that only holds an image, a component or an expression is passed over.
-- **Before `<!-- more -->`** it is every block of prose, joined with spaces. Headings, code blocks and tables are left out. The comment can be on a line of its own or inside a paragraph, which is then cut there. Only the first one counts.
+- **The first paragraph** is the first one with text that is not inside a block quote, a list, a table, a footnote, a container directive or a Svelte block. A paragraph that only holds an image, a component or an expression is passed over.
+- **Before `<!-- more -->`** it is every block of prose, joined with spaces. Headings, code blocks, tables and footnotes are left out. The comment can be on a line of its own or inside a paragraph, which is then cut there. Only the first one counts.
 - **`max_length`** is the most characters the excerpt has. A longer one is cut where a word ends and gets the `ellipsis`, which counts toward the length. Text with no spaces, such as Japanese, is cut between two characters.
 
 ```js

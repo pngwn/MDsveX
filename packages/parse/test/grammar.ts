@@ -21,7 +21,8 @@ export type Container =
 	| 'list_item'
 	| 'html_element'
 	| 'svelte_branch'
-	| 'directive_container';
+	| 'directive_container'
+	| 'footnote_definition';
 
 export const CONTAINERS: Container[] = [
 	'block_quote',
@@ -29,6 +30,7 @@ export const CONTAINERS: Container[] = [
 	'html_element',
 	'svelte_branch',
 	'directive_container',
+	'footnote_definition',
 ];
 
 /** block kinds that hold blocks, with the container their kids are in */
@@ -38,6 +40,7 @@ const HOLDS: Record<string, Container> = {
 	html_element: 'html_element',
 	svelte_branch: 'svelte_branch',
 	directive_container: 'directive_container',
+	footnote_definition: 'footnote_definition',
 };
 
 const INLINE_HOLDERS = new Set([
@@ -119,7 +122,7 @@ export class Grammar {
 
 	private inline_one(ctx: InlineContext): Piece {
 		const deep = { ...ctx, depth: ctx.depth + 1 };
-		const roll = ctx.depth >= 2 ? 0 : this.int(43);
+		const roll = ctx.depth >= 2 ? 0 : this.int(45);
 		const holder = (kind: string, form = 0, words = 0): Piece =>
 			this.with_words(piece(kind, form, this.inline(deep)), words);
 		switch (roll) {
@@ -196,6 +199,11 @@ export class Grammar {
 			case 40:
 			case 41:
 				return this.with_words(piece('dollar', this.int(DOLLARS)), 2);
+			case 42:
+			case 43:
+				// not in the text of a directive, where a bracket is literal
+				if (!ctx.links) break;
+				return this.with_words(piece('footnote_reference', this.int(3)), 1);
 		}
 		return this.with_words(piece('word'), 1);
 	}
@@ -270,6 +278,13 @@ export class Grammar {
 			case 23:
 				if (!root_only) break;
 				return this.with_words(piece('import'), 1);
+			case 24:
+			case 25:
+				return piece(
+					'footnote_definition',
+					this.int(2),
+					this.blocks(depth + 1)
+				);
 			case 26:
 			case 27:
 			case 28:
@@ -422,6 +437,9 @@ function inline_one(p: Piece): string {
 			return [`${a}.`, `(${a})`, `"${a}",`, `${a}:`][p.form];
 		case 'math':
 			return p.form === 1 ? `$\`\`${a} \` ${b}\`\`$` : `$\`${a}\`$`;
+		case 'footnote_reference':
+			// the label is no word of the document, a reference has no text
+			return [`[^n]`, `[^note-1]`, `\\[^${a}]`][p.form];
 		case 'dollar':
 			return [
 				`$${a}`,
@@ -452,6 +470,13 @@ function indented(marker: string, rows: string[]): string[] {
 	const pad = ' '.repeat(marker.length + 1);
 	return rows.map((row, i) =>
 		i === 0 ? `${marker} ${row}` : row === '' ? '' : pad + row
+	);
+}
+
+/** the rows of a footnote definition, its text on the line of its label and the rest indented to it */
+function noted(marker: string, rows: string[]): string[] {
+	return rows.map((row, i) =>
+		i === 0 ? `${marker} ${row}` : row === '' ? '' : '    ' + row
 	);
 }
 
@@ -512,6 +537,8 @@ function block_rows(p: Piece): string[] {
 			return [
 				p.form % 2 === 0 ? `[r${p.form}]: /ref` : `[r${p.form}]: /ref "t"`,
 			];
+		case 'footnote_definition':
+			return noted(p.form === 1 ? '[^note-1]:' : '[^n]:', rows_of(p.kids));
 		case 'svelte_tag':
 			return [`{@html ${a}}`];
 		case 'component':
@@ -577,6 +604,8 @@ export function contained(container: Container, rows: string[]): string[] {
 			return ['{#if x}', ...rows, '{/if}'];
 		case 'directive_container':
 			return [':::box', ...rows, ':::'];
+		case 'footnote_definition':
+			return noted('[^n]:', rows);
 	}
 	return rows;
 }

@@ -100,9 +100,12 @@ A consumer that reads only `op[1]` treats the flagged close as any other close, 
 
 ```
 ["T", id: int, content: string]
+["T", id: int, content: string, 1]
 ```
 
 Appends text to a node's content. Multiple `T` opcodes for the same node should be concatenated. If the last item in the node's content is already a string, append to it. Otherwise, push a new string entry.
+
+The flag says the author escaped the first character of `content` with a backslash. The backslash is not sent. A client that only shows the text ignores the flag. One that rewrites text, as `WireTreeBuilder` does for the text handler of a parse plugin, keeps where those characters are and leaves them alone.
 
 Text is always resolved to strings on the wire, the client never sees byte offsets or needs the source markdown.
 
@@ -261,6 +264,8 @@ These appear inside paragraphs, headings, list items, and other inline container
 | `soft_break`      | ,              | ,               | Line break within a paragraph -> space or `\n`      |
 
 A `code_span` whose `extra` is `1` is inline math, written ``$`x`$``. Its content is the LaTeX, without the dollars. A client with no math renderer shows it as it shows any other code span.
+
+A `footnote_reference` is a leaf with the attr `label` and no content. A `footnote_definition` is a block with the same attr, and its content is the blocks of the note. Nothing on the wire numbers them or moves a definition: a client shows the label where the reference is and the definition where it was written, or numbers the labels by first reference and collects the definitions at the end, as the compile does.
 
 ### Table structure
 
