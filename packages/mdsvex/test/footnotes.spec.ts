@@ -294,3 +294,51 @@ describe('footnote errors', () => {
 		).toThrow(/footnotes\.strict must be true or false/);
 	});
 });
+
+describe('a footnote that holds blocks', () => {
+	test('the link back goes at the end of its last paragraph', () => {
+		const raw = 'a[^1]\n\n[^1]: one\n\n    - two\n\n    three\n\nafter\n';
+		expect(compile_all(raw)).toBe(
+			`<p>a${ref(1, '1')}</p><p>after</p>` +
+				section(
+					`<li id="fn-1"><p>one</p><ul>\n<li>two</li>\n\n</ul><p>three${back(1)}</p></li>`
+				)
+		);
+	});
+
+	test('and after its last block when that is no paragraph', () => {
+		const raw = 'a[^1]\n\n[^1]: one\n\n    ```js\n    let b;\n    ```\n';
+		expect(compile_all(raw)).toBe(
+			`<p>a${ref(1, '1')}</p>` +
+				section(
+					`<li id="fn-1"><p>one</p><pre><code class="language-js">let b;</code></pre>${back(1)}</li>`
+				)
+		);
+	});
+});
+
+describe('footnote replacements', () => {
+	const components = [
+		{ specifier: 'mdsvex:components', names: ['footnote', 'footnotes', 'p'] },
+	];
+
+	test('footnote takes a reference and footnotes the section', () => {
+		const out = compile('a[^n]\n\n[^n]: *one*\n', { components });
+		const code = out.code.replace(/^<script>\n[^]*?<\/script>/, '');
+		const sup = ref(1, 'n');
+		expect(code).toBe(
+			'<P_MDSVEX_G>a<Footnote_MDSVEX_G label={"n"} number={1} href={"#fn-n"} id={"fnref-1"}>' +
+				'{#snippet note()}<P_MDSVEX_G><strong>one</strong></P_MDSVEX_G>{/snippet}' +
+				`${sup}</Footnote_MDSVEX_G></P_MDSVEX_G>` +
+				`<Footnotes_MDSVEX_G>\n<ol>\n<li id="fn-n"><P_MDSVEX_G><strong>one</strong></P_MDSVEX_G>${back(1)}</li>\n</ol>\n</Footnotes_MDSVEX_G>`
+		);
+		svelte_compile(out.code, { generate: 'server', filename: 'doc.svelte' });
+		expect(
+			compile('a[^n]\n\n[^n]: *one*\n', { components, sourcemap: true }).code
+		).toBe(out.code);
+	});
+
+	test('a document with no footnote imports neither', () => {
+		expect(compile('a\n', { components }).code).not.toContain('ootnote');
+	});
+});

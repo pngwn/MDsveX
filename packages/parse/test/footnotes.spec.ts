@@ -154,8 +154,8 @@ describe('a footnote definition', () => {
 		);
 	});
 
-	test('a blank line ends it, what follows is no part of it', () => {
-		expect(every_path('[^1]: one\n\n    two\n')).toBe(
+	test('a blank line and a line that is not indented end it', () => {
+		expect(every_path('[^1]: one\n\ntwo\n')).toBe(
 			lines(
 				'root',
 				...DEF('1', 'text "one"'),

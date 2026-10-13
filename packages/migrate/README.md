@@ -59,10 +59,9 @@ have the same form. Three things differ:
   written with the label of its definition.
 - A PFM label has no whitespace, bracket or caret. One that does gets a `-`
   in their place, in the reference and the definition alike.
-- A PFM definition holds one paragraph. The blocks after it follow the
-  definition as blocks of the document. A definition whose text starts with
-  a list or a fence has no PFM form yet, so it stays literal text, as its
-  references do.
+- The first block of a definition is written on the line of its label, and
+  every later line is indented by four spaces. A definition with no content
+  has no PFM form, so it stays literal text, as its references do.
 
 A `[^...]` that was no footnote in the source is escaped, since PFM reads
 every `[^label]` as a reference and fails the build for one with no

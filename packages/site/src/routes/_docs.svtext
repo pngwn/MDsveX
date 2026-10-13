@@ -2519,7 +2519,19 @@ The reference renders as a number that links to the note, and the notes are coll
 ```
 
 - **A label** is any run of characters without whitespace, brackets or `^`. Labels match exactly, case included. The number a reader sees comes from the order of the references, not from the label, so `[^smith]` is as good a label as `[^2]`.
-- **A definition** is a line that starts with `[^label]:` and has text after it. Its text is one paragraph, which may run over several lines, and may hold links, emphasis, code and references to other notes. It can be written anywhere: under the paragraph that cites it, at the end of the document, inside a block quote or a list item. Wherever it is, it renders in the section at the end.
+- **A definition** is a line that starts with `[^label]:` and has text after it. It may hold links, emphasis, code and references to other notes. It can be written anywhere: under the paragraph that cites it, at the end of the document, inside a block quote or a list item. Wherever it is, it renders in the section at the end.
+- **A longer note** continues as a list item does. After a blank line, a block indented by four spaces belongs to the note, and the first line that is not blank and not indented ends it:
+
+  ```md
+  [^1]: The source.
+
+      A second paragraph, and a list:
+
+      - one
+      - two
+
+  Not part of the note.
+  ```
 - **Referring to a note twice** gives both references the same number, and the note a link back to each.
 - **The id of a note** is `fn-` and its label, so a link to a note survives a renumbering. The id of a reference is `fnref-` and its number. With [`heading_ids`](docs#heading_ids), a heading whose slug would be one of these gets a suffix.
 - **mdsvex adds no CSS** and no heading. The section has the `footnotes` class and an accessible name. The arrow of a back link is followed by a variation selector, so it is drawn as text and not as an emoji.
@@ -2552,6 +2564,65 @@ mdsvex({
 ```
 
 `label` names the section and `back_label` each link back, where `{n}` is the number of the reference. `strict: false` turns the two errors into warnings: a reference with no definition is numbered and linked all the same, and the first definition of a label is the one that renders. That suits a preview of a document that is still being written.
+
+### Footnote components
+
+Two exports of a [components module](docs#custom-components) replace footnotes:
+
+```js
+// src/lib/markdown.js
+export { default as footnote } from './markdown/Footnote.svelte';
+export { default as footnotes } from './markdown/Footnotes.svelte';
+```
+
+`footnote` replaces a reference. It gets these props:
+
+| prop | value |
+| --- | --- |
+| `children` | the link it renders as without a replacement, the `<sup>` |
+| `note` | a snippet of what the definition holds |
+| `label` | the label, as written |
+| `number` | its number |
+| `href` | the link to the note, `#fn-` and the label |
+| `id` | the id of the reference, `fnref-` and the number |
+
+`note` is what a side note or a hover card needs. A note holds blocks, and HTML allows no block inside the paragraph a reference is in, so draw it once the page is in the browser, as this card does on hover, or somewhere outside the paragraph:
+
+```svelte
+<!-- src/lib/markdown/Footnote.svelte -->
+<script>
+	let { children, note } = $props();
+
+	let open = $state(false);
+</script>
+
+<span
+	class="footnote"
+	role="group"
+	onpointerenter={() => (open = true)}
+	onpointerleave={() => (open = false)}
+>
+	{@render children()}{#if open}<span class="card">{@render note()}</span>{/if}
+</span>
+```
+
+`footnotes` replaces the section and gets the `<ol>` of notes as its `children`:
+
+```svelte
+<!-- src/lib/markdown/Footnotes.svelte -->
+<script>
+	let { children } = $props();
+</script>
+
+<aside class="notes" aria-label="Notes">
+	<h2>Notes</h2>
+	{@render children()}
+</aside>
+```
+
+The links and the list that mdsvex writes for footnotes are not markdown, so `a`, `sup`, `ol` and `li` replacements never get them. What a note holds is markdown, so its paragraphs and links are replaced as anywhere else. A reference inside a `note` snippet gets no snippet of its own.
+
+See the [footnotes playground example](/playground/footnotes).
 
 ### Footnotes while streaming
 

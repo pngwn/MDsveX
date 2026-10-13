@@ -4081,6 +4081,8 @@ function comp_name(c: Cursor): string {
 			return 'hr';
 		case K.HARD_BREAK:
 			return 'br';
+		case K.FOOTNOTE_REFERENCE:
+			return 'footnote';
 		case K.TABLE:
 			return 'table';
 		case K.HTML:
@@ -4181,6 +4183,9 @@ function comp_scan(c: Cursor): void {
 		if (k >= K.DIRECTIVE_INLINE && k <= K.DIRECTIVE_CONTAINER) {
 			const ref = dir_scope!.get(dir_name(c));
 			if (ref !== undefined) note_use(ref);
+		} else if (k === K.FOOTNOTE_DEFINITION) {
+			// a definition is in the tree where it was written, the section holds it
+			comp_use('footnotes');
 		} else {
 			const name = comp_name(c);
 			if (name !== '') {
@@ -4567,6 +4572,9 @@ function comp_node(
 
 		case K.HARD_BREAK:
 			return cm_put(p, open + _attrs(c) + ' />\n');
+
+		case K.FOOTNOTE_REFERENCE:
+			return fn_component(c, sink, p, pre, open, close);
 
 		case K.PARAGRAPH:
 			open += _attrs(c);
@@ -7008,9 +7016,17 @@ function fn_get(c: Cursor): FootnoteRender {
 	return made;
 }
 
-/** an id as the fragment of a url */
+/** an id as the fragment of a url, a label with half a surrogate pair has no encoding and goes as it is */
+function fn_fragment(id: string): string {
+	try {
+		return encodeURIComponent(id);
+	} catch {
+		return id;
+	}
+}
+
 function fn_href(id: string): string {
-	return escape_code(encodeURIComponent(id));
+	return escape_code(fn_fragment(id));
 }
 
 /** the link a reference renders as, '' for one in a definition that is not rendered */
@@ -7162,10 +7178,14 @@ function fn_section(
 ): number {
 	const notes = fn!;
 	const definitions = notes.definitions;
+	// a footnotes replacement is the section, and gets the list
+	const ref = has_components ? comp_scope!.get('footnotes') : undefined;
 	let open =
-		'<section class="footnotes" role="doc-endnotes" aria-label="' +
-		escape_code(notes.label ?? 'Footnotes') +
-		'">\n<ol>\n';
+		ref !== undefined
+			? '<' + ref.local + '>\n<ol>\n'
+			: '<section class="footnotes" role="doc-endnotes" aria-label="' +
+				escape_code(notes.label ?? 'Footnotes') +
+				'">\n<ol>\n';
 	// the number an item gets with no value of its own
 	let next = 1;
 	for (let i = 0; i < definitions.length; i++) {
@@ -7189,7 +7209,66 @@ function fn_section(
 		p = fn_put(p, '</li>\n', mode);
 	}
 	c.move_to(0);
-	return open === '' ? fn_put(p, '</ol>\n</section>', mode) : p;
+	if (open !== '') return p;
+	return fn_put(
+		p,
+		ref !== undefined ? '</ol>\n</' + ref.local + '>' : '</ol>\n</section>',
+		mode
+	);
+}
+
+const FOOTNOTE_HANDLED = new Set(['label']);
+
+/** true while a note snippet is written, a reference in it gets none of its own */
+let fn_in_note = false;
+
+/**
+ * a reference as the footnote replacement, the link it renders as without
+ * one is its children, and what its definition holds is the note snippet
+ */
+function fn_component(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	pre: number,
+	open: string,
+	close: string
+): number {
+	const notes = fn_get(c);
+	const at = notes.references.get(c.index);
+	// one in a definition that is not rendered
+	if (at === undefined) return p;
+	const number = Math.floor(at / 65536);
+	const label = notes.labels[number - 1];
+	const node = c.index;
+	p = cm_put(
+		p,
+		open +
+			js_prop('label', label) +
+			' number={' +
+			number +
+			'}' +
+			js_prop('href', '#' + fn_fragment(footnote_id(label))) +
+			js_prop('id', footnote_ref_id(number, at % 65536)) +
+			_attrs(c, FOOTNOTE_HANDLED) +
+			'>'
+	);
+	const definition = notes.definitions[number - 1];
+	// a note that refers to itself would never end
+	if (definition !== Slot.NONE && !fn_in_note) {
+		fn_in_note = true;
+		try {
+			p = cm_put(p, '{#snippet note()}');
+			p = fn_definition(c, sink, p, comp_mode, definition, '');
+			p = cm_put(p, '{/snippet}');
+		} finally {
+			fn_in_note = false;
+		}
+		c.move_to(node);
+	}
+	p = cm_put(p, fn_reference(c) + close);
+	cm_void(c, sink, pre, Preset.TEXT);
+	return p;
 }
 
 /** fn_section as the html of the fold walk */

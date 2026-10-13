@@ -21,7 +21,8 @@ export type Container =
 	| 'list_item'
 	| 'html_element'
 	| 'svelte_branch'
-	| 'directive_container';
+	| 'directive_container'
+	| 'footnote_definition';
 
 export const CONTAINERS: Container[] = [
 	'block_quote',
@@ -29,6 +30,7 @@ export const CONTAINERS: Container[] = [
 	'html_element',
 	'svelte_branch',
 	'directive_container',
+	'footnote_definition',
 ];
 
 /** block kinds that hold blocks, with the container their kids are in */
@@ -38,6 +40,7 @@ const HOLDS: Record<string, Container> = {
 	html_element: 'html_element',
 	svelte_branch: 'svelte_branch',
 	directive_container: 'directive_container',
+	footnote_definition: 'footnote_definition',
 };
 
 const INLINE_HOLDERS = new Set([
@@ -54,7 +57,6 @@ const INLINE_HOLDERS = new Set([
 
 const INLINE_BLOCKS = new Set([
 	'paragraph',
-	'footnote_definition',
 	'heading',
 	'table_cell',
 	'directive_leaf',
@@ -277,7 +279,12 @@ export class Grammar {
 				if (!root_only) break;
 				return this.with_words(piece('import'), 1);
 			case 24:
-				return piece('footnote_definition', this.int(2), this.text(true));
+			case 25:
+				return piece(
+					'footnote_definition',
+					this.int(2),
+					this.blocks(depth + 1)
+				);
 			case 26:
 			case 27:
 			case 28:
@@ -466,6 +473,13 @@ function indented(marker: string, rows: string[]): string[] {
 	);
 }
 
+/** the rows of a footnote definition, its text on the line of its label and the rest indented to it */
+function noted(marker: string, rows: string[]): string[] {
+	return rows.map((row, i) =>
+		i === 0 ? `${marker} ${row}` : row === '' ? '' : '    ' + row
+	);
+}
+
 function fence(p: Piece): string[] {
 	const [a, b, c] = p.words;
 	const mark = p.form % 2 === 0 ? '```' : '````';
@@ -524,9 +538,7 @@ function block_rows(p: Piece): string[] {
 				p.form % 2 === 0 ? `[r${p.form}]: /ref` : `[r${p.form}]: /ref "t"`,
 			];
 		case 'footnote_definition':
-			return `${p.form === 1 ? '[^note-1]:' : '[^n]:'} ${inline_text(p.kids)}`.split(
-				'\n'
-			);
+			return noted(p.form === 1 ? '[^note-1]:' : '[^n]:', rows_of(p.kids));
 		case 'svelte_tag':
 			return [`{@html ${a}}`];
 		case 'component':
@@ -592,6 +604,8 @@ export function contained(container: Container, rows: string[]): string[] {
 			return ['{#if x}', ...rows, '{/if}'];
 		case 'directive_container':
 			return [':::box', ...rows, ':::'];
+		case 'footnote_definition':
+			return noted('[^n]:', rows);
 	}
 	return rows;
 }
