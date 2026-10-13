@@ -10938,7 +10938,8 @@ export class PFMParser {
 			this.line_at = -1;
 			this.chomp(marker.content_start, true);
 			this.cold.task_pos = marker.content_start;
-			if (loose) return false;
+			// the main loop would open the paragraph of a loose item as item_para does
+			if (loose && !FAST) return false;
 			this.item_para(item_id);
 			// a whole parse takes the linefeed after the item here, a feed goes back through the main loop
 			const states = this.states;
