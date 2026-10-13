@@ -2514,15 +2514,6 @@ export class PFMParser {
 		return p;
 	}
 
-	/** text_run for a run whose first char is before p, a nul or a break char at p is left for the text state */
-	private text_run_after(p: number): number {
-		if (p >= this.source_end) return p;
-		const c1 = char_code_at.call(this.source, p - this.source_base);
-		return c1 !== 0 && (c1 >= 128 || TEXT_BREAK[c1] === 0)
-			? this.text_run(p + 1)
-			: p;
-	}
-
 	private open_text_run(p0: number, parent: number): void {
 		const source = this.source;
 		const base = this.source_base;
@@ -2531,8 +2522,8 @@ export class PFMParser {
 		this.out.set_value_start(t_id, p0);
 		this.node_stack.push(t_id);
 		this.states.push(StateKind.text);
-		// as in the inline default, a nul or break char right after p0 is left for the text state
-		let p = this.text_run_after(p0 + 1);
+		// as in the inline default, a break char right after p0 is left for the text state
+		let p = this.text_run(p0 + 1);
 		this.cursor = p;
 	}
 
@@ -6531,7 +6522,7 @@ export class PFMParser {
 			// plain content, take the text run of the heading_marker trip and its close of text and heading at the linefeed
 			const t_id = this.emit_open(NodeKind.text, content_start, h_id);
 			this.out.set_value_start(t_id, content_start);
-			let p = this.text_run_after(content_start + 1);
+			let p = this.text_run(content_start + 1);
 			this.cursor = p;
 			if (p < length && char_code_at.call(source, p - base) === LINEFEED) {
 				let ve = p;
@@ -7124,7 +7115,7 @@ export class PFMParser {
 							current_node
 						);
 						this.out.set_value_start(t_id, this.cursor);
-						let p = this.text_run_after(this.cursor + 1);
+						let p = this.text_run(this.cursor + 1);
 						if (
 							p < length &&
 							char_code_at.call(source, p - base) === LINEFEED
@@ -8158,8 +8149,8 @@ export class PFMParser {
 							this.node_stack.push(t_id);
 
 							this.states.push(StateKind.text);
-							// skip the plain run the text state would, leaving a break char, nul or the buffer end for it
-							let p = this.text_run_after(this.cursor + 1);
+							// skip the plain run the text state would, leaving a break char or the buffer end for it
+							let p = this.text_run(this.cursor + 1);
 							this.cursor = p;
 							continue;
 						}
@@ -11709,7 +11700,7 @@ export class PFMParser {
 		let start = this.cursor;
 		for (;;) {
 			// the text is emitted once the end of the run decides between a leaf and an open
-			let p = this.text_run_after(start + 1);
+			let p = this.text_run(start + 1);
 			if (p < length && char_code_at.call(source, p - base) === LINEFEED) {
 				const bq = this.block_quote_depth > 0;
 				// at the root the text state holds back on the linefeed, in a list inline does
