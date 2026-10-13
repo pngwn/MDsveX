@@ -895,6 +895,7 @@ export class PFMParser {
 	// the list marker an interrupt check parsed at this position, only valid within one _run
 	private interrupt_marker_pos: number = -1;
 	private interrupt_marker: MarkerResult | null = null;
+	private marker: MarkerResult | null = null;
 	private interrupt_svelte_depth: number = 0;
 	// chunks fed while waiting on a brace, joined onto the window once it closes
 	private wait_chunks: string[] = NO_STACK;
@@ -3754,6 +3755,38 @@ export class PFMParser {
 		return p >= length;
 	}
 
+	/** the one marker of this parser, its caller reads it before the next marker is parsed */
+	private marker_at(
+		indent: number,
+		marker_char: number,
+		ordered: boolean,
+		start_num: number,
+		content_start: number,
+		content_offset: number
+	): MarkerResult {
+		let marker = this.marker;
+		if (marker === null) {
+			marker = this.marker = {
+				indent,
+				marker_char,
+				ordered,
+				start_num,
+				content_start,
+				content_offset,
+			};
+		} else {
+			marker.indent = indent;
+			marker.marker_char = marker_char;
+			marker.ordered = ordered;
+			marker.start_num = start_num;
+			marker.content_start = content_start;
+			marker.content_offset = content_offset;
+		}
+		// the answer an interrupt check kept is this object
+		this.interrupt_marker_pos = -1;
+		return marker;
+	}
+
 	private try_parse_list_marker(pos: number): MarkerResult | null {
 		const source = this.source;
 		const base = this.source_base;
@@ -3789,14 +3822,14 @@ export class PFMParser {
 					content_start++;
 				}
 				if (!this.marker_line_has_content(content_start)) return null;
-				return {
+				return this.marker_at(
 					indent,
-					marker_char: ch,
-					ordered: false,
-					start_num: 0,
+					ch,
+					false,
+					0,
 					content_start,
-					content_offset: content_columns,
-				};
+					content_columns
+				);
 			}
 			return null;
 		}
@@ -3838,14 +3871,14 @@ export class PFMParser {
 					string_slice.call(source, num_start - base, pos - base),
 					10
 				);
-				return {
+				return this.marker_at(
 					indent,
-					marker_char: delimiter,
-					ordered: true,
-					start_num: num,
+					delimiter,
+					true,
+					num,
 					content_start,
-					content_offset: content_columns,
-				};
+					content_columns
+				);
 			}
 			return null;
 		}
