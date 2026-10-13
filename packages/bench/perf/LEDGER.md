@@ -225,24 +225,6 @@ delete it.
   paragraph at the root and at a list start read level, and one marker
   object a parser in place of one a line read level on its own.
 
-### text run call
-
-- **Source:** step 9 of `design/parser-structure.md`, `text_run` and
-  `text_run_after` in `packages/parse/src/main.ts`, which seven scans of plain
-  text now call.
-- **Measured:** `core --repeat 2` against the step below with the default 3.0%
-  floor. Geomean over 238 workloads +0.00%, `parse` -0.35%, every other mode
-  within 0.3%. One row is slower past the floor, `fixtures/atx_headings:parse`
-  -3.2%. Slower in both passes under the floor: `fixtures/inlines:parse` -2.0%,
-  `micro/directive:parse` -2.0%, `fixtures/soft_line_breaks:parse` -1.9%.
-  `_run` is 26,390 bytes of bytecode, from 29,425.
-- **Cause:** a call where there was a loop in place. A heading takes it twice,
-  once for its first run in `start_heading` and once a run in the main loop.
-  Not isolated with a stub.
-- **Ideas:** guess, not measured. `para_text` and the text state are the two
-  hot callers, giving those two their loop back would cost about 20 lines and
-  need an invariant against `text_run`.
-
 ### tag paragraph marks and line start tag checks
 
 - **Source:** the parser bug stack after the restructure (#1046, #1058,
@@ -406,6 +388,18 @@ delete it.
   at 1.5MB. The answer is now kept across lines, in a feed too: 0.65ms, 7.1ms
   and 31ms, and 300 such lines read +65.1% in `parse`. The corpus did not
   show it, a backtick is always near in it.
+
+### text run call
+
+- **Source:** step 9 of `design/parser-structure.md`, `text_run` and
+  `text_run_after`.
+- **Was:** `parse` -0.98% for the step in both passes, `atx_headings` -3.9%.
+  The call also took the inline budget of its callers: `para_text` lost
+  `emit_leaf` and the main loop lost `emit_close`. `text_run_after` is gone,
+  it was `text_run` but for a NUL, which reads on as text either way. A
+  document of headings and paragraphs reads +6.0%, `fixtures/atx_headings`
+  +3.0%, prose +4.3%, one workload a process. Over the suite `parse` reads
+  level, +1.11% and -1.10% by pass.
 
 ## Notes for the performance pass
 
