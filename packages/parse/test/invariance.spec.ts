@@ -63,7 +63,7 @@ const INTENDED: Intended[] = [
 	{
 		what: 'a link reference definition leaves no node',
 		why: 'its destination and title are in the links that use it, and a title may run over lines, so their words are in no node',
-		edited: ['content', /^[ \t>]*\[[^\]\n]+\]:/],
+		edited: ['content', /^(?:[ \t>]|[-*+] |\d+[.)] )*\[[^\]\n]+\]:/m],
 	},
 	{
 		what: 'the cells of a table row past the column count are left out of the tree',
@@ -102,7 +102,14 @@ interface Known extends Rule {
 }
 
 /** every known failure, each one takes its pieces out of the documents until its issue is fixed */
-const KNOWN: Known[] = [];
+const KNOWN: Known[] = [
+	{
+		issue: 1123,
+		what: 'the close token of a svelte block closes it whatever its name, and that name is in no node',
+		edited: ['content', /\{#(\w+)[^}]*\}[^]*\{\/(?!\1\})\w*\}/],
+		example: { site: 'root', source: '{#e}{/q010}' },
+	},
+];
 
 const RULES: Rule[] = [...INTENDED, ...KNOWN];
 

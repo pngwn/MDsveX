@@ -1,0 +1,18 @@
+# Footnotes
+
+A reference is a label in brackets after a caret[^1], and its definition can
+be written anywhere in the document[^where]. Notes are numbered in the order
+they are first referred to, so a label is only a name[^1].
+
+[^1]: The first note. Hover over a number to read its note in place.
+
+[^where]: Under the paragraph that cites it, or at the end.
+
+    A longer note continues on lines indented by four spaces, and may hold:
+
+    - a list
+    - or any other block
+
+Every note is collected in a section at the end. `footnote` is replaced by
+`Footnote.svelte`, which shows the note beside its number. A bracket that is
+not a footnote is escaped, \[^like this], or put in code, `[^abc]`.

@@ -14,6 +14,7 @@
 		{ "include": "#heading" },
 		{ "include": "#thematic-break" },
 		{ "include": "#directive-block" },
+		{ "include": "#footnote-definition" },
 		{ "include": "#directive-close" },
 		{ "include": "#link-definition" },
 		{ "include": "#table-row" },
@@ -676,6 +677,7 @@
 				{ "include": "#subscript" },
 				{ "include": "#superscript" },
 				{ "include": "#directive" },
+				{ "include": "#footnote-reference" },
 				{ "include": "#link" },
 				{ "include": "#image" },
 				{ "include": "#link-reference" },
@@ -868,6 +870,27 @@
 				},
 				{ "match": ",", "name": "punctuation.separator.arguments.pfm" }
 			]
+		},
+
+		"footnote-reference": {
+			"name": "meta.footnote.reference.pfm",
+			"match": "(?<!\\\\)(\\[\\^)([^\\s\\[\\]^]+)(\\])",
+			"captures": {
+				"1": { "name": "punctuation.definition.footnote.begin.pfm" },
+				"2": { "name": "entity.name.footnote.pfm" },
+				"3": { "name": "punctuation.definition.footnote.end.pfm" }
+			}
+		},
+
+		"footnote-definition": {
+			"name": "meta.footnote.definition.pfm",
+			"match": "^\\s*(\\[\\^)([^\\s\\[\\]^]+)(\\]:)[ \\t]+(\\S.*)$",
+			"captures": {
+				"1": { "name": "punctuation.definition.footnote.begin.pfm" },
+				"2": { "name": "entity.name.footnote.pfm" },
+				"3": { "name": "punctuation.definition.footnote.end.pfm" },
+				"4": { "patterns": [{ "include": "#inline" }] }
+			}
 		},
 
 		"link": {

@@ -162,12 +162,12 @@ interface Reading {
 	run: string;
 	count: boolean;
 	words: number;
-	/** no excerpt holds the text of a heading or of a table */
+	/** no excerpt holds the text of a heading, of a table or of a footnote */
 	heading: boolean;
 	table: number;
 	/** the run is the text of a paragraph that is in no container */
 	paragraph: boolean;
-	/** how many block quotes, lists, tables, containers and svelte blocks are open */
+	/** how many block quotes, lists, tables, footnotes, containers and svelte blocks are open */
 	nested: number;
 	/** every block of prose until a more comment, undefined when no excerpt is wanted */
 	before: string[] | undefined;
@@ -263,16 +263,20 @@ function read(parent: NodeView, state: Reading): void {
 			case 'block_quote':
 			case 'list':
 			case 'table':
+			case 'footnote_definition':
 			case 'directive_container':
-			case 'svelte_block':
+			case 'svelte_block': {
+				// a footnote is drawn at the end of the page wherever it is written
+				const out = type === 'table' || type === 'footnote_definition';
 				flush(state);
 				state.nested++;
-				if (type === 'table') state.table++;
+				if (out) state.table++;
 				read(child, state);
 				flush(state);
-				if (type === 'table') state.table--;
+				if (out) state.table--;
 				state.nested--;
 				break;
+			}
 			// emphasis, links, inline directives and whatever a plugin made
 			default:
 				read(child, state);

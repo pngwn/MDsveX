@@ -455,6 +455,30 @@ describe("pfmToSvelte compile diagnostics", () => {
 		expect(r.code).toContain("<h2>after</h2>");
 	});
 
+	it("reports a footnote reference with no definition and renders the rest", () => {
+		const source = "# t\n\na[^1] b[^nope] c[^x]\n\n[^1]: one\n[^1]: again\n\n[^spare]: unused\n\n## after\n";
+		const r = pfmToSvelte(source);
+		expect(
+			r.diagnostics.map((d) => [d.severity, source.slice(d.start, d.end)]),
+		).toEqual([
+			["error", "[^1]:"],
+			["error", "[^nope]"],
+			["error", "[^x]"],
+			["warning", "["],
+		]);
+		expect(r.diagnostics[0].message).toContain("is defined twice");
+		expect(r.diagnostics[1].message).toContain("[^nope] has no definition");
+		expect(r.diagnostics[3].message).toContain("[^spare] is never referenced");
+		expect(r.code).toContain('<li id="fn-1"');
+		expect(r.code).toContain("<h2>after</h2>");
+	});
+
+	it("a document whose footnotes are sound has no diagnostic", () => {
+		const r = pfmToSvelte("a[^1] and \\[^not]\n\n[^1]: one\n");
+		expect(r.diagnostics).toEqual([]);
+		expect(r.code).toContain('role="doc-endnotes"');
+	});
+
 	it("reports invalid inline latex at the latex and shows it as written", () => {
 		const source = "# t\n\na $`x + \\frac{a}{`$ and $`y`$\n\n## after\n";
 		const r = pfmToSvelte(source, { compile: { math: temml_math(temml) } });

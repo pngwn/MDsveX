@@ -1,4 +1,5 @@
 import type { NodeView } from './node_view';
+import type { TextRun } from './text_run';
 
 /** a problem a plugin reported with ctx.warn */
 export interface PluginWarning {
@@ -67,6 +68,12 @@ export interface NodeHandler {
 }
 
 /**
+ * the text handler of a sequential plugin, called for each run of text once
+ * the tree is complete
+ */
+export type TextHandler = (run: TextRun, ctx: PluginContext) => void;
+
+/**
  * a parse plugin declares handlers by node type name.
  *
  * ```js
@@ -80,8 +87,17 @@ export interface ParsePlugin {
 	/** keys what the plugin writes to ctx.data and is named in its warnings */
 	name?: string;
 	sequential?: boolean;
+	/** runs of text, only a sequential plugin has one */
+	text?: TextHandler;
+	/**
+	 * true to also give the text handler what it is kept from, the characters
+	 * the author escaped, the text of an autolink, the alt text of an image and
+	 * the text of an element that holds code, such as code or kbd
+	 */
+	all_text?: boolean;
 	[nodeType: string]:
 		| { parse: NodeHandler['parse'] }
+		| TextHandler
 		| boolean
 		| string
 		| undefined;

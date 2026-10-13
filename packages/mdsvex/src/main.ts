@@ -9,8 +9,9 @@ import {
 	check_plugins,
 	compile,
 	compile_inputs,
+	footnotes_option,
 } from './compile';
-import type { Bundle, ComponentMode, Parsed } from './compile';
+import type { Bundle, ComponentMode, FootnoteOptions, Parsed } from './compile';
 import { slug_of } from './heading_ids';
 import type { HeadingOptions } from './heading_ids';
 import { smart_of } from './smart_punctuation';
@@ -155,6 +156,15 @@ export interface MdsvexOptions
 	 * math: { options: { macros: { '\\RR': '\\mathbb{R}' } } }
 	 */
 	math?: MathOptions | MathRenderer | false;
+	/**
+	 * the accessible names of the footnotes section and of the links back
+	 * from it, strict false builds a document whose footnote reference has no
+	 * definition, with a warning in place of the error
+	 *
+	 * @example
+	 * footnotes: { label: 'Notes', back_label: 'Back to note {n}' }
+	 */
+	footnotes?: FootnoteOptions;
 	/**
 	 * imports every markdown image with a relative url, so vite hashes and
 	 * optimises the file and a missing one fails the build, on by default,
@@ -308,6 +318,8 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	// throws here for a value that is neither, not at the first document
 	inputs.heading_ids = slug_of(options.heading_ids);
 	inputs.smart_punctuation = smart_of(options.smart_punctuation);
+	if (options.footnotes !== undefined)
+		inputs.footnotes = footnotes_option(options.footnotes);
 	if (
 		options.import_images !== undefined &&
 		typeof options.import_images !== 'boolean'

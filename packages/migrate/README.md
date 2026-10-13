@@ -48,7 +48,7 @@ migrate(source, {
 | GFM tables, strikethrough, task lists  | Preserved                                             |
 | A bare url (`https://example.com`)     | An autolink (`<https://example.com>`)                 |
 | Inline code that holds backticks       | A span of one or two backticks, whichever it can hold |
-| Footnotes                              | Kept as literal text, PFM does not read them yet      |
+| GFM footnotes                          | PFM footnotes, each reference with its definition's label |
 
 Superscript, subscript and the PFM table extensions have no CommonMark
 equivalent, so nothing maps onto them; raw HTML is passed through untouched.
@@ -76,6 +76,24 @@ Svelte. `migrate` keeps all of it as written:
 - `<script>` and `<style>`.
 
 A `{` that never closes is text, and is written `\{`.
+
+## Footnotes
+
+A footnote reference and its definition are written as PFM footnotes, which
+have the same form. Three things differ:
+
+- PFM matches labels exactly, where GFM ignores case, so every reference is
+  written with the label of its definition.
+- A PFM label has no whitespace, bracket or caret. One that does gets a `-`
+  in their place, in the reference and the definition alike.
+- The first block of a definition is written on the line of its label, and
+  every later line is indented by four spaces. A definition with no content
+  has no PFM form, so it stays literal text, as its references do.
+
+A `[^...]` that was no footnote in the source is escaped, since PFM reads
+every `[^label]` as a reference and fails the build for one with no
+definition. A second definition of a label, which PFM rejects, is escaped
+too.
 
 ## Math
 

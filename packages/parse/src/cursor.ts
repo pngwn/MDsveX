@@ -117,6 +117,11 @@ export class Cursor {
 		return this.src;
 	}
 
+	/** the buffer the cursor walks */
+	get buffer(): NodeBuffer {
+		return this.buf;
+	}
+
 	/** undefined when text slices the source */
 	get prebuilt(): string | undefined {
 		return this.buf._strings[this.idx];

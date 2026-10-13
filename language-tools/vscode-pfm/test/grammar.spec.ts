@@ -345,6 +345,31 @@ describe('links', () => {
 		]);
 	});
 
+	test('a footnote reference and its definition', async () => {
+		const source = 'Text[^note] here.\n\n[^note]: A *note*.';
+		expect(await scopes_of(source, 'note')).toEqual([
+			'meta.footnote.reference.pfm',
+			'entity.name.footnote.pfm',
+		]);
+		const tokens = await tokenize(source);
+		expect(tokens.find((t) => t.text === ']:')?.scopes).toEqual([
+			'meta.footnote.definition.pfm',
+			'punctuation.definition.footnote.end.pfm',
+		]);
+		expect(
+			tokens.find(
+				(t) => t.text === 'note' && t.scopes.includes('markup.bold.pfm')
+			)
+		).toBeDefined();
+	});
+
+	test('an escaped footnote reference is text', async () => {
+		const tokens = await tokenize('the class \\[^abc] here');
+		expect(
+			tokens.some((t) => t.scopes.includes('meta.footnote.reference.pfm'))
+		).toBe(false);
+	});
+
 	test('a footnote definition line is not a link definition', async () => {
 		const tokens = await tokenize('[^1]: a note');
 		expect(

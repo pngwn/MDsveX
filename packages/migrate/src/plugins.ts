@@ -43,7 +43,15 @@ const DIRECTIVES: Replacement = {
 };
 const FOOTNOTES: Replacement = {
 	message:
-		"Footnotes are not read yet. `migrate` keeps each reference and definition as text, so nothing is lost.",
+		"Footnotes are built in. `migrate` writes each reference with the label of its definition.",
+};
+const EMOJI: Replacement = {
+	message:
+		"Install `@mdsvex/plugin-emoji` and add `emoji()` to `plugins`. It has the shortcodes GitHub uses.",
+};
+const REFERENCES: Replacement = {
+	message:
+		"Install `@mdsvex/plugin-references` and add `references({ repo: 'owner/name' })` to `plugins`. It links `@user`, `#123` and commits.",
 };
 const IMAGES: Replacement = {
 	message:
@@ -62,7 +70,7 @@ const NOTHING_YET = "Nothing replaces it yet.";
 const REPLACEMENTS: Record<string, Replacement> = {
 	"remark-gfm": {
 		message:
-			"Tables, strikethrough and task lists are built in. A bare url is not a link now, `migrate` writes each one as `<https://example.com>`. Footnotes are kept as text.",
+			"Tables, strikethrough, task lists and footnotes are built in. A bare url is not a link now, `migrate` writes each one as `<https://example.com>`.",
 	},
 	"remark-frontmatter": {
 		message: "Frontmatter is built in, and `frontmatter.parse` takes TOML or full YAML.",
@@ -161,15 +169,17 @@ const REPLACEMENTS: Record<string, Replacement> = {
 	"remark-abbr": {
 		message: "An inline directive does this: `:abbr[HTML](title=HyperText)` with an `abbr` component.",
 	},
-	"remark-emoji": { message: `${NOTHING_YET} \`:tada:\` is text, type the emoji.` },
-	"remark-gemoji": { message: `${NOTHING_YET} \`:tada:\` is text, type the emoji.` },
+	"remark-emoji": EMOJI,
+	"remark-gemoji": EMOJI,
 	"remark-attr": {
 		message: `${NOTHING_YET} Braces belong to Svelte, so \`{.class}\` and \`{#id}\` can't exist. A parse plugin can set any attribute.`,
 	},
 	"remark-heading-id": {
 		message: `${NOTHING_YET} Braces belong to Svelte, so \`{#id}\` can't exist. \`heading_ids\` makes ids from the text.`,
 	},
-	"remark-github": { message: `${NOTHING_YET} \`#123\` and \`@user\` are text.` },
+	"remark-github": REFERENCES,
+	"remark-mentions": REFERENCES,
+	"remark-ping": REFERENCES,
 	"remark-wiki-link": { message: `${NOTHING_YET} \`[[Page]]\` is text.` },
 	"remark-definition-list": { message: `${NOTHING_YET} Type \`<dl>\`, \`<dt>\` and \`<dd>\`.` },
 	"remark-deflist": { message: `${NOTHING_YET} Type \`<dl>\`, \`<dt>\` and \`<dd>\`.` },
