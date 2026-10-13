@@ -2522,9 +2522,8 @@ export class PFMParser {
 		this.out.set_value_start(t_id, p0);
 		this.node_stack.push(t_id);
 		this.states.push(StateKind.text);
-		// as in the inline default, a break char right after p0 is left for the text state
-		let p = this.text_run(p0 + 1);
-		this.cursor = p;
+		// takes the plain run the text state would, a break char or the buffer end is left for it
+		this.cursor = this.text_run(p0 + 1);
 	}
 
 	/** check if an id is in the pending_ids array. */
@@ -8140,18 +8139,7 @@ export class PFMParser {
 									continue;
 								}
 							}
-							const t_id = this.emit_open(
-								NodeKind.text,
-								this.cursor,
-								current_node
-							);
-							this.out.set_value_start(t_id, this.cursor);
-							this.node_stack.push(t_id);
-
-							this.states.push(StateKind.text);
-							// skip the plain run the text state would, leaving a break char or the buffer end for it
-							let p = this.text_run(this.cursor + 1);
-							this.cursor = p;
+							this.open_text_run(this.cursor, current_node);
 							continue;
 						}
 					}
