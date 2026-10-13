@@ -532,6 +532,8 @@ let tag_self_closing = false;
 let tag_lines = false;
 // an attribute value runs over a line in a block quote or a list item
 let tag_values = false;
+// a revoke reads a tag again, its values were held to the containers open at the tag and not to those open now
+let tag_reread = false;
 const TAG_ATTR_BOOL = 0;
 const TAG_ATTR_VALUE = 1;
 const TAG_ATTR_SHORTHAND = 2;
@@ -4532,7 +4534,7 @@ export class PFMParser {
 		tag_rec_n = 0;
 		tag_need = '>';
 		tag_lines = tag_values = false;
-		const framed = this.frames.length !== 0;
+		const framed = !tag_reread && this.frames.length !== 0;
 		let p = pos + 1;
 		while (
 			p < length &&
@@ -5363,7 +5365,9 @@ export class PFMParser {
 			const end = ends.get(start);
 			if (end !== undefined) return end;
 		}
+		tag_reread = true;
 		const tag = this.try_parse_html_open_tag(start + 1);
+		tag_reread = false;
 		if (tag !== null) return tag.end;
 		const source = this.source;
 		const base = this.source_base;
