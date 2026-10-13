@@ -216,6 +216,9 @@ const ID_POOL_CAP = 1 << 16;
 const EMPTY_IDS = new Int32Array(0);
 /** placeholder for rarely used stacks until their first push, never written */
 const NO_STACK: any[] = [];
+/** every fast path asks this, a test loads a second parser with it off and compares the trees of the two */
+const FAST =
+	(globalThis as { __pfm_general__?: boolean }).__pfm_general__ !== true;
 /** in a table cell code span, where every pipe is an escaped one */
 const ESCAPED_PIPE = /\\\|/g;
 
@@ -892,6 +895,7 @@ export class PFMParser {
 	// the list marker an interrupt check parsed at this position, only valid within one _run
 	private interrupt_marker_pos: number = -1;
 	private interrupt_marker: MarkerResult | null = null;
+	private marker: MarkerResult | null = null;
 	private interrupt_svelte_depth: number = 0;
 	// chunks fed while waiting on a brace, joined onto the window once it closes
 	private wait_chunks: string[] = NO_STACK;
@@ -3751,6 +3755,38 @@ export class PFMParser {
 		return p >= length;
 	}
 
+	/** the one marker of this parser, its caller reads it before the next marker is parsed */
+	private marker_at(
+		indent: number,
+		marker_char: number,
+		ordered: boolean,
+		start_num: number,
+		content_start: number,
+		content_offset: number
+	): MarkerResult {
+		let marker = this.marker;
+		if (marker === null) {
+			marker = this.marker = {
+				indent,
+				marker_char,
+				ordered,
+				start_num,
+				content_start,
+				content_offset,
+			};
+		} else {
+			marker.indent = indent;
+			marker.marker_char = marker_char;
+			marker.ordered = ordered;
+			marker.start_num = start_num;
+			marker.content_start = content_start;
+			marker.content_offset = content_offset;
+		}
+		// the answer an interrupt check kept is this object
+		this.interrupt_marker_pos = -1;
+		return marker;
+	}
+
 	private try_parse_list_marker(pos: number): MarkerResult | null {
 		const source = this.source;
 		const base = this.source_base;
@@ -3786,14 +3822,14 @@ export class PFMParser {
 					content_start++;
 				}
 				if (!this.marker_line_has_content(content_start)) return null;
-				return {
+				return this.marker_at(
 					indent,
-					marker_char: ch,
-					ordered: false,
-					start_num: 0,
+					ch,
+					false,
+					0,
 					content_start,
-					content_offset: content_columns,
-				};
+					content_columns
+				);
 			}
 			return null;
 		}
@@ -3835,14 +3871,14 @@ export class PFMParser {
 					string_slice.call(source, num_start - base, pos - base),
 					10
 				);
-				return {
+				return this.marker_at(
 					indent,
-					marker_char: delimiter,
-					ordered: true,
-					start_num: num,
+					delimiter,
+					true,
+					num,
 					content_start,
-					content_offset: content_columns,
-				};
+					content_columns
+				);
 			}
 			return null;
 		}
@@ -6515,6 +6551,13 @@ export class PFMParser {
 			this.interrupt_svelte_depth === this.svelte_block_depth
 		)
 			return 1;
+		if (
+			FAST &&
+			this.frames.length === 1 &&
+			this.list_depth > 0 &&
+			this.margin_line(p)
+		)
+			return 1;
 		let ends: boolean;
 		if (this.frames.length !== 0) {
 			const kept = this.line_start(p);
@@ -6535,6 +6578,73 @@ export class PFMParser {
 		this.interrupt_frames = this.frames.length;
 		this.interrupt_svelte_depth = this.svelte_block_depth;
 		return 1;
+	}
+
+	/**
+	 * a list marker at p, a line start, in its plainest form, a bullet or up to nine digits and a
+	 * delimiter, then one space and a char of text, where the line is no thematic break
+	 * leaves the marker try_parse_list_marker would return in interrupt_marker, for the position p
+	 */
+	private margin_marker(p: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		if (p + 2 >= length || p === this.cold.note_pos) return false;
+		let mark = char_code_at.call(source, p - base);
+		let q = p + 1;
+		let ordered = false;
+		let num = 0;
+		if (mark !== DASH && mark !== ASTERISK && mark !== PLUS) {
+			if (mark < 48 || mark > 57) return false;
+			num = mark - 48;
+			for (;;) {
+				if (q + 2 >= length) return false;
+				mark = char_code_at.call(source, q - base);
+				if (mark < 48 || mark > 57) break;
+				if (q - p >= 9) return false;
+				num = num * 10 + mark - 48;
+				q++;
+			}
+			if (mark !== DOT && mark !== CLOSE_PAREN) return false;
+			ordered = true;
+			q++;
+		}
+		if (char_code_at.call(source, q - base) !== SPACE) return false;
+		const next = char_code_at.call(source, q + 1 - base);
+		// a second bullet may be a thematic break, and a marker with a blank line after it is text
+		if (
+			next === SPACE ||
+			next === TAB ||
+			next === LINEFEED ||
+			(next === mark && !ordered)
+		)
+			return false;
+		this.interrupt_marker = this.marker_at(
+			0,
+			mark,
+			ordered,
+			num,
+			q + 1,
+			q + 1 - p
+		);
+		this.interrupt_marker_pos = p;
+		return true;
+	}
+
+	/**
+	 * the line at p, right after a linefeed, starts with a margin_marker under one open list item
+	 * line_start and the probe would say it ends the paragraph, this leaves what they leave
+	 */
+	private margin_line(p: number): boolean {
+		if (!this.margin_marker(p)) return false;
+		this.line_pos = p;
+		this.line_quote = p;
+		this.line_at = p;
+		this.line_kept = 0;
+		this.interrupt_pos = p;
+		this.interrupt_frames = 1;
+		this.interrupt_svelte_depth = this.svelte_block_depth;
+		return true;
 	}
 
 	/** the innermost open container is a list item */
@@ -10761,68 +10871,89 @@ export class PFMParser {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
-		let lf = this.cursor;
-		let loose =
-			lf === 0 || char_code_at.call(source, lf - 1 - base) === LINEFEED;
 		// the frames before the last are around this item
 		const outer = this.frames.length - 1;
-		let kept: number;
 		for (;;) {
-			if (!this.finished && !this.can_decide_after_lf(lf)) return true;
-			kept = this.line_start(lf + 1);
-			if (kept < 0) return true;
-			if (kept < outer) {
+			let lf = this.cursor;
+			let loose =
+				lf === 0 || char_code_at.call(source, lf - 1 - base) === LINEFEED;
+			let kept: number;
+			for (;;) {
+				if (!this.finished && !this.can_decide_after_lf(lf)) return true;
+				kept = this.line_start(lf + 1);
+				if (kept < 0) return true;
+				if (kept < outer) {
+					this.end_list();
+					return false;
+				}
+				// blank lines are passed over, the line after them decides
+				let p = this.line_pos;
+				let ch = char_code_at.call(source, p - base);
+				while (ch === SPACE || ch === TAB) {
+					ch = char_code_at.call(source, ++p - base);
+				}
+				if (p >= length) {
+					if (!this.finished) return true;
+					this.end_list();
+					return false;
+				}
+				if (ch !== LINEFEED) break;
+				loose = true;
+				lf = p;
+			}
+			const p = this.line_pos;
+			if (kept > outer) {
+				if (loose) this.list_is_loose = true;
+				this.chomp(p, true);
+				return false;
+			}
+			// not indented to the item, the marker of the next item or the end of the list
+			// the paragraph interrupt check may already have parsed the marker, a thematic break came first there
+			let marker: MarkerResult | null = null;
+			if (this.interrupt_marker_pos === p) marker = this.interrupt_marker;
+			else if (
+				FAST &&
+				char_code_at.call(source, p - 1 - base) === LINEFEED &&
+				this.margin_marker(p)
+			)
+				marker = this.interrupt_marker;
+			else if (!this.is_thematic_break_start(p))
+				marker = this.try_parse_list_marker(p);
+			if (
+				marker === null ||
+				marker.indent < this.list_marker_indent ||
+				marker.ordered !== this.list_ordered ||
+				marker.marker_char !== this.list_marker
+			) {
 				this.end_list();
 				return false;
 			}
-			// blank lines are passed over, the line after them decides
-			let p = this.line_pos;
-			let ch = char_code_at.call(source, p - base);
-			while (ch === SPACE || ch === TAB) {
-				ch = char_code_at.call(source, ++p - base);
-			}
-			if (p >= length) {
-				if (!this.finished) return true;
-				this.end_list();
-				return false;
-			}
-			if (ch !== LINEFEED) break;
-			loose = true;
-			lf = p;
-		}
-		const p = this.line_pos;
-		if (kept > outer) {
 			if (loose) this.list_is_loose = true;
-			this.chomp(p, true);
-			return false;
+			this.emit_close(current_node, this.cursor);
+			this.node_stack.pop();
+			const item_id = this.emit_open(NodeKind.list_item, p, this.list_node_id);
+			this.node_stack.push(item_id);
+			this.list_content_offset = marker.content_offset;
+			this.frames[this.frames.length - 1] = marker.content_offset;
+			this.line_at = -1;
+			this.chomp(marker.content_start, true);
+			this.cold.task_pos = marker.content_start;
+			if (loose) return false;
+			this.item_para(item_id);
+			// a whole parse takes the linefeed after the item here, a feed goes back through the main loop
+			const states = this.states;
+			const at = this.cursor;
+			if (
+				!FAST ||
+				!this.finished ||
+				at >= length ||
+				states[states.length - 1] !== StateKind.list_item ||
+				this.pending_count !== this.pending_para_count ||
+				char_code_at.call(source, at - base) !== LINEFEED
+			)
+				return false;
+			current_node = item_id;
 		}
-		// not indented to the item, the marker of the next item or the end of the list
-		// the paragraph interrupt check may already have parsed the marker, a thematic break came first there
-		let marker: MarkerResult | null = null;
-		if (this.interrupt_marker_pos === p) marker = this.interrupt_marker;
-		else if (!this.is_thematic_break_start(p))
-			marker = this.try_parse_list_marker(p);
-		if (
-			marker === null ||
-			marker.indent < this.list_marker_indent ||
-			marker.ordered !== this.list_ordered ||
-			marker.marker_char !== this.list_marker
-		) {
-			this.end_list();
-			return false;
-		}
-		if (loose) this.list_is_loose = true;
-		this.emit_close(current_node, this.cursor);
-		this.node_stack.pop();
-		const item_id = this.emit_open(NodeKind.list_item, p, this.list_node_id);
-		this.node_stack.push(item_id);
-		this.list_content_offset = marker.content_offset;
-		this.frames[this.frames.length - 1] = marker.content_offset;
-		this.line_at = -1;
-		this.chomp(marker.content_start, true);
-		this.cold.task_pos = marker.content_start;
-		if (!loose) this.item_para(item_id);
-		return false;
 	}
 
 	/**
