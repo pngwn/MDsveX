@@ -3682,7 +3682,7 @@ export class PFMParser {
 		if (p >= length) return this.finished;
 		if (ch === LINEFEED) return true;
 		if (ch >= 128 || (BLOCK_START[ch] & 2) === 0) return false;
-		return this.block_start(ch, 0, pos) === 1;
+		return this.block_start(ch, 0, pos, p) === 1;
 	}
 
 	/** a block level tag at pos or the close tag of a container ends a paragraph, an inline tag or a component does not */
@@ -6939,7 +6939,12 @@ export class PFMParser {
 
 						default: {
 							if (code < 128 && BLOCK_START[code] !== 0) {
-								const started = this.block_start(code, current_node, -1);
+								const started = this.block_start(
+									code,
+									current_node,
+									-1,
+									this.cursor
+								);
 								if (started === -1) break main_loop;
 								if (started === 1) continue;
 							}
@@ -10432,7 +10437,7 @@ export class PFMParser {
 			const ended = this.branch_token_ends();
 			if (ended !== 0) return ended === -1;
 		}
-		const started = this.block_start(code, current_node, -1);
+		const started = this.block_start(code, current_node, -1, this.cursor);
 		if (started !== 0) return started === -1;
 		if (code === COLON && this.directive_colon_counts.length !== 0) {
 			const ended = this.fence_ends_elements();
@@ -10558,7 +10563,7 @@ export class PFMParser {
 			return false;
 		}
 
-		const started = this.block_start(code, current_node, -1);
+		const started = this.block_start(code, current_node, -1, this.cursor);
 		if (started !== 0) return started === -1;
 		if (code === OPEN_ANGLE_BRACKET) {
 			const close = this.try_parse_html_close_tag(this.cursor + 1);
@@ -10640,7 +10645,7 @@ export class PFMParser {
 				return false;
 			}
 		}
-		const started = this.block_start(code, current_node, -1);
+		const started = this.block_start(code, current_node, -1, this.cursor);
 		if (started !== 0) return started === -1;
 		this.states.push(StateKind.paragraph);
 		const para_id = this.emit_open(
@@ -10857,7 +10862,7 @@ export class PFMParser {
 				return false;
 			}
 		}
-		const started = this.block_start(code, current_node, -1);
+		const started = this.block_start(code, current_node, -1, this.cursor);
 		if (started !== 0) return started === -1;
 		// tight or loose decides the wrapper when the list closes
 		this.states.push(StateKind.paragraph);
@@ -10975,25 +10980,19 @@ export class PFMParser {
 	 * with line below 0 it opens the block at the cursor, code is the char there
 	 * with a line start it is a probe, code is the first char of that line past its
 	 * whitespace, nothing is emitted and it answers whether a block that may end a paragraph starts there
+	 * pos is where code is, the cursor when it opens the block
 	 * @returns 1 when a block opened, -1 while it is not all here, 0 when the line is a plain paragraph
 	 */
 	private block_start(
 		code: number,
 		current_node: number,
-		line: number
+		line: number,
+		pos: number
 	): number {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
 		const probe = line >= 0;
-		let pos = this.cursor;
-		if (probe) {
-			pos = line;
-			let ch = char_code_at.call(source, pos - base);
-			while (ch === SPACE || ch === TAB) {
-				ch = char_code_at.call(source, ++pos - base);
-			}
-		}
 		switch (code) {
 			case OCTOTHERP:
 				if (probe) return this.is_heading_start(pos) ? 1 : 0;
@@ -11334,7 +11333,7 @@ export class PFMParser {
 				break;
 			}
 		}
-		const started = this.block_start(code, current_node, -1);
+		const started = this.block_start(code, current_node, -1, this.cursor);
 		if (started !== 0) return started === -1;
 		this.states.push(StateKind.paragraph);
 		const para_id = this.emit_open(
