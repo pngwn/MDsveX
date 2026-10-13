@@ -6551,6 +6551,13 @@ export class PFMParser {
 			this.interrupt_svelte_depth === this.svelte_block_depth
 		)
 			return 1;
+		if (
+			FAST &&
+			this.frames.length === 1 &&
+			this.list_depth > 0 &&
+			this.margin_line(p)
+		)
+			return 1;
 		let ends: boolean;
 		if (this.frames.length !== 0) {
 			const kept = this.line_start(p);
@@ -6571,6 +6578,73 @@ export class PFMParser {
 		this.interrupt_frames = this.frames.length;
 		this.interrupt_svelte_depth = this.svelte_block_depth;
 		return 1;
+	}
+
+	/**
+	 * a list marker at p, a line start, in its plainest form, a bullet or up to nine digits and a
+	 * delimiter, then one space and a char of text, where the line is no thematic break
+	 * leaves the marker try_parse_list_marker would return in interrupt_marker, for the position p
+	 */
+	private margin_marker(p: number): boolean {
+		const source = this.source;
+		const base = this.source_base;
+		const length = this.source_end;
+		if (p + 2 >= length || p === this.cold.note_pos) return false;
+		let mark = char_code_at.call(source, p - base);
+		let q = p + 1;
+		let ordered = false;
+		let num = 0;
+		if (mark !== DASH && mark !== ASTERISK && mark !== PLUS) {
+			if (mark < 48 || mark > 57) return false;
+			num = mark - 48;
+			for (;;) {
+				if (q + 2 >= length) return false;
+				mark = char_code_at.call(source, q - base);
+				if (mark < 48 || mark > 57) break;
+				if (q - p >= 9) return false;
+				num = num * 10 + mark - 48;
+				q++;
+			}
+			if (mark !== DOT && mark !== CLOSE_PAREN) return false;
+			ordered = true;
+			q++;
+		}
+		if (char_code_at.call(source, q - base) !== SPACE) return false;
+		const next = char_code_at.call(source, q + 1 - base);
+		// a second bullet may be a thematic break, and a marker with a blank line after it is text
+		if (
+			next === SPACE ||
+			next === TAB ||
+			next === LINEFEED ||
+			(next === mark && !ordered)
+		)
+			return false;
+		this.interrupt_marker = this.marker_at(
+			0,
+			mark,
+			ordered,
+			num,
+			q + 1,
+			q + 1 - p
+		);
+		this.interrupt_marker_pos = p;
+		return true;
+	}
+
+	/**
+	 * the line at p, right after a linefeed, starts with a margin_marker under one open list item
+	 * line_start and the probe would say it ends the paragraph, this leaves what they leave
+	 */
+	private margin_line(p: number): boolean {
+		if (!this.margin_marker(p)) return false;
+		this.line_pos = p;
+		this.line_quote = p;
+		this.line_at = p;
+		this.line_kept = 0;
+		this.interrupt_pos = p;
+		this.interrupt_frames = 1;
+		this.interrupt_svelte_depth = this.svelte_block_depth;
+		return true;
 	}
 
 	/** the innermost open container is a list item */
@@ -10837,6 +10911,12 @@ export class PFMParser {
 			// the paragraph interrupt check may already have parsed the marker, a thematic break came first there
 			let marker: MarkerResult | null = null;
 			if (this.interrupt_marker_pos === p) marker = this.interrupt_marker;
+			else if (
+				FAST &&
+				char_code_at.call(source, p - 1 - base) === LINEFEED &&
+				this.margin_marker(p)
+			)
+				marker = this.interrupt_marker;
 			else if (!this.is_thematic_break_start(p))
 				marker = this.try_parse_list_marker(p);
 			if (
