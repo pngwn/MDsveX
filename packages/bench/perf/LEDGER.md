@@ -70,6 +70,9 @@ delete it.
   dropped: a hand scan of plain text up to a bare close tag in front of the
   regex read -2.0% on the cheatsheet, a regex call is as fast as a char loop
   at these lengths. The memo is still not built.
+- **Left open, 2026-10-13:** the memo would take back about a third of it
+  for one document of the corpus, and a feed has to throw it away. Not worth
+  its lines until a real document made of such lines turns up.
 
 ### open inline nodes at a quoted line end
 
@@ -98,6 +101,10 @@ delete it.
   the same with emphasis -2.4% and +3.1%, plain quoted lines -0.5% and
   +16.6%. One workload per fresh process, four processes a row. Nothing in
   the corpus has the shape.
+- **Left open, 2026-10-13:** `para_text` now carries on across plain quoted
+  lines, which this shape does not reach, quoted paragraphs with emphasis
+  over a line read 0.0% with it. A shorter way through a linefeed in link
+  text would be a second copy of what `para_line` asks.
 
 ### parse plugins: what a document still pays
 
@@ -121,6 +128,9 @@ delete it.
   autolink and sectionize +42.1%. A profile of the autolink parse has no one
   place: the handler's own slug and its two regexes are about 7 points of the
   30, node views and attrs 4, the builder's slow open and close paths 4.
+- **Left open, 2026-10-13:** not worked on in the first collection pass.
+  With no one place in the profile there is no one change to make, which is
+  the shape of work a hill climb with plugin rows in its suite is for.
 
 ### autolink mask rewrite
 
@@ -130,6 +140,8 @@ delete it.
 - **Cause:** one rewrite of the open mask per heading, with nothing gained
   back because the wrapper closes with the heading.
 - **Ideas:** none yet.
+- **Triage, 2026-10-13:** not measured apart, it is inside the autolink row
+  of the entry above, +30.2% over no plugin. Left with that entry.
 
 ### block start call at the root
 
@@ -261,6 +273,15 @@ delete it.
   dropped: the watch test moved out of the four emit functions onto the id
   table bound read `parse` +0.29% with the passes at -0.31% and +0.90%. The
   backtick search is closed below. The NUL compare was not tried.
+- **The NUL compare, 2026-10-13:** tried on the top of the collection
+  stack. The loop hands a state the char as it is and each of the 26 end
+  tests asks for a nan in place of a falsy code. Output identical, 60,000
+  fuzz documents, half of them dense with NUL. `core --repeat 2`: `parse`
+  +0.00% and +0.26%, `incremental-64` +0.54% and +0.67%, `compile-mapped`
+  +0.57% and +0.00%, `vite-transform` +0.06% and +1.35%, no row past the
+  4.6% floor. Not taken: it trades the one line that keeps a NUL from
+  reading as the end of the input for a rule every state has to keep, for
+  a third of a percent.
 
 ### attrs on pending emphasis
 
@@ -271,6 +292,7 @@ delete it.
 - **Ideas:** none yet.
 - **Triage, 2026-10-13:** not looked at. The plugin row above has what attrs
   on emphasis, strong and links cost today, +16.2% over no plugin.
+  Left with that entry.
 
 ### escaped brace check in text
 
@@ -299,6 +321,8 @@ delete it.
   floor. The trace shows `escape_text_at` inlined into the walks with the
   test in it, so the cost is the char load of each text node and not a lost
   inline. Not changed in this pass.
+  Taking the load out needs the parser to mark the text node an escaped
+  brace opens, which changes the tree, so it waits for a ruling.
 
 ### a dollar in prose
 
@@ -324,6 +348,8 @@ delete it.
   +6.5% and cost prose with no dollar -4.8% and a document of headings
   -7.1%, and the same rule around the loop cost prose -5.9%. `text_run` has
   to stay as small as it is, so the rule would have to go to its callers.
+- **Left open, 2026-10-13:** 24ns a dollar that opens no math, one 52 byte
+  fixture in the corpus. Five callers would each need the rule.
 
 ### the cheatsheet render row after footnotes
 
@@ -343,6 +369,27 @@ delete it.
 - **Ideas:**
   - Run the row alone, one workload a process, before reading anything into
     it.
+- **Triage, 2026-10-13:** the row still reads -7.2% and -10.8% against
+  f20a7cae at the top of the collection stack, and level against the commit
+  the stack starts from. Left open as a row to read alone, there is no work
+  in the document to take out.
+
+### tiny documents
+
+- **Source:** no one change. The restructure and the bug stacks after it,
+  read at the top of the first collection stack.
+- **Measured:** `core --repeat 2` against f20a7cae with a calibrated 4.6%
+  floor, pass 1 and pass 2. `micro/code-fence:parse` -6.0% and -5.1% (230ns
+  to 247ns), `micro/import:parse` -6.5% and -5.4% (519ns to 552ns),
+  `micro/heading:parse` -4.3% and -5.1%, `fixtures/fenced_code_blocks:parse`
+  -5.7% and -5.5%. Over the suite `parse` reads +0.12% and -0.09%.
+- **Cause:** spread thin. Phase by phase each of these rows reads -1% to -4%
+  in both passes at one to four of the seven phases, and none past the
+  floor. With the NUL compare stubbed the three micro rows read +2.1% to
+  +3.2% in both passes, with the `spec_watch` compare `micro/code-fence`
+  reads +5.5% and +3.1%. So it is the tests a trip of the main loop and an
+  emit make, 17 to 33ns a parse, which a longer document does not show.
+- **Ideas:** none. See the NUL compare under tag paragraph marks.
 
 ## Closed
 
@@ -449,6 +496,20 @@ again.
   the end of the document from every tag line, because a backtick is always
   near in it. 300 lines of one shape, timed one workload a process with
   `compare_one`, found it.
+- **The plugin setup row.** `setup/plugin:setup` reads -41.5% and -44.8%
+  against f20a7cae, 424ns to 734ns, and read the same before the first
+  collection pass. It times a call of `mdsvex()` with no options, which a
+  build makes once. Not a cost to chase.
+- **Where the first collection pass ended, 2026-10-13.** `core --repeat 2`
+  of the top of its stack, pass 1 and pass 2. Against the commit it started
+  from: `parse` +3.86% and +3.24%, `compile-mapped` +3.39% and +3.05%,
+  `vite-transform` +2.87% and +2.96%, `incremental-64` +2.04% and +2.29%,
+  the render modes level, 23 rows faster past the 4.6% floor and none
+  slower. Against f20a7cae, the parser before the restructure: `parse`
+  +0.12% and -0.09%, `compile-mapped` +0.62% and +1.32%, `vite-transform`
+  +0.85% and +0.62%, `incremental-64` -0.99% and +1.29%, `render` -0.60%
+  and -0.49%. The commit it started from read `parse` -3.59% and -3.10%
+  against f20a7cae.
 - **Fed modes.** `quick` has none. Use `--suite core --modes incremental`.
 - **`real/bench-benchmarks-fixture-code:incremental-64` reads fast.** It read
   +5.5% and +4.8%, both passes, for two changes that do not reach fence code.
