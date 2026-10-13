@@ -229,7 +229,7 @@ importers:
         version: 5.55.0
       svelte-check:
         specifier: ^4.4.2
-        version: 4.4.5(picomatch@4.0.3)(svelte@5.55.0)(typescript@5.9.3)
+        version: 4.4.5(picomatch@4.0.7)(svelte@5.55.0)(typescript@5.9.3)
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -673,12 +673,18 @@ importers:
       '@mdsvex/plugin-anchors':
         specifier: workspace:*
         version: link:../../plugins/anchors
+      '@mdsvex/plugin-emoji':
+        specifier: workspace:*
+        version: link:../../plugins/emoji
       '@mdsvex/plugin-external-links':
         specifier: workspace:*
         version: link:../../plugins/external-links
       '@mdsvex/plugin-page-data':
         specifier: workspace:*
         version: link:../../plugins/page-data
+      '@mdsvex/plugin-references':
+        specifier: workspace:*
+        version: link:../../plugins/references
       '@mdsvex/plugin-steps':
         specifier: workspace:*
         version: link:../../plugins/steps
@@ -732,6 +738,21 @@ importers:
         specifier: ^0.3.4
         version: 0.3.4
 
+  plugins/emoji:
+    devDependencies:
+      gemoji:
+        specifier: 8.1.0
+        version: 8.1.0
+      mdsvex:
+        specifier: workspace:^
+        version: link:../../packages/mdsvex
+      npm-run-all2:
+        specifier: ^7.0.2
+        version: 7.0.2
+      shx:
+        specifier: ^0.3.4
+        version: 0.3.4
+
   plugins/external-links:
     devDependencies:
       '@mdsvex/plugin-anchors':
@@ -752,6 +773,27 @@ importers:
 
   plugins/page-data:
     devDependencies:
+      mdsvex:
+        specifier: workspace:^
+        version: link:../../packages/mdsvex
+      npm-run-all2:
+        specifier: ^7.0.2
+        version: 7.0.2
+      shx:
+        specifier: ^0.3.4
+        version: 0.3.4
+
+  plugins/references:
+    devDependencies:
+      '@mdsvex/plugin-anchors':
+        specifier: workspace:^
+        version: link:../anchors
+      '@mdsvex/plugin-emoji':
+        specifier: workspace:^
+        version: link:../emoji
+      '@mdsvex/plugin-external-links':
+        specifier: workspace:^
+        version: link:../external-links
       mdsvex:
         specifier: workspace:^
         version: link:../../packages/mdsvex
@@ -3064,6 +3106,9 @@ packages:
 
   functions-have-names@1.2.3:
     resolution: {integrity: sha512-xckBUXyTIqT97tq2x2AMb+g163b5JFysYk0x4qxNFwbfQkmNZoiRHb6sPzI9/QV33WeuvVYBUIiD4NzNIyqaRQ==}
+
+  gemoji@8.1.0:
+    resolution: {integrity: sha512-HA4Gx59dw2+tn+UAa7XEV4ufUKI4fH1KgcbenVA9YKSj1QJTT0xh5Mwv5HMFNN3l2OtUe3ZIfuRwSyZS5pLIWw==}
 
   generator-function@2.0.1:
     resolution: {integrity: sha512-SFdFmIJi+ybC0vjlHN0ZGVGHc3lgE0DxPAT0djjVg+kjOnSqclqmj0KQ7ykTOLP6YxoqOvuAODGdcHJn+43q3g==}
@@ -7365,6 +7410,8 @@ snapshots:
 
   functions-have-names@1.2.3: {}
 
+  gemoji@8.1.0: {}
+
   generator-function@2.0.1: {}
 
   get-func-name@2.0.2: {}
@@ -8969,11 +9016,11 @@ snapshots:
 
   supports-preserve-symlinks-flag@1.0.0: {}
 
-  svelte-check@4.4.5(picomatch@4.0.3)(svelte@5.55.0)(typescript@5.9.3):
+  svelte-check@4.4.5(picomatch@4.0.7)(svelte@5.55.0)(typescript@5.9.3):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
       chokidar: 4.0.3
-      fdir: 6.5.0(picomatch@4.0.3)
+      fdir: 6.5.0(picomatch@4.0.7)
       picocolors: 1.1.1
       sade: 1.8.1
       svelte: 5.55.0

@@ -242,9 +242,8 @@ Curly quotes, dashes and other Unicode punctuation count as punctuation there. C
 | a pipe table | a [table](docs#tables), with header columns and merged cells |
 | `:name[text]`, `::name`, `:::name` | a [directive](docs#directives), your own component |
 | a `math` fence, `` $`x^2`$ `` | [math](docs#math-1) |
+| `[^1]` in the text and `[^1]: a note` | a [footnote](docs#footnotes-1) |
 | `import` lines at the top | [imports](docs#svelte-in-markdown) without a `<script>` |
-
-Footnotes are not read yet, see [limitations](docs#limitations).
 
 ### Task lists
 
@@ -379,6 +378,7 @@ interface MdsvexOptions {
 	parse_plugins?: ParsePlugin[];
 	highlight?: HighlightOptions | Highlighter | false;
 	math?: MathOptions | MathRenderer | false;
+	footnotes?: { label?: string; back_label?: string; strict?: boolean };
 	unwrap_images?: boolean;
 	import_images?: boolean;
 	links?: {
@@ -590,6 +590,24 @@ mdsvex({ parse_plugins: [external_links] });
 
 A plugin with `sequential: true` runs over the finished tree instead, after [`heading_ids`](docs#heading_ids) has set its ids.
 
+A sequential plugin can also rewrite text. Its `text` function is called for each run of text in the document, and `run.replace` puts text or a node in place of a range of it:
+
+```js
+const issues = {
+	sequential: true,
+	text(run) {
+		for (const match of run.text.matchAll(/#(\d+)/g)) {
+			const end = match.index + match[0].length;
+			run
+				.replace(match.index, end, 'link', { href: `/issues/${match[1]}` })
+				.append('text', match[0]);
+		}
+	}
+};
+```
+
+A run is whole however the tree split the text, and the text around a replacement stays as you wrote it. Code, math, urls, attribute values and `{expressions}` are never in a run, and a character you escaped with a backslash is left out of it.
+
 Elements a plugin creates count as markdown, so a [replacement](docs#custom-components) for `mark` also replaces the `<mark>` a highlight plugin adds.
 
 `parse_plugins` is the short way to add a few handlers from your config. To ship them with directives and components, or under a name, put the same object in the `parse` key of a [plugin](docs#plugins).
@@ -778,6 +796,14 @@ math: MathOptions | MathRenderer | false = {};
 ```
 
 How a `math` fence and inline math render. `renderer` picks `'temml'`, the default, or `'katex'`, and `options` goes to that library. A function is a renderer of your own, and `false` leaves the fence a code block and inline math inline code. See [Math](docs#math-1).
+
+### `footnotes`
+
+```ts
+footnotes: { label?: string; back_label?: string; strict?: boolean } = {};
+```
+
+The accessible names of the [footnotes](docs#footnotes-1) section and of its back links, for a site that is not in English. `strict: false` builds a document whose footnotes a compile rejects, with warnings in place of the error.
 
 ### `unwrap_images`
 
@@ -1649,15 +1675,26 @@ The first-party plugins are packages of their own, named `@mdsvex/plugin-*`. Eac
 ```js
 import { mdsvex } from 'mdsvex';
 import { anchors } from '@mdsvex/plugin-anchors';
+import { emoji } from '@mdsvex/plugin-emoji';
 import { external_links } from '@mdsvex/plugin-external-links';
 import { page_data } from '@mdsvex/plugin-page-data';
+import { references } from '@mdsvex/plugin-references';
 import { steps } from '@mdsvex/plugin-steps';
 import { tabs } from '@mdsvex/plugin-tabs';
 import { toc } from '@mdsvex/plugin-toc';
 
 mdsvex({
 	heading_ids: true,
-	plugins: [steps(), tabs(), anchors(), external_links(), toc(), page_data()]
+	plugins: [
+		steps(),
+		tabs(),
+		anchors(),
+		external_links(),
+		toc(),
+		page_data(),
+		references({ repo: 'you/site' }),
+		emoji()
+	]
 });
 ```
 
@@ -1669,6 +1706,8 @@ mdsvex({
 | [`@mdsvex/plugin-external-links`](docs#external-links) | `rel` and `target` on every link that leaves the site |
 | [`@mdsvex/plugin-toc`](docs#table-of-contents) | the headings of a document as data, and a `::toc` directive that lists them |
 | [`@mdsvex/plugin-page-data`](docs#page-data) | a reading time, an excerpt, an inferred title and an edit url for each document |
+| [`@mdsvex/plugin-emoji`](docs#emoji) | emoji shortcodes, `:tada:` becomes the emoji, with an optional label for screen readers |
+| [`@mdsvex/plugin-references`](docs#references) | links for `@user`, `#123`, `owner/repo#123` and commits, and for bare urls when asked |
 
 ### Steps
 
@@ -2126,6 +2165,128 @@ A [`?data` import](docs#plugin-data) gives all of it without rendering the docum
 	{/each}
 </ul>
 ```
+
+### Emoji
+
+```bash
+pnpm add --save-dev @mdsvex/plugin-emoji@next
+```
+
+```js
+import { emoji } from '@mdsvex/plugin-emoji';
+
+mdsvex({ plugins: [emoji()] });
+```
+
+Turns a shortcode into its emoji:
+
+```svx
+We shipped it :tada: and nobody was paged :+1:
+```
+
+```html
+<p>We shipped it 🎉 and nobody was paged 👍</p>
+```
+
+The shortcodes are the ones GitHub uses, 1913 names for 1870 emoji. The table is part of the package, built from [`gemoji`](https://github.com/wooorm/gemoji) (MIT), so there is nothing else to install.
+
+A shortcode is replaced in prose and nowhere else: not in code, math, a url, the value of an attribute or an `{expression}`. What is not a shortcode stays as you wrote it:
+
+- a name the table does not have, such as `:not_an_emoji:`
+- a name that touches a letter or a digit, so `10:30:00` and `1:100:1` are safe although `:100:` is an emoji
+- a shortcode you escaped, `\:tada:`
+- an inline directive, `:tada[text]`, whose name is followed by a bracket and not a colon
+
+```ts
+emoji({
+	table: Record<string, string>,
+	extend: Record<string, string | null>,
+	label: boolean | ((emoji: string, name: string | undefined) => string | undefined),
+	attrs: Record<string, string>
+});
+```
+
+- **`extend`** adds shortcodes to the table, replaces one of the same name, and takes one out with `null`: `{ shipit: '...', 100: null }`.
+- **`table`** is the whole table in place of the built in one.
+- **`label`** wraps each emoji in a `<span>` with a name for a screen reader. `true` uses the Unicode name of the emoji, and a function gives the name, for a page that is not in English. Emoji you typed as characters are wrapped as well:
+
+```js
+emoji({ label: true });
+```
+
+```html
+<p>We shipped it <span role="img" aria-label="party popper">🎉</span></p>
+```
+
+- **`attrs`** are attributes for a `<span>` around each emoji, such as a class, with or without a label.
+
+It writes the character and adds no image set, and emoticons such as `:)` are left alone. A [heading id](docs#heading_ids) is made from what you wrote, so `## Done :tada:` gets `done-tada`. The plugin reads the finished tree, so put it after a plugin that turns urls into links, such as [references](docs#references) with `linkify`.
+
+### References
+
+```bash
+pnpm add --save-dev @mdsvex/plugin-references@next
+```
+
+```js
+import { references } from '@mdsvex/plugin-references';
+
+mdsvex({ plugins: [references({ repo: 'sveltejs/svelte' })] });
+```
+
+Turns the references people write in prose into links:
+
+```svx
+Thanks @ada for #123, which also closes sveltejs/kit#45. Landed in a1b2c3d.
+```
+
+```html
+<p>
+	Thanks <a href="https://github.com/ada">@ada</a> for
+	<a href="https://github.com/sveltejs/svelte/issues/123">#123</a>, which also
+	closes <a href="https://github.com/sveltejs/kit/issues/45">sveltejs/kit#45</a>.
+	Landed in
+	<a href="https://github.com/sveltejs/svelte/commit/a1b2c3d"><code>a1b2c3d</code></a>.
+</p>
+```
+
+| written | becomes a link to | needs |
+| --- | --- | --- |
+| `@user` | the user | |
+| `owner/repo#123` | that issue or pull request | |
+| `#123` | the issue or pull request in your repo | `repo` |
+| a commit hash of 7 to 40 characters | the commit in your repo | `repo` |
+| `https://example.com`, `www.example.com` | itself | `linkify: true` |
+
+A reference has to stand on its own, so an email address, a path such as `/@ada`, `page#12` and a word like `defaced` are left alone, and so is one you escaped, `\@ada`. Nothing is touched in code, math, an attribute, an `{expression}`, or the text of a link you already wrote.
+
+```ts
+references({
+	repo: string,
+	mention: string | false | ((parts: { user }) => string | undefined),
+	issue: string | false | ((parts: { repo, owner, name, number }) => string | undefined),
+	commit: string | false | ((parts: { repo, owner, name, sha }) => string | undefined),
+	linkify: boolean,
+	attrs: Record<string, string> | ((kind) => Record<string, string> | undefined)
+});
+```
+
+- **`repo`** is the repository a bare `#123` and a commit belong to, as `owner/name`. Without it neither is linked.
+- **`mention`**, **`issue`** and **`commit`** are the url of each kind. The defaults are GitHub's, such as `https://github.com/{repo}/issues/{number}`. A string takes placeholders, a function returns the url or nothing to leave the reference as text, and `false` turns the kind off. For another host:
+
+```js
+references({
+	repo: 'group/project',
+	mention: 'https://gitlab.com/{user}',
+	issue: 'https://gitlab.com/{repo}/-/issues/{number}',
+	commit: 'https://gitlab.com/{repo}/-/commit/{sha}'
+});
+```
+
+- **`linkify`** also makes a link of a bare `https://`, `http://` or `www.` url. The parser never does, on purpose: in mdsvex a url is a link when you mark it, `<https://example.com>`, and this option is where you opt in to the rest. Punctuation at the end of a url stays with the sentence, by the rules GitHub uses.
+- **`attrs`** are attributes for each link, or a function of the kind (`'mention'`, `'issue'`, `'commit'`, `'url'`) that returns them.
+
+It does not check that a user or an issue exists. With `linkify`, list it before the emoji plugin, so a shortcode inside a url is left alone. [External links](docs#external-links) reads links while the document is parsed and does not see the ones made here, so give them `rel` through `attrs`.
 
 `compile()` takes every plugin the same way, through its `plugins` option.
 
@@ -2768,6 +2929,140 @@ const math = temml_math(temml, { annotate: true });
 
 The editor reads the option from the manifest the plugin writes, or from `math` in an `mdsvex.config.json`, and reports LaTeX that Temml can't read as you type. With KaTeX or a function it doesn't check the LaTeX.
 
+## Footnotes
+
+A footnote is a reference in the text and a definition anywhere in the document:
+
+```md
+A claim[^1], and a second one[^smith].
+
+[^1]: The source, with a [link](https://example.com).
+[^smith]: Smith, 2020.
+```
+
+The reference renders as a number that links to the note, and the notes are collected at the end of the document, in the order they are first referred to:
+
+```html
+<p>A claim<sup><a href="#fn-1" id="fnref-1" role="doc-noteref">1</a></sup>, and a second one<sup><a href="#fn-smith" id="fnref-2" role="doc-noteref">2</a></sup>.</p>
+
+<section class="footnotes" role="doc-endnotes" aria-label="Footnotes">
+<ol>
+<li id="fn-1"><p>The source, with a <a href="https://example.com">link</a>. <a href="#fnref-1" role="doc-backlink" aria-label="Back to reference 1">&#8617;</a></p></li>
+<li id="fn-smith"><p>Smith, 2020. <a href="#fnref-2" role="doc-backlink" aria-label="Back to reference 2">&#8617;</a></p></li>
+</ol>
+</section>
+```
+
+- **A label** is any run of characters without whitespace, brackets or `^`. Labels match exactly, case included. The number a reader sees comes from the order of the references, not from the label, so `[^smith]` is as good a label as `[^2]`.
+- **A definition** is a line that starts with `[^label]:` and has text after it. It may hold links, emphasis, code and references to other notes. It can be written anywhere: under the paragraph that cites it, at the end of the document, inside a block quote or a list item. Wherever it is, it renders in the section at the end.
+- **A longer note** continues as a list item does. After a blank line, a block indented by four spaces belongs to the note, and the first line that is not blank and not indented ends it:
+
+  ```md
+  [^1]: The source.
+
+      A second paragraph, and a list:
+
+      - one
+      - two
+
+  Not part of the note.
+  ```
+- **Referring to a note twice** gives both references the same number, and the note a link back to each.
+- **The id of a note** is `fn-` and its label, so a link to a note survives a renumbering. The id of a reference is `fnref-` and its number. With [`heading_ids`](docs#heading_ids), a heading whose slug would be one of these gets a suffix.
+- **mdsvex adds no CSS** and no heading. The section has the `footnotes` class and an accessible name. The arrow of a back link is followed by a variation selector, so it is drawn as text and not as an emoji.
+
+A reference is read by its syntax alone, before any definition is known. So a `[^…]` in prose that is not a footnote, such as the regular expression class `[^abc]`, has to be escaped or put in code:
+
+```md
+The class \[^abc] matches, and so does `[^abc]`.
+```
+
+### Footnote errors
+
+A reference with no definition and a label defined twice fail the build with a `FootnoteError`. It has the `code` (`footnote_undefined` or `footnote_duplicate`), the `label`, and the `line` and `column` of the reference or of the second definition, and `problems` lists every one in the document:
+
+```
+the footnote reference [^nope] has no definition, add `[^nope]: text`, or escape the bracket as `\[^nope]` if it is not a footnote (src/routes/post.svx:12)
+```
+
+A definition that nothing refers to is not rendered, and the compile warns with the code `footnote_unused`.
+
+### Footnote options
+
+```js
+mdsvex({
+	footnotes: {
+		label: 'Notes',
+		back_label: 'Back to note {n}'
+	}
+});
+```
+
+`label` names the section and `back_label` each link back, where `{n}` is the number of the reference. `strict: false` turns the two errors into warnings: a reference with no definition is numbered and linked all the same, and the first definition of a label is the one that renders. That suits a preview of a document that is still being written.
+
+### Footnote components
+
+Two exports of a [components module](docs#custom-components) replace footnotes:
+
+```js
+// src/lib/markdown.js
+export { default as footnote } from './markdown/Footnote.svelte';
+export { default as footnotes } from './markdown/Footnotes.svelte';
+```
+
+`footnote` replaces a reference. It gets these props:
+
+| prop | value |
+| --- | --- |
+| `children` | the link it renders as without a replacement, the `<sup>` |
+| `note` | a snippet of what the definition holds |
+| `label` | the label, as written |
+| `number` | its number |
+| `href` | the link to the note, `#fn-` and the label |
+| `id` | the id of the reference, `fnref-` and the number |
+
+`note` is what a side note or a hover card needs. A note holds blocks, and HTML allows no block inside the paragraph a reference is in, so draw it once the page is in the browser, as this card does on hover, or somewhere outside the paragraph:
+
+```svelte
+<!-- src/lib/markdown/Footnote.svelte -->
+<script>
+	let { children, note } = $props();
+
+	let open = $state(false);
+</script>
+
+<span
+	class="footnote"
+	role="group"
+	onpointerenter={() => (open = true)}
+	onpointerleave={() => (open = false)}
+>
+	{@render children()}{#if open}<span class="card">{@render note()}</span>{/if}
+</span>
+```
+
+`footnotes` replaces the section and gets the `<ol>` of notes as its `children`:
+
+```svelte
+<!-- src/lib/markdown/Footnotes.svelte -->
+<script>
+	let { children } = $props();
+</script>
+
+<aside class="notes" aria-label="Notes">
+	<h2>Notes</h2>
+	{@render children()}
+</aside>
+```
+
+The links and the list that mdsvex writes for footnotes are not markdown, so `a`, `sup`, `ol` and `li` replacements never get them. What a note holds is markdown, so its paragraphs and links are replaced as anywhere else. A reference inside a `note` snippet gets no snippet of its own.
+
+See the [footnotes playground example](/playground/footnotes).
+
+### Footnotes while streaming
+
+`compile` knows the whole document, so it can number the notes and move them. The streaming renderer does not: a reference shows its label as a superscript, and a definition renders where it is written, behind the same label.
+
 ## Live code
 
 Braces in code blocks are text. To put a value from the document into a code block, mark it live with an `[!eval]` comment:
@@ -3181,7 +3476,7 @@ mdsvex 0.x ran remark and rehype, and took their plugins in `remarkPlugins` and 
 
 | plugin | now | how |
 | --- | --- | --- |
-| `remark-gfm` | built in, apart from two things | [tables](docs#tables), `~~strikethrough~~` and [task lists](docs#task-lists) work as written. A bare url is not linked, the migrator writes each one as `<https://example.com>`. Footnotes are not read yet |
+| `remark-gfm`, `remark-footnotes` | built in, apart from one thing | [tables](docs#tables), `~~strikethrough~~`, [task lists](docs#task-lists) and [footnotes](docs#footnotes-1) work as written. A bare url is not linked: the migrator writes each one as `<https://example.com>`, and `references({ linkify: true })` from [`@mdsvex/plugin-references`](docs#references) links them all |
 | `remark-frontmatter`, `remark-parse-yaml` | built in | [frontmatter](docs#frontmatter-1) is the `metadata` export, and [`frontmatter.parse`](docs#custom-frontmatter-parsers) takes TOML or full YAML |
 | `remark-directive`, `remark-admonitions`, `remark-containers`, `remark-custom-blocks` | built in | [directives](docs#directives): `:::note` renders your `note` component |
 | `remark-sub-super`, `remark-supersub` | built in | `H~2~O` and `x^2^` |
@@ -3214,6 +3509,9 @@ mdsvex 0.x ran remark and rehype, and took their plugins in `remarkPlugins` and 
 | `remark-reading-time` | [`@mdsvex/plugin-page-data`](docs#page-data) | `plugin_data.page.minutes` and `words` |
 | `rehype-infer-description-meta`, `rehype-infer-title-meta`, `rehype-truncate` | [`@mdsvex/plugin-page-data`](docs#page-data) | `plugin_data.page.excerpt` and `title`, as text |
 | `rehype-code-group` | [`@mdsvex/plugin-tabs`](docs#tabs) | `:::tabs` around the fences |
+| `remark-emoji`, `remark-gemoji` | [`@mdsvex/plugin-emoji`](docs#emoji) | `emoji()` turns `:tada:` into the emoji, with GitHub's names |
+| `remark-github`, `remark-mentions`, `remark-ping` | [`@mdsvex/plugin-references`](docs#references) | `references({ repo: 'you/site' })` links `@user`, `#123` and commits |
+| `remark-linkify-regex`, autolink literals | [`@mdsvex/plugin-references`](docs#references) | `references({ linkify: true })` links bare urls |
 
 ### A component or a few lines
 
@@ -3235,14 +3533,11 @@ mdsvex 0.x ran remark and rehype, and took their plugins in `remarkPlugins` and 
 
 | plugin | what to do today |
 | --- | --- |
-| footnotes, from `remark-gfm` or `remark-footnotes` | `[^1]` is text. The migrator keeps both halves as text so nothing is lost. Footnotes are being built |
 | `remark-github-blockquote-alert`, `remark-github-alerts`, `rehype-callouts` | `> [!NOTE]` is a block quote that starts with `[!NOTE]`. Write `:::note` with a directive component |
-| `remark-emoji`, `remark-gemoji` | `:tada:` is text. Type the emoji |
 | `remark-heading-id`, `remark-attr`, `rehype-attr` | `{#id}` and `{.class}` can't exist, braces belong to Svelte. `heading_ids` makes ids, and a parse plugin can set any attribute |
 | `remark-definition-list`, `remark-deflist` | type `<dl>`, `<dt>` and `<dd>` |
 | `remark-flexible-markers`, `remark-ins` | `==mark==` and `++ins++` are text, type `<mark>` and `<ins>` |
 | `remark-wiki-link` | `[[Page]]` is text |
-| `remark-github`, `remark-mentions` | `#123` and `@user` are text, a plugin can't yet turn part of a text into a link |
 | `rehype-citation` | no citations |
 | `remark-validate-links`, `remark-lint` | nothing checks links or style. A missing image fails the build when it is [imported](docs#import_images) |
 | `rehype-sanitize` | nothing, and none is planned. A document compiles to a component and runs as code, so don't compile markdown you don't trust |
@@ -3395,6 +3690,27 @@ a\
 <p>a\</p><h1>b</h1>
 ```
 
+### `[^label]` is a footnote
+
+Footnotes are read now. A `[^1]` in the text is a reference, and a line that starts `[^1]:` is its definition. Both were plain text.
+
+```svx
+Text[^1].
+
+[^1]: A note.
+```
+
+```html
+<!-- before -->
+<p>Text[^1].</p><p>[^1]: A note.</p>
+
+<!-- after -->
+<p>Text<sup><a href="#fn-1" id="fnref-1" role="doc-noteref">1</a></sup>.</p>
+<section class="footnotes" role="doc-endnotes" aria-label="Footnotes">…</section>
+```
+
+A reference with no definition fails the build. So a `[^…]` in prose that was never a footnote, such as the regular expression class `[^abc]`, now stops the compile with a `FootnoteError`. Escape it as `\[^abc]` or put it in code. See [footnotes](docs#footnotes-1).
+
 ### Smaller changes
 
 | you write | before | after |
@@ -3434,12 +3750,11 @@ A fence can be indented, inside an element or not. Its code keeps the indent it 
 
 ### Not read yet
 
-- **Footnotes.** `[^1]` and its definition are text.
-- **Bare urls.** Only `<https://example.com>` is a link.
-- **GitHub alerts, definition lists, `==mark==`, wiki links and emoji shortcodes**, see [nothing yet](docs#nothing-yet).
+- **Bare urls.** Only `<https://example.com>` is a link, unless [`@mdsvex/plugin-references`](docs#references) is set to link them.
+- **GitHub alerts, definition lists, `==mark==` and wiki links**, see [nothing yet](docs#nothing-yet).
 
 ### Not possible yet
 
 - **Replacements of its own for a component.** Markdown inside a component uses the document's replacements, see [nested scopes](docs#nested-scopes) for the way around it.
 - **A plugin that waits.** Handlers are synchronous and can't read files, so a plugin can't fetch an embed or read a bibliography.
-- **A plugin that adds syntax,** or that replaces part of a text, which is what emoji shortcodes and issue references need.
+- **A plugin that adds syntax.** A plugin changes the tree the parser made, and can rewrite text, but what is markdown is fixed.

@@ -234,45 +234,103 @@ function pfm_tables(input: string): { blocks: string[]; cells: string[] } {
 	return { blocks, cells };
 }
 
-describe("footnotes stay as literal text", () => {
-	test("a reference and its definition", () => {
-		expect(m("Hello[^1] world.\n\n[^1]: The note.")).toBe(
-			"Hello\\[\\^1\\] world.\n\n\\[\\^1\\]: The note.",
-		);
+describe("footnotes", () => {
+	/** the labels of the references and of the definitions PFM reads in out */
+	function pfm_notes(out: string): { references: string[]; definitions: string[] } {
+		const { nodes, errors } = parse_markdown_svelte(out + "\n");
+		expect(errors.size, `PFM parse errors in:\n${out}`).toBe(0);
+		const found = { references: [] as string[], definitions: [] as string[] };
+		for (let i = 0; i < nodes.size; i++) {
+			const node = nodes.get_node(i);
+			if (node.kind === "footnote_reference") found.references.push(node.metadata.label);
+			if (node.kind === "footnote_definition") found.definitions.push(node.metadata.label);
+		}
+		return found;
+	}
+
+	test("a reference and its definition are a PFM footnote", () => {
+		const out = m("Hello[^1] world.\n\n[^1]: The note.");
+		expect(out).toBe("Hello[^1] world.\n\n[^1]: The note.");
+		expect(pfm_notes(out)).toEqual({ references: ["1"], definitions: ["1"] });
 	});
 
-	test("the label keeps its case and is escaped", () => {
-		expect(m("x[^My_Note]\n\n[^My_Note]: y")).toBe(
-			"x\\[\\^My\\_Note\\]\n\n\\[\\^My\\_Note\\]: y",
-		);
+	test("a reference takes the label of its definition, which PFM matches exactly", () => {
+		const out = m("x[^MY_note] y[^my_Note]\n\n[^My_Note]: z");
+		expect(out).toBe("x[^My_Note] y[^My_Note]\n\n[^My_Note]: z");
+		expect(pfm_notes(out)).toEqual({
+			references: ["My_Note", "My_Note"],
+			definitions: ["My_Note"],
+		});
+	});
+
+	test("a character a PFM label can not hold is replaced, in both", () => {
+		const out = m("x[^a^b] y[^c\\]d]\n\n[^a^b]: one\n\n[^c\\]d]: two");
+		expect(pfm_notes(out)).toEqual({
+			references: ["a-b", "c-d"],
+			definitions: ["a-b", "c-d"],
+		});
 	});
 
 	test("inline content of a definition is migrated", () => {
 		expect(m("x[^a]\n\n[^a]: some **strong** and `code`")).toBe(
-			"x\\[\\^a\\]\n\n\\[\\^a\\]: some *strong* and `code`",
+			"x[^a]\n\n[^a]: some *strong* and `code`",
 		);
 	});
 
-	test("later blocks of a definition follow it", () => {
-		expect(m("x[^a]\n\n[^a]: one\n\n    two\n\n    - three")).toBe(
-			"x\\[\\^a\\]\n\n\\[\\^a\\]: one\n\ntwo\n\n- three",
-		);
+	test("a definition in a blockquote stays in it", () => {
+		const out = m("> quote[^a]\n>\n> [^a]: in quote");
+		expect(out).toBe("> quote[^a]\n>\n> [^a]: in quote");
+		expect(pfm_notes(out)).toEqual({ references: ["a"], definitions: ["a"] });
 	});
 
-	test("a definition that opens with a block keeps the label on its own line", () => {
-		expect(m("x[^a]\n\n[^a]:\n    - one\n    - two")).toBe(
-			"x\\[\\^a\\]\n\n\\[\\^a\\]:\n\n- one\n- two",
-		);
+	/** the kinds of the blocks of the first definition PFM reads in out */
+	function pfm_blocks(out: string): string[] {
+		const { nodes } = parse_markdown_svelte(out + "\n");
+		for (let i = 0; i < nodes.size; i++) {
+			const node = nodes.get_node(i);
+			if (node.kind === "footnote_definition")
+				return node.children
+					.map((child) => nodes.get_node(child).kind)
+					.filter((kind) => kind !== "line_break");
+		}
+		return [];
+	}
+
+	test("later blocks of a definition are indented to it", () => {
+		const out = m("x[^a]\n\n[^a]: one\n\n    two\n\n    - three\n\nafter");
+		expect(out).toBe("x[^a]\n\n[^a]: one\n\n    two\n\n    - three\n\nafter");
+		expect(pfm_blocks(out)).toEqual(["paragraph", "paragraph", "list"]);
 	});
 
-	test("a definition in a blockquote", () => {
-		expect(m("> quote[^a]\n>\n> [^a]: in quote")).toBe(
-			"> quote\\[\\^a\\]\n>\n> \\[\\^a\\]: in quote",
+	test("a definition that opens with a block starts it on the line of the label", () => {
+		const out = m("x[^a]\n\n[^a]:\n    - one\n    - two\n\n[^b]:\n    ```js\n    let c;\n    ```\n\ny[^b]");
+		expect(out).toBe(
+			"x[^a]\n\n[^a]: - one\n    - two\n\n[^b]: ```js\n    let c;\n    ```\n\ny[^b]",
 		);
+		expect(pfm_notes(out)).toEqual({ references: ["a", "b"], definitions: ["a", "b"] });
+		expect(pfm_blocks(out)).toEqual(["list"]);
 	});
 
-	test("a definition with no content", () => {
+	test("a definition in a blockquote keeps its later blocks", () => {
+		const out = m("> x[^a]\n>\n> [^a]: one\n>\n>     two");
+		expect(out).toBe("> x[^a]\n>\n> [^a]: one\n>\n>     two");
+		expect(pfm_blocks(out)).toEqual(["paragraph", "paragraph"]);
+	});
+
+	test("a definition with no content stays literal", () => {
 		expect(m("x[^a]\n\n[^a]:")).toBe("x\\[\\^a\\]\n\n\\[\\^a\\]:");
+	});
+
+	test("only the first definition of a label is one", () => {
+		const out = m("x[^a]\n\n[^a]: one\n\n[^a]: two");
+		expect(out).toBe("x[^a]\n\n[^a]: one\n\n\\[\\^a\\]: two");
+		expect(pfm_notes(out)).toEqual({ references: ["a"], definitions: ["a"] });
+	});
+
+	test("a bracket and caret that were no footnote are escaped", () => {
+		const out = m("the class [^abc] and [^1] with no definition");
+		expect(out).toBe("the class \\[\\^abc\\] and \\[\\^1\\] with no definition");
+		expect(pfm_notes(out)).toEqual({ references: [], definitions: [] });
 	});
 });
 

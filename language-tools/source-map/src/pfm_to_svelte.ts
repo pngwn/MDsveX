@@ -6,6 +6,7 @@
 import {
 	compile,
 	DirectiveError,
+	FootnoteError,
 	FrontmatterError,
 	highlight_error_at,
 	MathError,
@@ -320,6 +321,30 @@ function compile_leniently(
 					severity: 'error',
 				});
 				opts = { ...opts, math: source_math };
+				continue;
+			}
+			if (e instanceof FootnoteError && opts.footnotes?.strict !== false) {
+				// each reference with no definition and each second definition, the
+				// document then renders as a preview does, numbered all the same
+				for (const problem of e.problems) {
+					const start = offset_of(source, problem.line, problem.column);
+					const end =
+						problem.code === 'footnote_undefined'
+							? start + problem.label.length + 3
+							: start + problem.label.length + 4;
+					diagnostics.push({
+						start,
+						end: Math.min(end, source.length),
+						message:
+							problem === e.problems[0]
+								? e.message
+								: problem.code === 'footnote_undefined'
+									? `the footnote reference [^${problem.label}] has no definition`
+									: `the footnote [^${problem.label}] is defined twice`,
+						severity: 'error',
+					});
+				}
+				opts = { ...opts, footnotes: { ...opts.footnotes, strict: false } };
 				continue;
 			}
 			if (e instanceof SourceError && opts.sources !== false) {
@@ -764,6 +789,12 @@ export function pfmToSvelte(
 
 	for (const w of result.warnings ?? []) {
 		const start = offset_of(source, w.start.line, w.start.column + 1);
+		// the preview compile warns of what the strict one was an error for
+		if (
+			(w.code === 'footnote_undefined' || w.code === 'footnote_duplicate') &&
+			diagnostics.some((d) => d.start === start && d.severity === 'error')
+		)
+			continue;
 		const tag = /^<([^\s>]*)/.exec(w.message)?.[1] ?? '';
 		diagnostics.push({
 			start,

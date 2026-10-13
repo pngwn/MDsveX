@@ -56,6 +56,8 @@ export interface SerializeOptions {
 }
 
 interface Context {
+	/** the footnotes of the document by identifier */
+	notes: Map<string, Footnote>;
 	/** in a table cell, where a pipe has to be escaped and latex has to spell its double bar */
 	cell: boolean;
 	bullet: string;
@@ -73,6 +75,7 @@ export function serialize(tree: Root, options: SerializeOptions = {}): string {
 	const set = typeof smart === "object" && smart !== null ? smart : {};
 	const dashes = set.dashes ?? true;
 	const ctx: Context = {
+		notes: footnote_labels(tree),
 		cell: false,
 		bullet: options.bullet ?? "-",
 		// oldschool is what next does
@@ -270,24 +273,78 @@ function serialize_definition(node: Definition): string {
 	return `[${node.identifier}]: ${url}${title}`;
 }
 
-// pfm has no footnotes yet, so both halves stay in the document as escaped text
-function footnote_marker(node: FootnoteReference | FootnoteDefinition): string {
+/** what a footnote is written as, a null label keeps it literal text */
+interface Footnote {
+	label: string | null;
+	/** the first definition of the identifier */
+	definition: FootnoteDefinition;
+}
+
+/**
+ * the label pfm reads for each footnote of the document, any character but
+ * whitespace, a bracket and a caret, matched exactly, so a reference takes
+ * the label of its definition as that is written, with what pfm excludes
+ * replaced, a definition with no content has no pfm form and stays literal
+ * with its references, as a second definition of a label does
+ */
+function footnote_labels(root: Root): Map<string, Footnote> {
+	const notes = new Map<string, Footnote>();
+	const taken = new Set<string>();
+	const walk = (n: Nodes): void => {
+		if (n.type === "footnoteDefinition" && !notes.has(n.identifier)) {
+			let label: string | null = null;
+			// a definition needs text on the line of its label
+			if (n.children.length > 0) {
+				const base = (n.label ?? n.identifier).replace(/[\s[\]^\\]+/g, "-") || "note";
+				label = base;
+				for (let i = 2; taken.has(label); i++) label = base + "-" + i;
+				taken.add(label);
+			}
+			notes.set(n.identifier, { label, definition: n });
+		}
+		if ("children" in n && Array.isArray(n.children)) {
+			for (const c of n.children) walk(c as Nodes);
+		}
+	};
+	walk(root);
+	return notes;
+}
+
+/** a footnote that has no pfm form stays in the document as escaped text */
+function footnote_literal(node: FootnoteReference | FootnoteDefinition): string {
 	return escape_inline(`[^${node.label ?? node.identifier}]`);
+}
+
+function serialize_footnote_reference(node: FootnoteReference, ctx: Context): string {
+	const label = ctx.notes.get(node.identifier)?.label;
+	return label == null ? footnote_literal(node) : `[^${label}]`;
 }
 
 function serialize_footnote_definition(
 	node: FootnoteDefinition,
 	ctx: Context,
 ): string {
-	const marker = footnote_marker(node) + ":";
+	const note = ctx.notes.get(node.identifier);
+	// pfm rejects a second definition of a label, so only the first is one
+	const written = note !== undefined && note.label !== null && note.definition === node;
 	const blocks = node.children
 		.map((c) => serialize_block(c, ctx))
 		.filter((b) => b.length > 0);
-	// a list or fence on the marker line would stop being a block
-	if (node.children[0]?.type === "paragraph" && blocks.length > 0)
-		blocks[0] = marker + " " + blocks[0];
-	else blocks.unshift(marker);
-	return blocks.join("\n\n");
+	if (!written || blocks.length === 0) {
+		const marker = footnote_literal(node) + ":";
+		// a list or fence on the marker line would stop being a block
+		if (node.children[0]?.type === "paragraph" && blocks.length > 0)
+			blocks[0] = marker + " " + blocks[0];
+		else blocks.unshift(marker);
+		return blocks.join("\n\n");
+	}
+	// the first block starts on the line of the label, every other line is indented to the definition
+	const lines = blocks.join("\n\n").split("\n");
+	return lines
+		.map((line, i) =>
+			i === 0 ? `[^${note.label}]: ${line}` : line.length === 0 ? "" : "    " + line,
+		)
+		.join("\n");
 }
 
 function serialize_inline(nodes: PhrasingContent[], ctx: Context): string {
@@ -356,7 +413,7 @@ function serialize_phrasing(node: PhrasingContent, ctx: Context): string {
 		case "html":
 			return node.value;
 		case "footnoteReference":
-			return footnote_marker(node);
+			return serialize_footnote_reference(node, ctx);
 		case "inlineMath":
 			return serialize_inline_math(node.value ?? "", ctx);
 		default:
