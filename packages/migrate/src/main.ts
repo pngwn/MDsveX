@@ -95,7 +95,8 @@ function parse_math(body: string): Root {
  * `$x$` and `$$x$$` are written as inline math and math fences
  */
 export function migrate(markdown: string, options: MigrateOptions = {}): string {
-	const { frontmatter, body } = split_frontmatter(markdown);
+	// the output is written with linefeeds, and so is read with them
+	const { frontmatter, body } = split_frontmatter(markdown.replace(/\r\n?/g, "\n"));
 	const guard = protect(body);
 	const tree =
 		options.math === true ? parse_math(guard.text) : (processor.parse(guard.text) as Root);
