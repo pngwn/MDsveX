@@ -98,6 +98,14 @@ describe("svelte tags", () => {
 		);
 	});
 
+	test("a document with windows line endings", () => {
+		const source =
+			"---\r\nlayout: blog\r\n---\r\n\r\n```js\r\nlet a = {b_c};\r\n```\r\n\r\n{#if a_b}\r\n\r\n*yes* {c_d}\r\n\r\n{/if}\r\n\r\n<Comp a={b_c}\r\n\td={e_f} />\r\n";
+		expect(migrate(source)).toBe(
+			"---\ntemplate: blog\n---\n\n```js\nlet a = {b_c};\n```\n\n{#if a_b}\n\n_yes_ {c_d}\n\n{/if}\n\n<Comp a={b_c}\n\td={e_f} />\n",
+		);
+	});
+
 	test("a document that holds a token like text", () => {
 		expect(m("mdsvexmigrateq0e {a_b}")).toBe("mdsvexmigrateq0e {a_b}");
 	});
