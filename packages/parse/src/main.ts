@@ -4087,6 +4087,18 @@ export class PFMParser {
 		this.leave_svelte_block();
 	}
 
+	/** the close token of the innermost open block is at pos */
+	private closes_block(pos: number): boolean {
+		const source = this.source;
+		const tag = this.svelte_block_tag;
+		let p = pos + 2 - this.source_base;
+		if (!string_starts_with.call(source, tag, p)) return false;
+		p += tag.length;
+		let ch = char_code_at.call(source, p);
+		while (ch === SPACE || ch === TAB) ch = char_code_at.call(source, ++p);
+		return ch === CLOSE_BRACE;
+	}
+
 	private leave_svelte_block(): void {
 		this.svelte_block_depth--;
 		if (this.svelte_block_depth > 0 && this.svelte_block_stack.length > 0) {
@@ -10284,7 +10296,8 @@ export class PFMParser {
 					this.chomp(token.end, true);
 					return false;
 				}
-				if (token.kind === '/') {
+				// a close token of another name closes nothing and stays as written
+				if (token.kind === '/' && token.tag === this.svelte_block_tag) {
 					this.close_svelte_block(token.end);
 					this.chomp(token.end, true);
 					return false;
@@ -10886,10 +10899,9 @@ export class PFMParser {
 						return is_ascii_letter(char_code_at.call(source, pos + 2 - base))
 							? 1
 							: 0;
-					return this.svelte_block_depth !== 0 &&
-						(next === COLON || next === SLASH)
-						? 1
-						: 0;
+					if (this.svelte_block_depth === 0) return 0;
+					if (next === COLON) return 1;
+					return next === SLASH && this.closes_block(pos) ? 1 : 0;
 				}
 				if (!this.finished && this.probe_matching_brace(this.cursor + 1) === -1)
 					return -1;

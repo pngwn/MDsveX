@@ -189,10 +189,15 @@ function around(container: Container, kids: Shape[], tight: boolean): Shape {
 // a line of these goes on with a paragraph that is open above it
 const LINES = ['paragraph', 'component', 'svelte_tag', 'comment'];
 
-/** the last piece a list ends with */
+// a comment alone on its line is a block, so it leaves no paragraph open under it
+const OPEN = ['paragraph', 'component', 'svelte_tag'];
+
+/** the last piece a list ends with, the paragraph of a footnote definition takes a lazy line as that of an item does */
 function tail(piece: Piece): Piece {
 	const last = piece.kids[piece.kids.length - 1];
-	return (piece.kind === 'list' || piece.kind === 'list_item') &&
+	return (piece.kind === 'list' ||
+		piece.kind === 'list_item' ||
+		piece.kind === 'footnote_definition') &&
 		last !== undefined
 		? tail(last)
 		: piece;
@@ -218,7 +223,7 @@ export function is_tight(blocks: Piece[]): boolean {
 			(block.kind === 'table' ||
 				block.kind === 'definition' ||
 				LINES.includes(block.kind)) &&
-			LINES.includes(tail(last).kind);
+			OPEN.includes(tail(last).kind);
 		if (!lazy) last = block;
 	}
 	return true;
