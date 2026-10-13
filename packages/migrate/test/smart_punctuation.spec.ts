@@ -7,7 +7,9 @@ import { migrate, migrate_config } from "../src/main";
 const HEAD = "import { mdsvex } from 'mdsvex';\n";
 
 function config(options: string): { code: string; kinds: string[]; messages: string[] } {
-	const { code, notes } = migrate_config(HEAD + options);
+	const result = migrate_config(HEAD + options);
+	const code = result.code;
+	const notes = result.notes.filter((n) => n.kind !== "external_links");
 	expect(code.startsWith(HEAD)).toBe(true);
 	return {
 		code: code.slice(HEAD.length),

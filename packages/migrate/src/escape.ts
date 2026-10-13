@@ -14,10 +14,13 @@
  *   ^  superscript
  *   [  ]  links / references / directives
  *   :  directives (only meaningful in clusters / at block start)
+ *   {  }  svelte expressions
+ *   <  a tag, when a name, a slash or a bang follows
+ *   &  a character reference, when one follows
  */
 
 // Characters that always need escaping wherever they appear inline.
-const INLINE_SPECIAL = /[\\`_*~^[\]]/g;
+const INLINE_SPECIAL = /[\\`_*~^[\]{}]|<(?=[A-Za-z/!?])|&(?=#?[A-Za-z0-9]+;)/g;
 
 /** Escape inline-significant characters in a run of literal text. */
 export function escape_inline(value: string): string {
