@@ -216,6 +216,9 @@ const ID_POOL_CAP = 1 << 16;
 const EMPTY_IDS = new Int32Array(0);
 /** placeholder for rarely used stacks until their first push, never written */
 const NO_STACK: any[] = [];
+/** every fast path asks this, a test loads a second parser with it off and compares the trees of the two */
+const FAST =
+	(globalThis as { __pfm_general__?: boolean }).__pfm_general__ !== true;
 /** in a table cell code span, where every pipe is an escaped one */
 const ESCAPED_PIPE = /\\\|/g;
 

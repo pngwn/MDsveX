@@ -22,6 +22,70 @@ import {
 	shrink,
 } from './invariance';
 import type { Invariant, Rule, Site } from './invariance';
+import * as main from '../src/main';
+import { parse_markdown_svelte } from '../src/main';
+import { TreeBuilder } from '../src/tree_builder';
+import { print_ast } from './print';
+
+/** a second parser with every fast path off, the module reads the flag once as it loads */
+async function general_parser(): Promise<typeof import('../src/main')> {
+	const flags = globalThis as { __pfm_general__?: boolean };
+	flags.__pfm_general__ = true;
+	try {
+		const id = '../src/main?general';
+		return await import(/* @vite-ignore */ id);
+	} finally {
+		delete flags.__pfm_general__;
+	}
+}
+
+/** the opcodes a wire client gets from each chunk of a feed */
+function wire_batches(parser: typeof import('../src/main'), source: string) {
+	const emitter = new parser.WireEmitter();
+	const fed = new parser.PFMParser(emitter);
+	const batches: string[] = [];
+	fed.init();
+	for (let i = 0; i < source.length; i += 5) {
+		emitter.set_source(source.slice(0, i + 5));
+		fed.feed(source.slice(i, i + 5));
+		batches.push(JSON.stringify(emitter.flush()));
+	}
+	emitter.set_source(source);
+	fed.finish();
+	batches.push(JSON.stringify(emitter.flush()));
+	return batches.join('\n');
+}
+
+/** the tree a builder holds after each chunk of a feed */
+function fed_trees(parser: typeof import('../src/main'), source: string) {
+	const tree = new TreeBuilder(source.length || 16);
+	const fed = new parser.PFMParser(tree);
+	const trees: string[] = [];
+	fed.init();
+	for (let i = 0; i < source.length; i += 5) {
+		fed.feed(source.slice(i, i + 5));
+		trees.push(print_ast(tree.get_buffer(), source));
+	}
+	fed.finish();
+	trees.push(print_ast(tree.get_buffer(), source));
+	return trees.join('\n');
+}
+
+/** the runs a text handler of a parse plugin is given, and the tree it leaves */
+function text_runs(parser: typeof import('../src/main'), source: string) {
+	const runs: string[] = [];
+	const { nodes } = parser.parse_markdown_svelte(source, {
+		plugins: [
+			{
+				sequential: true,
+				text(run) {
+					runs.push(`${run.parent.type}: ${JSON.stringify(run.text)}`);
+				},
+			},
+		],
+	});
+	return runs.join('\n') + print_ast(nodes, source);
+}
 
 function near(seen: Seen): Container {
 	return seen.inside[seen.inside.length - 1] ?? 'root';
@@ -229,6 +293,37 @@ describe.skipIf(census !== undefined)('invariance', () => {
 							`seed ${seed} in ${subject.site}, ${invariant}: ${detail}\n${source}`
 						);
 					}
+				}
+			}
+			expect(found).toEqual([]);
+		}
+	);
+
+	test(
+		'a fast path builds the tree of the general path',
+		{ timeout: process.env.PFM_SEEDS === undefined ? 60_000 : 0 },
+		async () => {
+			const general = await general_parser();
+			const found: string[] = [];
+			for (let seed = first_seed; seed < last_seed; seed++) {
+				for (const subject of subjects(seed)) {
+					const source = subject.source(
+						placed(subject.site, subject.blocks, RULES)
+					);
+					const fast = print_ast(parse_markdown_svelte(source).nodes, source);
+					const slow = print_ast(
+						general.parse_markdown_svelte(source).nodes,
+						source
+					);
+					if (fast !== slow)
+						found.push(`seed ${seed} in ${subject.site}\n${source}`);
+					// a feed shows a client the same after every chunk
+					else if (
+						wire_batches(main, source) !== wire_batches(general, source) ||
+						fed_trees(main, source) !== fed_trees(general, source) ||
+						text_runs(main, source) !== text_runs(general, source)
+					)
+						found.push(`seed ${seed} in ${subject.site}, fed\n${source}`);
 				}
 			}
 			expect(found).toEqual([]);
