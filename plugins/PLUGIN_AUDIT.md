@@ -23,7 +23,7 @@ Features are grouped by **concern**: the job a user is trying to get done. That 
 | `component` | a directive or a replaced element already does it; ship components and docs |
 | `tooling` | language-tools or a CLI: diagnostics, lint, editor features |
 
-The parse-plugin API can annotate, retag, wrap, append and remove existing node kinds, add text nodes, group siblings (`wrap_from`), read the file path and the frontmatter, report warnings, and hand data back to the page (`plugin_data`). A plugin can bring directives and their components. It can't add syntax, replace part of a text, write to `metadata`, or wait for anything, since handlers are synchronous.
+The parse-plugin API can annotate, retag, wrap, append and remove existing node kinds, add text nodes, group siblings (`wrap_from`), read the file path and the frontmatter, report warnings, and hand data back to the page (`plugin_data`). A plugin can bring directives and their components. A sequential plugin can rewrite text (`run.replace`). A plugin can't add syntax, write to `metadata`, or wait for anything, since handlers are synchronous.
 
 ---
 
@@ -178,7 +178,7 @@ What technical and academic writing needs. **Shared state:** counters and labels
 
 | Feature | Plugins | Delivery | Notes |
 | --- | --- | --- | --- |
-| **Footnotes** | part of remark-gfm (181M), remark-numbered-footnote-labels, remark-footnotes-extra | `core`, in progress | GFM parity. Designed in `design/footnotes.md`. Until they merge `[^1]` is text, and the migrator keeps both halves as literal text. |
+| **Footnotes** | part of remark-gfm (181M), remark-numbered-footnote-labels, remark-footnotes-extra | `core`, exists | GFM parity, with blocks in a definition and `footnote` and `footnotes` components. A reference with no definition fails the build. The migrator writes GFM footnotes as PFM ones. |
 | **Math** | remark-math (36M), rehype-katex (32M), rehype-mathjax (531k), @daiji256/rehype-mathml (4k), rehype-katex-notranslate (14k) | `core` + render option, exists (`math`) | Issue #302. Temml (MathML, no runtime JS) by default; KaTeX as an option, an optional peer dependency the user installs. `translate="no"` is set. Syntax: a `math` fence for display, `` $`…`$ `` inline. The migrator rewrites `$…$` with `math: true`. |
 | **Numbering and cross-references** | not on the lists (pandoc-crossref is the reference) | `plugin+API` (metadata, text) | "Figure 3", numbered equations and sections, with `@fig:chart` style references that resolve to the number. |
 | **Citations and bibliography** | rehype-citation (170k), @benrbray/remark-cite | `core` (`[@key]`) + `plugin+API` (async, metadata) | Loads BibTeX or CSL and renders a bibliography. |
@@ -246,7 +246,7 @@ Ranked on usefulness to mdsvex users × popularity × cost. Items tagged `core` 
 | 1 | Heading ids | Navigation | core option, exists | 17.6M |
 | 2 | Heading anchors | Navigation | plugin, exists | 9.9M |
 | 3 | External link policy | Resolution | plugin, exists | 10M |
-| 4 | Footnotes | Reference apparatus | core, in progress | remark-gfm 181M; migration blocker |
+| 4 | Footnotes | Reference apparatus | core, exists | remark-gfm 181M; migration blocker |
 | 5 | Task lists | Presentation | core, exists | remark-gfm 181M |
 | 6 | Math | Reference apparatus | core, exists | 36M + 32M; issue #302 |
 | 7 | TOC as data | Navigation | plugin, exists | ~1.9M combined |

@@ -63,14 +63,14 @@ npm login
 ```
 
 ```bash
-node scripts/setup-trusted-publishing.mjs --dry-run @mdsvex/plugin-steps @mdsvex/plugin-tabs @mdsvex/plugin-anchors @mdsvex/plugin-external-links @mdsvex/plugin-toc @mdsvex/plugin-page-data
+node scripts/setup-trusted-publishing.mjs --dry-run @mdsvex/plugin-steps @mdsvex/plugin-tabs @mdsvex/plugin-anchors @mdsvex/plugin-external-links @mdsvex/plugin-toc @mdsvex/plugin-page-data @mdsvex/plugin-emoji @mdsvex/plugin-references
 ```
 
 ```bash
-node scripts/setup-trusted-publishing.mjs @mdsvex/plugin-steps @mdsvex/plugin-tabs @mdsvex/plugin-anchors @mdsvex/plugin-external-links @mdsvex/plugin-toc @mdsvex/plugin-page-data
+node scripts/setup-trusted-publishing.mjs @mdsvex/plugin-steps @mdsvex/plugin-tabs @mdsvex/plugin-anchors @mdsvex/plugin-external-links @mdsvex/plugin-toc @mdsvex/plugin-page-data @mdsvex/plugin-emoji @mdsvex/plugin-references
 ```
 
-Those are all six packages here, and none of them is on npm yet. Name only the new ones once these have had their first release.
+Those are all eight packages here, and none of them is on npm yet. Name only the new ones once these have had their first release.
 
 The dry run lists what it would do. The real run publishes a `0.0.0` placeholder of each package that is not on npm, then registers `pngwn/MDsveX` with `release.yml` as its trusted publisher. Run it with `node`, not through `pnpm run`, so the 2FA prompt reaches the terminal. It finds packages with `pnpm -r ls`, which covers `plugins/*`, and skips private ones, so a new package must not be `private` and must have a version other than `0.0.0`.
 

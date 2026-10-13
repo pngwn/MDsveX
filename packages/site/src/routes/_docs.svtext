@@ -242,9 +242,8 @@ Curly quotes, dashes and other Unicode punctuation count as punctuation there. C
 | a pipe table | a [table](docs#tables), with header columns and merged cells |
 | `:name[text]`, `::name`, `:::name` | a [directive](docs#directives), your own component |
 | a `math` fence, `` $`x^2`$ `` | [math](docs#math-1) |
+| `[^1]` in the text and `[^1]: a note` | a [footnote](docs#footnotes-1) |
 | `import` lines at the top | [imports](docs#svelte-in-markdown) without a `<script>` |
-
-Footnotes are not read yet, see [limitations](docs#limitations).
 
 ### Task lists
 
@@ -3477,7 +3476,7 @@ mdsvex 0.x ran remark and rehype, and took their plugins in `remarkPlugins` and 
 
 | plugin | now | how |
 | --- | --- | --- |
-| `remark-gfm` | built in, apart from two things | [tables](docs#tables), `~~strikethrough~~` and [task lists](docs#task-lists) work as written. A bare url is not linked, the migrator writes each one as `<https://example.com>`. Footnotes are not read yet |
+| `remark-gfm`, `remark-footnotes` | built in, apart from one thing | [tables](docs#tables), `~~strikethrough~~`, [task lists](docs#task-lists) and [footnotes](docs#footnotes-1) work as written. A bare url is not linked: the migrator writes each one as `<https://example.com>`, and `references({ linkify: true })` from [`@mdsvex/plugin-references`](docs#references) links them all |
 | `remark-frontmatter`, `remark-parse-yaml` | built in | [frontmatter](docs#frontmatter-1) is the `metadata` export, and [`frontmatter.parse`](docs#custom-frontmatter-parsers) takes TOML or full YAML |
 | `remark-directive`, `remark-admonitions`, `remark-containers`, `remark-custom-blocks` | built in | [directives](docs#directives): `:::note` renders your `note` component |
 | `remark-sub-super`, `remark-supersub` | built in | `H~2~O` and `x^2^` |
@@ -3510,6 +3509,9 @@ mdsvex 0.x ran remark and rehype, and took their plugins in `remarkPlugins` and 
 | `remark-reading-time` | [`@mdsvex/plugin-page-data`](docs#page-data) | `plugin_data.page.minutes` and `words` |
 | `rehype-infer-description-meta`, `rehype-infer-title-meta`, `rehype-truncate` | [`@mdsvex/plugin-page-data`](docs#page-data) | `plugin_data.page.excerpt` and `title`, as text |
 | `rehype-code-group` | [`@mdsvex/plugin-tabs`](docs#tabs) | `:::tabs` around the fences |
+| `remark-emoji`, `remark-gemoji` | [`@mdsvex/plugin-emoji`](docs#emoji) | `emoji()` turns `:tada:` into the emoji, with GitHub's names |
+| `remark-github`, `remark-mentions`, `remark-ping` | [`@mdsvex/plugin-references`](docs#references) | `references({ repo: 'you/site' })` links `@user`, `#123` and commits |
+| `remark-linkify-regex`, autolink literals | [`@mdsvex/plugin-references`](docs#references) | `references({ linkify: true })` links bare urls |
 
 ### A component or a few lines
 
@@ -3531,14 +3533,11 @@ mdsvex 0.x ran remark and rehype, and took their plugins in `remarkPlugins` and 
 
 | plugin | what to do today |
 | --- | --- |
-| footnotes, from `remark-gfm` or `remark-footnotes` | `[^1]` is text. The migrator keeps both halves as text so nothing is lost. Footnotes are being built |
 | `remark-github-blockquote-alert`, `remark-github-alerts`, `rehype-callouts` | `> [!NOTE]` is a block quote that starts with `[!NOTE]`. Write `:::note` with a directive component |
-| `remark-emoji`, `remark-gemoji` | `:tada:` is text. Type the emoji |
 | `remark-heading-id`, `remark-attr`, `rehype-attr` | `{#id}` and `{.class}` can't exist, braces belong to Svelte. `heading_ids` makes ids, and a parse plugin can set any attribute |
 | `remark-definition-list`, `remark-deflist` | type `<dl>`, `<dt>` and `<dd>` |
 | `remark-flexible-markers`, `remark-ins` | `==mark==` and `++ins++` are text, type `<mark>` and `<ins>` |
 | `remark-wiki-link` | `[[Page]]` is text |
-| `remark-github`, `remark-mentions` | `#123` and `@user` are text, a plugin can't yet turn part of a text into a link |
 | `rehype-citation` | no citations |
 | `remark-validate-links`, `remark-lint` | nothing checks links or style. A missing image fails the build when it is [imported](docs#import_images) |
 | `rehype-sanitize` | nothing, and none is planned. A document compiles to a component and runs as code, so don't compile markdown you don't trust |
@@ -3691,6 +3690,27 @@ a\
 <p>a\</p><h1>b</h1>
 ```
 
+### `[^label]` is a footnote
+
+Footnotes are read now. A `[^1]` in the text is a reference, and a line that starts `[^1]:` is its definition. Both were plain text.
+
+```svx
+Text[^1].
+
+[^1]: A note.
+```
+
+```html
+<!-- before -->
+<p>Text[^1].</p><p>[^1]: A note.</p>
+
+<!-- after -->
+<p>Text<sup><a href="#fn-1" id="fnref-1" role="doc-noteref">1</a></sup>.</p>
+<section class="footnotes" role="doc-endnotes" aria-label="Footnotes">…</section>
+```
+
+A reference with no definition fails the build. So a `[^…]` in prose that was never a footnote, such as the regular expression class `[^abc]`, now stops the compile with a `FootnoteError`. Escape it as `\[^abc]` or put it in code. See [footnotes](docs#footnotes-1).
+
 ### Smaller changes
 
 | you write | before | after |
@@ -3730,12 +3750,11 @@ A fence can be indented, inside an element or not. Its code keeps the indent it 
 
 ### Not read yet
 
-- **Footnotes.** `[^1]` and its definition are text.
-- **Bare urls.** Only `<https://example.com>` is a link.
-- **GitHub alerts, definition lists, `==mark==`, wiki links and emoji shortcodes**, see [nothing yet](docs#nothing-yet).
+- **Bare urls.** Only `<https://example.com>` is a link, unless [`@mdsvex/plugin-references`](docs#references) is set to link them.
+- **GitHub alerts, definition lists, `==mark==` and wiki links**, see [nothing yet](docs#nothing-yet).
 
 ### Not possible yet
 
 - **Replacements of its own for a component.** Markdown inside a component uses the document's replacements, see [nested scopes](docs#nested-scopes) for the way around it.
 - **A plugin that waits.** Handlers are synchronous and can't read files, so a plugin can't fetch an embed or read a bibliography.
-- **A plugin that adds syntax,** or that replaces part of a text, which is what emoji shortcodes and issue references need.
+- **A plugin that adds syntax.** A plugin changes the tree the parser made, and can rewrite text, but what is markdown is fixed.

@@ -112,6 +112,8 @@ const nav = [
 			["external links", "docs#external-links", false],
 			["table of contents", "docs#table-of-contents", false],
 			["page data", "docs#page-data", false],
+			["emoji", "docs#emoji", false],
+			["references", "docs#references", false],
 		],
 	],
 	[
