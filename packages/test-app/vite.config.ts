@@ -2,6 +2,7 @@ import { sveltekit } from "@sveltejs/kit/vite";
 import { defineConfig } from "vite";
 import { mdsvex } from "mdsvex";
 import { anchors } from "@mdsvex/plugin-anchors";
+import { emoji } from "@mdsvex/plugin-emoji";
 import { external_links } from "@mdsvex/plugin-external-links";
 import { page_data } from "@mdsvex/plugin-page-data";
 import { steps } from "@mdsvex/plugin-steps";
@@ -28,6 +29,7 @@ export default defineConfig({
 					edit_url:
 						"https://github.com/pngwn/MDsveX/edit/next/packages/test-app/",
 				}),
+				emoji({ label: true }),
 			],
 			templates: {
 				article: "$lib/templates/Article.svelte",

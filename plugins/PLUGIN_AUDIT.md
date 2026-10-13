@@ -156,7 +156,7 @@ How text reads. **Shared state:** one text-rewriting pass with conflict rules (s
 | Feature | Plugins | Delivery | Notes |
 | --- | --- | --- | --- |
 | **Smart punctuation** | remark-smartypants (17.7M) | `core` option | Decided: a core feature that can be toggled. Issue #825. |
-| **Emoji shortcodes** | remark-emoji (8.8M), remark-gemoji (861k), remark-twemoji, rehype-twemojify, rehype-accessible-emojis (8k), remark-a11y-emoji | `plugin+API` (text rewrite) | `:tada:` doesn't clash with directives, because directives need `[`. Wrap each emoji in `role="img"` with a label. Load the emoji data only when the option is on. |
+| **Emoji shortcodes** | remark-emoji (8.8M), remark-gemoji (861k), remark-twemoji, rehype-twemojify, rehype-accessible-emojis (8k), remark-a11y-emoji | `plugin`, exists (`@mdsvex/plugin-emoji`) | `:tada:` doesn't clash with directives, because directives need `[`. The `label` option wraps each emoji in `role="img"` with a label, typed emoji included. The table is gemoji's, built into the package, and the descriptions are only read when `label` is on. No emoticons and no image sets. |
 | **Typographic details** | remark-textr (193k), remark-typograf, remark-arrow (14k), remark-fix-guillemets (5k), rehype-widont, remark-plugin-autonbsp | `plugin+API` (text rewrite) | Arrows, guillemets, non-breaking spaces, widows. Locale-aware, so it needs the document's `lang` from frontmatter. |
 | **CJK text** | remark-cjk-friendly (12.8M), …-gfm-strikethrough (10.5M), remark-join-cjk-lines, rehype-join-line | `core` check | Check that PFM's delimiter rules handle CJK punctuation, and that soft breaks between CJK characters don't render as spaces. |
 
@@ -249,7 +249,7 @@ Ranked on usefulness to mdsvex users × popularity × cost. Items tagged `core` 
 | 8 | Relative images as imports, with size and loading | Resolution | vite | Svelte-specific; #611 |
 | 9 | Smart punctuation | Typography | core option | 17.7M; issue #825 |
 | 10 | Callouts and GitHub alerts | Presentation | component + core | ~4.2M combined |
-| 11 | Emoji shortcodes | Typography | plugin+API | 9.7M |
+| 11 | Emoji shortcodes | Typography | plugin, exists | 9.7M |
 | 12 | Styling hooks | Presentation | plugin | 1.4M |
 | 13 | Reading time | Document data | plugin, exists | 1M |
 | 14 | Links to routes and the base path | Resolution | vite | ~150k combined; issue #389 |
