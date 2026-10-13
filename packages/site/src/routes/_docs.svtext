@@ -1402,13 +1402,23 @@ import { anchors } from '@mdsvex/plugin-anchors';
 import { emoji } from '@mdsvex/plugin-emoji';
 import { external_links } from '@mdsvex/plugin-external-links';
 import { page_data } from '@mdsvex/plugin-page-data';
+import { references } from '@mdsvex/plugin-references';
 import { steps } from '@mdsvex/plugin-steps';
 import { tabs } from '@mdsvex/plugin-tabs';
 import { toc } from '@mdsvex/plugin-toc';
 
 mdsvex({
 	heading_ids: true,
-	plugins: [steps(), tabs(), anchors(), external_links(), toc(), page_data(), emoji()]
+	plugins: [
+		steps(),
+		tabs(),
+		anchors(),
+		external_links(),
+		toc(),
+		page_data(),
+		references({ repo: 'you/site' }),
+		emoji()
+	]
 });
 ```
 
@@ -1421,6 +1431,7 @@ mdsvex({
 | [`@mdsvex/plugin-toc`](docs#table-of-contents) | the headings of a document as data, and a `::toc` directive that lists them |
 | [`@mdsvex/plugin-page-data`](docs#page-data) | a reading time, an excerpt, an inferred title and an edit url for each document |
 | [`@mdsvex/plugin-emoji`](docs#emoji) | emoji shortcodes, `:tada:` becomes the emoji, with an optional label for screen readers |
+| [`@mdsvex/plugin-references`](docs#references) | links for `@user`, `#123`, `owner/repo#123` and commits, and for bare urls when asked |
 
 ### Steps
 
@@ -1927,7 +1938,73 @@ emoji({ label: true });
 
 - **`attrs`** are attributes for a `<span>` around each emoji, such as a class, with or without a label.
 
-It writes the character and adds no image set, and emoticons such as `:)` are left alone. A [heading id](docs#heading_ids) is made from what you wrote, so `## Done :tada:` gets `done-tada`. The plugin reads the finished tree, so put it after a plugin that turns urls into links.
+It writes the character and adds no image set, and emoticons such as `:)` are left alone. A [heading id](docs#heading_ids) is made from what you wrote, so `## Done :tada:` gets `done-tada`. The plugin reads the finished tree, so put it after a plugin that turns urls into links, such as [references](docs#references) with `linkify`.
+
+### References
+
+```bash
+pnpm add --save-dev @mdsvex/plugin-references@next
+```
+
+```js
+import { references } from '@mdsvex/plugin-references';
+
+mdsvex({ plugins: [references({ repo: 'sveltejs/svelte' })] });
+```
+
+Turns the references people write in prose into links:
+
+```svx
+Thanks @ada for #123, which also closes sveltejs/kit#45. Landed in a1b2c3d.
+```
+
+```html
+<p>
+	Thanks <a href="https://github.com/ada">@ada</a> for
+	<a href="https://github.com/sveltejs/svelte/issues/123">#123</a>, which also
+	closes <a href="https://github.com/sveltejs/kit/issues/45">sveltejs/kit#45</a>.
+	Landed in
+	<a href="https://github.com/sveltejs/svelte/commit/a1b2c3d"><code>a1b2c3d</code></a>.
+</p>
+```
+
+| written | becomes a link to | needs |
+| --- | --- | --- |
+| `@user` | the user | |
+| `owner/repo#123` | that issue or pull request | |
+| `#123` | the issue or pull request in your repo | `repo` |
+| a commit hash of 7 to 40 characters | the commit in your repo | `repo` |
+| `https://example.com`, `www.example.com` | itself | `linkify: true` |
+
+A reference has to stand on its own, so an email address, a path such as `/@ada`, `page#12` and a word like `defaced` are left alone, and so is one you escaped, `\@ada`. Nothing is touched in code, math, an attribute, an `{expression}`, or the text of a link you already wrote.
+
+```ts
+references({
+	repo: string,
+	mention: string | false | ((parts: { user }) => string | undefined),
+	issue: string | false | ((parts: { repo, owner, name, number }) => string | undefined),
+	commit: string | false | ((parts: { repo, owner, name, sha }) => string | undefined),
+	linkify: boolean,
+	attrs: Record<string, string> | ((kind) => Record<string, string> | undefined)
+});
+```
+
+- **`repo`** is the repository a bare `#123` and a commit belong to, as `owner/name`. Without it neither is linked.
+- **`mention`**, **`issue`** and **`commit`** are the url of each kind. The defaults are GitHub's, such as `https://github.com/{repo}/issues/{number}`. A string takes placeholders, a function returns the url or nothing to leave the reference as text, and `false` turns the kind off. For another host:
+
+```js
+references({
+	repo: 'group/project',
+	mention: 'https://gitlab.com/{user}',
+	issue: 'https://gitlab.com/{repo}/-/issues/{number}',
+	commit: 'https://gitlab.com/{repo}/-/commit/{sha}'
+});
+```
+
+- **`linkify`** also makes a link of a bare `https://`, `http://` or `www.` url. The parser never does, on purpose: in mdsvex a url is a link when you mark it, `<https://example.com>`, and this option is where you opt in to the rest. Punctuation at the end of a url stays with the sentence, by the rules GitHub uses.
+- **`attrs`** are attributes for each link, or a function of the kind (`'mention'`, `'issue'`, `'commit'`, `'url'`) that returns them.
+
+It does not check that a user or an issue exists. With `linkify`, list it before the emoji plugin, so a shortcode inside a url is left alone. [External links](docs#external-links) reads links while the document is parsed and does not see the ones made here, so give them `rel` through `attrs`.
 
 `compile()` takes every plugin the same way, through its `plugins` option.
 

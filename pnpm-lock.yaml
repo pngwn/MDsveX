@@ -673,6 +673,9 @@ importers:
       '@mdsvex/plugin-page-data':
         specifier: workspace:*
         version: link:../../plugins/page-data
+      '@mdsvex/plugin-references':
+        specifier: workspace:*
+        version: link:../../plugins/references
       '@mdsvex/plugin-steps':
         specifier: workspace:*
         version: link:../../plugins/steps
@@ -761,6 +764,27 @@ importers:
 
   plugins/page-data:
     devDependencies:
+      mdsvex:
+        specifier: workspace:^
+        version: link:../../packages/mdsvex
+      npm-run-all2:
+        specifier: ^7.0.2
+        version: 7.0.2
+      shx:
+        specifier: ^0.3.4
+        version: 0.3.4
+
+  plugins/references:
+    devDependencies:
+      '@mdsvex/plugin-anchors':
+        specifier: workspace:^
+        version: link:../anchors
+      '@mdsvex/plugin-emoji':
+        specifier: workspace:^
+        version: link:../emoji
+      '@mdsvex/plugin-external-links':
+        specifier: workspace:^
+        version: link:../external-links
       mdsvex:
         specifier: workspace:^
         version: link:../../packages/mdsvex
