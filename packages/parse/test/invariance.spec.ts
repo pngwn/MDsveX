@@ -102,14 +102,7 @@ interface Known extends Rule {
 }
 
 /** every known failure, each one takes its pieces out of the documents until its issue is fixed */
-const KNOWN: Known[] = [
-	{
-		issue: 1123,
-		what: 'the close token of a svelte block closes it whatever its name, and that name is in no node',
-		edited: ['content', /\{#(\w+)[^}]*\}[^]*\{\/(?!\1\})\w*\}/],
-		example: { site: 'root', source: '{#e}{/q010}' },
-	},
-];
+const KNOWN: Known[] = [];
 
 const RULES: Rule[] = [...INTENDED, ...KNOWN];
 
