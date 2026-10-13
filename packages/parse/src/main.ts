@@ -3667,14 +3667,14 @@ export class PFMParser {
 		const base = this.source_base;
 		const length = this.source_end;
 		let p = pos;
+		let ch = 0;
 		while (p < length) {
-			const ch = char_code_at.call(source, p - base);
+			ch = char_code_at.call(source, p - base);
 			if (ch !== SPACE && ch !== TAB) break;
 			p++;
 		}
 		// the end of the input is a blank line once it is all here
 		if (p >= length) return this.finished;
-		const ch = char_code_at.call(source, p - base);
 		if (ch === LINEFEED) return true;
 		if (ch >= 128 || (BLOCK_START[ch] & 2) === 0) return false;
 		return this.block_start(ch, 0, pos) === 1;
