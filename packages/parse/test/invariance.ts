@@ -179,6 +179,8 @@ function around(container: Container, kids: Shape[], tight: boolean): Shape {
 			]);
 		case 'directive_container':
 			return node('directive_container', 'name="box"', kids);
+		case 'footnote_definition':
+			return node('footnote_definition', 'label="n"', kids);
 	}
 	throw new Error(`no node for ${container}`);
 }

@@ -22,10 +22,11 @@ import { NodeKind, is_raw_text_tag } from "./utils";
  *                paragraph, which K or R settles, or the close has the flag,
  *                a delimiter with no closer whose R follows
  *
- *   T  Text      ["T", id, content]
+ *   T  Text      ["T", id, content] or ["T", id, content, 1]
  *                appends text content to a node. multiple T opcodes for the same id
  *                are concatenated by the client. Text nodes (kind=1) are suppressed
  *                on the wire, their content becomes T opcodes on the parent.
+ *                the flag says the author escaped the first character of content
  *
  *   A  Attr      ["A", id, key, value]
  *                sets an attribute on a node (href, title, info, ordered, etc.).
@@ -85,6 +86,8 @@ const KIND_NAMES: string[] = [
 	"frontmatter",
 	"import_statement",
 	"directive_label",
+	"footnote_reference",
+	"footnote_definition",
 ];
 
 /** tracks progressive text emission for a node. */
@@ -99,6 +102,8 @@ interface TextState {
 	done: boolean;
 	/** true if this is a code_fence node (needs backtick holdback). */
 	is_fence: boolean;
+	/** true for a text node that starts at a character the author escaped */
+	escaped: boolean;
 }
 
 /**
@@ -210,9 +215,26 @@ export class WireEmitter implements Emitter {
 		if (end > start) {
 			const content = this.source.slice(start, end);
 			if (content) {
-				this.batch.push([WireOp.Text, parent, content]);
+				this.send(parent, content, this.escaped_at(start));
 			}
 		}
+	}
+
+	/** an escape opens its text node at the escaped character, after an odd run of backslashes */
+	private escaped_at(pos: number): boolean {
+		const source = this.source;
+		let at = pos;
+		while (at > 0 && source.charCodeAt(at - 1) === 0x5c) at--;
+		return ((pos - at) & 1) === 1;
+	}
+
+	/** the flag is only sent when set, so a consumer that reads three fields sees no change */
+	private send(target: number, content: string, escaped: boolean): void {
+		this.batch.push(
+			escaped
+				? [WireOp.Text, target, content, 1]
+				: [WireOp.Text, target, content],
+		);
 	}
 
 	attr(id: number, key: string, value: unknown): void {
@@ -262,6 +284,8 @@ export class WireEmitter implements Emitter {
 				target,
 				done: false,
 				is_fence: kind === NodeKind.code_fence,
+				escaped:
+					kind === NodeKind.text && this.escaped_at(value as number),
 			});
 			return;
 		}
@@ -285,7 +309,11 @@ export class WireEmitter implements Emitter {
 					// unsent content remains, send the rest
 					const content = this.source.slice(state.sent, value as number);
 					if (content) {
-						this.batch.push([WireOp.Text, state.target, content]);
+						this.send(
+							state.target,
+							content,
+							state.escaped && state.sent === state.start,
+						);
 						state.sent = value as number;
 					}
 				} else if (state.sent > (value as number)) {
@@ -294,7 +322,7 @@ export class WireEmitter implements Emitter {
 					this.batch.push([WireOp.Clear, state.target]);
 					const content = this.source.slice(state.start, value as number);
 					if (content) {
-						this.batch.push([WireOp.Text, state.target, content]);
+						this.send(state.target, content, state.escaped);
 					}
 					state.sent = value as number;
 				}
@@ -449,7 +477,11 @@ export class WireEmitter implements Emitter {
 			if (end > state.sent) {
 				const content = this.source.slice(state.sent, end);
 				if (content) {
-					this.batch.push([WireOp.Text, state.target, content]);
+					this.send(
+						state.target,
+						content,
+						state.escaped && state.sent === state.start,
+					);
 					state.sent = end;
 				}
 			}

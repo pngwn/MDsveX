@@ -54,6 +54,7 @@ const nav = [
 			["import_images", "docs#import_images", true],
 			["links", "docs#links", true],
 			["rewrite", "docs#rewrite", true],
+			["footnotes", "docs#footnotes", true],
 			["heading_ids", "docs#heading_ids", true],
 			["smart_punctuation", "docs#smart_punctuation", true],
 		],
@@ -111,6 +112,8 @@ const nav = [
 			["external links", "docs#external-links", false],
 			["table of contents", "docs#table-of-contents", false],
 			["page data", "docs#page-data", false],
+			["emoji", "docs#emoji", false],
+			["references", "docs#references", false],
 		],
 	],
 	[
@@ -140,6 +143,16 @@ const nav = [
 			["math components", "docs#math-components", false],
 			["custom renderers", "docs#custom-math-renderers", false],
 			["with compile", "docs#math-with-compile", false],
+		],
+	],
+	[
+		"Footnotes",
+		"docs#footnotes-1",
+		[
+			["errors", "docs#footnote-errors", false],
+			["options", "docs#footnote-options", false],
+			["footnote components", "docs#footnote-components", false],
+			["while streaming", "docs#footnotes-while-streaming", false],
 		],
 	],
 	[

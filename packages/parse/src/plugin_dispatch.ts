@@ -33,12 +33,14 @@ import type {
 	DirectiveHandlers,
 	DirectiveTable,
 	NamedDirectiveHandlers,
+	TextHandler,
 } from './plugin_types';
+import { RunPieces, TextRun } from './text_run';
 
 const NONE = 0xffffffff;
 
 /** total number of node kinds in the enum. */
-const NODE_KIND_COUNT = 36;
+const NODE_KIND_COUNT = 38;
 
 /** first synthetic id. high bit flag partitions id space from parser ids. */
 const SYNTHETIC_ID_BASE = 0x40000000;
@@ -153,12 +155,32 @@ function compose(handlers: NodeHandler[], at: number[]): ComposedHandler {
 	}
 }
 
-/** 36 slots, one per NodeKind, null means no handlers */
+/** a slot per NodeKind, null means no handlers */
 type HandlersTable = (ComposedHandler | null)[];
+
+/** the text handler of a sequential plugin and the place of the plugin */
+interface TextEntry {
+	parse: TextHandler;
+	all: boolean;
+	at: number;
+}
+
+/** one sequential plugin, its handlers by kind and its text handler apart */
+interface SequentialPass {
+	plugin: ParsePlugin;
+	handlers: HandlersTable;
+	text: TextEntry | null;
+}
+
+/**
+ * an element that holds code, a text handler gets no text from inside one
+ * unless it asks for all, the raw text elements never have text nodes
+ */
+const CODE_TAGS = new Set(['code', 'kbd', 'samp', 'var', 'tt']);
 
 interface RegistrationResult {
 	fused: HandlersTable;
-	sequential: { plugin: ParsePlugin; handlers: HandlersTable }[];
+	sequential: SequentialPass[];
 	has_handler: Uint32Array;
 	/** PAST_END for each kind with a fused handler, shared, never written */
 	open_wants: Int32Array;
@@ -186,11 +208,32 @@ function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
 		const table: HandlersTable | null = plugin.sequential
 			? new Array(NODE_KIND_COUNT).fill(null)
 			: null;
+		let text: TextEntry | null = null;
 		for (const key of Object.keys(plugin)) {
 			if (key === 'sequential') continue;
 			const kind = string_to_kind(key);
 			if (kind === undefined) continue;
 			const entry = plugin[key];
+			if (kind === NodeKind.text) {
+				if (entry === undefined) continue;
+				const named =
+					typeof plugin.name === 'string'
+						? `the ${plugin.name} plugin`
+						: 'a plugin';
+				if (typeof entry !== 'function') {
+					throw new TypeError(
+						`the text handler of ${named} must be a function that takes a run of text`
+					);
+				}
+				// text is whole only once nothing can revoke a node around it
+				if (table === null) {
+					throw new TypeError(
+						`the text handler of ${named} needs the tree to be complete, set sequential: true on the plugin`
+					);
+				}
+				text = { parse: entry, all: plugin.all_text === true, at };
+				continue;
+			}
 			if (!entry || typeof entry !== 'object' || !('parse' in entry)) continue;
 			if (table !== null) {
 				table[kind] = compose_1(entry as NodeHandler, at);
@@ -200,12 +243,12 @@ function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
 			per_kind[kind]!.push(entry as NodeHandler);
 			per_kind_at[kind].push(at);
 		}
-		if (table !== null) sequential.push({ plugin, handlers: table });
+		if (table !== null) sequential.push({ plugin, handlers: table, text });
 	}
 
 	// compose fused handlers
 	const fused: HandlersTable = new Array(NODE_KIND_COUNT).fill(null);
-	const has_handler = new Uint32Array(2); // 64 bits, need 36
+	const has_handler = new Uint32Array(2); // 64 bits, need 38
 
 	for (let i = 0; i < NODE_KIND_COUNT; i++) {
 		const list = per_kind[i];
@@ -223,8 +266,8 @@ function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
 	// a pass with no handler would do nothing
 	return {
 		fused,
-		sequential: sequential.filter((pass) =>
-			pass.handlers.some((h) => h !== null)
+		sequential: sequential.filter(
+			(pass) => pass.text !== null || pass.handlers.some((h) => h !== null)
 		),
 		has_handler,
 		open_wants,
@@ -681,6 +724,10 @@ function dispatch_open(
 			return fused[34]!(view, ctx);
 		case 35:
 			return fused[35]!(view, ctx);
+		case 36:
+			return fused[36]!(view, ctx);
+		case 37:
+			return fused[37]!(view, ctx);
 		default:
 			return null;
 	}
@@ -723,7 +770,7 @@ const NO_WRAPPERS: Set<number> = new Set();
 export class PluginDispatcher implements StructureHost, RedirectHost {
 	private fused: HandlersTable;
 	private has_handler: Uint32Array;
-	private sequential: { plugin: ParsePlugin; handlers: HandlersTable }[];
+	private sequential: SequentialPass[];
 	/** PAST_END for each kind with a fused handler, before any scope */
 	private handled: Int32Array;
 	/**
@@ -1948,6 +1995,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		this.sequential_pass = true;
 		for (const pass of this.sequential) {
 			const handlers = pass.handlers;
+			const text = pass.text;
 
 			// reread after plugin code runs, growing the buffer moves it to new storage
 			let n = buf._n;
@@ -1961,7 +2009,11 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 				b < end;
 				b += NodeField.stride
 			) {
-				if (handlers[n[b] & 0xff] != null) {
+				const kind = n[b] & 0xff;
+				if (
+					handlers[kind] != null ||
+					(text !== null && kind === NodeKind.text)
+				) {
 					handled = true;
 					break;
 				}
@@ -1978,7 +2030,13 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 				let next = n[b + NodeField.next];
 				let parent = n[b + NodeField.parent];
 				let removed = false;
-				if (handler != null) {
+				if (text !== null && (n[b] & 0xff) === NodeKind.text) {
+					// the run goes to the handler whole, the walk goes on after it and
+					// past whatever the handler put in its place
+					next = this.run_text(buf, idx, text, ctx);
+					n = buf._n;
+					removed = true;
+				} else if (handler != null) {
 					const cache = this.views(buf);
 					const view = cache.get(idx)!;
 					// the tree is complete so nothing revokes a sequential write, no
@@ -2039,6 +2097,129 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 			}
 		}
 		this.sequential_pass = false;
+	}
+
+	/**
+	 * the text handler of a sequential pass for the run of text nodes that
+	 * starts at first, returns the sibling after the run, NONE for none
+	 */
+	private run_text(
+		buf: NodeBuffer,
+		first: number,
+		entry: TextEntry,
+		ctx: PluginContext[]
+	): number {
+		const parent = buf.parent_at(first);
+		const source = this.text_source;
+		const strings = buf._strings;
+		const all = entry.all;
+		const nodes: number[] = [];
+		const at: number[] = [];
+		const len: number[] = [];
+		let text = '';
+		let escaped: number[] | null = null;
+		let node = first;
+		while (
+			node !== NONE &&
+			buf.parent_at(node) === parent &&
+			buf.kind_at(node) === NodeKind.text
+		) {
+			let own = strings[node];
+			if (own === undefined) {
+				const start = buf.value_start_at(node);
+				const end = buf.value_end_at(node);
+				own =
+					start === NONE || end === NONE || end <= start
+						? ''
+						: source.slice(start, end);
+			}
+			// an empty text node has nothing to replace and stays where it is
+			if (own.length !== 0) {
+				if (!all) {
+					const marks = source.escapes(buf, node);
+					if (marks !== null) {
+						if (escaped === null) escaped = [];
+						for (let i = 0; i < marks.length; i++) {
+							escaped.push(text.length + marks[i]);
+						}
+					}
+				}
+				nodes.push(node);
+				at.push(text.length);
+				len.push(own.length);
+				text += own;
+			}
+			node = buf.next_at(node);
+		}
+		const after = node !== NONE && buf.parent_at(node) === parent ? node : NONE;
+		if (text.length === 0) return after;
+		if (!all && this.kept_from_text(buf, parent, text)) {
+			return after;
+		}
+
+		const cache = this.views(buf);
+		const pieces = new RunPieces(
+			buf,
+			source,
+			cache,
+			parent,
+			after,
+			text,
+			nodes,
+			at,
+			len
+		);
+		const context = ctx[entry.at];
+		const parse = entry.parse;
+		this.running = first;
+		// an escaped character is in no run, so nothing replaces it
+		let from = 0;
+		const cuts = escaped === null ? 0 : escaped.length;
+		for (let i = 0; i <= cuts; i++) {
+			const to = i < cuts ? escaped![i] : text.length;
+			if (to > from) {
+				const returned: unknown = parse(new TextRun(pieces, from, to), context);
+				if (typeof returned === 'function') {
+					this.running = NONE;
+					throw new TypeError(
+						'a text handler returns nothing, a run of text has no close to call a function at'
+					);
+				}
+			}
+			from = to + 1;
+		}
+		this.running = NONE;
+		cache.clear();
+		return after;
+	}
+
+	/**
+	 * text a handler is kept from unless it asks for all, the alt text of an
+	 * image, the text of an element that holds code, and the text of a link
+	 * that is its url
+	 */
+	private kept_from_text(
+		buf: NodeBuffer,
+		parent: number,
+		text: string
+	): boolean {
+		for (let up = parent; up !== NONE; up = buf.parent_at(up)) {
+			const kind = buf.kind_at(up);
+			if (kind === NodeKind.image) return true;
+			if (kind === NodeKind.html) {
+				const meta = buf.metadata_at(up);
+				if (meta && typeof meta.tag === 'string' && CODE_TAGS.has(meta.tag)) {
+					return true;
+				}
+			}
+		}
+		// whatever else a plugin put in the link, an icon say
+		if (buf.kind_at(parent) === NodeKind.link) {
+			const meta = buf.metadata_at(parent);
+			const href = meta ? meta.href : undefined;
+			if (href === text || href === 'mailto:' + text) return true;
+		}
+		return false;
 	}
 
 	/** the close callbacks of a node in a sequential pass, false when it has none */

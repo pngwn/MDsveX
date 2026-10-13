@@ -282,6 +282,16 @@ describe('excerpt', () => {
 		).toBe('One. Two lines. a b c');
 	});
 
+	test('a footnote is no part of it, its number neither', () => {
+		const source =
+			'[^1]: The note.\n\nA claim[^1] made.\n\n[^b]: Second note.\n\nMore[^b].\n';
+		expect(excerpt(source)).toBe('A claim made.');
+		expect(excerpt(source.replace('More', '<!-- more -->\n\nMore'))).toBe(
+			'A claim made.'
+		);
+		expect(page(source).words).toBe(8);
+	});
+
 	test('code blocks and tables are no part of it', () => {
 		expect(
 			excerpt(

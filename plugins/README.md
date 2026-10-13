@@ -10,6 +10,8 @@ Each directory here is one npm package, `@mdsvex/plugin-<name>`, that exports a 
 | `@mdsvex/plugin-external-links` | [`external-links`](./external-links) | `rel` and `target` on every link that leaves the site                    |
 | `@mdsvex/plugin-toc`            | [`toc`](./toc)                       | the headings of a document as data, and a `::toc` that lists them        |
 | `@mdsvex/plugin-page-data`      | [`page-data`](./page-data)           | a reading time, an excerpt, an inferred title and an edit url            |
+| `@mdsvex/plugin-emoji`          | [`emoji`](./emoji)                   | emoji shortcodes, `:tada:` becomes the emoji, with an optional label     |
+| `@mdsvex/plugin-references`     | [`references`](./references)         | links for `@user`, `#123`, `owner/repo#123`, commits and bare urls       |
 
 The other files in this directory are the audit of the remark and rehype plugins these replace. [`PLUGIN_AUDIT.md`](./PLUGIN_AUDIT.md) says, for each thing those plugins did, whether mdsvex has it and where.
 
@@ -61,14 +63,14 @@ npm login
 ```
 
 ```bash
-node scripts/setup-trusted-publishing.mjs --dry-run @mdsvex/plugin-steps @mdsvex/plugin-tabs @mdsvex/plugin-anchors @mdsvex/plugin-external-links @mdsvex/plugin-toc @mdsvex/plugin-page-data
+node scripts/setup-trusted-publishing.mjs --dry-run @mdsvex/plugin-steps @mdsvex/plugin-tabs @mdsvex/plugin-anchors @mdsvex/plugin-external-links @mdsvex/plugin-toc @mdsvex/plugin-page-data @mdsvex/plugin-emoji @mdsvex/plugin-references
 ```
 
 ```bash
-node scripts/setup-trusted-publishing.mjs @mdsvex/plugin-steps @mdsvex/plugin-tabs @mdsvex/plugin-anchors @mdsvex/plugin-external-links @mdsvex/plugin-toc @mdsvex/plugin-page-data
+node scripts/setup-trusted-publishing.mjs @mdsvex/plugin-steps @mdsvex/plugin-tabs @mdsvex/plugin-anchors @mdsvex/plugin-external-links @mdsvex/plugin-toc @mdsvex/plugin-page-data @mdsvex/plugin-emoji @mdsvex/plugin-references
 ```
 
-Those are all six packages here, and none of them is on npm yet. Name only the new ones once these have had their first release.
+Those are all eight packages here, and none of them is on npm yet. Name only the new ones once these have had their first release.
 
 The dry run lists what it would do. The real run publishes a `0.0.0` placeholder of each package that is not on npm, then registers `pngwn/MDsveX` with `release.yml` as its trusted publisher. Run it with `node`, not through `pnpm run`, so the 2FA prompt reaches the terminal. It finds packages with `pnpm -r ls`, which covers `plugins/*`, and skips private ones, so a new package must not be `private` and must have a version other than `0.0.0`.
 

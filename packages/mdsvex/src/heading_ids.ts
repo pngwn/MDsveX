@@ -1,5 +1,6 @@
 // a pass over the finished tree, so a parse without the option never pays for ids
 
+import { footnote_ids, footnote_index } from '@mdsvex/parse/buf-utils';
 import type { NodeBuffer } from '@mdsvex/parse/utils';
 import { is_entity_name } from '@mdsvex/render/html-cursor';
 
@@ -44,6 +45,7 @@ const enum K {
 	DIRECTIVE_INLINE = 30,
 	DIRECTIVE_LEAF = 31,
 	DIRECTIVE_CONTAINER = 32,
+	FOOTNOTE_REFERENCE = 36,
 }
 
 // keeps what github-slugger keeps, its table is from unicode 13 so a newer letter stays
@@ -156,6 +158,7 @@ export function assign_heading_ids(
 ): void {
 	const seen = new Map<string, number>();
 	const headings: number[] = [];
+	let footnotes = false;
 	let node = buf.first_child_at(0);
 	while (node !== NONE) {
 		const kind = buf.kind_at(node) as number;
@@ -170,7 +173,7 @@ export function assign_heading_ids(
 				const id = meta?.attributes?.id;
 				if (typeof id === 'string' && is_heading_tag.test(meta.tag))
 					seen.set(id, 0);
-			}
+			} else if (kind >= K.FOOTNOTE_REFERENCE) footnotes = true;
 			down = buf.first_child_at(node);
 		}
 		if (down !== NONE) {
@@ -191,6 +194,12 @@ export function assign_heading_ids(
 			}
 			node = parent;
 		}
+	}
+
+	// the id of a footnote is fixed by its label, so a heading moves aside
+	if (footnotes) {
+		const index = footnote_index(buf, true);
+		if (index !== null) for (const id of footnote_ids(index)) seen.set(id, 0);
 	}
 
 	for (let i = 0; i < headings.length; i++) {

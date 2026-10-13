@@ -28,7 +28,7 @@ describe("config: remark and rehype plugins", () => {
 			].join("\n"),
 		);
 		expect(plugins.map((n) => n.line)).toEqual([7, 8, 8]);
-		expect(plugins[0].message).toContain("`remark-emoji` does not run now. Nothing replaces it yet.");
+		expect(plugins[0].message).toContain("`remark-emoji` does not run now. Install `@mdsvex/plugin-emoji`");
 		expect(plugins[1].message).toContain("@mdsvex/plugin-anchors");
 		expect(plugins[2].message).toContain("@mdsvex/plugin-external-links");
 		for (const n of plugins)
