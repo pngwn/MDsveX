@@ -45,6 +45,7 @@ The view exposes:
 - Type-specific properties surfaced directly (`depth` for headings, `info` for code fences, etc.)
 - `info` — the info string of a code fence, its language and everything after it, see [The info string of a fence](#the-info-string-of-a-fence). `lang` is the same string under its older name.
 - `math` — `true` for a `code_span` written as inline math (`` $`x`$ ``), whose text is the LaTeX, `false` for any other code span and `undefined` for any other node. A `code_span` handler sees both.
+- A `footnote_reference` and a `footnote_definition` carry their label as `node.attrs.label`. The text of a reference is empty, and the text of a definition is that of its blocks. `footnote_index(buf)` from `@mdsvex/parse/buf-utils` numbers the footnotes of a finished tree as the compile does.
 
 **Writable properties**
 - `attrs` — a key-value bag for arbitrary attributes. Proxied so setter calls flow through to the SoA and trigger dirty marking.

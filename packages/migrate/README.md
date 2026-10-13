@@ -45,9 +45,29 @@ migrate(source, {
 | Shortcut references (`[ref]`)          | Explicit collapsed references (`[ref][]`)             |
 | Reference definitions                  | Hoisted to the top so they precede every use          |
 | GFM tables, strikethrough, task lists  | Preserved                                             |
+| GFM footnotes                          | PFM footnotes, each reference with its definition's label |
 
 Superscript, subscript and the PFM table extensions have no CommonMark
 equivalent, so nothing maps onto them; raw HTML is passed through untouched.
+
+## Footnotes
+
+A footnote reference and its definition are written as PFM footnotes, which
+have the same form. Three things differ:
+
+- PFM matches labels exactly, where GFM ignores case, so every reference is
+  written with the label of its definition.
+- A PFM label has no whitespace, bracket or caret. One that does gets a `-`
+  in their place, in the reference and the definition alike.
+- A PFM definition holds one paragraph. The blocks after it follow the
+  definition as blocks of the document. A definition whose text starts with
+  a list or a fence has no PFM form yet, so it stays literal text, as its
+  references do.
+
+A `[^...]` that was no footnote in the source is escaped, since PFM reads
+every `[^label]` as a reference and fails the build for one with no
+definition. A second definition of a label, which PFM rejects, is escaped
+too.
 
 ## Math
 

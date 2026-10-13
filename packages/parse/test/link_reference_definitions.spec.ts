@@ -428,67 +428,25 @@ describe('link reference definitions', () => {
 	});
 });
 
-describe('a line that looks like a footnote definition', () => {
-	const literal = (label: string, rest: string) => [
-		'    text "["',
-		'    text "^"',
-		`    text "${label}"`,
-		`    text "]${rest}"`,
+describe('a footnote definition is no link reference definition', () => {
+	const note = (label: string, ...kids: string[]) => [
+		`  footnote_definition label="${label}"`,
+		'    paragraph',
+		...kids.map((kid) => '      ' + kid),
 	];
 
-	test('is a paragraph of its text, whatever follows the colon', () => {
+	test('whatever follows the colon is its text', () => {
 		expect(every_path('[^note]: Word\n')).toBe(
-			lines('root', '  paragraph', ...literal('note', ': Word'), '  line_break')
+			lines('root', ...note('note', 'text "Word"'), '  line_break')
 		);
 		expect(every_path('[^note]: https://example.com\n')).toBe(
 			lines(
 				'root',
-				'  paragraph',
-				...literal('note', ': https://example.com'),
-				'  line_break'
-			)
-		);
-		expect(every_path('[^1]: The source.\n')).toBe(
-			lines(
-				'root',
-				'  paragraph',
-				...literal('1', ': The source.'),
+				...note('note', 'text "https://example.com"'),
 				'  line_break'
 			)
 		);
 		expect(every_path('[^n]: <u> "t"\n')).toContain('text "<u>"');
-	});
-
-	test('with no final line end, an indent or its text on the next line', () => {
-		expect(every_path('[^a]: b')).toBe(
-			lines('root', '  paragraph', ...literal('a', ': b'))
-		);
-		expect(every_path('  [^a]: b\n')).toBe(
-			lines('root', '  paragraph', ...literal('a', ': b'), '  line_break')
-		);
-		expect(every_path('[^a]:\nb\n')).toBe(
-			lines(
-				'root',
-				'  paragraph',
-				...literal('a', ':'),
-				'    soft_break',
-				'    text "b"',
-				'  line_break'
-			)
-		);
-	});
-
-	test('two of them are lines of one paragraph', () => {
-		expect(every_path('[^a]: b\n[^c]: d\n')).toBe(
-			lines(
-				'root',
-				'  paragraph',
-				...literal('a', ': b'),
-				'    soft_break',
-				...literal('c', ': d'),
-				'  line_break'
-			)
-		);
 	});
 
 	test('defines no link reference', () => {
@@ -499,8 +457,7 @@ describe('a line that looks like a footnote definition', () => {
 		expect(every_path('[a]: /u\n[^c]: d\n\n[x][a]\n')).toBe(
 			lines(
 				'root',
-				'  paragraph',
-				...literal('c', ': d'),
+				...note('c', 'text "d"'),
 				'  line_break',
 				'  line_break',
 				'  paragraph',
@@ -516,7 +473,7 @@ describe('a line that looks like a footnote definition', () => {
 		expect(every_path('[\\^a]: /u\n\n[x][\\^a]\n')).toContain('link href="/u"');
 	});
 
-	/** the text of every text node of the tree, in order */
+	/** the text of every text node and the label of every footnote node of the tree, in order */
 	function text_of(source: string): string {
 		const { nodes } = parse_markdown_svelte(source);
 		let out = '';
@@ -524,6 +481,7 @@ describe('a line that looks like a footnote definition', () => {
 			const node = nodes.get_node(index);
 			if (node.kind === 'text')
 				out += source.slice(node.value[0], node.value[1]);
+			else if (node.kind.startsWith('footnote_')) out += node.metadata.label;
 			for (const child of node.children) walk(child);
 		};
 		walk(0);
@@ -559,7 +517,10 @@ describe('a line that looks like a footnote definition', () => {
 			const label = JSON.stringify(source);
 			const text = text_of(source);
 			for (const row of source.split('\n')) {
-				if (row.startsWith('[^')) expect(text, label).toContain(row.trim());
+				if (!row.startsWith('[^')) continue;
+				// the brackets and the caret of a footnote are its syntax
+				for (const part of row.split(/[\[\]^: ]+/))
+					expect(text, label).toContain(part);
 			}
 			expect(problems(source, 0), label).toEqual([]);
 			expect(problems(source, 1), label).toEqual([]);

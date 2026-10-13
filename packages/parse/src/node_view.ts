@@ -4,9 +4,18 @@ import {
 	kind_to_string,
 	make_meta,
 	merge_meta,
+	note_footnote,
 	string_to_kind,
 } from './utils';
 import { type UndoLog, ATTR_DID_NOT_EXIST } from './undo_log';
+
+/** the kind a plugin names, a footnote it makes is noted as the parser notes one */
+function kind_named(type: string): NodeKind | undefined {
+	const kind = string_to_kind(type);
+	if (kind !== undefined && kind >= NodeKind.footnote_reference)
+		note_footnote();
+	return kind;
+}
 
 const NONE = 0xffffffff;
 
@@ -397,7 +406,7 @@ export class NodeView {
 	}
 
 	set type(value: string) {
-		const numeric = string_to_kind(value);
+		const numeric = kind_named(value);
 		if (numeric === undefined) return;
 		const buf = this._live();
 		const prior = buf.kind_at(this._index);
@@ -607,7 +616,7 @@ export class NodeView {
 	 * returns a view for the new wrapper node.
 	 */
 	wrap_inner(type: string, attrs?: Record<string, any>): NodeView {
-		const kind_num = string_to_kind(type);
+		const kind_num = kind_named(type);
 		if (kind_num === undefined) throw new Error(`Unknown node type: ${type}`);
 
 		const buf = this._live();
@@ -641,7 +650,7 @@ export class NodeView {
 	 * child of its parent
 	 */
 	wrap_from(type: string, attrs?: Record<string, any>): WrapperView {
-		const kind_num = string_to_kind(type);
+		const kind_num = kind_named(type);
 		if (kind_num === undefined) throw new Error(`Unknown node type: ${type}`);
 		const buf = this._live();
 		if (attrs !== undefined) check_args(kind_num, attrs.args);
@@ -677,7 +686,7 @@ export class NodeView {
 	prepend(type: 'text', text: string): NodeView;
 	prepend(type: string, attrs?: Record<string, any>): NodeView;
 	prepend(type: string, given?: Record<string, any> | string): NodeView {
-		const kind_num = string_to_kind(type);
+		const kind_num = kind_named(type);
 		if (kind_num === undefined) throw new Error(`Unknown node type: ${type}`);
 
 		const buf = this._live();
@@ -713,7 +722,7 @@ export class NodeView {
 	append(type: 'text', text: string): NodeView;
 	append(type: string, attrs?: Record<string, any>): NodeView;
 	append(type: string, given?: Record<string, any> | string): NodeView {
-		const kind_num = string_to_kind(type);
+		const kind_num = kind_named(type);
 		if (kind_num === undefined) throw new Error(`Unknown node type: ${type}`);
 
 		const buf = this._live();

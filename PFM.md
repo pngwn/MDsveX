@@ -44,7 +44,24 @@ The definition must appear **before** the reference is used. Forward references 
 
 A definition may sit in any container. In a block quote or a list item it is written on one line, the destination and the title do not move to the next line there.
 
-A label cannot start with `^`. `[^note]: text` is how a footnote definition is written, so the line is never a link reference definition and stays text.
+A label cannot start with `^`. `[^note]: text` is a footnote definition, so the line is never a link reference definition.
+
+**Footnotes**, A reference is a label in brackets after a caret, and a definition is the same at the start of a line with a colon and text:
+
+```markdown
+A claim[^1], and a second one[^smith].
+
+[^1]: The source, with a [link](https://example.com).
+[^smith]: Smith, 2020.
+```
+
+A label is one or more characters, none of them whitespace, `[`, `]` or `^`. Labels match exactly, case included.
+
+A reference is one by its syntax alone. `[^label]` is a reference wherever it stands in text, whether or not a definition exists and whether it comes before or after it, which is where footnotes differ from link references. So `[^abc]` in prose is a reference too: a bracket that is not one is escaped, `\[^abc]`, or put in code. A reference is not read in the text of a directive or the alt of an image, and `[^1](url)` is a reference followed by `(url)`.
+
+A definition is a block. It needs text on its line (`[^a]:` alone is a reference and a colon), it ends a paragraph as a heading does, and it may sit in any container. It holds one paragraph, which goes on over the next lines, indented or not, and ends at a blank line or at a line that starts a block.
+
+In mdsvex a reference renders as its number, by first reference, linked to its definition, and every definition a reference reaches is collected into one section at the end of the document, wherever it was written. A reference with no definition and a label defined twice are errors.
 
 **Link destinations and titles**, A backslash escape works in a link destination and a link title as it does in text, in an inline link, an image and a definition: `[a](/u\)b "t \" u")` links to `/u)b` with the title `t " u`. An escaped brace is a literal brace there, where a bare one is a Svelte expression (`[a](/docs/{slug})`).
 

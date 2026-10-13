@@ -262,6 +262,8 @@ These appear inside paragraphs, headings, list items, and other inline container
 
 A `code_span` whose `extra` is `1` is inline math, written ``$`x`$``. Its content is the LaTeX, without the dollars. A client with no math renderer shows it as it shows any other code span.
 
+A `footnote_reference` is a leaf with the attr `label` and no content. A `footnote_definition` is a block with the same attr, and its content is the blocks of the note. Nothing on the wire numbers them or moves a definition: a client shows the label where the reference is and the definition where it was written, or numbers the labels by first reference and collects the definitions at the end, as the compile does.
+
 ### Table structure
 
 A `table` node contains `table_header` and `table_row` children. Each of those contains `table_cell` children. Alignments are on the table node, indexed by column:
