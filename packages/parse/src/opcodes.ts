@@ -74,6 +74,13 @@ export interface Emitter {
 	/**
 	 * open, set_value_start, set_value_end and close of a node with no extra in
 	 * one call, when it is missing the parser emits those four opcodes
+	 *
+	 * the parser emits a node this way when all of it is in the input as it
+	 * opens, a line break, or a text run that ends at a mark or a line end
+	 * already read
+	 * a run the input has not ended is an open, closed when it ends
+	 * both forms build the same node, and a feed emits the same nodes by the
+	 * end of each chunk whichever form they took
 	 */
 	leaf?(
 		id: number,

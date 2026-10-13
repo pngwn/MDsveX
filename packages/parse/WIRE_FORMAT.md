@@ -594,6 +594,8 @@ feed("lo\n")   -> batch: [T(heading, "lo"), C(heading)]
 
 Without eager emission, the client would see nothing until the heading is closed.
 
+A run of text reaches an `Emitter` in one of two forms. When the run ends in the input the parser has, at a mark or at a line end, it is one `leaf` call, or the four opcodes of one when the emitter has no `leaf`. When a chunk ends inside the run it is an `open`, and its `close` comes with the chunk that ends it. Both build the same node, and both are the same `T` opcodes on the wire: text nodes are not sent, and a batch holds what its chunk confirmed whichever form the parser used.
+
 ### Example: streaming from an LLM
 
 ```javascript
