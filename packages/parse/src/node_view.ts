@@ -472,11 +472,17 @@ export class NodeView {
 			return this._text_source.slice(vs, ve);
 		}
 
-		// container node: walk children, concatenate
+		// a line break reads as the space a reader sees between the lines
+		if (kind === NodeKind.soft_break || kind === NodeKind.hard_break)
+			return ' ';
+
+		// container node: walk children, concatenate. a comment is not shown,
+		// so its text is left out, read on its own it is still its text
 		let result = '';
 		let child = buf.first_child_at(idx);
 		while (child !== NONE && buf.parent_at(child) === idx) {
-			result += this._collect_text(child);
+			if (buf.kind_at(child) !== NodeKind.html_comment)
+				result += this._collect_text(child);
 			child = buf.next_at(child);
 		}
 		return result;
