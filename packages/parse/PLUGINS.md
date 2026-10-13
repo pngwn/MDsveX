@@ -38,7 +38,7 @@ The view exposes:
 
 **Readable properties**
 - `type` — the node type (`'heading'`, `'paragraph'`, etc.)
-- `text_content` — flattened text of all descendants (populated as children arrive)
+- `text_content` — flattened text of all descendants (populated as children arrive). It is the text a reader sees: a line end inside a paragraph is a space, and a comment inside the node adds nothing. A comment node still gives its own text
 - `parent`, `first_child`, `last_child`, `next`, `prev` — lazy traversal, each returns a view for the corresponding node or `null`
 - `position` — where the node is in the source, see [Positions](#positions)
 - `pending` — `true` while the parser may still revoke the node, see [Pending nodes](#pending-nodes)
