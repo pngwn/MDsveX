@@ -10764,68 +10764,83 @@ export class PFMParser {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
-		let lf = this.cursor;
-		let loose =
-			lf === 0 || char_code_at.call(source, lf - 1 - base) === LINEFEED;
 		// the frames before the last are around this item
 		const outer = this.frames.length - 1;
-		let kept: number;
 		for (;;) {
-			if (!this.finished && !this.can_decide_after_lf(lf)) return true;
-			kept = this.line_start(lf + 1);
-			if (kept < 0) return true;
-			if (kept < outer) {
+			let lf = this.cursor;
+			let loose =
+				lf === 0 || char_code_at.call(source, lf - 1 - base) === LINEFEED;
+			let kept: number;
+			for (;;) {
+				if (!this.finished && !this.can_decide_after_lf(lf)) return true;
+				kept = this.line_start(lf + 1);
+				if (kept < 0) return true;
+				if (kept < outer) {
+					this.end_list();
+					return false;
+				}
+				// blank lines are passed over, the line after them decides
+				let p = this.line_pos;
+				let ch = char_code_at.call(source, p - base);
+				while (ch === SPACE || ch === TAB) {
+					ch = char_code_at.call(source, ++p - base);
+				}
+				if (p >= length) {
+					if (!this.finished) return true;
+					this.end_list();
+					return false;
+				}
+				if (ch !== LINEFEED) break;
+				loose = true;
+				lf = p;
+			}
+			const p = this.line_pos;
+			if (kept > outer) {
+				if (loose) this.list_is_loose = true;
+				this.chomp(p, true);
+				return false;
+			}
+			// not indented to the item, the marker of the next item or the end of the list
+			// the paragraph interrupt check may already have parsed the marker, a thematic break came first there
+			let marker: MarkerResult | null = null;
+			if (this.interrupt_marker_pos === p) marker = this.interrupt_marker;
+			else if (!this.is_thematic_break_start(p))
+				marker = this.try_parse_list_marker(p);
+			if (
+				marker === null ||
+				marker.indent < this.list_marker_indent ||
+				marker.ordered !== this.list_ordered ||
+				marker.marker_char !== this.list_marker
+			) {
 				this.end_list();
 				return false;
 			}
-			// blank lines are passed over, the line after them decides
-			let p = this.line_pos;
-			let ch = char_code_at.call(source, p - base);
-			while (ch === SPACE || ch === TAB) {
-				ch = char_code_at.call(source, ++p - base);
-			}
-			if (p >= length) {
-				if (!this.finished) return true;
-				this.end_list();
-				return false;
-			}
-			if (ch !== LINEFEED) break;
-			loose = true;
-			lf = p;
-		}
-		const p = this.line_pos;
-		if (kept > outer) {
 			if (loose) this.list_is_loose = true;
-			this.chomp(p, true);
-			return false;
+			this.emit_close(current_node, this.cursor);
+			this.node_stack.pop();
+			const item_id = this.emit_open(NodeKind.list_item, p, this.list_node_id);
+			this.node_stack.push(item_id);
+			this.list_content_offset = marker.content_offset;
+			this.frames[this.frames.length - 1] = marker.content_offset;
+			this.line_at = -1;
+			this.chomp(marker.content_start, true);
+			this.cold.task_pos = marker.content_start;
+			if (loose) return false;
+			this.item_para(item_id);
+			// a whole parse takes the linefeed after the item here, a feed goes back through the main loop
+			const states = this.states;
+			const at = this.cursor;
+			if (
+				!FAST ||
+				!this.finished ||
+				at >= length ||
+				states[states.length - 1] !== StateKind.list_item ||
+				this.pending_count !== this.pending_para_count ||
+				char_code_at.call(source, at - base) !== LINEFEED
+			)
+				return false;
+			current_node = item_id;
 		}
-		// not indented to the item, the marker of the next item or the end of the list
-		// the paragraph interrupt check may already have parsed the marker, a thematic break came first there
-		let marker: MarkerResult | null = null;
-		if (this.interrupt_marker_pos === p) marker = this.interrupt_marker;
-		else if (!this.is_thematic_break_start(p))
-			marker = this.try_parse_list_marker(p);
-		if (
-			marker === null ||
-			marker.indent < this.list_marker_indent ||
-			marker.ordered !== this.list_ordered ||
-			marker.marker_char !== this.list_marker
-		) {
-			this.end_list();
-			return false;
-		}
-		if (loose) this.list_is_loose = true;
-		this.emit_close(current_node, this.cursor);
-		this.node_stack.pop();
-		const item_id = this.emit_open(NodeKind.list_item, p, this.list_node_id);
-		this.node_stack.push(item_id);
-		this.list_content_offset = marker.content_offset;
-		this.frames[this.frames.length - 1] = marker.content_offset;
-		this.line_at = -1;
-		this.chomp(marker.content_start, true);
-		this.cold.task_pos = marker.content_start;
-		if (!loose) this.item_para(item_id);
-		return false;
 	}
 
 	/**
