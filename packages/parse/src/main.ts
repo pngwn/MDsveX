@@ -3472,7 +3472,10 @@ export class PFMParser {
 		const base = this.source_base;
 		const length = this.source_end;
 		let spaces = 0;
-		while (pos < length && char_code_at.call(source, pos - base) === SPACE) {
+		let marker = 0;
+		while (pos < length) {
+			marker = char_code_at.call(source, pos - base);
+			if (marker !== SPACE) break;
 			spaces++;
 			pos++;
 		}
@@ -3480,13 +3483,15 @@ export class PFMParser {
 
 		if (pos >= length) return false;
 
-		const marker = char_code_at.call(source, pos - base);
 		if (marker !== ASTERISK && marker !== DASH && marker !== UNDERSCORE)
 			return false;
 
-		let count = 0;
-		while (pos < length && char_code_at.call(source, pos - base) !== LINEFEED) {
+		// the marker just read is the first of the run
+		let count = 1;
+		pos++;
+		while (pos < length) {
 			const ch = char_code_at.call(source, pos - base);
+			if (ch === LINEFEED) break;
 			if (ch === marker) {
 				count++;
 			} else if (ch !== SPACE && ch !== TAB) {
