@@ -100,9 +100,12 @@ A consumer that reads only `op[1]` treats the flagged close as any other close, 
 
 ```
 ["T", id: int, content: string]
+["T", id: int, content: string, 1]
 ```
 
 Appends text to a node's content. Multiple `T` opcodes for the same node should be concatenated. If the last item in the node's content is already a string, append to it. Otherwise, push a new string entry.
+
+The flag says the author escaped the first character of `content` with a backslash. The backslash is not sent. A client that only shows the text ignores the flag. One that rewrites text, as `WireTreeBuilder` does for the text handler of a parse plugin, keeps where those characters are and leaves them alone.
 
 Text is always resolved to strings on the wire, the client never sees byte offsets or needs the source markdown.
 

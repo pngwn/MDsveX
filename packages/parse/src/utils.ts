@@ -949,6 +949,27 @@ export class NodeBuffer {
 		this.set_last_child(new_parent, index);
 	}
 
+	/** link a node that has no parent in as a child of one, ahead of ref, last when ref is 0xffffffff */
+	insert_before(index: number, parent: number, ref: number): void {
+		this.set_parent(index, parent);
+		if (ref === 0xffffffff) {
+			const last = this.last_child_at(parent);
+			this.set_prev(index, last);
+			this.set_next(index, 0xffffffff);
+			if (last === 0xffffffff) this.set_first_child(parent, index);
+			else this.set_next(last, index);
+			this.set_last_child(parent, index);
+			return;
+		}
+		const first = this.first_child_at(parent) === ref;
+		const prev = first ? 0xffffffff : this.prev_at(ref);
+		this.set_prev(index, prev);
+		this.set_next(index, ref);
+		this.set_prev(ref, index);
+		if (first) this.set_first_child(parent, index);
+		else this.set_next(prev, index);
+	}
+
 	/** every later sibling of a node becomes its last children, the mirror of unwrap_node */
 	absorb_following(index: number): void {
 		const parent = this.parent_at(index);

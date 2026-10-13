@@ -223,7 +223,7 @@ Resolution, Composition, Code and Collections moved to the Vite plugin, so they 
 
 | Missing capability | Unblocks |
 | --- | --- |
-| **Rewrite or split text** (replace a range with new text or nodes) | Typography (emoji, typographic details), Cross-references (GitHub refs, mentions, linkify), numbering |
+| **Rewrite or split text** (replace a range with new text or nodes). Exists: the `text` handler of a sequential plugin and `run.replace`, see `design/plugin-text.md` | Typography (emoji, typographic details), Cross-references (GitHub refs, mentions, linkify), numbering |
 | **Group siblings** (`wrap_from`: wrap a node and the siblings after it in a new parent) | sectionize, and the rewrites behind steps, tabs, accordions and code groups |
 | **Plugin-owned directives** (a plugin supplies components, and handlers bound to a directive run only for the nodes inside it) | structured containers, and any kit that ships as one plugin |
 | **Remove or replace nodes** | GitHub alerts if done as a plugin |

@@ -419,6 +419,24 @@ mdsvex({ parse_plugins: [external_links] });
 
 A plugin with `sequential: true` runs over the finished tree instead, after [`heading_ids`](docs#heading_ids) has set its ids.
 
+A sequential plugin can also rewrite text. Its `text` function is called for each run of text in the document, and `run.replace` puts text or a node in place of a range of it:
+
+```js
+const issues = {
+	sequential: true,
+	text(run) {
+		for (const match of run.text.matchAll(/#(\d+)/g)) {
+			const end = match.index + match[0].length;
+			run
+				.replace(match.index, end, 'link', { href: `/issues/${match[1]}` })
+				.append('text', match[0]);
+		}
+	}
+};
+```
+
+A run is whole however the tree split the text, and the text around a replacement stays as you wrote it. Code, math, urls, attribute values and `{expressions}` are never in a run, and a character you escaped with a backslash is left out of it.
+
 Elements a plugin creates count as markdown, so a [replacement](docs#custom-components) for `mark` also replaces the `<mark>` a highlight plugin adds.
 
 ### Plugin data
