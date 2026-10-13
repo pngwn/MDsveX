@@ -10,6 +10,7 @@ import {
 	FrontmatterError,
 	highlight_error_at,
 	MathError,
+	RunError,
 	SourceError,
 } from 'mdsvex';
 import { source_math } from 'mdsvex/math';
@@ -90,6 +91,11 @@ export interface PfmToSvelteOptions {
 	 * document then exports, so the export is declared
 	 */
 	declare_plugin_data?: boolean;
+	/**
+	 * report a block that runs when no component replaces pre, which a build
+	 * rejects, only right when the config is known
+	 */
+	report_missing_pre?: boolean;
 }
 
 export interface PfmToSvelteResult {
@@ -235,17 +241,34 @@ function compile_leniently(
 		...options.compile,
 		sourcemap: true,
 		strict_directives: options.report_directives === true,
-		// the editor serves no module, so a block that runs is only shown,
-		// with no import for typescript to look for
-		snippets: false,
+		// a first compile with a specifier nothing reads says whether each block can run
+		snippets: () => 'mdsvex:snippet',
 	};
 	let metadata_known = true;
 	let last: unknown;
-	for (let attempt = 0; attempt < 5; attempt++) {
+	for (let attempt = 0; attempt < 8; attempt++) {
 		try {
-			return { result: compile(source, opts), metadata_known };
+			const result = compile(source, opts);
+			if (result.snippets !== undefined && opts.snippets !== false) {
+				// the editor serves no module, so a block that runs is only shown,
+				// with no import for typescript to look for
+				opts = { ...opts, snippets: false };
+				continue;
+			}
+			return { result, metadata_known };
 		} catch (e) {
 			last = e;
+			if (e instanceof RunError && opts.snippets !== false) {
+				if (e.code !== 'run_pre' || options.report_missing_pre === true) {
+					diagnostics.push({
+						...line_range(source, e.line),
+						message: e.message,
+						severity: 'error',
+					});
+				}
+				opts = { ...opts, snippets: false };
+				continue;
+			}
 			if (e instanceof DirectiveError) {
 				const start = offset_of(source, e.line, e.column);
 				diagnostics.push({

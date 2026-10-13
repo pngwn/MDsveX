@@ -309,6 +309,7 @@ describe("document options from a manifest", () => {
 	it("reports directives and frontmatter only when nothing at build could handle them", () => {
 		const opts = document_options(m, "/app/a.svx");
 		expect(opts.report_directives).toBe(true);
+		expect(opts.report_missing_pre).toBe(true);
 		expect(opts.lenient_frontmatter).toBe(true);
 		expect(
 			document_options({ ...m, directive_plugins: true }, "/app/a.svx").report_directives,

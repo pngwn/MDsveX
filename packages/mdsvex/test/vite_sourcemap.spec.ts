@@ -252,3 +252,9 @@ describe('vite plugin sourcemap', () => {
 		expect(transform('# a\n', make)!.out).toBeUndefined();
 	});
 });
+
+test('neither the plugin source nor its build has a source map comment of its own', () => {
+	const marker = ['//# source', 'MappingURL='].join('');
+	for (const file of ['../src/main.ts', '../dist/main.js'])
+		expect(readFileSync(resolve(HERE, file), 'utf8')).not.toContain(marker);
+});

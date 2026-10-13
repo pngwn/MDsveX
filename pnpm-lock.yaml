@@ -181,6 +181,12 @@ importers:
       shx:
         specifier: ^0.3.4
         version: 0.3.4
+      vscode-oniguruma:
+        specifier: ^2.0.1
+        version: 2.0.1
+      vscode-textmate:
+        specifier: ^9.3.2
+        version: 9.3.2
 
   language-tools/vscode-pfm/test-fixture:
     devDependencies:
@@ -5039,6 +5045,12 @@ packages:
   vscode-nls@5.2.0:
     resolution: {integrity: sha512-RAaHx7B14ZU04EU31pT+rKz2/zSl7xMsfIZuo8pd+KZO6PXtQmpevpq3vxvWNcrGbdmhM/rr5Uw5Mz+NBfhVng==}
 
+  vscode-oniguruma@2.0.1:
+    resolution: {integrity: sha512-poJU8iHIWnC3vgphJnrLZyI3YdqRlR27xzqDmpPXYzA93R4Gk8z7T6oqDzDoHjoikA2aS82crdXFkjELCdJsjQ==}
+
+  vscode-textmate@9.3.2:
+    resolution: {integrity: sha512-n2uGbUcrjhUEBH16uGA0TvUfhWwliFZ1e3+pTjrkim1Mt7ydB41lV08aUvsi70OlzDWp6X7Bx3w/x3fAXIsN0Q==}
+
   vscode-uri@3.1.0:
     resolution: {integrity: sha512-/BpdSx+yCQGnCvecbyXdxHDkuk55/G3xwnC0GqY4gmQ3j+A+g8kzzgB4Nk/SINjqn6+waqw3EgbVF2QKExkRxQ==}
 
@@ -9633,6 +9645,10 @@ snapshots:
       vscode-uri: 3.1.0
 
   vscode-nls@5.2.0: {}
+
+  vscode-oniguruma@2.0.1: {}
+
+  vscode-textmate@9.3.2: {}
 
   vscode-uri@3.1.0: {}
 

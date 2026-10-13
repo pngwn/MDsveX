@@ -52,7 +52,13 @@
 					"meta.embedded.block.json": "json",
 					"meta.embedded.block.python": "python",
 					"meta.embedded.block.rust": "rust",
-					"meta.embedded.block.go": "go"
+					"meta.embedded.block.go": "go",
+					"meta.embedded.block.typescriptreact": "typescriptreact",
+					"meta.embedded.block.svelte": "svelte",
+					"meta.embedded.block.shellscript": "shellscript",
+					"meta.embedded.block.yaml": "yaml",
+					"meta.embedded.block.latex": "latex",
+					"meta.embedded.block.pfm": "pfm"
 				}
 			}
 		],
@@ -72,6 +78,8 @@
 		"build": "run-s build:server build:ext build:mkdir build:copy-server",
 		"build:mkdir": "shx mkdir -p server",
 		"build:copy-server": "shx cp ../language-server/dist/server.cjs server/server.cjs",
+		"test": "vitest --disableConsoleIntercept",
+		"test:run": "vitest run --silent",
 		"package": "vsce package --no-dependencies"
 	},
 	"dependencies": {
@@ -82,6 +90,8 @@
 	"devDependencies": {
 		"@types/vscode": "^1.85.0",
 		"npm-run-all2": "^7.0.2",
-		"shx": "^0.3.4"
+		"shx": "^0.3.4",
+		"vscode-oniguruma": "^2.0.1",
+		"vscode-textmate": "^9.3.2"
 	}
 }

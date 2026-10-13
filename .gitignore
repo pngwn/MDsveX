@@ -9,6 +9,8 @@ node_modules
 
 # build
 dist
+language-tools/typescript-plugin/lib/
+language-tools/vscode-pfm/server/
 
 # logs
 logs
