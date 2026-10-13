@@ -10906,6 +10906,8 @@ export class PFMParser {
 				}
 				// blank lines are passed over, the line after them decides
 				let p = this.line_pos;
+				// a line the paragraph check parsed a marker at is not blank
+				if (this.interrupt_marker_pos === p) break;
 				let ch = code_in(source, p - base, window);
 				while (ch === SPACE || ch === TAB) {
 					ch = code_in(source, ++p - base, window);
