@@ -494,7 +494,9 @@ export class NodeView {
 	}
 
 	/**
-	 * flattened text of all descendants.
+	 * flattened text of all descendants, the text a reader sees: a line end
+	 * inside a paragraph is a space and a comment inside the node adds nothing,
+	 * a comment node still gives its own text
 	 * only guaranteed complete in the close callback.
 	 */
 	get text_content(): string {
@@ -538,7 +540,12 @@ export class NodeView {
 		let result = '';
 		let child = buf.first_child_at(idx);
 		while (child !== NONE && buf.parent_at(child) === idx) {
-			result += this._collect_text(child);
+			const inner = buf.kind_at(child) as NodeKind;
+			// a reader sees a space where a line ends and nothing of a comment
+			if (inner === NodeKind.soft_break || inner === NodeKind.hard_break)
+				result += ' ';
+			else if (inner !== NodeKind.html_comment)
+				result += this._collect_text(child);
 			child = buf.next_at(child);
 		}
 		return result;
