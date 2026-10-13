@@ -838,6 +838,10 @@ interface ColdState {
 	tag_memo_base: number;
 	/** where the open tag of an element ends, by its start, for those that run over a line */
 	tag_ends: Map<number, number> | null;
+	/** the first backtick at or after tick_from in the input up to tick_end, -1 for none and -2 before any search */
+	tick_from: number;
+	tick_at: number;
+	tick_end: number;
 	/** where the text of the last footnote definition starts, and the column that text stands at */
 	note_pos: number;
 	note_column: number;
@@ -921,6 +925,9 @@ export class PFMParser {
 		tag_memo: null,
 		tag_memo_base: 0,
 		tag_ends: null,
+		tick_from: 0,
+		tick_at: -2,
+		tick_end: 0,
 		note_pos: -1,
 		note_column: 0,
 		wait_needle: '',
@@ -1778,6 +1785,7 @@ export class PFMParser {
 		if (cold.brace_memo !== null) cold.brace_memo = null;
 		if (cold.tag_memo !== null) cold.tag_memo = null;
 		if (cold.tag_ends !== null) cold.tag_ends = null;
+		cold.tick_at = -2;
 		cold.note_pos = -1;
 		if (this.wait_chunks.length !== 0) this.wait_chunks.length = 0;
 		cold.raw_node = 0;
@@ -5218,6 +5226,30 @@ export class PFMParser {
 	 * the end of the close tag when the element whose open tag ends at from closes on
 	 * that line, 0 when it stays open past it, -1 when the line is not whole yet
 	 */
+	/**
+	 * the first backtick at or after pos, -1 when the input so far holds none
+	 * the answer is kept, a search from every tag line would read a document with no backtick once a line
+	 */
+	private next_tick(pos: number): number {
+		const cold = this.cold;
+		let from = pos;
+		if (cold.tick_from <= pos) {
+			const kept = cold.tick_at;
+			if (kept >= pos) return kept;
+			if (kept === -1) {
+				if (cold.tick_end === this.source_end) return -1;
+				// a feed brought more input, only that is unread
+				if (cold.tick_end > from) from = cold.tick_end;
+			}
+		}
+		const i = string_index_of.call(this.source, '`', from - this.source_base);
+		const at = i === -1 ? -1 : i + this.source_base;
+		cold.tick_from = pos;
+		cold.tick_at = at;
+		cold.tick_end = this.source_end;
+		return at;
+	}
+
 	private closes_on_line(tag: string, from: number): number {
 		const source = this.source;
 		const base = this.source_base;
@@ -5235,10 +5267,9 @@ export class PFMParser {
 			if (i === -1) return 0;
 			const q = i + base;
 			if (q >= line_end) return 0;
-			if (tick !== -1 && tick < p - base)
-				tick = string_index_of.call(source, '`', p - base);
-			if (tick !== -1 && tick < i) {
-				p = this.code_span_past(tick + base, line_end);
+			if (tick !== -1 && tick < p) tick = this.next_tick(p);
+			if (tick !== -1 && tick < q) {
+				p = this.code_span_past(tick, line_end);
 				continue;
 			}
 			const closing = char_code_at.call(source, q + 1 - base) === SLASH;

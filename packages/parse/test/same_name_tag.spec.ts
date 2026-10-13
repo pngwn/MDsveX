@@ -82,3 +82,43 @@ describe('an element that holds its own name again closes on its line', () => {
 		sound_tree(source);
 	});
 });
+
+describe('a code span on a later tag line', () => {
+	test('is found after lines with no backtick', () => {
+		expect(every_path('<b>a</b>\n\n<b>c</b>\n\n<b>`<b>`</b>\n')).toBe(
+			lines(
+				'root',
+				'  html tag="b"',
+				'    text "a"',
+				'  line_break',
+				'  line_break',
+				'  html tag="b"',
+				'    text "c"',
+				'  line_break',
+				'  line_break',
+				'  html tag="b"',
+				'    code_span "<b>"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('and after a line whose backtick is behind', () => {
+		expect(every_path('<b>`x`</b>\n\n<b>a</b>\n\n<b>`<b>`</b>\n')).toBe(
+			lines(
+				'root',
+				'  html tag="b"',
+				'    code_span "x"',
+				'  line_break',
+				'  line_break',
+				'  html tag="b"',
+				'    text "a"',
+				'  line_break',
+				'  line_break',
+				'  html tag="b"',
+				'    code_span "<b>"',
+				'  line_break'
+			)
+		);
+	});
+});

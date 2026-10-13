@@ -268,6 +268,17 @@ delete it.
 - **Ideas:** `closes_on_line` looks for a backtick and tries an autolink at
   every `<` of the line, both could wait until the element's own name shows
   up again. Guess, not measured.
+- **Triage, 2026-10-13:** the stack that brought these read `parse` -1.72%
+  in both passes against the commit below it, with
+  `fixtures/backslash_escapes` -9.2%, `fixtures/links` -7.1% and
+  `fixtures/html` -6.0% past a 4.6% floor. By stub on 9d4c1a41: without the
+  `spec_watch` compare `parse` +0.76%, without the NUL compare +0.89%,
+  neither with a row past the floor, and without the backtick and autolink
+  checks of `closes_on_line` -0.11%. The two link rows are the unescape of a
+  destination and a title, which is work the documents ask for. Tried and
+  dropped: the watch test moved out of the four emit functions onto the id
+  table bound read `parse` +0.29% with the passes at -0.31% and +0.90%. The
+  backtick search is closed below. The NUL compare was not tried.
 
 ### attrs on pending emphasis
 
@@ -383,6 +394,18 @@ delete it.
 - **Was:** `incremental-64` took 26ms at 100KB and 27.6s at 3.8MB. On
   9d4c1a41 a feed of 64 char chunks takes 1.2 to 1.5 times a whole parse at
   1KB, 10KB, 100KB and 3.8MB, 36ms for the last.
+
+### backtick search from every tag line
+
+- **Source:** the stack of #1058 and #1062, `closes_on_line`. Found by this
+  pass, it was never an entry.
+- **Was:** for a line that starts at a tag the scan looked for the next
+  backtick with one search that ran to the end of the document when there was
+  none, so a document of such lines took time by the square of its length.
+  Lines of one element with no backtick: 0.87ms at 24KB, 74ms at 379KB, 1.1s
+  at 1.5MB. The answer is now kept across lines, in a feed too: 0.65ms, 7.1ms
+  and 31ms, and 300 such lines read +65.1% in `parse`. The corpus did not
+  show it, a backtick is always near in it.
 
 ## Notes for the performance pass
 
