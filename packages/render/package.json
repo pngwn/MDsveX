@@ -11,28 +11,32 @@
 	"scripts": {
 		"test": "vitest --disableConsoleIntercept",
 		"test:run": "vitest run --silent",
-		"build": "vite build --config vite.config.build.ts"
+		"build": "vite build --config vite.config.build.ts && tsc --rootDir src --declaration --emitDeclarationOnly --outDir dist"
 	},
+	"files": [
+		"dist",
+		"src"
+	],
 	"exports": {
 		".": {
-			"import": "./dist/index.js",
-			"types": "./src/index.ts"
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
 		},
 		"./html-cursor": {
-			"import": "./dist/html_cursor.js",
-			"types": "./src/html_cursor.ts"
+			"types": "./dist/html_cursor.d.ts",
+			"import": "./dist/html_cursor.js"
 		},
 		"./component": {
-			"import": "./dist/component.js",
-			"types": "./src/component.ts"
+			"types": "./dist/component.d.ts",
+			"import": "./dist/component.js"
 		},
 		"./mappings": {
-			"import": "./dist/mappings.js",
-			"types": "./src/mappings.ts"
+			"types": "./dist/mappings.d.ts",
+			"import": "./dist/mappings.js"
 		},
 		"./sourcemap": {
-			"import": "./dist/sourcemap.js",
-			"types": "./src/sourcemap.ts"
+			"types": "./dist/sourcemap.d.ts",
+			"import": "./dist/sourcemap.js"
 		},
 		"./Node.svelte": {
 			"types": "./src/Node.svelte",

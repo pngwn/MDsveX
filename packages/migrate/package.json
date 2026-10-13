@@ -2,8 +2,12 @@
 	"name": "@mdsvex/migrate",
 	"version": "0.2.0-next.1",
 	"description": "Migrate CommonMark/GFM markdown to Penguin-Flavoured Markdown (PFM), and mdsvex 0.x layouts to templates",
-	"main": "src/main.ts",
-	"module": "src/main.ts",
+	"main": "./dist/main.js",
+	"module": "./dist/main.js",
+	"types": "./dist/main.d.ts",
+	"files": [
+		"dist"
+	],
 	"type": "module",
 	"scripts": {
 		"test": "vitest --disableConsoleIntercept",
@@ -16,7 +20,8 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/pngwn/MDsveX/tree/master/packages/migrate"
+		"url": "git+https://github.com/pngwn/MDsveX.git",
+		"directory": "packages/migrate"
 	},
 	"keywords": [
 		"markdown",

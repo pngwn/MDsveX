@@ -1,9 +1,15 @@
 {
 	"name": "@mdsvex/parse",
 	"version": "1.0.0-next.1",
-	"description": "",
-	"main": "src/main.ts",
-	"module": "src/main.ts",
+	"description": "The parser for Penguin-Flavoured Markdown, the markdown mdsvex reads",
+	"main": "./dist/main.js",
+	"module": "./dist/main.js",
+	"types": "./dist/main.d.ts",
+	"files": [
+		"dist",
+		"PLUGINS.md",
+		"WIRE_FORMAT.md"
+	],
 	"type": "module",
 	"scripts": {
 		"test": "vitest --disableConsoleIntercept",
@@ -16,7 +22,8 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/pngwn/MDsveX/tree/master/packages/pfm-parser"
+		"url": "git+https://github.com/pngwn/MDsveX.git",
+		"directory": "packages/parse"
 	},
 	"keywords": [
 		"markdown",

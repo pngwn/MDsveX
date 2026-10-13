@@ -8,6 +8,9 @@
 	},
 	"description": "PFM Volar LanguagePlugin — teaches Volar how to handle .pfm files",
 	"type": "module",
+	"files": [
+		"src"
+	],
 	"scripts": {
 		"test": "vitest --disableConsoleIntercept",
 		"test:run": "vitest run --silent"

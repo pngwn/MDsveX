@@ -34,7 +34,8 @@
 	"types": "./dist/main.d.ts",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/pngwn/MDsveX.git"
+		"url": "git+https://github.com/pngwn/MDsveX.git",
+		"directory": "packages/mdsvex"
 	},
 	"scripts": {
 		"build": "run-s build:tsc build:vite build:copy-dts",

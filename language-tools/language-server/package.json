@@ -9,8 +9,13 @@
 	"description": "PFM Language Server — LSP binary for .pfm files",
 	"type": "module",
 	"bin": {
-		"pfm-language-server": "./bin/pfm-language-server.js"
+		"pfm-language-server": "./bin/pfm-language-server.cjs"
 	},
+	"files": [
+		"bin",
+		"dist",
+		"src"
+	],
 	"scripts": {
 		"test": "vitest --disableConsoleIntercept",
 		"test:run": "vitest run --silent",
