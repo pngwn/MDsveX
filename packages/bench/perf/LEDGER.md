@@ -63,6 +63,13 @@ delete it.
     not tested, a fed parse still has to match a whole one.
   - Measured and rejected: a dry run with the real tag parsers (-19.5%) and a
     hand-written walk (-8.7%).
+- **Triage, 2026-10-13 on 9d4c1a41:** with the check stubbed to `true`,
+  `_cheatsheet:parse` reads +6.3% in both passes against a calibrated 4.6%
+  floor, 300 lines of one element +6.7%, and the 56 parse rows of `core`
+  -0.12%. So it still costs that one document and nothing else. Tried and
+  dropped: a hand scan of plain text up to a bare close tag in front of the
+  regex read -2.0% on the cheatsheet, a regex call is as fast as a char loop
+  at these lengths. The memo is still not built.
 
 ### open inline nodes at a quoted line end
 
@@ -85,31 +92,12 @@ delete it.
 - **Ideas:** guesses, none built. When the first character after the markers
   is a letter no line can end the paragraph, so `bq_line_ends_para` could
   return before its tests. The paragraph state would gain from that too.
-
-### tag paragraph open elements
-
-- **Source:** #964, the scan of a paragraph that starts at a tag
-  (`spec_tag`), and `is_block_html_tag`.
-- **Measured:** against 5db2f9d3 with the default 3.0% floor. No corpus row
-  is slower past the floor: `quick` geomean +0.03%, fed parse of the real
-  documents +0.50%. The corpus has almost no such paragraphs, so the numbers
-  are from one line repeated 300 times, one workload per fresh process, both
-  arm orders. `<Badge /> <b>new</b> in <i>this</i> release <Chart a={b} />`
-  reads -1.5% to -2.2% in `parse` and -0.1% to -0.8% in `incremental-64`.
-  `<Chart /><b><i><span>x</b> <em>y</em> z` reads -7.0% to -8.1% in both
-  modes, and -4.6% to -4.9% in `parse` with `<s>` in place of `<em>`.
-- **Cause:** the scan keeps the names of the open elements where it kept a
-  count, one store for an open tag and one string compare for a close tag.
-  After a close tag that closes several elements its depth is now 0, where
-  the count read 2, so the next open tag is asked whether it is block level.
-  That question is a string `switch` of about 60 cases on a name sliced from
-  the source. The split between the two is read off the rows above, it was
-  not isolated with a stub.
-- **Ideas:** test the first character before the `switch`, a name that
-  starts with an upper case letter is never block level. Guess, not
-  measured. Measured and fixed in the PR: cutting the name array back with
-  `length = n` made the next open tag allocate, 6 to 8% on the first line
-  above.
+- **Triage, 2026-10-13 on 9d4c1a41:** `bq_soft_break` is gone, every state
+  asks `para_line`. 300 quoted paragraphs with link and image text over a
+  line read -5.4% against the commit before #970 and -2.1% against f20a7cae,
+  the same with emphasis -2.4% and +3.1%, plain quoted lines -0.5% and
+  +16.6%. One workload per fresh process, four processes a row. Nothing in
+  the corpus has the shape.
 
 ### parse plugins: what a document still pays
 
@@ -126,6 +114,13 @@ delete it.
     heading for sectionize or steps.
 - **Ideas:** bound the close path by the highest node with a callback, as
   #956 did for opens. Guess, not measured.
+- **Triage, 2026-10-13 on 9d4c1a41:** a parse of the 20 real documents with
+  the plugin over the same parse with none, paired in one arm: an attr on
+  each heading +8.2%, attrs on emphasis, strong and links +16.2%, sectionize
+  +23.2%, autolink +30.2%, the steps bundle +45.4%. A reused compile with
+  autolink and sectionize +42.1%. A profile of the autolink parse has no one
+  place: the handler's own slug and its two regexes are about 7 points of the
+  30, node views and attrs 4, the builder's slow open and close paths 4.
 
 ### autolink mask rewrite
 
@@ -154,6 +149,10 @@ delete it.
   31,393), which is where the prose rows gain. Not isolated with a stub.
 - **Ideas:** keep the two most common arms, the heading and the list marker,
   in front of the call in the root. Guess, not measured.
+- **Triage, 2026-10-13:** steps 1 to 4 against f20a7cae read `parse` +1.12%
+  in both passes, six rows faster past a calibrated 4.6% floor and none
+  slower, `micro/heading:parse` -3.1% under it. Left as it is: an arm in
+  front of the call would put a block rule in two places for 8ns a heading.
 
 ### list and quote lines read through line start
 
@@ -238,15 +237,8 @@ delete it.
   a compile.
 - **Cause:** not found.
 - **Ideas:** none yet.
-
-### fed parsing with small chunks is superlinear
-
-- **Source:** older than the harness, see Findings in the [README](README.md).
-- **Measured:** `incremental-64` takes 26ms at 100KB and 27.6s at 3.8MB, where
-  `parse` takes 0.2s.
-- **Cause:** after `this.source += chunk`, `charCodeAt` flattens the rope on
-  every feed.
-- **Ideas:** none recorded.
+- **Triage, 2026-10-13:** not looked at. The plugin row above has what attrs
+  on emphasis, strong and links cost today, +16.2% over no plugin.
 
 ### escaped brace check in text
 
@@ -270,6 +262,11 @@ delete it.
   which may be what keeps it from being inlined into the walks. Or have the
   parser mark the text node an escaped brace opens, so the renderer tests a
   bit it already reads.
+- **Triage, 2026-10-13 on 9d4c1a41:** with the test taken out, `render`
+  reads +0.71% and `render-mapped` +0.68%, both passes, no row past the 4.6%
+  floor. The trace shows `escape_text_at` inlined into the walks with the
+  test in it, so the cost is the char load of each text node and not a lost
+  inline. Not changed in this pass.
 
 ### a dollar in prose
 
@@ -287,6 +284,14 @@ delete it.
     dollar in prose and has to deal with a text node that would be empty. The
     design note measured both (`design/syntax-highlighting.md`, 14.3). Not
     built.
+- **Triage, 2026-10-13 on 9d4c1a41:** without the `$` entry
+  `fixtures/textual_content:parse` reads +5.1% and the 56 parse rows +0.26%.
+  A document of prose with three dollars in two lines reads -10.9% against
+  the commit before inline math. Tried and dropped: the rule inside
+  `text_run` (a dollar is a break only before a backtick) gave that document
+  +6.5% and cost prose with no dollar -4.8% and a document of headings
+  -7.1%, and the same rule around the loop cost prose -5.9%. `text_run` has
+  to stay as small as it is, so the rule would have to go to its callers.
 
 ### the cheatsheet render row after footnotes
 
@@ -323,6 +328,23 @@ delete it.
 - **Was:** every node opened under a plugin wrapper went through the
   dispatcher. The dispatcher now keeps a floor above every link slot.
 
+### tag paragraph open elements
+
+- **Source:** #964, the scan of a paragraph that starts at a tag. Closed by
+  #1100, which decides a tag paragraph from the nodes it opens and took the
+  scan out.
+- **Was:** -1.5% to -8.1% on documents made of one tag paragraph. On
+  9d4c1a41 the two documents of the entry read +32.7% and +17.5% in `parse`
+  against the commit before #964, and +25.6% and +15.9% fed.
+
+### fed parsing with small chunks is superlinear
+
+- **Source:** older than the harness. Closed by the feed window, which is
+  trimmed as the parse moves and takes each chunk as a flat string.
+- **Was:** `incremental-64` took 26ms at 100KB and 27.6s at 3.8MB. On
+  9d4c1a41 a feed of 64 char chunks takes 1.2 to 1.5 times a whole parse at
+  1KB, 10KB, 100KB and 3.8MB, 36ms for the last.
+
 ## Notes for the performance pass
 
 These are not costs. They are things that have misled a measurement and will
@@ -353,6 +375,24 @@ again.
   479 the same way, until it moved into `stored_text`. Check the length with
   `node --print-bytecode --print-bytecode-filter=<name>` when the function
   changes, and move new work behind a call.
+- **A candidate reads slow in a parse only run.** Seven `core --modes parse`
+  runs, each phase of the restructure against the one before, multiply to
+  -5.4% where the direct comparison reads -2.6%, about 0.4% a run. Compare
+  the two ends directly and read a chain for which step moved, not for a sum.
+- **`fixtures/paragraphs` and `fixtures/soft_line_breaks` have two speeds.**
+  One build read 1,618ns as the candidate of one run and 1,516ns as the
+  baseline of the next, both passes agreeing each time. It is which callees
+  `para_text` gets inlined, do not read a cost off these two rows.
+- **A char read outside a loop costs 2 to 3ns.** A scan loop pays the string
+  shape checks once, a lone `char_code_at.call` pays them every time. The
+  list line of the restructure made about 18 such reads where the old one
+  made 14, and that was most of its 15%. Count reads before counting calls.
+- **`text_run` has to stay small.** A rule added inside it or around its loop
+  cost prose 5% and headings 7 to 10%, see a dollar in prose.
+- **A document made of one construct.** The corpus hid a search that ran to
+  the end of the document from every tag line, because a backtick is always
+  near in it. 300 lines of one shape, timed one workload a process with
+  `compare_one`, found it.
 - **Fed modes.** `quick` has none. Use `--suite core --modes incremental`.
 - **`real/bench-benchmarks-fixture-code:incremental-64` reads fast.** It read
   +5.5% and +4.8%, both passes, for two changes that do not reach fence code.
