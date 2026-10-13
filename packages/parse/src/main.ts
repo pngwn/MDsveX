@@ -488,6 +488,11 @@ function is_trim_container(kind: number): boolean {
 	);
 }
 
+/** the char code at i in a window of len chars, nan past it, an out of bounds read would keep the builtin on its slow path */
+function code_in(source: string, i: number, len: number): number {
+	return i >>> 0 < len ? char_code_at.call(source, i) : NaN;
+}
+
 function is_ascii_letter(c: number): boolean {
 	return (c | 32) >= 97 && (c | 32) <= 122;
 }
@@ -3539,6 +3544,7 @@ export class PFMParser {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
+		const window = length - base;
 		const frames = this.frames;
 		const count = frames.length;
 		// the columns of an item count from the line start or from the last quote marker
@@ -3548,10 +3554,10 @@ export class PFMParser {
 		for (; i < count; i++) {
 			const column = frames[i];
 			let q = column === 0 ? p : origin;
-			let ch = char_code_at.call(source, q - base);
+			let ch = code_in(source, q - base, window);
 			if (column === 0) {
 				while (ch === SPACE || ch === TAB) {
-					ch = char_code_at.call(source, ++q - base);
+					ch = code_in(source, ++q - base, window);
 				}
 				if (q >= length) {
 					if (!this.finished) return -1;
@@ -3561,7 +3567,7 @@ export class PFMParser {
 				// the space of the marker may still arrive
 				if (++q >= length) {
 					if (!this.finished) return -1;
-				} else if (char_code_at.call(source, q - base) === SPACE) q++;
+				} else if (code_in(source, q - base, window) === SPACE) q++;
 				origin = p = q;
 				continue;
 			}
@@ -3570,7 +3576,7 @@ export class PFMParser {
 				if (ch === SPACE) columns++;
 				else if (ch === TAB) columns += this.tab_size;
 				else break;
-				ch = char_code_at.call(source, ++q - base);
+				ch = code_in(source, ++q - base, window);
 			}
 			if (columns >= column) {
 				p = q;
@@ -3578,7 +3584,7 @@ export class PFMParser {
 			}
 			// a blank line is inside every item
 			while (ch === SPACE || ch === TAB) {
-				ch = char_code_at.call(source, ++q - base);
+				ch = code_in(source, ++q - base, window);
 			}
 			if (q >= length) {
 				if (!this.finished) return -1;
@@ -10756,6 +10762,7 @@ export class PFMParser {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
+		const window = length - base;
 		// the frames before the last are around the definition
 		const outer = this.frames.length - 1;
 		let lf = this.cursor;
@@ -10766,9 +10773,9 @@ export class PFMParser {
 			if (kept < 0) return true;
 			if (kept < outer) break;
 			let p = this.line_pos;
-			let ch = char_code_at.call(source, p - base);
+			let ch = code_in(source, p - base, window);
 			while (ch === SPACE || ch === TAB) {
-				ch = char_code_at.call(source, ++p - base);
+				ch = code_in(source, ++p - base, window);
 			}
 			if (p >= length) {
 				if (!this.finished) return true;
@@ -10871,12 +10878,13 @@ export class PFMParser {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
+		const window = length - base;
 		// the frames before the last are around this item
 		const outer = this.frames.length - 1;
 		for (;;) {
 			let lf = this.cursor;
 			let loose =
-				lf === 0 || char_code_at.call(source, lf - 1 - base) === LINEFEED;
+				lf === 0 || code_in(source, lf - 1 - base, window) === LINEFEED;
 			let kept: number;
 			for (;;) {
 				if (!this.finished && !this.can_decide_after_lf(lf)) return true;
@@ -10888,9 +10896,9 @@ export class PFMParser {
 				}
 				// blank lines are passed over, the line after them decides
 				let p = this.line_pos;
-				let ch = char_code_at.call(source, p - base);
+				let ch = code_in(source, p - base, window);
 				while (ch === SPACE || ch === TAB) {
-					ch = char_code_at.call(source, ++p - base);
+					ch = code_in(source, ++p - base, window);
 				}
 				if (p >= length) {
 					if (!this.finished) return true;
@@ -10950,7 +10958,7 @@ export class PFMParser {
 				at >= length ||
 				states[states.length - 1] !== StateKind.list_item ||
 				this.pending_count !== this.pending_para_count ||
-				char_code_at.call(source, at - base) !== LINEFEED
+				code_in(source, at - base, window) !== LINEFEED
 			)
 				return false;
 			current_node = item_id;
