@@ -11655,7 +11655,7 @@ export class PFMParser {
 
 	/**
 	 * a paragraph just opened at a plain char, take the plain run its states would in three trips
-	 * outside block quotes take the linefeed call too and carry on across soft breaks
+	 * take the linefeed call too and carry on across soft breaks, in a block quote only in a whole parse
 	 */
 	private para_text(para_id: number): void {
 		const source = this.source;
@@ -11672,8 +11672,8 @@ export class PFMParser {
 				if (!hold || this.list_depth > 0) {
 					if (hold) this.states.push(StateKind.inline);
 					this.emit_leaf(NodeKind.text, start, para_id, start, p, p);
-					// in a block quote inline would only pop on the linefeed
-					if (bq || hold) {
+					// in a block quote inline would only pop on the linefeed, which a feed leaves to the paragraph state
+					if (hold || (bq && !(FAST && this.finished))) {
 						this.cursor = p;
 						return;
 					}
@@ -11686,8 +11686,14 @@ export class PFMParser {
 					}
 					this.emit_bare_leaf(NodeKind.soft_break, p, para_id, p + 1);
 					let q = p + 1;
-					while (q < length && char_code_at.call(source, q - base) === SPACE)
-						q++;
+					if (bq) {
+						// past the markers of the line, as the jump of the paragraph state
+						q = this.skip_spaces(this.line_pos);
+						this.class_floor = -1;
+					} else {
+						while (q < length && char_code_at.call(source, q - base) === SPACE)
+							q++;
+					}
 					const c0 = q < length ? char_code_at.call(source, q - base) : 0;
 					if (!(c0 >= 128 || (c0 !== 0 && TEXT_BREAK[c0] === 0))) {
 						this.states.push(StateKind.inline);
