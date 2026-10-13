@@ -488,6 +488,11 @@ function is_trim_container(kind: number): boolean {
 	);
 }
 
+/** the char code at i in a window of len chars, nan past it, an out of bounds read would keep the builtin on its slow path */
+function code_in(source: string, i: number, len: number): number {
+	return i >>> 0 < len ? char_code_at.call(source, i) : NaN;
+}
+
 function is_ascii_letter(c: number): boolean {
 	return (c | 32) >= 97 && (c | 32) <= 122;
 }
@@ -3467,7 +3472,10 @@ export class PFMParser {
 		const base = this.source_base;
 		const length = this.source_end;
 		let spaces = 0;
-		while (pos < length && char_code_at.call(source, pos - base) === SPACE) {
+		let marker = 0;
+		while (pos < length) {
+			marker = char_code_at.call(source, pos - base);
+			if (marker !== SPACE) break;
 			spaces++;
 			pos++;
 		}
@@ -3475,13 +3483,15 @@ export class PFMParser {
 
 		if (pos >= length) return false;
 
-		const marker = char_code_at.call(source, pos - base);
 		if (marker !== ASTERISK && marker !== DASH && marker !== UNDERSCORE)
 			return false;
 
-		let count = 0;
-		while (pos < length && char_code_at.call(source, pos - base) !== LINEFEED) {
+		// the marker just read is the first of the run
+		let count = 1;
+		pos++;
+		while (pos < length) {
 			const ch = char_code_at.call(source, pos - base);
+			if (ch === LINEFEED) break;
 			if (ch === marker) {
 				count++;
 			} else if (ch !== SPACE && ch !== TAB) {
@@ -3539,6 +3549,7 @@ export class PFMParser {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
+		const window = length - base;
 		const frames = this.frames;
 		const count = frames.length;
 		// the columns of an item count from the line start or from the last quote marker
@@ -3548,10 +3559,10 @@ export class PFMParser {
 		for (; i < count; i++) {
 			const column = frames[i];
 			let q = column === 0 ? p : origin;
-			let ch = char_code_at.call(source, q - base);
+			let ch = code_in(source, q - base, window);
 			if (column === 0) {
 				while (ch === SPACE || ch === TAB) {
-					ch = char_code_at.call(source, ++q - base);
+					ch = code_in(source, ++q - base, window);
 				}
 				if (q >= length) {
 					if (!this.finished) return -1;
@@ -3561,7 +3572,7 @@ export class PFMParser {
 				// the space of the marker may still arrive
 				if (++q >= length) {
 					if (!this.finished) return -1;
-				} else if (char_code_at.call(source, q - base) === SPACE) q++;
+				} else if (code_in(source, q - base, window) === SPACE) q++;
 				origin = p = q;
 				continue;
 			}
@@ -3570,7 +3581,7 @@ export class PFMParser {
 				if (ch === SPACE) columns++;
 				else if (ch === TAB) columns += this.tab_size;
 				else break;
-				ch = char_code_at.call(source, ++q - base);
+				ch = code_in(source, ++q - base, window);
 			}
 			if (columns >= column) {
 				p = q;
@@ -3578,7 +3589,7 @@ export class PFMParser {
 			}
 			// a blank line is inside every item
 			while (ch === SPACE || ch === TAB) {
-				ch = char_code_at.call(source, ++q - base);
+				ch = code_in(source, ++q - base, window);
 			}
 			if (q >= length) {
 				if (!this.finished) return -1;
@@ -3661,17 +3672,17 @@ export class PFMParser {
 		const base = this.source_base;
 		const length = this.source_end;
 		let p = pos;
+		let ch = 0;
 		while (p < length) {
-			const ch = char_code_at.call(source, p - base);
+			ch = char_code_at.call(source, p - base);
 			if (ch !== SPACE && ch !== TAB) break;
 			p++;
 		}
 		// the end of the input is a blank line once it is all here
 		if (p >= length) return this.finished;
-		const ch = char_code_at.call(source, p - base);
 		if (ch === LINEFEED) return true;
 		if (ch >= 128 || (BLOCK_START[ch] & 2) === 0) return false;
-		return this.block_start(ch, 0, pos) === 1;
+		return this.block_start(ch, 0, pos, p) === 1;
 	}
 
 	/** a block level tag at pos or the close tag of a container ends a paragraph, an inline tag or a component does not */
@@ -6928,7 +6939,12 @@ export class PFMParser {
 
 						default: {
 							if (code < 128 && BLOCK_START[code] !== 0) {
-								const started = this.block_start(code, current_node, -1);
+								const started = this.block_start(
+									code,
+									current_node,
+									-1,
+									this.cursor
+								);
 								if (started === -1) break main_loop;
 								if (started === 1) continue;
 							}
@@ -10421,7 +10437,7 @@ export class PFMParser {
 			const ended = this.branch_token_ends();
 			if (ended !== 0) return ended === -1;
 		}
-		const started = this.block_start(code, current_node, -1);
+		const started = this.block_start(code, current_node, -1, this.cursor);
 		if (started !== 0) return started === -1;
 		if (code === COLON && this.directive_colon_counts.length !== 0) {
 			const ended = this.fence_ends_elements();
@@ -10547,7 +10563,7 @@ export class PFMParser {
 			return false;
 		}
 
-		const started = this.block_start(code, current_node, -1);
+		const started = this.block_start(code, current_node, -1, this.cursor);
 		if (started !== 0) return started === -1;
 		if (code === OPEN_ANGLE_BRACKET) {
 			const close = this.try_parse_html_close_tag(this.cursor + 1);
@@ -10629,7 +10645,7 @@ export class PFMParser {
 				return false;
 			}
 		}
-		const started = this.block_start(code, current_node, -1);
+		const started = this.block_start(code, current_node, -1, this.cursor);
 		if (started !== 0) return started === -1;
 		this.states.push(StateKind.paragraph);
 		const para_id = this.emit_open(
@@ -10756,6 +10772,7 @@ export class PFMParser {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
+		const window = length - base;
 		// the frames before the last are around the definition
 		const outer = this.frames.length - 1;
 		let lf = this.cursor;
@@ -10766,9 +10783,9 @@ export class PFMParser {
 			if (kept < 0) return true;
 			if (kept < outer) break;
 			let p = this.line_pos;
-			let ch = char_code_at.call(source, p - base);
+			let ch = code_in(source, p - base, window);
 			while (ch === SPACE || ch === TAB) {
-				ch = char_code_at.call(source, ++p - base);
+				ch = code_in(source, ++p - base, window);
 			}
 			if (p >= length) {
 				if (!this.finished) return true;
@@ -10845,7 +10862,7 @@ export class PFMParser {
 				return false;
 			}
 		}
-		const started = this.block_start(code, current_node, -1);
+		const started = this.block_start(code, current_node, -1, this.cursor);
 		if (started !== 0) return started === -1;
 		// tight or loose decides the wrapper when the list closes
 		this.states.push(StateKind.paragraph);
@@ -10871,12 +10888,13 @@ export class PFMParser {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
+		const window = length - base;
 		// the frames before the last are around this item
 		const outer = this.frames.length - 1;
 		for (;;) {
 			let lf = this.cursor;
 			let loose =
-				lf === 0 || char_code_at.call(source, lf - 1 - base) === LINEFEED;
+				lf === 0 || code_in(source, lf - 1 - base, window) === LINEFEED;
 			let kept: number;
 			for (;;) {
 				if (!this.finished && !this.can_decide_after_lf(lf)) return true;
@@ -10888,9 +10906,11 @@ export class PFMParser {
 				}
 				// blank lines are passed over, the line after them decides
 				let p = this.line_pos;
-				let ch = char_code_at.call(source, p - base);
+				// a line the paragraph check parsed a marker at is not blank
+				if (this.interrupt_marker_pos === p) break;
+				let ch = code_in(source, p - base, window);
 				while (ch === SPACE || ch === TAB) {
-					ch = char_code_at.call(source, ++p - base);
+					ch = code_in(source, ++p - base, window);
 				}
 				if (p >= length) {
 					if (!this.finished) return true;
@@ -10950,7 +10970,7 @@ export class PFMParser {
 				at >= length ||
 				states[states.length - 1] !== StateKind.list_item ||
 				this.pending_count !== this.pending_para_count ||
-				char_code_at.call(source, at - base) !== LINEFEED
+				code_in(source, at - base, window) !== LINEFEED
 			)
 				return false;
 			current_node = item_id;
@@ -10962,25 +10982,19 @@ export class PFMParser {
 	 * with line below 0 it opens the block at the cursor, code is the char there
 	 * with a line start it is a probe, code is the first char of that line past its
 	 * whitespace, nothing is emitted and it answers whether a block that may end a paragraph starts there
+	 * pos is where code is, the cursor when it opens the block
 	 * @returns 1 when a block opened, -1 while it is not all here, 0 when the line is a plain paragraph
 	 */
 	private block_start(
 		code: number,
 		current_node: number,
-		line: number
+		line: number,
+		pos: number
 	): number {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
 		const probe = line >= 0;
-		let pos = this.cursor;
-		if (probe) {
-			pos = line;
-			let ch = char_code_at.call(source, pos - base);
-			while (ch === SPACE || ch === TAB) {
-				ch = char_code_at.call(source, ++pos - base);
-			}
-		}
 		switch (code) {
 			case OCTOTHERP:
 				if (probe) return this.is_heading_start(pos) ? 1 : 0;
@@ -11321,7 +11335,7 @@ export class PFMParser {
 				break;
 			}
 		}
-		const started = this.block_start(code, current_node, -1);
+		const started = this.block_start(code, current_node, -1, this.cursor);
 		if (started !== 0) return started === -1;
 		this.states.push(StateKind.paragraph);
 		const para_id = this.emit_open(

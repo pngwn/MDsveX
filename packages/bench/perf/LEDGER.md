@@ -178,13 +178,52 @@ delete it.
   one marker parse. It now goes through `para_line`, `line_start`, the probe in
   `block_start` and `item_lf`, three more calls, none of them small enough to
   inline. The work is the same, the marker is still parsed once.
-- **Ideas:** guesses, none measured.
-  - Put `item_lf` back inside `_run_list_item`, one call less a line.
-  - Have the probe take the first character's position, it scans the leading
-    whitespace that `line_interrupts` just scanned.
-  - A sibling marker at the margin is by far the common list line. `para_line`
-    could ask the probe about the raw line before it calls `line_start`, and
-    hand `item_lf` the answer with the marker.
+- **Triage, 2026-10-13:** steps 5 to 7 against steps 1 to 4 read `parse`
+  -2.74% in both passes against a calibrated 4.6% floor. Step by step on
+  documents of 300 list lines it is all step 7: tight, loose and nested
+  lists each -15% to -17%. No one function holds it. A sibling line made
+  about 18 char reads outside a loop where the old path made 14, at 2 to 3ns
+  a read, took three more calls and one more trip through the main loop.
+- **Taken back:** one workload a process, `parse` against f20a7cae, before
+  and after the five changes below.
+
+  | document                      | before |  after |
+  | ----------------------------- | -----: | -----: |
+  | 300 tight items               | -16.3% |  +6.9% |
+  | 300 ordered items             | -13.1% | +13.6% |
+  | 300 loose items               | -15.1% |  +0.8% |
+  | nested items                  | -17.9% |  -4.7% |
+  | items over two lines          |  -5.1% | +16.2% |
+  | plain quoted paragraphs       | +17.6% | +28.0% |
+  | a list in a quote             |  +4.8% | +18.6% |
+  | `micro/list`                  | -13.4% |  -0.6% |
+  | `real/plugins-remark_plugins` |  -8.9% |  +3.5% |
+  | `fixtures/block_quotes`       |  -1.9% |  +1.5% |
+  | `fixtures/lists`              | -15.7% |  -9.8% |
+  | `fixtures/list_items`         |  -8.0% |  -6.7% |
+  | `fixtures/thematic_breaks`    |  -5.7% |  -2.8% |
+  | `fixtures/tabs`               | -11.0% | -11.4% |
+  - The item linefeed takes the next sibling in a loop where a whole parse
+    went back through the main loop: 300 tight items +8.1%.
+  - A marker in its plainest form at the margin (`- a`, `1. a`) is answered
+    in one test in front of `line_start` and the probe, behind the fast path
+    switch: tight +19.2%, ordered +22.9%, `micro/list` +9.4%, and `parse`
+    over the suite +1.01% in both passes.
+  - The paragraph of a loose item opens at its marker: loose +12.3%.
+  - `para_text` carries on across quoted lines in a whole parse: plain quoted
+    paragraphs +8.8%, a list in a quote +6.8%.
+  - Fewer reads: the probe is told where its char is, the interrupt check and
+    the thematic break test keep the char they read, the item linefeed takes
+    a parsed marker for a line that is not blank, `line_start` and `item_lf`
+    read the end of the input in bounds. Nested items +4.3%, `fixtures/lists`
+    +4.1%.
+
+- **Left:** documents of short lists of many shapes (`fixtures/lists`,
+  `fixtures/list_items`, `fixtures/tabs`), nested items and thematic breaks.
+  They take the general path, `para_line`, the probe and `line_start`, on
+  nearly every line. Tried and dropped: the same marker test after a
+  paragraph at the root and at a list start read level, and one marker
+  object a parser in place of one a line read level on its own.
 
 ### text run call
 
