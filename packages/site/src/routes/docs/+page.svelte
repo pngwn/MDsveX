@@ -24,6 +24,17 @@ const nav = [
 		],
 	],
 	[
+		"Markdown",
+		"docs#markdown",
+		[
+			["different from CommonMark", "docs#different-from-commonmark", false],
+			["added to CommonMark", "docs#added-to-commonmark", false],
+			["task lists", "docs#task-lists", false],
+			["tables", "docs#tables", false],
+			["Svelte in markdown", "docs#svelte-in-markdown", false],
+		],
+	],
+	[
 		"Options",
 		"docs#options",
 		[
@@ -35,8 +46,14 @@ const nav = [
 			["component_mode", "docs#component_mode", true],
 			["plugins", "docs#plugins", true],
 			["parse_plugins", "docs#parse_plugins", true],
+			["plugin handlers", "docs#plugin-handlers", false],
+			["plugin data", "docs#plugin-data", false],
 			["highlight", "docs#highlight", true],
 			["math", "docs#math", true],
+			["unwrap_images", "docs#unwrap_images", true],
+			["import_images", "docs#import_images", true],
+			["links", "docs#links", true],
+			["rewrite", "docs#rewrite", true],
 			["footnotes", "docs#footnotes", true],
 			["heading_ids", "docs#heading_ids", true],
 			["smart_punctuation", "docs#smart_punctuation", true],
@@ -93,6 +110,10 @@ const nav = [
 			["tabs", "docs#tabs", false],
 			["anchors", "docs#anchors", false],
 			["external links", "docs#external-links", false],
+			["table of contents", "docs#table-of-contents", false],
+			["page data", "docs#page-data", false],
+			["emoji", "docs#emoji", false],
+			["references", "docs#references", false],
 		],
 	],
 	[
@@ -145,6 +166,17 @@ const nav = [
 		],
 	],
 	[
+		"Code that runs",
+		"docs#code-that-runs",
+		[
+			["a component for pre", "docs#a-component-for-pre", false],
+			["languages that run", "docs#languages-that-run", false],
+			["on the client", "docs#running-on-the-client", false],
+			["running a file", "docs#running-a-file", false],
+			["with compile", "docs#running-with-compile", false],
+		],
+	],
+	[
 		"Migrating",
 		"docs#migrating-from-mdsvex-0x",
 		[
@@ -155,6 +187,18 @@ const nav = [
 			["smart punctuation", "docs#smart-punctuation-in-0x", false],
 		],
 	],
+	[
+		"Remark plugins",
+		"docs#coming-from-remark-and-rehype-plugins",
+		[
+			["built into the markdown", "docs#built-into-the-markdown", false],
+			["now an option", "docs#now-an-option", false],
+			["first-party plugins", "docs#first-party-plugins", false],
+			["a component or a few lines", "docs#a-component-or-a-few-lines", false],
+			["nothing yet", "docs#nothing-yet", false],
+		],
+	],
+	["Parser changes", "docs#parser-changes-on-next"],
 	["Limitations", "docs#limitations"],
 ];
 
