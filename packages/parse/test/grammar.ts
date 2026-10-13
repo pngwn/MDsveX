@@ -172,14 +172,17 @@ export class Grammar {
 			}
 			case 27:
 			case 28: {
-				const form = this.int(ctx.lines ? 4 : 3);
+				const form = this.int(ctx.lines ? 5 : 3);
 				return holder('html_inline', form, 2);
 			}
 			case 29:
 				return this.with_words(piece('html_void', this.int(3)), 1);
 			case 30:
 			case 31:
-				return this.with_words(piece('mustache', this.int(3)), 2);
+				return this.with_words(
+					piece('mustache', this.int(ctx.lines ? 4 : 3)),
+					2
+				);
 			case 32:
 			case 33:
 				return this.with_words(piece('escape', this.int(ESCAPES.length)), 1);
@@ -420,11 +423,14 @@ function inline_one(p: Piece): string {
 			if (p.form === 1) return `<span class="${a}">${inner()}</span>`;
 			if (p.form === 2) return `<Badge value={${a}}>${inner()}</Badge>`;
 			if (p.form === 3) return `<span\nclass="${a}">${inner()}</span>`;
+			if (p.form === 4) return `<span class="${a}\n${b}">${inner()}</span>`;
 			return `<b>${inner()}</b>`;
 		case 'html_void':
 			return ['<br />', `<Badge value="${a}" />`, `<img alt="${a}">`][p.form];
 		case 'mustache':
-			return [`{${a}}`, `{${a} + ${b}}`, `{@html ${a}}`][p.form];
+			return [`{${a}}`, `{${a} + ${b}}`, `{@html ${a}}`, `{${a} +\n${b}}`][
+				p.form
+			];
 		case 'escape':
 			return `${ESCAPES[p.form]}${a}`;
 		case 'intraword':
