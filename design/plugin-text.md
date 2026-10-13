@@ -10,7 +10,7 @@ Sources: the plugin audit (`plugins/PLUGIN_AUDIT.md`: emoji at rank 11, referenc
 - **One method, `run.replace(start, end, type, attrs_or_text)`.** It puts a node in place of a range of the run. With `'text'` that is "replace the text". With any other type it is "split the text into nodes". It takes the same arguments after the range as `append` does, and returns the same view.
 - **It runs in the sequential pass, when the tree is complete.** Nothing is pending there and nothing is revoked afterwards, so a text rewrite has no undo. A `text` handler on a fused plugin is a `TypeError` when the plugin is registered.
 - **The text around a replacement stays the author's.** It keeps its source range, so it is escaped, curled by smart punctuation and mapped as it was. Only the replaced range becomes a plugin node.
-- **Code, math, urls, attributes, expressions and raw text never reach a text handler,** because none of them is a text node. Four more things are held back unless the handler asks (section 3), escaped characters among them.
+- **Code, math, urls, attributes, expressions and raw text never reach a text handler,** because none of them is a text node. Four more things are held back unless the plugin asks (section 3), escaped characters among them.
 - **No parser change and no renderer change.** One addition to the wire format: a flag on `T` for text that starts at an escaped character (section 5).
 
 ```js
@@ -39,13 +39,13 @@ run.replace(start, end, 'link', { href }).append('text', '@ada');
 
 **The run is whole once nothing can change the nodes around it.** Three things change them after the text arrived:
 
-- an emphasis, a link or an inline directive that never closes is revoked, and its text moves up into the paragraph, next to the text that was already there
+- an emphasis that never closes, a link with no destination and an inline directive with no closing bracket are revoked, and the text each held moves up into the paragraph, next to the text that was already there
 - the paragraphs of a tight list are revoked when the list closes
 - an element with no close tag is revoked at the end of the document
 
-The first of these happens after the paragraph closed: the parser closes the delimiter where its block ends and revokes it once it is back at block level. So "the close of the parent" is not the point. The sequential pass is: the tree is complete, nothing is pending, and no revoke follows.
+For an emphasis this happens after the paragraph closed: the parser closes the delimiter where its block ends and revokes it once it is back at block level. So "the close of the parent" is not the point. The sequential pass is: the tree is complete, nothing is pending, and no revoke follows.
 
-**While a document streams, text shows as written.** The rewrite lands when the stream ends and the consumer runs the sequential pass, as it does for anchors, the table of contents and external links today. In a compile, which is what `mdsvex` does, there is no difference to see.
+**While a document streams, text shows as written.** The rewrite lands when the stream ends and the consumer runs the sequential pass, as it does for anchors, the table of contents and page data today. In a compile, which is what `mdsvex` does, there is no difference to see.
 
 **A fused text handler is possible and not built.** A run is final once its parent closed for good and nothing above it is pending, and text that a revoke moves into a parent that already closed would be handled at the revoke. That needs every close to go through the dispatcher while a text plugin is registered, a hook at commit and one after each repair, and a mark for each text node that was handled. Its result would have to equal the sequential pass on every document, which is the test it would need. The handler signature would not change, so it can be added later without breaking a plugin. What it buys is rewrites that land block by block in a stream.
 
