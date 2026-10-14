@@ -2352,6 +2352,43 @@
 				},
 				{
 					"name": "markup.fenced_code.block.pfm",
+					"begin": "^([ \\t]*(?:>[ \\t]*)*)(`{3,})(markdown|md)(?=[ \\t]|$)([^`]*)$",
+					"end": "^[ \\t]*(?:>[ \\t]*)*(\\2`*)[ \\t]*$",
+					"beginCaptures": {
+						"2": {
+							"name": "punctuation.definition.code.begin.pfm"
+						},
+						"3": {
+							"name": "fenced_code.block.language.pfm"
+						},
+						"4": {
+							"patterns": [
+								{
+									"include": "#fence-meta"
+								}
+							]
+						}
+					},
+					"endCaptures": {
+						"1": {
+							"name": "punctuation.definition.code.end.pfm"
+						}
+					},
+					"patterns": [
+						{
+							"begin": "(^|\\G)(\\s*)(.*)",
+							"while": "(^|\\G)(?![ \\t]*(?:>[ \\t]*)*`{3,}[ \\t]*$)",
+							"contentName": "meta.embedded.block.markdown",
+							"patterns": [
+								{
+									"include": "text.html.markdown"
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "markup.fenced_code.block.pfm",
 					"begin": "^([ \\t]*(?:>[ \\t]*)*)(`{3,})(mdx)(?=[ \\t]|$)([^`]*)$",
 					"end": "^[ \\t]*(?:>[ \\t]*)*(\\2`*)[ \\t]*$",
 					"beginCaptures": {
@@ -2389,7 +2426,7 @@
 				},
 				{
 					"name": "markup.fenced_code.block.pfm",
-					"begin": "^([ \\t]*(?:>[ \\t]*)*)(`{3,})(svx|pfm|mdsvex|md|markdown)(?=[ \\t]|$)([^`]*)$",
+					"begin": "^([ \\t]*(?:>[ \\t]*)*)(`{3,})(svx|pfm|mdsvex)(?=[ \\t]|$)([^`]*)$",
 					"end": "^[ \\t]*(?:>[ \\t]*)*(\\2`*)[ \\t]*$",
 					"beginCaptures": {
 						"2": {

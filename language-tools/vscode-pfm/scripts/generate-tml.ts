@@ -178,10 +178,15 @@ const languages: Language[] = [
 		identifiers: ['restructuredtext', 'rst'],
 		source: 'source.rst',
 	},
+	{
+		language: 'markdown',
+		identifiers: ['markdown', 'md'],
+		source: 'text.html.markdown',
+	},
 	{ language: 'mdx', identifiers: ['mdx'], source: 'source.mdx' },
 	{
 		language: 'pfm',
-		identifiers: ['svx', 'pfm', 'mdsvex', 'md', 'markdown'],
+		identifiers: ['svx', 'pfm', 'mdsvex'],
 		source: '$self',
 	},
 ];

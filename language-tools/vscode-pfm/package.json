@@ -104,6 +104,7 @@
 					"meta.embedded.block.latex": "latex",
 					"meta.embedded.block.bibtex": "bibtex",
 					"meta.embedded.block.restructuredtext": "restructuredtext",
+					"meta.embedded.block.markdown": "markdown",
 					"meta.embedded.block.mdx": "mdx",
 					"meta.embedded.block.pfm": "pfm"
 				}

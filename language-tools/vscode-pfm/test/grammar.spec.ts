@@ -334,7 +334,8 @@ describe('fence languages', () => {
 		['c++', 'cpp'],
 		['c#', 'csharp'],
 		['Dockerfile', 'dockerfile'],
-		['md', 'pfm'],
+		['md', 'markdown'],
+		['svx', 'pfm'],
 	])('a %s fence embeds %s', async (name, language) => {
 		const source = `\`\`\`${name} title="a"\nbody\n\`\`\``;
 		expect(await scopes_of(source, name)).toContain(
