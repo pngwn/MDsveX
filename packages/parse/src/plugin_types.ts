@@ -1,5 +1,8 @@
 import type { NodeView } from './node_view';
+import type { Json } from './plugin_data';
 import type { TextRun } from './text_run';
+
+export type { DataChange, Json } from './plugin_data';
 
 /** a problem a plugin reported with ctx.warn */
 export interface PluginWarning {
@@ -15,8 +18,8 @@ export interface PluginWarning {
 	end: number | undefined;
 }
 
-/** what plugins left in ctx.data, by plugin name */
-export type PluginData = Record<string, Record<string, any>>;
+/** what plugins wrote with ctx.set and ctx.add, by plugin name */
+export type PluginData = Record<string, Record<string, Json>>;
 
 /** what whoever runs a parse tells its handlers about the document */
 export interface PluginDocument {
@@ -46,12 +49,24 @@ export interface DocumentContext {
 	 */
 	warn(code: string, message: string, node?: NodeView): void;
 	/**
-	 * what the plugin hands back from the parse, one object per plugin name
-	 * for each document, a write is undone when the node whose handler made it
-	 * is revoked, shallow as attrs are, reading it throws for a plugin without
-	 * a name
+	 * what the plugin wrote with set and add as it stands, one per plugin name
+	 * for each document, read-only, reading it throws for a plugin without a name
 	 */
-	readonly data: Record<string, any>;
+	readonly data: Readonly<Record<string, Json>>;
+	/**
+	 * one value under a key, owned by the node whose handler or close callback
+	 * writes it and taken back when that node is revoked, of two owners the
+	 * later one in the document wins, the value is copied and frozen and one
+	 * json can not hold throws a PluginDataError, it is unknown here as an
+	 * interface has no index signature to match json with
+	 */
+	set(key: string, value: unknown): void;
+	/**
+	 * one entry of a list under a key, owned and taken back as a set is, the
+	 * list is in the order of its owners in the document, entries from a
+	 * sequential pass come after the rest in the order they were added
+	 */
+	add(key: string, value: unknown): void;
 }
 
 /**

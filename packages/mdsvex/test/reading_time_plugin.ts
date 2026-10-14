@@ -26,8 +26,8 @@ export function reading_time(words_per_minute = 200): Bundle {
 	const count: { parse(node: NodeView, ctx: any): void } = {
 		parse(node, ctx) {
 			const words = (ctx.data.words ?? 0) + words_in(node);
-			ctx.data.words = words;
-			ctx.data.minutes = Math.max(1, Math.ceil(words / words_per_minute));
+			ctx.set('words', words);
+			ctx.set('minutes', Math.max(1, Math.ceil(words / words_per_minute)));
 		},
 	};
 	return {

@@ -427,8 +427,8 @@ export function page_data(options: PageDataOptions = {}): Bundle {
 
 	/** the whole document in one go, a sequential pass has no hook for a document */
 	function document(from: NodeView, ctx: PluginContext): void {
-		if (ctx.read === true) return;
-		ctx.read = true;
+		if (ctx.done === true) return;
+		ctx.done = true;
 		let root = from;
 		for (let up = root.parent; up !== null; up = up.parent) root = up;
 		const state: Reading = {
@@ -447,29 +447,31 @@ export function page_data(options: PageDataOptions = {}): Bundle {
 		read(root, state);
 		flush(state);
 
-		const data = ctx.data;
 		if (typeof state.title === 'string') {
 			const written = ctx.frontmatter?.title;
 			if (written === undefined || written === null || written === '')
-				data.title = state.title;
+				ctx.set('title', state.title);
 		}
 		if (state.before !== undefined) {
 			const text = state.more ? state.before.join(' ') : state.first;
 			if (text !== undefined && text !== '') {
-				data.excerpt =
-					max_length === undefined
-						? text
-						: truncate(text, max_length, ellipsis);
+				ctx.set(
+					'excerpt',
+					max_length === undefined ? text : truncate(text, max_length, ellipsis)
+				);
 			}
 		}
 		if (state.count) {
-			data.words = state.words;
+			ctx.set('words', state.words);
 			// as reading-time shows it, two decimals of a minute and then up
-			data.minutes = Math.ceil(Number((state.words / per_minute).toFixed(2)));
+			ctx.set(
+				'minutes',
+				Math.ceil(Number((state.words / per_minute).toFixed(2)))
+			);
 		}
 		if (edit_url !== undefined) {
 			const url = edit_url(ctx.filename, ctx);
-			if (url !== undefined) data.edit_url = url;
+			if (url !== undefined) ctx.set('edit_url', url);
 		}
 	}
 	const first = { parse: document };

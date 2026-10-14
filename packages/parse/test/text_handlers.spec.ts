@@ -332,7 +332,7 @@ describe('a text handler', () => {
 					sequential: true,
 					text(run, ctx) {
 						const found = run.text.split(':tada:').length - 1;
-						ctx.data.emoji = (ctx.data.emoji ?? 0) + found;
+						ctx.set('emoji', ((ctx.data.emoji as number) ?? 0) + found);
 					},
 				},
 			]);

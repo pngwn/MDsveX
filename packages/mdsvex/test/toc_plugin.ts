@@ -20,7 +20,7 @@ function text_of(node: NodeView): string {
 }
 
 /**
- * a table of contents as data, every heading goes into ctx.data.headings and
+ * a table of contents as data, every heading is added to headings and
  * one that skips a level is reported
  *
  * the ids come from the heading_ids option, or from a plugin that sets them
@@ -38,8 +38,7 @@ export function toc(): Bundle {
 			heading: {
 				parse(node, ctx) {
 					const depth = node.depth!;
-					// nothing is revoked in a sequential pass, so the list is pushed to
-					const headings: TocHeading[] = (ctx.data.headings ??= []);
+					const headings = (ctx.data.headings ?? []) as TocHeading[];
 					const last = headings[headings.length - 1];
 					if (last !== undefined && depth > last.depth + 1) {
 						ctx.warn(
@@ -48,7 +47,11 @@ export function toc(): Bundle {
 							node
 						);
 					}
-					headings.push({ depth, text: text_of(node), id: node.attrs.id });
+					ctx.add('headings', {
+						depth,
+						text: text_of(node),
+						id: node.attrs.id,
+					});
 				},
 			},
 		},

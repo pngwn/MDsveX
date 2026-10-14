@@ -403,7 +403,7 @@ describe('ctx.warn', () => {
 			link: {
 				parse(node, ctx) {
 					ctx.warn('link', 'a link opened', node);
-					ctx.data.links = (ctx.data.links ?? 0) + 1;
+					ctx.add('links', node.type);
 				},
 			},
 		};
@@ -417,7 +417,7 @@ describe('ctx.warn', () => {
 				start: { line: 1, column: 8 },
 			},
 		]);
-		expect(result.data).toEqual({ links: { links: 1 } });
+		expect(result.data).toEqual({ links: { links: ['link'] } });
 		const none = compile('[a] and *b\n', { parse_plugins: [lint] });
 		expect(none.warnings).toBeUndefined();
 		expect(none.data).toBeUndefined();
@@ -438,7 +438,7 @@ describe('ctx.warn', () => {
 	});
 });
 
-describe('ctx.data', () => {
+describe('ctx.set and ctx.add', () => {
 	test('the parse plugin and the bound handlers of a bundle share one object', () => {
 		const bundle: Bundle = {
 			name: 'kit',
@@ -446,10 +446,10 @@ describe('ctx.data', () => {
 			// a name of its own is replaced by that of the bundle
 			parse: {
 				name: 'other',
-				heading: { parse: (_n, ctx) => void (ctx.data.headings = true) },
+				heading: { parse: (_n, ctx) => ctx.set('headings', true) },
 			},
 			directives: {
-				box: { parse: (_n, ctx) => void (ctx.data.boxes = true) },
+				box: { parse: (_n, ctx) => ctx.set('boxes', true) },
 			},
 		};
 		const result = compile('# a\n\n:::box\n:::\n', { plugins: [bundle] });
@@ -459,8 +459,8 @@ describe('ctx.data', () => {
 	test('two plugins keep apart', () => {
 		const result = compile('# a\n', {
 			parse_plugins: [
-				on_heading((_n, ctx) => void (ctx.data.value = 1), 'one'),
-				on_heading((_n, ctx) => void (ctx.data.value = 2), 'two'),
+				on_heading((_n, ctx) => ctx.set('value', 1), 'one'),
+				on_heading((_n, ctx) => ctx.set('value', 2), 'two'),
 			],
 		});
 		expect(result.data).toEqual({ one: { value: 1 }, two: { value: 2 } });
@@ -482,7 +482,7 @@ describe('ctx.data', () => {
 				on_heading(
 					(node, ctx) => () => {
 						const text = node.text_content;
-						ctx.data.title = text;
+						ctx.set('title', text);
 						ctx.warn('title', text);
 						if (text === 'outer')
 							inner.push(session.compile('# inner\n', options));

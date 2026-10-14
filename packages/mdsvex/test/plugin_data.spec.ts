@@ -7,7 +7,7 @@ import {
 	compile,
 	compile_inputs,
 } from '../src/main';
-import type { Bundle, CompileOptions } from '../src/main';
+import type { Bundle, CompileOptions, Json } from '../src/main';
 import { reading_time } from './reading_time_plugin';
 import { toc } from './toc_plugin';
 
@@ -24,7 +24,7 @@ function leaves(value: unknown, name = 'leaves'): Bundle {
 		parse: {
 			heading: {
 				parse(_node, ctx) {
-					ctx.data.value = value;
+					ctx.set('value', value as Json);
 				},
 			},
 		},
@@ -247,8 +247,9 @@ describe('plugin data that is not json', () => {
 		expect(error.name).toBe('PluginDataError');
 		expect(error.plugin).toBe('leaves');
 		expect(error.path).toBe(path);
+		expect(error.key).toBe('value');
 		expect(error.message).toContain(
-			`plugin "leaves" left ${found} at ${path} of its ctx.data`
+			`plugin "leaves" wrote ${found} at ${path} of its data (line 1, column 0)`
 		);
 	});
 
@@ -280,12 +281,10 @@ describe('plugin data that is not json', () => {
 		expect(code).toContain('{"leaves":{"value":{"b":1}}}');
 	});
 
-	test('a parse alone does not check, the export does', () => {
+	test('a parse checks, at the write', () => {
 		const session = new CompilerSession();
 		const inputs = compile_inputs();
 		inputs.plugins = [leaves(new Map())];
-		const parsed = session.parse('# One\n', inputs);
-		expect(parsed.data?.leaves).toEqual({ value: new Map() });
-		expect(() => session.render(parsed, inputs)).toThrow(PluginDataError);
+		expect(() => session.parse('# One\n', inputs)).toThrow(PluginDataError);
 	});
 });

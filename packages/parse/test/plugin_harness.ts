@@ -5,6 +5,7 @@ import { SourceTextSource, WireTextSource } from '../src/node_view';
 import { PluginDispatcher } from '../src/plugin_dispatch';
 import type { Emitter } from '../src/opcodes';
 import type {
+	DataChange,
 	DirectiveTable,
 	ParsePlugin,
 	PluginDocument,
@@ -91,6 +92,8 @@ export interface PluginSetup {
 	directive_handlers?: DirectiveTable[];
 	/** what the handlers learn about the document through their context */
 	document?: PluginDocument;
+	/** follows the changes to the data of plugins */
+	on_data?: (change: DataChange) => void;
 }
 
 /** a plain array is the global plugins alone */
@@ -114,7 +117,10 @@ function dispatcher_for(
 		wire ? new WireTextSource([]) : new SourceTextSource(source),
 		bound
 	);
-	if (!Array.isArray(setup)) dispatcher.set_document(setup.document);
+	if (!Array.isArray(setup)) {
+		dispatcher.set_document(setup.document);
+		if (setup.on_data !== undefined) dispatcher.on_data(setup.on_data);
+	}
 	return dispatcher;
 }
 
