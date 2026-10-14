@@ -2,532 +2,269 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 type Language = {
-	/** Full or shorthand name of the language. */
-	name: string;
-	/** Full name of the language. */
-	language?: string;
+	/** the vscode language id, it names the embedded scope */
+	language: string;
 	/**
-	 * List of names that can be used to trigger syntax highlighting for the language.
+	 * the names a fence can use for the language
 	 * @example ['js', 'javascript']
 	 */
 	identifiers: string[];
-	/** Source that is used inside code block, can be multiple. */
+	/** the grammars included in the fence, in order */
 	source: string | string[];
 };
 
-//
 const languages: Language[] = [
 	{
-		name: 'css',
-		language: 'css',
-		identifiers: ['css', 'css.erb'],
-		source: 'source.css',
+		language: 'javascript',
+		identifiers: ['js', 'javascript', 'mjs', 'cjs', 'es6'],
+		source: 'source.js',
 	},
 	{
-		name: 'basic',
+		language: 'javascriptreact',
+		identifiers: ['jsx'],
+		source: 'source.js.jsx',
+	},
+	{
+		language: 'typescript',
+		identifiers: ['ts', 'typescript', 'mts', 'cts'],
+		source: 'source.ts',
+	},
+	{ language: 'typescriptreact', identifiers: ['tsx'], source: 'source.tsx' },
+	{ language: 'css', identifiers: ['css'], source: 'source.css' },
+	{ language: 'scss', identifiers: ['scss'], source: 'source.css.scss' },
+	{ language: 'less', identifiers: ['less'], source: 'source.css.less' },
+	{
 		language: 'html',
-		identifiers: ['html', 'htm', 'shtml', 'xhtml', 'inc', 'tmpl', 'tpl'],
+		identifiers: ['html', 'htm', 'xhtml'],
 		source: 'text.html.basic',
 	},
+	{ language: 'json', identifiers: ['json', 'json5'], source: 'source.json' },
+	{ language: 'jsonc', identifiers: ['jsonc'], source: 'source.json.comments' },
 	{
-		name: 'ini',
-		language: 'ini',
-		identifiers: ['ini', 'conf'],
-		source: 'source.ini',
+		language: 'jsonl',
+		identifiers: ['jsonl', 'jsonlines'],
+		source: 'source.json.lines',
+	},
+	{ language: 'svelte', identifiers: ['svelte'], source: 'source.svelte' },
+	{ language: 'vue', identifiers: ['vue'], source: 'text.html.vue' },
+	{
+		language: 'handlebars',
+		identifiers: ['handlebars', 'hbs'],
+		source: 'text.html.handlebars',
+	},
+	{ language: 'jade', identifiers: ['pug', 'jade'], source: 'text.pug' },
+	{ language: 'twig', identifiers: ['twig'], source: 'source.twig' },
+	{
+		language: 'python',
+		identifiers: ['python', 'py', 'py3'],
+		source: 'source.python',
+	},
+	{ language: 'rust', identifiers: ['rust', 'rs'], source: 'source.rust' },
+	{ language: 'go', identifiers: ['go', 'golang'], source: 'source.go' },
+	{
+		language: 'shellscript',
+		identifiers: ['bash', 'sh', 'shell', 'zsh'],
+		source: 'source.shell',
 	},
 	{
-		name: 'java',
-		language: 'java',
-		identifiers: ['java', 'bsh'],
-		source: 'source.java',
-	},
-	{ name: 'lua', language: 'lua', identifiers: ['lua'], source: 'source.lua' },
-	{
-		name: 'makefile',
-		language: 'makefile',
-		identifiers: ['Makefile', 'makefile', 'GNUmakefile', 'OCamlMakefile'],
-		source: 'source.makefile',
+		language: 'powershell',
+		identifiers: ['powershell', 'ps1', 'pwsh'],
+		source: 'source.powershell',
 	},
 	{
-		name: 'perl',
-		language: 'perl',
-		identifiers: ['perl', 'pl', 'pm', 'pod', 't', 'PL', 'psgi', 'vcl'],
-		source: 'source.perl',
-	},
-	{
-		name: 'r',
-		language: 'r',
-		identifiers: ['R', 'r', 's', 'S', 'Rprofile', '\\{\\.r.+?\\}'],
-		source: 'source.r',
-	},
-	{
-		name: 'ruby',
-		language: 'ruby',
-		identifiers: [
-			'ruby',
-			'rb',
-			'rbx',
-			'rjs',
-			'Rakefile',
-			'rake',
-			'cgi',
-			'fcgi',
-			'gemspec',
-			'irbrc',
-			'Capfile',
-			'ru',
-			'prawn',
-			'Cheffile',
-			'Gemfile',
-			'Guardfile',
-			'Hobofile',
-			'Vagrantfile',
-			'Appraisals',
-			'Rantfile',
-			'Berksfile',
-			'Berksfile.lock',
-			'Thorfile',
-			'Puppetfile',
-		],
-		source: 'source.ruby',
-	},
-	// Left to its own devices, the PHP grammar will match HTML as a combination of operators
-	// and constants. Therefore, HTML must take precedence over PHP in order to get proper
-	// syntax highlighting.
-	{
-		name: 'php',
-		language: 'php',
-		identifiers: ['php', 'php3', 'php4', 'php5', 'phpt', 'phtml', 'aw', 'ctp'],
-		source: ['text.html.basic', 'source.php'],
-	},
-	{
-		name: 'sql',
-		language: 'sql',
-		identifiers: ['sql', 'ddl', 'dml'],
-		source: 'source.sql',
-	},
-	{
-		name: 'vs_net',
-		language: 'vs_net',
-		identifiers: ['vb'],
-		source: 'source.asp.vb.net',
-	},
-	{
-		name: 'xml',
-		language: 'xml',
-		identifiers: [
-			'xml',
-			'xsd',
-			'tld',
-			'jsp',
-			'pt',
-			'cpt',
-			'dtml',
-			'rss',
-			'opml',
-		],
-		source: 'text.xml',
-	},
-	{
-		name: 'xsl',
-		language: 'xsl',
-		identifiers: ['xsl', 'xslt'],
-		source: 'text.xml.xsl',
-	},
-	{
-		name: 'yaml',
-		language: 'yaml',
-		identifiers: ['yaml', 'yml'],
-		source: 'source.yaml',
-	},
-	{
-		name: 'dosbatch',
-		language: 'dosbatch',
+		language: 'bat',
 		identifiers: ['bat', 'batch'],
 		source: 'source.batchfile',
 	},
+	{ language: 'yaml', identifiers: ['yaml', 'yml'], source: 'source.yaml' },
+	{ language: 'ini', identifiers: ['ini', 'conf'], source: 'source.ini' },
+	{ language: 'xml', identifiers: ['xml', 'xsd', 'rss'], source: 'text.xml' },
+	{ language: 'xsl', identifiers: ['xsl', 'xslt'], source: 'text.xml.xsl' },
+	{ language: 'sql', identifiers: ['sql'], source: 'source.sql' },
 	{
-		name: 'clojure',
-		language: 'clojure',
-		identifiers: ['clj', 'cljs', 'clojure'],
-		source: 'source.clojure',
-	},
-	{
-		name: 'coffee',
-		language: 'coffee',
-		identifiers: ['coffee', 'Cakefile', 'coffee.erb'],
-		source: 'source.coffee',
-	},
-	{ name: 'c', language: 'c', identifiers: ['c', 'h'], source: 'source.c' },
-	{
-		name: 'cpp',
-		language: 'cpp',
-		identifiers: ['cpp', 'c\\+\\+', 'cxx'],
-		source: 'source.cpp',
-	},
-	{
-		name: 'diff',
-		language: 'diff',
-		identifiers: ['patch', 'diff', 'rej'],
-		source: 'source.diff',
-	},
-	{
-		name: 'dockerfile',
 		language: 'dockerfile',
 		identifiers: ['dockerfile', 'Dockerfile'],
 		source: 'source.dockerfile',
 	},
 	{
-		name: 'git_commit',
-		identifiers: ['COMMIT_EDITMSG', 'MERGE_MSG'],
-		source: 'text.git-commit',
+		language: 'makefile',
+		identifiers: ['makefile', 'Makefile', 'make'],
+		source: 'source.makefile',
 	},
 	{
-		name: 'git_rebase',
-		identifiers: ['git-rebase-todo'],
-		source: 'text.git-rebase',
+		language: 'ignore',
+		identifiers: ['gitignore', 'ignore'],
+		source: 'source.ignore',
+	},
+	{ language: 'diff', identifiers: ['diff', 'patch'], source: 'source.diff' },
+	{ language: 'log', identifiers: ['log'], source: 'text.log' },
+	{ language: 'c', identifiers: ['c', 'h'], source: 'source.c' },
+	{
+		language: 'cpp',
+		identifiers: ['cpp', 'c++', 'cxx', 'hpp'],
+		source: 'source.cpp',
 	},
 	{
-		name: 'go',
-		language: 'go',
-		identifiers: ['go', 'golang'],
-		source: 'source.go',
+		language: 'csharp',
+		identifiers: ['csharp', 'cs', 'c#'],
+		source: 'source.cs',
 	},
 	{
-		name: 'groovy',
+		language: 'fsharp',
+		identifiers: ['fsharp', 'fs', 'f#'],
+		source: 'source.fsharp',
+	},
+	{ language: 'java', identifiers: ['java'], source: 'source.java' },
+	{ language: 'scala', identifiers: ['scala', 'sbt'], source: 'source.scala' },
+	{
 		language: 'groovy',
 		identifiers: ['groovy', 'gvy'],
 		source: 'source.groovy',
 	},
 	{
-		name: 'pug',
-		language: 'pug',
-		identifiers: ['jade', 'pug'],
-		source: 'text.pug',
+		language: 'clojure',
+		identifiers: ['clojure', 'clj', 'cljs'],
+		source: 'source.clojure',
 	},
-
+	{ language: 'swift', identifiers: ['swift'], source: 'source.swift' },
 	{
-		name: 'ignore',
-		language: 'ignore',
-		identifiers: ['gitignore', 'ignore'],
-		source: 'source.ignore',
-	},
-	{
-		name: 'js',
-		language: 'javascript',
-		identifiers: [
-			'js',
-			'javascript',
-			'es6',
-			'mjs',
-			'cjs',
-			'dataviewjs',
-			'\\{\\.js.+?\\}',
-		],
-		source: 'source.js',
-	},
-	{
-		name: 'jsx',
-		language: 'javascriptreact',
-		identifiers: ['jsx'],
-		source: 'source.js.jsx',
-	},
-	{ name: 'js_regexp', identifiers: ['regexp'], source: 'source.js.regexp' },
-	{
-		name: 'json',
-		language: 'json',
-		identifiers: [
-			'json',
-			'json5',
-			'sublime-settings',
-			'sublime-menu',
-			'sublime-keymap',
-			'sublime-mousemap',
-			'sublime-theme',
-			'sublime-build',
-			'sublime-project',
-			'sublime-completions',
-		],
-		source: 'source.json',
-	},
-	{
-		name: 'jsonc',
-		language: 'jsonc',
-		identifiers: ['jsonc'],
-		source: 'source.json.comments',
-	},
-	{
-		name: 'jsonl',
-		language: 'jsonl',
-		identifiers: ['jsonl', 'jsonlines'],
-		source: 'source.json.lines',
-	},
-	{
-		name: 'less',
-		language: 'less',
-		identifiers: ['less'],
-		source: 'source.css.less',
-	},
-	{
-		name: 'objc',
-		language: 'objc',
-		identifiers: ['objectivec', 'objective-c', 'mm', 'objc', 'obj-c', 'm', 'h'],
+		language: 'objective-c',
+		identifiers: ['objective-c', 'objectivec', 'objc', 'obj-c'],
 		source: 'source.objc',
 	},
+	{ language: 'dart', identifiers: ['dart'], source: 'source.dart' },
+	{ language: 'vb', identifiers: ['vb'], source: 'source.asp.vb.net' },
 	{
-		name: 'swift',
-		language: 'swift',
-		identifiers: ['swift'],
-		source: 'source.swift',
+		language: 'coffeescript',
+		identifiers: ['coffeescript', 'coffee'],
+		source: 'source.coffee',
+	},
+	{ language: 'ruby', identifiers: ['ruby', 'rb'], source: 'source.ruby' },
+	{
+		language: 'php',
+		identifiers: ['php'],
+		// html first, the php grammar reads bare html as operators and constants
+		source: ['text.html.basic', 'source.php'],
 	},
 	{
-		name: 'scss',
-		language: 'scss',
-		identifiers: ['scss'],
-		source: 'source.css.scss',
+		language: 'perl',
+		identifiers: ['perl', 'pl', 'pm'],
+		source: 'source.perl',
 	},
-
+	{ language: 'raku', identifiers: ['raku', 'perl6'], source: 'source.perl.6' },
+	{ language: 'lua', identifiers: ['lua'], source: 'source.lua' },
+	{ language: 'r', identifiers: ['r', 'R'], source: 'source.r' },
+	{ language: 'julia', identifiers: ['julia'], source: 'source.julia' },
 	{
-		name: 'perl6',
-		language: 'perl6',
-		identifiers: ['perl6', 'p6', 'pl6', 'pm6', 'nqp'],
-		source: 'source.perl.6',
-	},
-	{
-		name: 'powershell',
-		language: 'powershell',
-		identifiers: ['powershell', 'ps1', 'psm1', 'psd1', 'pwsh'],
-		source: 'source.powershell',
-	},
-	{
-		name: 'python',
-		language: 'python',
-		identifiers: [
-			'python',
-			'py',
-			'py3',
-			'rpy',
-			'pyw',
-			'cpy',
-			'SConstruct',
-			'Sconstruct',
-			'sconstruct',
-			'SConscript',
-			'gyp',
-			'gypi',
-			'\\{\\.python.+?\\}',
-		],
-		source: 'source.python',
-	},
-	{
-		name: 'julia',
-		language: 'julia',
-		identifiers: ['julia', '\\{\\.julia.+?\\}'],
-		source: 'source.julia',
-	},
-	{
-		name: 'regexp_python',
-		identifiers: ['re'],
-		source: 'source.regexp.python',
-	},
-	{
-		name: 'rust',
-		language: 'rust',
-		identifiers: ['rust', 'rs', '\\{\\.rust.+?\\}'],
-		source: 'source.rust',
-	},
-	{
-		name: 'scala',
-		language: 'scala',
-		identifiers: ['scala', 'sbt'],
-		source: 'source.scala',
-	},
-	{
-		name: 'shell',
-		language: 'shellscript',
-		identifiers: [
-			'shell',
-			'sh',
-			'bash',
-			'zsh',
-			'bashrc',
-			'bash_profile',
-			'bash_login',
-			'profile',
-			'bash_logout',
-			'.textmate_init',
-			'\\{\\.bash.+?\\}',
-		],
-		source: 'source.shell',
-	},
-	{
-		name: 'ts',
-		language: 'typescript',
-		identifiers: ['typescript', 'ts'],
-		source: 'source.ts',
-	},
-	{
-		name: 'tsx',
-		language: 'typescriptreact',
-		identifiers: ['tsx'],
-		source: 'source.tsx',
-	},
-	{
-		name: 'csharp',
-		language: 'csharp',
-		identifiers: ['cs', 'csharp', 'c#'],
-		source: 'source.cs',
-	},
-	{
-		name: 'fsharp',
-		language: 'fsharp',
-		identifiers: ['fs', 'fsharp', 'f#'],
-		source: 'source.fsharp',
-	},
-	{
-		name: 'dart',
-		language: 'dart',
-		identifiers: ['dart'],
-		source: 'source.dart',
-	},
-	{
-		name: 'handlebars',
-		language: 'handlebars',
-		identifiers: ['handlebars', 'hbs'],
-		source: 'text.html.handlebars',
-	},
-	{
-		name: 'markdown',
-		language: 'markdown',
-		identifiers: ['markdown', 'md'],
-		source: 'text.html.markdown',
-	},
-	{ name: 'mdx', language: 'mdx', identifiers: ['mdx'], source: 'source.mdx' },
-	{
-		name: 'pfm',
-		language: 'pfm',
-		identifiers: ['pfm', 'svx', 'mdsvex'],
-		source: '$self',
-	},
-	{
-		name: 'vue',
-		language: 'vue',
-		identifiers: ['vue'],
-		source: 'text.html.vue',
-	},
-	{
-		name: 'svelte',
-		language: 'svelte',
-		identifiers: ['svelte'],
-		source: 'source.svelte',
-	},
-	{ name: 'log', language: 'log', identifiers: ['log'], source: 'text.log' },
-	{
-		name: 'erlang',
 		language: 'erlang',
-		identifiers: ['erlang'],
+		identifiers: ['erlang', 'erl'],
 		source: 'source.erlang',
 	},
 	{
-		name: 'elixir',
 		language: 'elixir',
-		identifiers: ['elixir'],
+		identifiers: ['elixir', 'ex', 'exs'],
 		source: 'source.elixir',
 	},
+	{ language: 'abap', identifiers: ['abap'], source: 'source.abap' },
+	{ language: 'yang', identifiers: ['yang'], source: 'source.yang' },
 	{
-		name: 'latex',
 		language: 'latex',
-		identifiers: ['latex', 'tex', 'math'],
+		identifiers: ['math', 'latex', 'tex'],
 		source: 'text.tex.latex',
 	},
+	{ language: 'bibtex', identifiers: ['bibtex'], source: 'text.bibtex' },
 	{
-		name: 'bibtex',
-		language: 'bibtex',
-		identifiers: ['bibtex'],
-		source: 'text.bibtex',
-	},
-	{
-		name: 'twig',
-		language: 'twig',
-		identifiers: ['twig'],
-		source: 'source.twig',
-	},
-	{
-		name: 'yang',
-		language: 'yang',
-		identifiers: ['yang'],
-		source: 'source.yang',
-	},
-	{
-		name: 'abap',
-		language: 'abap',
-		identifiers: ['abap'],
-		source: 'source.abap',
-	},
-	{
-		name: 'restructuredtext',
 		language: 'restructuredtext',
 		identifiers: ['restructuredtext', 'rst'],
 		source: 'source.rst',
 	},
+	{ language: 'mdx', identifiers: ['mdx'], source: 'source.mdx' },
+	{
+		language: 'pfm',
+		identifiers: ['svx', 'pfm', 'mdsvex', 'md', 'markdown'],
+		source: '$self',
+	},
 ];
 
-function fenced_code_block_definition(language: Language) {
-	const is_multiple_sources = Array.isArray(language.source);
-	const sources = (
-		!is_multiple_sources
-			? [language.source as string]
-			: (language.source as string[])
-	).map((source) => `{ "include": "${source}" }`);
+const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-	return `{
-					"begin": "^([ \\t]*(?:>[ \\t]*)*)(\`{3,})(?i:(${language.identifiers.join('|')})(?=[ \\t]|$)([^\`]*)$)",
-					"beginCaptures": {
-						"2": { "name": "punctuation.definition.code.begin.pfm" },
-						"3": { "name": "entity.name.function.${language.language ?? language.name}" },
-						"4": { "patterns": [{ "include": "#fence-meta" }] }
-					},
-					"end": "(^|\\1)(\\2\`*)[ \\t]*$",
-					"endCaptures": {
-						"2": { "name": "punctuation.definition.code.end.pfm" }
-					},
-					"name": "markup.fenced_code.block.pfm",
-					"patterns": [
-						{
-							"begin": "(^|\\G)(\\s*)(.*)",
-							"while": "(^|\\G)(?!\\s*(\`{3,})\\s*$)",
-							"contentName": "meta.embedded.block.${language.language}",
-							"patterns": [${!is_multiple_sources ? sources[0] : `\n${indent(8, sources.join(',\n'))}\n`}${indent(!is_multiple_sources ? 0 : 7, ']')}
-						}
-					]
-				}`;
+function fence(language: Language) {
+	const sources = Array.isArray(language.source)
+		? language.source
+		: [language.source];
+	return {
+		name: 'markup.fenced_code.block.pfm',
+		begin: `^([ \\t]*(?:>[ \\t]*)*)(\`{3,})(${language.identifiers.map(escape).join('|')})(?=[ \\t]|$)([^\`]*)$`,
+		end: '^[ \\t]*(?:>[ \\t]*)*(\\2`*)[ \\t]*$',
+		beginCaptures: {
+			2: { name: 'punctuation.definition.code.begin.pfm' },
+			3: { name: 'fenced_code.block.language.pfm' },
+			4: { patterns: [{ include: '#fence-meta' }] },
+		},
+		endCaptures: {
+			1: { name: 'punctuation.definition.code.end.pfm' },
+		},
+		patterns: [
+			{
+				begin: '(^|\\G)(\\s*)(.*)',
+				while: '(^|\\G)(?![ \\t]*(?:>[ \\t]*)*`{3,}[ \\t]*$)',
+				contentName: `meta.embedded.block.${language.language}`,
+				patterns: sources.map((source) => ({ include: source })),
+			},
+		],
+	};
 }
 
-const indent = (count: number, text: string) =>
-	text.replace(/^/gm, `\t`.repeat(count));
-
-function fenced_code_block_definitions() {
-	return languages
-		.map(fenced_code_block_definition)
-		.join(',\n\t\t\t\t')
-		.replace(/\\/gm, '\\\\');
+function check_identifiers() {
+	const seen = new Map<string, string>();
+	for (const { language, identifiers } of languages) {
+		for (const identifier of identifiers) {
+			const other = seen.get(identifier);
+			if (other !== undefined)
+				throw new Error(`${identifier} names both ${other} and ${language}`);
+			seen.set(identifier, language);
+		}
+	}
 }
 
-const includes = [fenced_code_block_definitions];
+const root = path.join(import.meta.dirname, '..');
+const insert = '{ "#insert": "fenced_code_block_definitions" }';
 
 function build_grammar() {
-	let text = fs.readFileSync(
+	const base = fs.readFileSync(
 		path.join(import.meta.dirname, 'pfm.tmLanguage.base.json'),
 		'utf-8'
 	);
-	// Replace inserts with matching functions' outputs
-	includes.map((include_fn) => {
-		text = text.replace(`{ "#insert": "${include_fn.name}" }`, include_fn());
-	});
-	fs.writeFileSync(
-		path.join(import.meta.dirname, '..', 'syntaxes', 'pfm.tmLanguage.json'),
-		text
-	);
+	if (!base.includes(insert)) throw new Error(`the base has no ${insert}`);
+	const fences = languages
+		.map((language) =>
+			JSON.stringify(fence(language), null, '\t').replace(/\n/g, '\n\t\t\t\t')
+		)
+		.join(',\n\t\t\t\t');
+	const grammar = base.replace(insert, () => fences);
+	JSON.parse(grammar);
+	fs.writeFileSync(path.join(root, 'syntaxes', 'pfm.tmLanguage.json'), grammar);
 }
 
+function build_embedded_languages() {
+	const file = path.join(root, 'package.json');
+	const pkg = JSON.parse(fs.readFileSync(file, 'utf-8'));
+	const grammar = pkg.contributes.grammars.find(
+		(grammar: { language: string }) => grammar.language === 'pfm'
+	);
+	const embedded: Record<string, string> = {};
+	for (const [scope, language] of Object.entries<string>(
+		grammar.embeddedLanguages
+	)) {
+		if (!scope.startsWith('meta.embedded.block.')) embedded[scope] = language;
+	}
+	for (const { language } of languages) {
+		embedded[`meta.embedded.block.${language}`] = language;
+	}
+	grammar.embeddedLanguages = embedded;
+	fs.writeFileSync(file, JSON.stringify(pkg, null, '\t') + '\n');
+}
+
+check_identifiers();
 build_grammar();
+build_embedded_languages();
