@@ -418,6 +418,9 @@ importers:
       svelte:
         specifier: ^5.55.0
         version: 5.57.1(@typescript-eslint/types@8.57.2)
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
       vite:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0)
