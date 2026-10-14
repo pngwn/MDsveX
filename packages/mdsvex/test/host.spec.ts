@@ -1,3 +1,6 @@
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
 import {
 	MANIFEST_VERSION,
@@ -132,7 +135,10 @@ describe('queue_manifest', () => {
 	test('the plugin warns with the file it could not write', async () => {
 		const warnings: string[] = [];
 		const writer = manifest_writer(manifest, (m) => warnings.push(m));
-		writer.set_root('/dev/null/not-a-dir');
+		// a root inside a file, no directory can be made under it
+		const file = join(mkdtempSync(join(tmpdir(), 'mdsvex-manifest-')), 'file');
+		writeFileSync(file, '');
+		writer.set_root(join(file, 'not-a-dir'));
 		await writer.flush();
 		expect(warnings).toHaveLength(1);
 		expect(warnings[0]).toMatch(
