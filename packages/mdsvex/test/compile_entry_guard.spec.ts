@@ -40,6 +40,8 @@ const META_GLOBALS = new Set(['env', 'hot']);
 
 type Finding = { file: string; line: number; what: string };
 
+const posix = (path: string) => path.replace(/\\/g, '/');
+
 function resolve_workspace(spec: string): string | undefined {
 	for (const [name, dir] of Object.entries(WORKSPACE)) {
 		if (spec !== name && !spec.startsWith(name + '/')) continue;
@@ -208,7 +210,7 @@ function walk() {
 		);
 		files.set(file, source);
 		const where = (node: ts.Node) => ({
-			file: relative(packages, file),
+			file: posix(relative(packages, file)),
 			line: source.getLineAndCharacterOfPosition(node.getStart()).line + 1,
 		});
 
@@ -286,7 +288,7 @@ describe('the compile entry', () => {
 	const { files, externals, findings } = walk();
 
 	test('reaches the parser and the renderer', () => {
-		const reached = [...files.keys()].map((f) => relative(packages, f));
+		const reached = [...files.keys()].map((f) => posix(relative(packages, f)));
 		expect(reached).toContain('mdsvex/src/compile.ts');
 		expect(reached).toContain('parse/src/main.ts');
 		expect(reached).toContain('render/src/sourcemap.ts');

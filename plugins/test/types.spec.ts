@@ -10,7 +10,7 @@ const names = readdirSync(plugins).filter((name) =>
 );
 
 // sits in a plugin directory so `mdsvex/compile` resolves as a consumer would
-const fixture = join(plugins, names[0], 'types_fixture.ts');
+const fixture = join(plugins, names[0], 'types_fixture.ts').replace(/\\/g, '/');
 const source = [
 	...names.map(
 		(name, i) => `import * as p${i} from '../${name}/dist/index.js';`
