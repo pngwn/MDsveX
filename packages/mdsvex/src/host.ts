@@ -4,3 +4,30 @@
  */
 export { module_script, read_exports } from './read_exports';
 export type { ScanKind, ScannedExports, StripTypes } from './read_exports';
+export {
+	COMPONENTS_ID,
+	DATA_ID,
+	DIRECTIVES_EXPORT,
+	DIRECTIVES_ID,
+	METADATA_ID,
+	PLUGIN_COMPONENTS_ID,
+	PLUGIN_ID,
+	TEMPLATE_DIRECTIVES_ID,
+	TEMPLATE_ID,
+} from './virtual_ids';
+export { data_module, metadata_module, read_metadata } from './query_modules';
+export {
+	MANIFEST_PATH,
+	MANIFEST_VERSION,
+	manifest_json,
+	manifest_resolver,
+	queue_manifest,
+} from './manifest_core';
+export type {
+	ManifestMath,
+	ManifestModule,
+	ManifestOutput,
+	ManifestPlugin,
+	ManifestTemplate,
+	MdsvexManifest,
+} from './manifest_core';
