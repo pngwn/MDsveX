@@ -94,6 +94,8 @@ export interface PluginSetup {
 	document?: PluginDocument;
 	/** follows the changes to the data of plugins */
 	on_data?: (change: DataChange) => void;
+	/** called with the dispatcher before the parse */
+	setup?: (dispatcher: PluginDispatcher) => void;
 }
 
 /** a plain array is the global plugins alone */
@@ -120,6 +122,7 @@ function dispatcher_for(
 	if (!Array.isArray(setup)) {
 		dispatcher.set_document(setup.document);
 		if (setup.on_data !== undefined) dispatcher.on_data(setup.on_data);
+		if (setup.setup !== undefined) setup.setup(dispatcher);
 	}
 	return dispatcher;
 }

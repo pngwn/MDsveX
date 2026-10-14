@@ -43,8 +43,20 @@ import type {
 	DirectiveTable,
 	NamedDirectiveHandlers,
 	TextHandler,
+	TaskContext as PublicTaskContext,
 } from './plugin_types';
 import { RunPieces, TextRun } from './text_run';
+import {
+	DraftView,
+	OpKind,
+	PluginAsyncError,
+	PluginTaskError,
+	Task,
+	TaskState,
+	TaskView,
+	within,
+	type TaskHost,
+} from './plugin_tasks';
 
 const NONE = 0xffffffff;
 
@@ -538,6 +550,7 @@ class Scope {
  */
 const HOST: unique symbol = Symbol('host');
 const PLUGIN: unique symbol = Symbol('plugin');
+const TASK: unique symbol = Symbol('task');
 
 /** the context of one plugin for one document, the document half is read from the dispatcher */
 class Context implements PluginContext {
@@ -577,8 +590,66 @@ class Context implements PluginContext {
 		this[HOST]._write(this[PLUGIN], key, value, true);
 	}
 
+	defer(
+		node: NodeView,
+		task: (node: NodeView, ctx: PublicTaskContext) => Promise<void> | void
+	): void {
+		this[HOST]._defer(this[PLUGIN], node, task);
+	}
+
 	warn(code: string, message: string, node?: NodeView): void {
 		this[HOST]._warn(this[PLUGIN], code, message, node);
+	}
+}
+
+/**
+ * what a deferred task gets beside its node, writes are kept with the task
+ * and applied once it settled and its node is committed
+ */
+class TaskContext {
+	[HOST]: PluginDispatcher;
+	[TASK]: Task;
+
+	constructor(host: PluginDispatcher, task: Task) {
+		this[HOST] = host;
+		this[TASK] = task;
+	}
+
+	get filename(): string | undefined {
+		return this[HOST]._filename();
+	}
+
+	get frontmatter(): Record<string, unknown> | undefined {
+		return this[HOST]._frontmatter();
+	}
+
+	/** the data as it stands, what this task wrote is there once it applies */
+	get data(): Readonly<Record<string, Json>> {
+		return this[HOST]._data(this[TASK].plugin);
+	}
+
+	set data(_value: unknown) {
+		throw new TypeError(
+			'ctx.data is read-only, write with ctx.set(key, value) or add to a list with ctx.add(key, value)'
+		);
+	}
+
+	set(key: string, value: unknown): void {
+		this[HOST]._task_write(this[TASK], key, value, false);
+	}
+
+	add(key: string, value: unknown): void {
+		this[HOST]._task_write(this[TASK], key, value, true);
+	}
+
+	warn(code: string, message: string, node?: unknown): void {
+		this[HOST]._task_warn(this[TASK], code, message, node);
+	}
+
+	defer(): never {
+		throw new TypeError(
+			'ctx.defer: a deferred task defers nothing more, do the work in the task'
+		);
 	}
 }
 
@@ -756,6 +827,13 @@ function dispatch_open(
 	}
 }
 
+/** a write from no handler, such as one a task makes through the views of the handler that deferred it */
+const NO_HANDLER = (what: string): string =>
+	`${what} was called while no handler runs, a deferred task changes its node through the node and the ctx it is given, ctx.defer(node, async (node, ctx) => ...)`;
+
+const STALE_TASK =
+	'a deferred task was used after its document, the parse that made it has moved on';
+
 /** shared undo log until a view or a kind rewrite needs one, never written */
 const NO_UNDO = new UndoLog();
 
@@ -790,7 +868,9 @@ const NO_WRAPPERS: Set<number> = new Set();
  * holds the handler tables, undo log, close callbacks, redirect links,
  * directive scopes and synthetic id counter. both builders compose this in.
  */
-export class PluginDispatcher implements StructureHost, RedirectHost, DataHost {
+export class PluginDispatcher
+	implements StructureHost, RedirectHost, DataHost, TaskHost
+{
 	private fused: HandlersTable;
 	private has_handler: Uint32Array;
 	private sequential: SequentialPass[];
@@ -831,6 +911,24 @@ export class PluginDispatcher implements StructureHost, RedirectHost, DataHost {
 	private bags: Map<string, Bag> | null = null;
 	/** what follows changes to the data, kept from one document to the next */
 	private data_listeners: ((change: DataChange) => void)[] | null = null;
+	/** the deferred tasks of the document that have not applied, in the order they started */
+	private tasks: Task[] | null = null;
+	/** tasks whose node may still be revoked, a close or a commit of such a node goes through dispatch */
+	private uncommitted = 0;
+	/** tasks made for this dispatcher, ties of one node apply in this order */
+	private task_seq = 0;
+	/** the buffer the tasks of the document read */
+	private task_buf: NodeBuffer | null = null;
+	/** what is called when a task settles, kept from one document to the next */
+	private task_listeners: (() => void)[] | null = null;
+
+	/**
+	 * false when nothing can wait for async work, ctx.defer then throws a
+	 * PluginAsyncError that ends with async_hint
+	 */
+	allow_async = true;
+	/** how to run a parse that waits, for the PluginAsyncError of a host that does not */
+	async_hint = '';
 	private text_source: TextSource;
 
 	/**
@@ -987,6 +1085,333 @@ export class PluginDispatcher implements StructureHost, RedirectHost, DataHost {
 		return read === undefined ? undefined : read();
 	}
 
+	/** true while the document has deferred tasks that have not applied */
+	get deferred(): boolean {
+		return this.tasks !== null;
+	}
+
+	/**
+	 * calls the listener each time a deferred task settles, so a host that
+	 * streams knows to call apply_ready, returns a function that stops it, a
+	 * listener stays from one document to the next
+	 */
+	on_settled(listener: () => void): () => void {
+		let listeners = this.task_listeners;
+		if (listeners === null) listeners = this.task_listeners = [];
+		listeners.push(listener);
+		return () => {
+			const all = this.task_listeners;
+			if (all === null) return;
+			const at = all.indexOf(listener);
+			if (at !== -1) all.splice(at, 1);
+			if (all.length === 0) this.task_listeners = null;
+		};
+	}
+
+	/**
+	 * waits for every deferred task of the document, then applies those whose
+	 * node is committed, in document order, undefined when there are none, a
+	 * task that rejected rejects it with a PluginTaskError and nothing applies,
+	 * call it after the parse and the sequential passes
+	 */
+	settle(): Promise<void> | undefined {
+		const tasks = this.tasks;
+		if (tasks === null) return undefined;
+		return this.settle_all(tasks);
+	}
+
+	private async settle_all(tasks: Task[]): Promise<void> {
+		const waits: Promise<void>[] = [];
+		for (let i = 0; i < tasks.length; i++) waits.push(tasks[i].done);
+		await Promise.all(waits);
+		const ready = this.ready(tasks, false);
+		if (ready === null) return;
+		for (let i = 0; i < ready.length; i++) {
+			const task = ready[i];
+			if (task.state === TaskState.Failed) throw this.task_error(task);
+		}
+		for (let i = 0; i < ready.length; i++) this.apply(ready[i]);
+		this.prune();
+	}
+
+	/**
+	 * applies each deferred task that settled and whose node is committed, in
+	 * document order, for a host that streams, a task that rejected becomes a
+	 * task_failed warning and leaves its node as it was, returns the nodes
+	 * whose tasks applied, null for none
+	 */
+	apply_ready(): number[] | null {
+		const tasks = this.tasks;
+		if (tasks === null) return null;
+		const ready = this.ready(tasks, true);
+		if (ready === null) return null;
+		const nodes: number[] = [];
+		for (let i = 0; i < ready.length; i++) {
+			const task = ready[i];
+			if (task.state === TaskState.Failed) {
+				task.applied = true;
+				this.running = task.node;
+				try {
+					this._warn(
+						task.plugin,
+						'task_failed',
+						this.task_error(task).message,
+						this.views(this.task_buf!).get(task.node)!
+					);
+				} finally {
+					this.running = NONE;
+				}
+			} else {
+				this.apply(task);
+				nodes.push(task.node);
+			}
+		}
+		this.prune();
+		return nodes.length === 0 ? null : nodes;
+	}
+
+	/** tasks that can apply, in document order, settled only, or every one when all are */
+	private ready(tasks: Task[], settled: boolean): Task[] | null {
+		let ready: Task[] | null = null;
+		for (let i = 0; i < tasks.length; i++) {
+			const task = tasks[i];
+			if (task.dropped || task.applied || !task.committed) continue;
+			if (settled && task.state === TaskState.Running) continue;
+			if (ready === null) ready = [];
+			ready.push(task);
+		}
+		if (ready !== null) ready.sort((a, b) => a.node - b.node || a.seq - b.seq);
+		return ready;
+	}
+
+	/** forgets tasks that applied or were dropped */
+	private prune(): void {
+		const tasks = this.tasks;
+		if (tasks === null) return;
+		const left = tasks.filter((t) => !t.applied && !t.dropped);
+		this.tasks = left.length === 0 ? null : left;
+	}
+
+	private task_error(task: Task): PluginTaskError {
+		const buf = this.task_buf!;
+		return new PluginTaskError(
+			task.plugin,
+			kind_to_string(buf.kind_at(task.node)),
+			this.views(buf).get(task.node)!.position,
+			task.error
+		);
+	}
+
+	/** what a task kept goes into the tree, its node is final, so nothing is recorded */
+	private apply(task: Task): void {
+		task.applied = true;
+		const buf = this.task_buf!;
+		// a later handler may have taken the node out
+		if (!within(buf, task.node, 0)) return;
+		const cache = this.views(buf);
+		const drafts: NodeView[] = [];
+		const ops = task.ops;
+		this.running = task.node;
+		this.closing = true;
+		this.final_close = true;
+		try {
+			for (let i = 0; i < ops.length; i++) {
+				const op = ops[i];
+				if (op.kind === OpKind.Data) {
+					this.write_copy(this.bag(task.plugin), op.key, op.value, op.list);
+					continue;
+				}
+				const ref = op.ref;
+				let view: NodeView | undefined;
+				if (ref === NONE) view = undefined;
+				else if (ref < 0) view = drafts[~ref];
+				// what a revoke or a removal took out since is left alone
+				else if (within(buf, ref, task.node)) view = cache.get(ref)!;
+				if (op.kind === OpKind.Warn) {
+					this._warn(task.plugin, op.code, op.message, view);
+					continue;
+				}
+				if (view === undefined) continue;
+				switch (op.kind) {
+					case OpKind.Attr:
+						view.attrs[op.key] = op.value;
+						break;
+					case OpKind.Unset:
+						delete view.attrs[op.key];
+						break;
+					case OpKind.Type:
+						view.type = op.type;
+						break;
+					case OpKind.Append:
+						drafts[~op.made] = view.append(op.type, op.given as any);
+						break;
+					case OpKind.Prepend:
+						drafts[~op.made] = view.prepend(op.type, op.given as any);
+						break;
+					case OpKind.WrapInner:
+						drafts[~op.made] = view.wrap_inner(
+							op.type,
+							op.given as Record<string, any> | undefined
+						);
+						break;
+					case OpKind.Remove:
+						view.remove();
+						break;
+				}
+			}
+		} finally {
+			this.running = NONE;
+			this.closing = false;
+			this.final_close = false;
+			cache.clear();
+		}
+	}
+
+	/** @internal the buffer of the document a task reads */
+	buffer(task: Task): NodeBuffer {
+		const buf = this.task_buf;
+		if (task.dropped || buf === null) throw new Error(STALE_TASK);
+		return buf;
+	}
+
+	/** @internal the view of a node for a task to read */
+	real(task: Task, index: number): NodeView {
+		return this.views(this.buffer(task)).get(index)!;
+	}
+
+	/** @internal ctx.defer, the task starts at once and its changes wait */
+	_defer(
+		plugin: string | undefined,
+		node: NodeView,
+		run: (node: NodeView, ctx: PublicTaskContext) => unknown
+	): void {
+		if (typeof run !== 'function') {
+			throw new TypeError('ctx.defer takes the node and the task, a function');
+		}
+		const running = this.running;
+		if (
+			running === NONE ||
+			!(node instanceof NodeView) ||
+			node._index !== running
+		) {
+			throw new TypeError(
+				'ctx.defer takes the node whose handler or close callback is running'
+			);
+		}
+		if (!this.allow_async) {
+			throw new PluginAsyncError(
+				plugin,
+				'defer',
+				this.position(running),
+				this.async_hint
+			);
+		}
+		this.task_buf = node._live();
+		const task = new Task(running, plugin, this.task_seq++, this);
+		// final at once in a sequential pass and in the callbacks of a final close
+		if (this.sequential_pass || this.final_close) task.committed = true;
+		else this.uncommitted++;
+		let tasks = this.tasks;
+		if (tasks === null) tasks = this.tasks = [];
+		tasks.push(task);
+		let result: unknown;
+		try {
+			// the view of a task reads as a node view does and keeps its writes
+			result = run(
+				task.view(running)! as unknown as NodeView,
+				new TaskContext(this, task) as unknown as PublicTaskContext
+			);
+		} catch (e) {
+			result = Promise.reject(e);
+		}
+		task.done = Promise.resolve(result).then(
+			() => {
+				task.state = TaskState.Done;
+				this.task_settled(task);
+			},
+			(e: unknown) => {
+				task.state = TaskState.Failed;
+				task.error = e;
+				this.task_settled(task);
+			}
+		);
+	}
+
+	private task_settled(task: Task): void {
+		const listeners = this.task_listeners;
+		if (listeners === null || task.dropped) return;
+		const all = listeners.slice();
+		for (let i = 0; i < all.length; i++) all[i]();
+	}
+
+	/** the tasks of a node it closed for good or the parser committed */
+	private commit_tasks(node: number): void {
+		const tasks = this.tasks!;
+		for (let i = 0; i < tasks.length; i++) {
+			const task = tasks[i];
+			if (task.node === node && !task.committed && !task.dropped) {
+				task.committed = true;
+				this.uncommitted--;
+			}
+		}
+	}
+
+	/** the tasks of a revoked node go, what they kept with them, errors too */
+	private drop_tasks(node: number): void {
+		const tasks = this.tasks!;
+		let left = false;
+		for (let i = 0; i < tasks.length; i++) {
+			const task = tasks[i];
+			if (task.node === node && !task.dropped && !task.applied) {
+				task.dropped = true;
+				if (!task.committed) this.uncommitted--;
+			}
+			if (!task.dropped && !task.applied) left = true;
+		}
+		if (!left) this.tasks = null;
+	}
+
+	/** @internal ctx.set and ctx.add of a task, checked now and written when it applies */
+	_task_write(task: Task, key: string, value: unknown, list: boolean): void {
+		const plugin = task.plugin;
+		if (plugin === undefined) {
+			throw new Error(
+				'ctx.data is kept by plugin name, give the plugin a name to use it'
+			);
+		}
+		if (typeof key !== 'string' || key === '') {
+			throw new TypeError(
+				`ctx.${list ? 'add' : 'set'} takes a key, a string that is not empty, and a value`
+			);
+		}
+		if (task.dropped) return;
+		const copy = json_copy(value, plugin, key, () => this.position(task.node));
+		// the kind of the key is checked when it applies, as another owner may write it first
+		task.record({ kind: OpKind.Data, key, value: copy, list });
+	}
+
+	/** @internal ctx.warn of a task, reported when it applies */
+	_task_warn(task: Task, code: string, message: string, node: unknown): void {
+		if (
+			typeof code !== 'string' ||
+			code === '' ||
+			typeof message !== 'string'
+		) {
+			throw new TypeError(
+				'ctx.warn takes a code and a message, both strings, and a node to point at'
+			);
+		}
+		let ref = NONE;
+		if (node instanceof TaskView && node._task === task) ref = node._index;
+		else if (node instanceof DraftView && node._task === task) ref = ~node._id;
+		else if (node != null) {
+			throw new TypeError(
+				'ctx.warn in a deferred task points at a node the task reads through, the node it is given or one reached from it'
+			);
+		}
+		task.record({ kind: OpKind.Warn, code, message, ref });
+	}
+
 	/** the data of a plugin name, made when first read or written */
 	private bag(plugin: string | undefined): Bag {
 		if (plugin === undefined) {
@@ -1026,14 +1451,30 @@ export class PluginDispatcher implements StructureHost, RedirectHost, DataHost {
 			);
 		}
 		const running = this.running;
-		const owner = running === NONE || this.sequential_pass ? NO_OWNER : running;
+		if (running === NONE && !this.sequential_pass) {
+			throw new TypeError(NO_HANDLER('ctx.' + (list ? 'add' : 'set')));
+		}
 		const copy = json_copy(value, bag.name, key, () => this.position(running));
+		this.write_copy(bag, key, copy, list);
+	}
+
+	/** a write that was checked, owned by the node whose handler runs */
+	private write_copy(bag: Bag, key: string, copy: Json, list: boolean): void {
+		const running = this.running;
+		const owner = running === NONE || this.sequential_pass ? NO_OWNER : running;
 		bag.write(key, owner, copy, list);
 		// a node that is final records nothing, it commits once its handlers ran
 		if (owner !== NO_OWNER && this.undo.recording) {
 			this.undo.record_data(this, bag, key, owner);
 		}
 		if (this.data_listeners !== null) this.data_changed(bag, key);
+	}
+
+	/** @internal a view changes the tree only while a handler runs */
+	check_write(what: string): void {
+		if (this.running === NONE && !this.sequential_pass) {
+			throw new TypeError(NO_HANDLER(what));
+		}
 	}
 
 	/** @internal a revoke takes back what a node wrote under a key */
@@ -1073,6 +1514,9 @@ export class PluginDispatcher implements StructureHost, RedirectHost, DataHost {
 			throw new TypeError(
 				'ctx.warn takes a code and a message, both strings, and a node to point at'
 			);
+		}
+		if (this.running === NONE && !this.sequential_pass) {
+			throw new TypeError(NO_HANDLER('ctx.warn'));
 		}
 		let start: number | undefined;
 		let end: number | undefined;
@@ -1141,7 +1585,8 @@ export class PluginDispatcher implements StructureHost, RedirectHost, DataHost {
 			this.links === 0 &&
 			this.undo.empty &&
 			this.close_with === null &&
-			this.scope === null
+			this.scope === null &&
+			this.uncommitted === 0
 		);
 	}
 
@@ -1153,7 +1598,8 @@ export class PluginDispatcher implements StructureHost, RedirectHost, DataHost {
 		if (
 			this.close_cbs.live !== 0 ||
 			this.close_with !== null ||
-			this.held !== NONE
+			this.held !== NONE ||
+			this.uncommitted !== 0
 		)
 			return PAST_END;
 		let from = this.floor;
@@ -1177,7 +1623,8 @@ export class PluginDispatcher implements StructureHost, RedirectHost, DataHost {
 			(this.links === 0 || this.slot(buf_idx) === 0) &&
 			this.close_with === null &&
 			(scope === null || scope.directive !== buf_idx) &&
-			(this.undo.empty || !this.undo.has(buf_idx))
+			(this.undo.empty || !this.undo.has(buf_idx)) &&
+			this.uncommitted === 0
 		);
 	}
 
@@ -1956,6 +2403,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost, DataHost {
 		// a held node can still be revoked after its close
 		if (!pending) {
 			this.undo.commit(buf_idx);
+			if (this.uncommitted !== 0) this.commit_tasks(buf_idx);
 		}
 	}
 
@@ -1965,6 +2413,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost, DataHost {
 	 */
 	dispatch_commit(buf_idx: number): void {
 		this.undo.commit(buf_idx);
+		if (this.uncommitted !== 0) this.commit_tasks(buf_idx);
 	}
 
 	/**
@@ -1980,10 +2429,12 @@ export class PluginDispatcher implements StructureHost, RedirectHost, DataHost {
 			this.close_cbs.live === 0 &&
 			this.undo.empty &&
 			this.close_with === null &&
-			this.scope === null
+			this.scope === null &&
+			this.tasks === null
 		)
 			return;
 		this.close_cbs.discard(buf_idx);
+		if (this.tasks !== null) this.drop_tasks(buf_idx);
 
 		// the repair keeps the children in the tree and the parser revokes each
 		// one it gives up on, so their plugin state is left alone
@@ -2356,6 +2807,14 @@ export class PluginDispatcher implements StructureHost, RedirectHost, DataHost {
 		this.doc = null;
 		this.warned = null;
 		this.bags = null;
+		// a task of the last document goes on unheard
+		const tasks = this.tasks;
+		if (tasks !== null) {
+			for (let i = 0; i < tasks.length; i++) tasks[i].dropped = true;
+			this.tasks = null;
+		}
+		this.uncommitted = 0;
+		this.task_buf = null;
 		if (this.cache !== null) this.cache.invalidate();
 	}
 }

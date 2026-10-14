@@ -26,6 +26,8 @@ import * as main from '../src/main';
 import { parse_markdown_svelte } from '../src/main';
 import { TreeBuilder } from '../src/tree_builder';
 import { print_ast } from './print';
+import { PATHS, shape } from './plugin_harness';
+import type { ParsePlugin } from '../src/plugin_types';
 
 /** a second parser with every fast path off, the module reads the flag once as it loads */
 async function general_parser(): Promise<typeof import('../src/main')> {
@@ -85,6 +87,46 @@ function text_runs(parser: typeof import('../src/main'), source: string) {
 		],
 	});
 	return runs.join('\n') + print_ast(nodes, source);
+}
+
+/**
+ * defers on the nodes the parser opens on a guess and on blocks, each task
+ * marks its node, adds a node inside it and an entry to a list, the tasks
+ * finish in an order of their own
+ */
+function deferring(): ParsePlugin[] {
+	const kinds = [
+		'paragraph',
+		'heading',
+		'strong_emphasis',
+		'emphasis',
+		'link',
+		'code_span',
+		'list_item',
+		'block_quote',
+		'table_cell',
+		'html',
+		'directive_inline',
+		'directive_leaf',
+		'directive_container',
+	];
+	let count = 0;
+	const plugin: ParsePlugin = { name: 'defers' };
+	for (const kind of kinds) {
+		plugin[kind] = {
+			parse(node, ctx) {
+				const wait = count++ % 3;
+				return () =>
+					ctx.defer(node, async (own, c) => {
+						for (let i = 0; i < wait; i++) await Promise.resolve();
+						own.attrs.task = own.type;
+						own.append('html', { tag: 'mark' });
+						c.add('seen', own.type);
+					});
+			},
+		};
+	}
+	return [plugin];
 }
 
 function near(seen: Seen): Container {
@@ -324,6 +366,42 @@ describe.skipIf(census !== undefined)('invariance', () => {
 						text_runs(main, source) !== text_runs(general, source)
 					)
 						found.push(`seed ${seed} in ${subject.site}, fed\n${source}`);
+				}
+			}
+			expect(found).toEqual([]);
+		}
+	);
+
+	test(
+		'a plugin that defers settles to one tree, whole and fed, batch and wire',
+		{ timeout: process.env.PFM_SEEDS === undefined ? 60_000 : 0 },
+		async () => {
+			const found: string[] = [];
+			for (let seed = first_seed; seed < last_seed; seed++) {
+				for (const subject of subjects(seed)) {
+					if (subject.site === 'table_cell') continue;
+					const source = subject.source(
+						placed(subject.site, subject.blocks, RULES)
+					);
+					let first = '';
+					for (const [name, run] of PATHS) {
+						const out = run(source, deferring());
+						const dispatcher = out.dispatcher!;
+						await dispatcher.settle();
+						const now = JSON.stringify([
+							shape(out.nodes, out.source, 0, {
+								attrs: ['task'],
+								merge_text: true,
+							}),
+							dispatcher.data(),
+							dispatcher.deferred,
+						]);
+						if (name === PATHS[0][0]) first = now;
+						else if (now !== first) {
+							found.push(`seed ${seed} in ${subject.site}, ${name}\n${source}`);
+							break;
+						}
+					}
 				}
 			}
 			expect(found).toEqual([]);

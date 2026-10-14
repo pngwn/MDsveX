@@ -175,10 +175,12 @@ export interface StructureHost {
 	pending(buf: NodeBuffer, node: number): boolean;
 	/** take a node and everything in it out of the tree, throws where that is not sound */
 	remove(buf: NodeBuffer, node: number): void;
+	/** throws a TypeError when no handler runs, what names the write */
+	check_write(what: string): void;
 }
 
 /** a directive arg reaches its component as a string prop, the renderer reads it as one */
-function check_args(kind: NodeKind, args: unknown): void {
+export function check_args(kind: NodeKind, args: unknown): void {
 	if (args == null) return;
 	if (
 		kind !== NodeKind.directive_container &&
@@ -350,7 +352,9 @@ const ATTRS_HANDLER: ProxyHandler<AttrsTarget> = {
 	},
 
 	set(target, prop: string, value: any): boolean {
-		const buf = target[VIEW]._live();
+		const view = target[VIEW];
+		const buf = view._live();
+		view._writable('node.attrs');
 		const idx = target[IDX];
 		if (prop === 'args') check_args(buf.kind_at(idx), value);
 		const meta = buf.metadata_at(idx);
@@ -369,7 +373,9 @@ const ATTRS_HANDLER: ProxyHandler<AttrsTarget> = {
 	},
 
 	deleteProperty(target, prop: string): boolean {
-		const buf = target[VIEW]._live();
+		const view = target[VIEW];
+		const buf = view._live();
+		view._writable('delete node.attrs');
 		const idx = target[IDX];
 		const meta = buf.metadata_at(idx);
 		if (!meta || !(prop in meta)) return true;
@@ -454,6 +460,12 @@ export class NodeView {
 		return this._buf;
 	}
 
+	/** @internal a write needs a handler that runs, a view without a dispatcher writes freely */
+	_writable(what: string): void {
+		const host = this._cache.host;
+		if (host !== null) host.check_write(what);
+	}
+
 	get type(): string {
 		return kind_to_string(this._live().kind_at(this._index) as NodeKind);
 	}
@@ -462,6 +474,7 @@ export class NodeView {
 		const numeric = kind_named(value);
 		if (numeric === undefined) return;
 		const buf = this._live();
+		this._writable('node.type');
 		const prior = buf.kind_at(this._index);
 		this._undo.record_type_change(this._index, prior);
 		buf.set_kind(this._index, numeric);
@@ -680,6 +693,7 @@ export class NodeView {
 		if (kind_num === undefined) throw new Error(`Unknown node type: ${type}`);
 
 		const buf = this._live();
+		this._writable('wrap_inner');
 		const idx = this._index;
 		if (attrs !== undefined) check_args(kind_num, attrs.args);
 
@@ -716,6 +730,7 @@ export class NodeView {
 		if (attrs !== undefined) check_args(kind_num, attrs.args);
 		const host = this._cache.host;
 		if (host === null) throw new Error('wrap_from needs a plugin dispatcher');
+		host.check_write('wrap_from');
 		const wrapper_idx = host.wrap_from(buf, this._index, kind_num, attrs);
 		return this._cache.wrapper(wrapper_idx);
 	}
@@ -750,6 +765,7 @@ export class NodeView {
 		if (kind_num === undefined) throw new Error(`Unknown node type: ${type}`);
 
 		const buf = this._live();
+		this._writable('prepend');
 		const idx = this._index;
 		const attrs = content_of(kind_num, type, given);
 		const prior_first_child = buf.first_child_at(idx);
@@ -786,6 +802,7 @@ export class NodeView {
 		if (kind_num === undefined) throw new Error(`Unknown node type: ${type}`);
 
 		const buf = this._live();
+		this._writable('append');
 		const idx = this._index;
 		const attrs = content_of(kind_num, type, given);
 		const prior_last_child = buf.last_child_at(idx);
