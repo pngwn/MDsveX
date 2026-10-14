@@ -75,9 +75,10 @@
 	"scripts": {
 		"build:server": "pnpm --filter @mdsvex/language-server build",
 		"build:ext": "vite build --config vite.config.build.ts",
-		"build": "run-s build:server build:ext build:mkdir build:copy-server",
+		"build": "run-s build:syntax build:server build:ext build:mkdir build:copy-server",
 		"build:mkdir": "shx mkdir -p server",
 		"build:copy-server": "shx cp ../language-server/dist/server.cjs server/server.cjs",
+		"build:syntax": "node --no-warnings scripts/generate-tml.ts",
 		"test": "vitest --disableConsoleIntercept",
 		"test:run": "vitest run --silent",
 		"package": "vsce package --no-dependencies"
