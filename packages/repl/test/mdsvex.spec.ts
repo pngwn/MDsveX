@@ -4,9 +4,11 @@ import { decode } from '@jridgewell/sourcemap-codec';
 import {
 	COMPONENTS_ID,
 	DIRECTIVES_ID,
-	PLUGIN_PREFIX,
-	TEMPLATE_DIRECTIVES_PREFIX,
-	TEMPLATE_PREFIX,
+	PLUGIN_ID,
+	TEMPLATE_DIRECTIVES_ID,
+	TEMPLATE_ID,
+} from 'mdsvex/host';
+import {
 	compile_markdown,
 	is_snippet,
 	highlight_for,
@@ -127,8 +129,8 @@ describe('prepare', () => {
 		expect(options).toEqual({
 			component_mode: 'markdown',
 			templates: {
-				default: { specifier: TEMPLATE_PREFIX + 'default', components: ['h2'] },
-				docs: { specifier: TEMPLATE_PREFIX + 'docs', components: ['p', 'a'] },
+				default: { specifier: TEMPLATE_ID + 'default', components: ['h2'] },
+				docs: { specifier: TEMPLATE_ID + 'docs', components: ['p', 'a'] },
 			},
 			default_template: 'default',
 			components: [{ specifier: COMPONENTS_ID, names: ['img'] }],
@@ -154,7 +156,7 @@ describe('prepare', () => {
 			})
 		);
 		expect(error).toBeNull();
-		expect(resolve_virtual(TEMPLATE_PREFIX + 'default', config)).toEqual({
+		expect(resolve_virtual(TEMPLATE_ID + 'default', config)).toEqual({
 			file: null,
 			specifier: '@acme/theme/Layout.svelte',
 			components: [],
@@ -200,9 +202,9 @@ export * as directives from './directives.js';`,
 		expect(options.directives).toEqual([
 			{ specifier: DIRECTIVES_ID, names: ['Callout'] },
 		]);
-		const docs = TEMPLATE_DIRECTIVES_PREFIX + 'default/0';
+		const docs = TEMPLATE_DIRECTIVES_ID + 'default/0';
 		expect(options.templates?.default).toEqual({
-			specifier: TEMPLATE_PREFIX + 'default',
+			specifier: TEMPLATE_ID + 'default',
 			components: ['p'],
 			directives: [{ specifier: docs, names: ['note'] }],
 		});
@@ -234,15 +236,13 @@ export * as directives from './directives.js';`,
 
 		expect(error).toBeNull();
 		expect(options.directives).toEqual([
-			{ specifier: PLUGIN_PREFIX + 0, names: ['steps', 'step'] },
-			{ specifier: PLUGIN_PREFIX + 1, names: ['tabs'] },
+			{ specifier: PLUGIN_ID + 0, names: ['steps', 'step'] },
+			{ specifier: PLUGIN_ID + 1, names: ['tabs'] },
 			{ specifier: DIRECTIVES_ID, names: ['step'] },
 		]);
-		expect(resolve_virtual(PLUGIN_PREFIX + 0, config).file).toBe(
-			'lib/steps.js'
-		);
+		expect(resolve_virtual(PLUGIN_ID + 0, config).file).toBe('lib/steps.js');
 		// a package specifier is left to the bundler
-		expect(resolve_virtual(PLUGIN_PREFIX + 1, config)).toMatchObject({
+		expect(resolve_virtual(PLUGIN_ID + 1, config)).toMatchObject({
 			file: null,
 			specifier: '@acme/tabs/directives',
 		});
@@ -251,7 +251,7 @@ export * as directives from './directives.js';`,
 			'doc.svx',
 			options
 		);
-		expect(code).toContain(`from '${PLUGIN_PREFIX}0'`);
+		expect(code).toContain(`from '${PLUGIN_ID}0'`);
 	});
 
 	test('a plugin entry without a module or names is an error', () => {
@@ -284,10 +284,10 @@ export * as directives from './directives.js';`,
 				'lib/T.svelte': '',
 			})
 		);
-		expect(resolve_virtual(TEMPLATE_PREFIX + 'default', config).file).toBe(
+		expect(resolve_virtual(TEMPLATE_ID + 'default', config).file).toBe(
 			'lib/T.svelte'
 		);
-		expect(() => resolve_virtual(TEMPLATE_PREFIX + 'nope', config)).toThrow(
+		expect(() => resolve_virtual(TEMPLATE_ID + 'nope', config)).toThrow(
 			/not configured/
 		);
 	});

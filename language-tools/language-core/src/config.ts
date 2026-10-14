@@ -9,31 +9,38 @@ import { fileURLToPath } from 'node:url';
 import type * as TS from 'typescript';
 
 import temml from 'temml';
-import { MANIFEST_PATH, MANIFEST_VERSION, module_script } from 'mdsvex';
+import { module_script } from 'mdsvex';
 import type {
 	CompileOptions,
 	ComponentMode,
 	HighlightConfig,
-	ManifestMath,
-	ManifestModule,
-	ManifestTemplate,
 	MathRenderer,
-	MdsvexManifest,
 	SmartPunctuation,
 	TemplateEntry,
 } from 'mdsvex';
+import {
+	COMPONENTS_ID,
+	DIRECTIVES_EXPORT,
+	DIRECTIVES_ID,
+	MANIFEST_PATH,
+	MANIFEST_VERSION,
+	PLUGIN_ID,
+	TEMPLATE_DIRECTIVES_ID,
+	TEMPLATE_ID,
+	manifest_resolver,
+} from 'mdsvex/host';
+import type {
+	ManifestMath,
+	ManifestModule,
+	ManifestTemplate,
+	MdsvexManifest,
+} from 'mdsvex/host';
 import { create_highlight } from 'mdsvex/highlight';
 import { default_languages } from 'mdsvex/highlight/languages';
 import { source_math, temml_math } from 'mdsvex/math';
 import type { PfmToSvelteOptions } from '@mdsvex/source-map/pfm-to-svelte';
 
 export const CONFIG_FILE = 'mdsvex.config.json';
-const COMPONENTS_ID = 'mdsvex:components';
-const DIRECTIVES_ID = 'mdsvex:directives';
-const TEMPLATE_ID = 'mdsvex:template/';
-const TEMPLATE_DIRECTIVES_ID = 'mdsvex:template-directives/';
-const PLUGIN_ID = 'mdsvex:plugin/';
-const DIRECTIVES_EXPORT = 'directives';
 
 /** the shape of mdsvex.config.json, the vite plugin options that are data */
 export interface JsonConfig {
@@ -176,7 +183,6 @@ export function document_options(
 	doc: string
 ): PfmToSvelteOptions {
 	const templates: Record<string, TemplateEntry> = {};
-	const files = new Map<string, (name: string) => string>();
 	for (const [name, t] of Object.entries(manifest.templates)) {
 		const extra = t.extra;
 		const names =
@@ -184,14 +190,8 @@ export function document_options(
 		const entry: TemplateEntry = { specifier: t.id, components: names };
 		if (t.directives.length !== 0) entry.directives = sources(t.directives);
 		templates[name] = entry;
-		// the extra module wins a name both export, as the merging module of the plugin does
-		files.set(t.id, (n) =>
-			n !== 'default' && extra !== null && extra.names.includes(n)
-				? extra.file
-				: t.file
-		);
-		for (const d of t.directives) files.set(d.id, () => d.file);
 	}
+	const file_of = manifest_resolver(manifest);
 	// plugin modules first, so the modules of the config win a name
 	const components: ManifestModule[] = [];
 	const directives: ManifestModule[] = [];
@@ -201,7 +201,6 @@ export function document_options(
 	}
 	components.push(...manifest.components);
 	directives.push(...manifest.directives);
-	for (const m of [...components, ...directives]) files.set(m.id, () => m.file);
 
 	const compile: CompileOptions = {
 		component_mode: manifest.component_mode,
@@ -227,7 +226,7 @@ export function document_options(
 	return {
 		compile,
 		resolve(id, name) {
-			const file = files.get(id)?.(name);
+			const file = file_of(id, name);
 			return file === undefined ? undefined : specifier_from(doc, file);
 		},
 		// a parse plugin may handle a directive no component renders

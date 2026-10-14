@@ -19,18 +19,18 @@ import {
 	type RenderOptions,
 } from 'mdsvex/highlight';
 import { load_math, source_math, type MathRenderer } from 'mdsvex/math';
+import {
+	COMPONENTS_ID,
+	DIRECTIVES_EXPORT,
+	DIRECTIVES_ID,
+	PLUGIN_ID,
+	TEMPLATE_DIRECTIVES_ID,
+	TEMPLATE_ID,
+} from 'mdsvex/host';
 import { mappings_to_v3, type SourceMapV3 } from '@mdsvex/render/sourcemap';
 import { strip_types } from './typescript_strip_types';
 
 export const CONFIG_FILE = 'mdsvex.config.json';
-export const TEMPLATE_PREFIX = 'mdsvex:template/';
-export const COMPONENTS_ID = 'mdsvex:components';
-export const DIRECTIVES_ID = 'mdsvex:directives';
-export const TEMPLATE_DIRECTIVES_PREFIX = 'mdsvex:template-directives/';
-export const PLUGIN_PREFIX = 'mdsvex:plugin/';
-
-/** the namespace export of a replacement module that holds its directives */
-const DIRECTIVES_EXPORT = 'directives';
 
 const DEFAULT_EXTENSIONS = ['.svx', '.md'];
 
@@ -248,7 +248,7 @@ export function prepare(files: FileMap): Prepared {
 				const target = target_of(plugin.module, files, `${key}.module`);
 				// the plugin names its directives, the exports of the module are not scanned for them
 				plugins.push({
-					id: PLUGIN_PREFIX + i,
+					id: PLUGIN_ID + i,
 					target: { ...target, components: plugin.directives, directives: [] },
 				});
 			});
@@ -269,12 +269,12 @@ export function prepare(files: FileMap): Prepared {
 		options.templates = {};
 		for (const [name, target] of config.templates) {
 			options.templates[name] = {
-				specifier: TEMPLATE_PREFIX + name,
+				specifier: TEMPLATE_ID + name,
 				components: target.components,
 			};
 			if (target.directives.length === 0) continue;
 			options.templates[name].directives = target.directives.map((d, i) => {
-				const id = `${TEMPLATE_DIRECTIVES_PREFIX}${name}/${i}`;
+				const id = `${TEMPLATE_DIRECTIVES_ID}${name}/${i}`;
 				config.directives.set(id, d);
 				return { specifier: id, names: d.components };
 			});
@@ -556,8 +556,8 @@ function target_of(
 /** maps a virtual id from compiled output to a workspace file or a bare specifier */
 export function resolve_virtual(id: string, config: ResolvedConfig) {
 	let target: TemplateTarget | null | undefined;
-	if (id.startsWith(TEMPLATE_PREFIX)) {
-		target = config.templates.get(id.slice(TEMPLATE_PREFIX.length));
+	if (id.startsWith(TEMPLATE_ID)) {
+		target = config.templates.get(id.slice(TEMPLATE_ID.length));
 	} else if (id === COMPONENTS_ID) {
 		target = config.components;
 	} else {
