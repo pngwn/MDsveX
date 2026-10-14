@@ -10,6 +10,7 @@ export default defineConfig({
 				compile: resolve(__dirname, "tsc/compile.js"),
 				highlight: resolve(__dirname, "tsc/highlight.js"),
 				math: resolve(__dirname, "tsc/math.js"),
+				host: resolve(__dirname, "tsc/host.js"),
 				highlight_languages: resolve(__dirname, "tsc/highlight_languages.js"),
 			},
 			formats: ["es"],
@@ -22,7 +23,7 @@ export default defineConfig({
 			// the math entry imports temml and katex the same way
 			external: [
 				"vite",
-				"es-module-lexer",
+				/^es-module-lexer(\/|$)/,
 				/^node:/,
 				/^@twinkleplop\//,
 				"temml",

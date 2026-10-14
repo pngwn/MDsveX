@@ -10,7 +10,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const pkg = resolve(here, '..');
 const packages = resolve(pkg, '..');
 
-const ENTRIES = ['compile.ts', 'math.ts', 'highlight.ts'];
+const ENTRIES = ['compile.ts', 'math.ts', 'highlight.ts', 'host.ts'];
 
 // bundled into compile.js, so their sources are walked
 const WORKSPACE: Record<string, string> = {
@@ -19,7 +19,12 @@ const WORKSPACE: Record<string, string> = {
 };
 
 // each runs in a browser, add one only once the bundle test passes with it
-const ALLOWED = [/^@twinkleplop\//, /^temml$/, /^katex$/];
+const ALLOWED = [
+	/^@twinkleplop\//,
+	/^temml$/,
+	/^katex$/,
+	/^es-module-lexer\/js$/,
+];
 
 const BANNED = [/^vite(\/|$)/, /^rollup(\/|$)/, /^@rollup\//, /^node:/];
 const NODE_GLOBALS = new Set([
@@ -332,6 +337,7 @@ describe('the compile entry', () => {
 						compile: join(dist, 'compile.js'),
 						math: join(dist, 'math.js'),
 						highlight: join(dist, 'highlight.js'),
+						host: join(dist, 'host.js'),
 					},
 					formats: ['es'],
 				},

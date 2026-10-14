@@ -1,21 +1,12 @@
 /**
- * the names a module exports without evaluating it, a svelte file only through
- * its module script, vite and the lexer load on first use so a compile never does
+ * the export scan of the vite plugin, types stripped by vite, which loads on
+ * first use so a compile never does
  */
+import { module_script, read_exports } from './read_exports';
+import type { ScanKind, ScannedExports } from './read_exports';
 
-export type ScanKind = 'js' | 'svelte';
-
-export interface ScannedExports {
-	/** export names in source order */
-	names: string[];
-	/** specifiers of star re-exports, whose names a static scan cannot see */
-	stars: string[];
-	/** namespace re-exports, export * as name from specifier */
-	namespaces: { name: string; specifier: string }[];
-}
-
-// the name of export * as name from, an es2022 string name keeps its quotes
-const NAMESPACE = /^export\s*\*\s*as\s+([\w$]+|"[^"]*"|'[^']*')\s*from/;
+export { module_script };
+export type { ScanKind, ScannedExports };
 
 /** the names code exports, for a svelte file those of its module script */
 export async function scan_exports(
@@ -32,58 +23,7 @@ export async function scan_exports_detail(
 	const js = kind === 'svelte' ? module_script(code) : code;
 	if (js === null || js.trim() === '')
 		return { names: [], stars: [], namespaces: [] };
-
-	const stripped = await strip_types(js);
-	const lexer = await import('es-module-lexer');
-	await lexer.init;
-	const [imports, exports] = lexer.parse(stripped);
-
-	const names: string[] = [];
-	for (let i = 0; i < exports.length; i++) names.push(exports[i].n);
-	const stars: string[] = [];
-	const namespaces: { name: string; specifier: string }[] = [];
-	for (let i = 0; i < imports.length; i++) {
-		const imp = imports[i];
-		// a re-export statement starts with export, a namespace re-export is a name instead
-		if (imp.n === undefined || !stripped.startsWith('export', imp.ss)) continue;
-		const statement = stripped.slice(imp.ss, imp.se);
-		if (/^export\s*\*\s*from/.test(statement)) stars.push(imp.n);
-		else {
-			const m = NAMESPACE.exec(statement);
-			if (m !== null) {
-				const name = /^["']/.test(m[1]) ? m[1].slice(1, -1) : m[1];
-				namespaces.push({ name, specifier: imp.n });
-			}
-		}
-	}
-	return { names, stars, namespaces };
-}
-
-// a quoted attribute value may hold a closing angle bracket
-const SCRIPT_OPEN =
-	/<script((?:\s+[^\s=>"'/]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>"']+))?)*)\s*>/gi;
-const SCRIPT_CLOSE = /<\/script\s*>/gi;
-const COMMENT = /<!--[\s\S]*?-->/g;
-const MODULE_ATTR =
-	/(?:^|\s)module(?:\s|=|$)|(?:^|\s)context\s*=\s*["']?module\b/;
-
-/** the module script body of a svelte file, null when it has none */
-export function module_script(svelte: string): string | null {
-	// a commented out script is not one, blank comments rather than parse markup
-	const src = svelte.includes('<!--')
-		? svelte.replace(COMMENT, (m) => ' '.repeat(m.length))
-		: svelte;
-	SCRIPT_OPEN.lastIndex = 0;
-	let open: RegExpExecArray | null;
-	while ((open = SCRIPT_OPEN.exec(src)) !== null) {
-		const start = SCRIPT_OPEN.lastIndex;
-		SCRIPT_CLOSE.lastIndex = start;
-		const close = SCRIPT_CLOSE.exec(src);
-		if (close === null) return null;
-		if (MODULE_ATTR.test(open[1])) return src.slice(start, close.index);
-		SCRIPT_OPEN.lastIndex = SCRIPT_CLOSE.lastIndex;
-	}
-	return null;
+	return read_exports(await strip_types(js), 'js');
 }
 
 /** typescript to javascript for the lexer, plain js passes through */
