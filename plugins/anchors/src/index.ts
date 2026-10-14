@@ -1,4 +1,4 @@
-import type { Bundle, NodeView } from 'mdsvex';
+import type { Bundle, NodeView } from 'mdsvex/compile';
 
 export interface AnchorsOptions {
 	/**

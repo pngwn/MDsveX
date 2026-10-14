@@ -1,4 +1,4 @@
-import type { Bundle, NodeView, PluginContext } from 'mdsvex';
+import type { Bundle, NodeView, PluginContext } from 'mdsvex/compile';
 
 import type { TocHeading } from './tree.js';
 
@@ -24,7 +24,7 @@ export interface TocData {
 	headings: TocHeading[];
 }
 
-declare module 'mdsvex' {
+declare module 'mdsvex/compile' {
 	interface PluginData {
 		toc?: TocData;
 	}

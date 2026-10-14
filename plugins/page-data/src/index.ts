@@ -1,4 +1,4 @@
-import type { Bundle, NodeView, PluginContext } from 'mdsvex';
+import type { Bundle, NodeView, PluginContext } from 'mdsvex/compile';
 
 import { count_words } from './words.js';
 
@@ -60,7 +60,7 @@ export interface PageData {
 	edit_url?: string;
 }
 
-declare module 'mdsvex' {
+declare module 'mdsvex/compile' {
 	interface PluginData {
 		page?: PageData;
 	}
@@ -348,7 +348,7 @@ function edit_url_of(option: PageDataOptions['edit_url']): EditUrl | undefined {
 		if (filename === undefined) return no_filename(ctx);
 		// read for each document, a server can change directory after the plugin is made
 		const root =
-			given ?? (typeof process === 'undefined' ? undefined : process.cwd());
+			given ?? (globalThis as { process?: { cwd(): string } }).process?.cwd();
 		const file = slashes(filename);
 		let path = file;
 		if (root !== undefined) {

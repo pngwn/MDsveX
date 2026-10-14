@@ -1,4 +1,4 @@
-import type { Bundle, TextRun } from 'mdsvex';
+import type { Bundle, TextRun } from 'mdsvex/compile';
 
 import { TABLE } from './table';
 
