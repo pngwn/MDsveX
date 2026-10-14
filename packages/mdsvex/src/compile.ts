@@ -77,6 +77,7 @@ export type {
 	ParsePlugin,
 	PluginContext,
 	SyntaxOptions,
+	TaskContext,
 	WrapperView,
 } from '@mdsvex/parse';
 /**
@@ -91,6 +92,7 @@ export type { ComponentSource };
 export type { FrontmatterOptions };
 export { FrontmatterError } from './frontmatter';
 export { PluginDataError } from './plugin_data';
+export { PluginAsyncError, PluginTaskError } from '@mdsvex/parse';
 export { fence_meta } from './code_meta';
 export type { FenceMeta, MetaInfo } from './code_meta';
 export type { PluginData };
@@ -437,12 +439,28 @@ export interface CompileInputs {
 	 * file, the document then waits in the waiting field of its target
 	 */
 	await_sources: boolean;
+	/**
+	 * true lets a plugin defer work in an into compile, which then stops
+	 * after the parse and waits in the waiting field of its target until the
+	 * caller settles it, a parse always may
+	 */
+	await_plugins: boolean;
 	/** how a fence marked run is imported, false runs none, undefined makes one an error */
 	snippets: SnippetsOption | undefined;
 }
 
-/** @internal every inputs object comes from here, so they share one shape */
-export function compile_inputs(): CompileInputs {
+/**
+ * the inputs of CompilerSession.parse and render, made from the options
+ * compile takes, every inputs object comes from here so they share one shape
+ */
+export function compile_inputs(options?: CompileOptions): CompileInputs {
+	const inputs = fresh_inputs();
+	return options === undefined
+		? inputs
+		: Object.assign(inputs, inputs_of(options));
+}
+
+function fresh_inputs(): CompileInputs {
 	return {
 		plugins: undefined,
 		directive_handlers: undefined,
@@ -464,6 +482,7 @@ export function compile_inputs(): CompileInputs {
 		links: undefined,
 		sources: undefined,
 		await_sources: false,
+		await_plugins: false,
 		snippets: undefined,
 	};
 }
@@ -1074,8 +1093,14 @@ class PluginHost {
 		this.frontmatter = () => this.read_frontmatter();
 	}
 
-	/** before each parse, after a reset, which makes the dispatcher forget its document */
-	start(source: string, inputs: CompileInputs): void {
+	/**
+	 * before each parse, after a reset, which makes the dispatcher forget its
+	 * document, awaits when the caller settles what the plugins defer
+	 */
+	start(source: string, inputs: CompileInputs, awaits: boolean): void {
+		const dispatcher = this.dispatcher;
+		dispatcher.allow_async = awaits;
+		dispatcher.async_hint = ASYNC_HINT;
 		this.source = source;
 		this.filename = inputs.filename;
 		this.parse = inputs.frontmatter_parse;
@@ -1176,6 +1201,18 @@ class PluginHost {
 	}
 }
 
+/** a Parsed whose plugins deferred work renders once it settled */
+function unsettled(host: PluginHost, parsed: Parsed): void {
+	if (!host.dispatcher.deferred) return;
+	parsed._nodes = null;
+	throw new Error(
+		'[mdsvex] the plugins of this document deferred work, wait for settle(parsed) before its render'
+	);
+}
+
+const ASYNC_HINT =
+	'compile() is synchronous, use compile_async() for a document whose plugins wait';
+
 /** the host of a parse outside any session, null when no handler can run */
 function host_once(
 	source: string,
@@ -1198,7 +1235,8 @@ function host_once(
 function parse_once(
 	source: string,
 	host: PluginHost | null,
-	inputs: CompileInputs
+	inputs: CompileInputs,
+	awaits: boolean
 ): NodeBuffer {
 	// short documents are denser in nodes and a small buffer is only a slab
 	// carve, so size generously to skip a resize
@@ -1209,7 +1247,7 @@ function parse_once(
 	);
 	if (host !== null) {
 		host.tree = tree;
-		host.start(source, inputs);
+		host.start(source, inputs, awaits);
 	}
 	let parser = spare_parser;
 	if (parser === null) parser = new PFMParser(tree);
@@ -1420,7 +1458,7 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 		inputs.directive_handlers,
 		reserved_directives(directives, inputs.templates)
 	);
-	const nodes = parse_once(source, host, inputs);
+	const nodes = parse_once(source, host, inputs, false);
 	const spans = take_math();
 	// only a document the parser noted a footnote in is looked through
 	const notes = take_footnote()
@@ -1625,9 +1663,11 @@ interface PluginArena {
 }
 
 /**
- * @internal a document between its parse and its render, it owns its nodes,
- * so the session compiles other documents while this one waits, a render
- * uses it up
+ * a document between its parse and its render, it owns its nodes, so the
+ * session compiles other documents while this one waits, a render uses it up
+ *
+ * the host contract: parse, then settle what plugins deferred, then read
+ * needs and fetch what they name, then render with it
  */
 export class Parsed {
 	/** the document as it was given */
@@ -1660,7 +1700,10 @@ export class Parsed {
 	_tree: TreeBuilder | null = null;
 	/** @internal the plugin arena of the session, lent until the render */
 	_arena: PluginArena | null = null;
-	/** what plugins left in ctx.data, by plugin name, undefined when none left any */
+	/**
+	 * what plugins wrote with ctx.set and ctx.add, by plugin name, undefined
+	 * when none wrote any, complete once settle resolved
+	 */
 	data: PluginData | undefined = undefined;
 	/** @internal what its plugin handlers left, null when none could run and once a render took it */
 	_host: PluginHost | null = null;
@@ -1744,7 +1787,8 @@ export class CompilerSession {
 		plugins: ParsePlugin[] | undefined,
 		bound: BoundTables | undefined,
 		reserved: ComponentScope | null,
-		inputs: CompileInputs
+		inputs: CompileInputs,
+		awaits: boolean
 	): NodeBuffer {
 		let arena = this.plugin_arena;
 		if (
@@ -1785,7 +1829,7 @@ export class CompilerSession {
 			arena.text.set_source(source);
 			arena.tree.reset();
 		}
-		arena.host.start(source, inputs);
+		arena.host.start(source, inputs, awaits);
 
 		this.plugin_busy = true;
 		let done = false;
@@ -1822,18 +1866,37 @@ export class CompilerSession {
 	}
 
 	/**
-	 * @internal the first half of a compile, the parse plugins and syntax
-	 * options of inputs apply here, the document then waits in the Parsed
-	 * while its caller fetches what the render needs
+	 * the first half of a compile, the parse plugins and syntax options of
+	 * inputs apply here, the document then waits in the Parsed while its
+	 * caller settles what plugins deferred and fetches what the render needs,
+	 * inputs come from compile_inputs
+	 *
+	 * @example
+	 * const parsed = session.parse(raw, inputs);
+	 * await session.settle(parsed);
+	 * for (const need of parsed.needs ?? []) ...
+	 * const { code } = session.render(parsed, inputs);
 	 */
 	parse(raw: string, inputs: CompileInputs): Parsed {
 		return this.run(raw, inputs, Kind.PARSE, undefined, undefined);
 	}
 
 	/**
-	 * @internal the second half, inputs are read again, so a caller that
-	 * shares one inputs object between documents stores the fields of this
-	 * document before it calls, as it does before a compile
+	 * waits for what the plugins of a parsed document deferred and applies
+	 * it, undefined when there is nothing to wait for, so a document without
+	 * deferred work stays synchronous, a task that rejected rejects it with a
+	 * PluginTaskError, a document whose plugins deferred renders only after it
+	 */
+	settle(parsed: Parsed): Promise<void> | undefined {
+		const host = parsed._host;
+		if (host === null || !host.dispatcher.deferred) return undefined;
+		return settle_plugins(host, parsed);
+	}
+
+	/**
+	 * the second half, inputs are read again, so a caller that shares one
+	 * inputs object between documents stores the fields of this document
+	 * before it calls, as it does before a compile
 	 */
 	render(
 		parsed: Parsed,
@@ -2153,13 +2216,22 @@ export class CompilerSession {
 				(plugins !== undefined && plugins.length > 0) || bound !== undefined;
 			if (plugged) {
 				const reserved = reserved_directives(directives, inputs.templates);
+				// a caller that gets a Parsed settles it, an into compile may wait
+				const awaits = kind === Kind.PARSE || inputs.await_plugins;
 				if (this.plugin_busy) {
 					// started in a plugin handler, the session holds the outer document
 					host = host_once(source, plugins, bound, reserved)!;
-					nodes = parse_once(source, host, inputs);
+					nodes = parse_once(source, host, inputs, awaits);
 					renderer = new CursorHTMLRenderer({ cache: false });
 				} else {
-					nodes = this.parse_plugged(source, plugins, bound, reserved, inputs);
+					nodes = this.parse_plugged(
+						source,
+						plugins,
+						bound,
+						reserved,
+						inputs,
+						awaits
+					);
 					host = this.plugin_arena!.host;
 				}
 				// a handler that read the frontmatter already parsed it
@@ -2196,7 +2268,8 @@ export class CompilerSession {
 				(shown !== null &&
 					out !== undefined &&
 					inputs.await_sources &&
-					!sources_met(shown, given as Sources))
+					!sources_met(shown, given as Sources)) ||
+				(host !== null && out !== undefined && host.dispatcher.deferred)
 			) {
 				const waiting = new Parsed(raw, source, metadata, nodes);
 				waiting.math = waiting._spans = spans;
@@ -2225,6 +2298,7 @@ export class CompilerSession {
 			notes = parsed._notes;
 			// the next document of the session resets it
 			host = parsed._host;
+			if (host !== null) unsettled(host, parsed);
 			parsed._host = null;
 			// a plugin handler renders it, the session renderer has the outer document to come
 			if (this.plugin_busy) renderer = new CursorHTMLRenderer({ cache: false });
@@ -2449,6 +2523,41 @@ function render(source: string, options?: CompileOptions): CompileResult {
 		else shared_session = null;
 		shared_session_busy = false;
 	}
+}
+
+/** settle out of line, the data of the document is whole once the tasks applied */
+async function settle_plugins(host: PluginHost, parsed: Parsed): Promise<void> {
+	await host.dispatcher.settle();
+	parsed.data = host.dispatcher.data();
+}
+
+/**
+ * compile for a document whose plugins wait, for work they defer, the same
+ * result as compile once that work applied, a document whose plugins defer
+ * nothing compiles as compile does, safe in a browser
+ *
+ * @example
+ * const { code, data } = await compile_async(source, { plugins: [citations()] });
+ */
+export async function compile_async(
+	source: string,
+	options?: CompileOptions
+): Promise<CompileResult> {
+	if (options === undefined || !has_plugins(options))
+		return render(source, options);
+	const session = new CompilerSession();
+	const inputs = inputs_of(options);
+	const parsed = session.parse(source, inputs);
+	const settled = session.settle(parsed);
+	if (settled !== undefined) {
+		try {
+			await settled;
+		} catch (e) {
+			session.drop(parsed);
+			throw e;
+		}
+	}
+	return session.render(parsed, inputs, options.sourcemap);
 }
 
 /** @internal for tests */

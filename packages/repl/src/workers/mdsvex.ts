@@ -1,7 +1,7 @@
 import * as acorn from 'acorn';
 import {
-	compile,
-	SourceError,
+	CompilerSession,
+	compile_inputs,
 	type CompileOptions,
 	type Snippet,
 	type ComponentMode,
@@ -707,30 +707,22 @@ export function compile_markdown(
 	options: MdsvexCompileOptions,
 	files?: FileMap
 ): MarkdownResult {
-	let sources: Record<string, string> | undefined;
-	let result;
 	const name = filename.slice(filename.lastIndexOf('/') + 1);
 	const specifier = (snippet: Snippet) =>
 		`./${name}.snippet-${snippet.hash}.${snippet.extension}`;
-	for (;;) {
-		try {
-			result = compile(source, {
-				...options,
-				sources,
-				snippets: specifier,
-				sourcemap: true,
-			});
-			break;
-		} catch (e) {
-			// compile names one file it has no text for, each try adds that one
-			if (!(e instanceof SourceError) || e.code !== 'src_missing') throw e;
-			const text = e.spec.startsWith('.')
-				? files?.get(relative_to(filename, e.spec))
-				: undefined;
-			if (text === undefined) throw e;
-			(sources ??= {})[e.spec] = text;
-		}
+	const session = new CompilerSession();
+	const inputs = compile_inputs({ ...options, snippets: specifier });
+	const parsed = session.parse(source, inputs);
+	// the files its fences show, a relative path is read from the workspace
+	let sources: Record<string, string> | undefined;
+	for (const need of parsed.needs ?? []) {
+		if (need.type !== 'source' || !need.spec.startsWith('.')) continue;
+		const text = files?.get(relative_to(filename, need.spec));
+		if (text !== undefined) (sources ??= {})[need.spec] = text;
 	}
+	inputs.sources = sources;
+	// a file it has no text for throws the SourceError compile throws
+	const result = session.render(parsed, inputs, true);
 	const map = mappings_to_v3(
 		result.mappings ?? [],
 		source,

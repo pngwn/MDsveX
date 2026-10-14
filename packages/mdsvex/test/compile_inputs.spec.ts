@@ -102,6 +102,7 @@ describe('compile inputs', () => {
 			heading_ids: undefined,
 			smart_punctuation: undefined,
 			await_sources: false,
+			await_plugins: false,
 		});
 		const doc = '# plain\n\ntext\n';
 		const out = target();

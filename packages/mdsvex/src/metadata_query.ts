@@ -118,8 +118,8 @@ export function metadata_query(
 
 /** how a query turns a document into its module */
 export interface QueryModule {
-	/** file is the path of the document */
-	module(raw: string, file: string): string;
+	/** file is the path of the document, a promise when its plugins deferred work */
+	module(raw: string, file: string): string | Promise<string>;
 	/** awaited before module in a load */
 	ready?(ctx: Rollup.PluginContext): Promise<unknown> | undefined;
 	/** false when module can not run outside a load, an edit then reloads unasked */
@@ -209,7 +209,7 @@ function document_query(
 			await build.ready?.(ctx);
 			let code: string;
 			try {
-				code = build.module(raw, file);
+				code = await build.module(raw, file);
 			} catch (e: any) {
 				loaded.delete(key);
 				// vite adds these to what a transform throws, a load has no file of its own
@@ -242,7 +242,7 @@ function document_query(
 			if (before !== undefined && build.settled?.() !== false) {
 				let now: string | undefined;
 				try {
-					now = build.module(await update.read(), update.file);
+					now = await build.module(await update.read(), update.file);
 				} catch {
 					// the load reports it
 				}
