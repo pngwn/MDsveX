@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, test } from 'vitest';
 
 import { scopes_of, tokenize } from './grammar';
@@ -321,6 +323,56 @@ describe('fence meta', () => {
 			'fenced_code.block.language.pfm'
 		);
 		expect(await scopes_of(source, 'after')).toEqual([]);
+	});
+});
+
+describe('fence languages', () => {
+	test.each([
+		['ruby', 'ruby'],
+		['mts', 'typescript'],
+		['jsx', 'javascriptreact'],
+		['c++', 'cpp'],
+		['c#', 'csharp'],
+		['Dockerfile', 'dockerfile'],
+		['md', 'markdown'],
+		['svx', 'pfm'],
+	])('a %s fence embeds %s', async (name, language) => {
+		const source = `\`\`\`${name} title="a"\nbody\n\`\`\``;
+		expect(await scopes_of(source, name)).toContain(
+			'fenced_code.block.language.pfm'
+		);
+		expect(await scopes_of(source, 'body')).toContain(
+			`meta.embedded.block.${language}`
+		);
+	});
+
+	test('a fence of a new language in a block quote closes', async () => {
+		const source = '> ```ruby\n> puts 1\n> ```\n\nafter';
+		expect(await scopes_of(source, 'after')).toEqual([]);
+	});
+
+	test('a language that is only the start of a name is not embedded', async () => {
+		const source = '```rubyx\nbody\n```';
+		expect(await scopes_of(source, 'rubyx')).toContain(
+			'fenced_code.block.language.pfm'
+		);
+		expect(await scopes_of(source, 'body')).toEqual([
+			'markup.fenced_code.block.pfm',
+		]);
+	});
+
+	test('the extension maps every embedded block to its language', async () => {
+		const grammar = readFileSync(
+			new URL('../syntaxes/pfm.tmLanguage.json', import.meta.url),
+			'utf8'
+		);
+		const pkg = JSON.parse(
+			readFileSync(new URL('../package.json', import.meta.url), 'utf8')
+		);
+		const embedded = pkg.contributes.grammars[0].embeddedLanguages;
+		const scopes = grammar.match(/meta\.embedded\.block\.[\w-]+/g) ?? [];
+		expect(scopes.length).toBeGreaterThan(50);
+		for (const scope of scopes) expect(embedded).toHaveProperty([scope]);
 	});
 });
 
