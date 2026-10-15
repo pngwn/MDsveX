@@ -9,11 +9,20 @@ import {
 	UndoLog,
 	ATTR_DID_NOT_EXIST,
 	unlink_child,
+	type DataHost,
 	type RedirectHost,
 } from './undo_log';
 import {
+	Bag,
+	NO_OWNER,
+	json_copy,
+	type DataChange,
+	type Json,
+} from './plugin_data';
+import {
 	NodeView,
 	ViewCache,
+	type Position,
 	type StructureHost,
 	type TextSource,
 	SourceTextSource,
@@ -550,8 +559,22 @@ class Context implements PluginContext {
 		return this[HOST]._frontmatter();
 	}
 
-	get data(): Record<string, any> {
+	get data(): Readonly<Record<string, Json>> {
 		return this[HOST]._data(this[PLUGIN]);
+	}
+
+	set data(_value: unknown) {
+		throw new TypeError(
+			'ctx.data is read-only, write with ctx.set(key, value) or add to a list with ctx.add(key, value)'
+		);
+	}
+
+	set(key: string, value: unknown): void {
+		this[HOST]._write(this[PLUGIN], key, value, false);
+	}
+
+	add(key: string, value: unknown): void {
+		this[HOST]._write(this[PLUGIN], key, value, true);
 	}
 
 	warn(code: string, message: string, node?: NodeView): void {
@@ -767,7 +790,7 @@ const NO_WRAPPERS: Set<number> = new Set();
  * holds the handler tables, undo log, close callbacks, redirect links,
  * directive scopes and synthetic id counter. both builders compose this in.
  */
-export class PluginDispatcher implements StructureHost, RedirectHost {
+export class PluginDispatcher implements StructureHost, RedirectHost, DataHost {
 	private fused: HandlersTable;
 	private has_handler: Uint32Array;
 	private sequential: SequentialPass[];
@@ -804,9 +827,10 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	private doc: PluginDocument | null = null;
 	/** what handlers reported for the document, null until the first */
 	private warned: PluginWarning[] | null = null;
-	/** the data object of each plugin name and the proxy its handlers write through */
-	private bags: Map<string, Record<string, any>> | null = null;
-	private bag_proxies: Map<string, Record<string, any>> | null = null;
+	/** the data of each plugin name, made at its first read or write */
+	private bags: Map<string, Bag> | null = null;
+	/** what follows changes to the data, kept from one document to the next */
+	private data_listeners: ((change: DataChange) => void)[] | null = null;
 	private text_source: TextSource;
 
 	/**
@@ -915,25 +939,38 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 	}
 
 	/**
-	 * what plugins left in ctx.data for the document, by plugin name, a plugin
-	 * that left nothing has no key, undefined when none left any
+	 * what plugins wrote with ctx.set and ctx.add for the document, by plugin
+	 * name, a plugin that left nothing has no key, undefined when none left any
 	 */
 	data(): PluginData | undefined {
 		const bags = this.bags;
 		if (bags === null) return undefined;
 		let out: PluginData | undefined;
 		for (const [name, bag] of bags) {
-			// a write that was undone leaves an empty object
-			let empty = true;
-			for (const _key in bag) {
-				empty = false;
-				break;
-			}
-			if (empty) continue;
+			// a write that was taken back leaves nothing
+			if (bag.empty) continue;
 			if (out === undefined) out = {};
-			out[name] = bag;
+			out[name] = bag.out();
 		}
 		return out;
+	}
+
+	/**
+	 * calls the listener for each change to the data of a plugin, a write or a
+	 * revoke that took one back, with the value of the key after it, returns
+	 * a function that stops it, a listener stays from one document to the next
+	 */
+	on_data(listener: (change: DataChange) => void): () => void {
+		let listeners = this.data_listeners;
+		if (listeners === null) listeners = this.data_listeners = [];
+		listeners.push(listener);
+		return () => {
+			const all = this.data_listeners;
+			if (all === null) return;
+			const at = all.indexOf(listener);
+			if (at !== -1) all.splice(at, 1);
+			if (all.length === 0) this.data_listeners = null;
+		};
 	}
 
 	/** @internal */
@@ -950,26 +987,75 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		return read === undefined ? undefined : read();
 	}
 
-	/** @internal the proxy over the data object of a plugin name, made when first read */
-	_data(plugin: string | undefined): Record<string, any> {
+	/** the data of a plugin name, made when first read or written */
+	private bag(plugin: string | undefined): Bag {
 		if (plugin === undefined) {
 			throw new Error(
 				'ctx.data is kept by plugin name, give the plugin a name to use it'
 			);
 		}
-		let proxies = this.bag_proxies;
-		if (proxies === null) {
-			proxies = this.bag_proxies = new Map();
-			this.bags = new Map();
+		let bags = this.bags;
+		if (bags === null) bags = this.bags = new Map();
+		let bag = bags.get(plugin);
+		if (bag === undefined) {
+			bag = new Bag(plugin);
+			bags.set(plugin, bag);
 		}
-		let proxy = proxies.get(plugin);
-		if (proxy === undefined) {
-			const bag = {};
-			proxy = new Proxy(bag, this.traps());
-			proxies.set(plugin, proxy);
-			this.bags!.set(plugin, bag);
+		return bag;
+	}
+
+	/** @internal a read-only view of the data of a plugin name */
+	_data(plugin: string | undefined): Readonly<Record<string, Json>> {
+		return this.bag(plugin).read();
+	}
+
+	/**
+	 * @internal a ctx.set or a ctx.add, owned by the node whose handler or
+	 * close callback is running, by no node in a sequential pass
+	 */
+	_write(
+		plugin: string | undefined,
+		key: string,
+		value: unknown,
+		list: boolean
+	): void {
+		const bag = this.bag(plugin);
+		if (typeof key !== 'string' || key === '') {
+			throw new TypeError(
+				`ctx.${list ? 'add' : 'set'} takes a key, a string that is not empty, and a value`
+			);
 		}
-		return proxy;
+		const running = this.running;
+		const owner = running === NONE || this.sequential_pass ? NO_OWNER : running;
+		const copy = json_copy(value, bag.name, key, () => this.position(running));
+		bag.write(key, owner, copy, list);
+		// a node that is final records nothing, it commits once its handlers ran
+		if (owner !== NO_OWNER && this.undo.recording) {
+			this.undo.record_data(this, bag, key, owner);
+		}
+		if (this.data_listeners !== null) this.data_changed(bag, key);
+	}
+
+	/** @internal a revoke takes back what a node wrote under a key */
+	revoke_data(bag: object, key: string, owner: number): void {
+		const own = bag as Bag;
+		if (own.revoke(key, owner) && this.data_listeners !== null) {
+			this.data_changed(own, key);
+		}
+	}
+
+	private data_changed(bag: Bag, key: string): void {
+		const change: DataChange = { plugin: bag.name, key, value: bag.get(key) };
+		// a listener that stops itself leaves the others to run
+		const listeners = this.data_listeners!.slice();
+		for (let i = 0; i < listeners.length; i++) listeners[i](change);
+	}
+
+	/** where the node whose handler runs is, for an error */
+	private position(node: number): Position | undefined {
+		const cache = this.cache;
+		if (node === NONE || cache === null) return undefined;
+		return cache.get(node)?.position;
 	}
 
 	/** @internal */
@@ -1665,7 +1751,7 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		return new Proxy({}, this.traps());
 	}
 
-	/** the traps of a state or data proxy, the undo log must be its own by now */
+	/** the traps of a state proxy, the undo log must be its own by now */
 	private traps(): ProxyHandler<Record<string | symbol, any>> {
 		let traps = this.state_traps;
 		if (traps === null) {
@@ -2270,7 +2356,6 @@ export class PluginDispatcher implements StructureHost, RedirectHost {
 		this.doc = null;
 		this.warned = null;
 		this.bags = null;
-		this.bag_proxies = null;
 		if (this.cache !== null) this.cache.invalidate();
 	}
 }

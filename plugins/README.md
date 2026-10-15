@@ -35,7 +35,7 @@ pnpm --filter @mdsvex/plugin-anchors test:run
 ```
 
 - **`../test/app.ts`** writes a throwaway app with the package copied into its `node_modules` as npm would publish it (`package.json` and what `files` lists). Use it to check that what is published is what `exports` names, and to run a dev server against the installed package.
-- **A handler reports and hands data back through its context**: `ctx.warn` for a problem in the document, `ctx.data` for what a page will want, such as a table of contents. Both are in The Context of [`packages/parse/PLUGINS.md`](../packages/parse/PLUGINS.md), with what a revoke takes back.
+- **A handler reports and hands data back through its context**: `ctx.warn` for a problem in the document, `ctx.set` and `ctx.add` for what a page will want, such as a table of contents. Both are in The Context of [`packages/parse/PLUGINS.md`](../packages/parse/PLUGINS.md), with what a revoke takes back.
 - **The tree a handler builds is tested on every parser path** with `expect_parity` from `packages/parse/test/plugin_harness.ts`: both builders, whole and fed in chunks.
 - **A `README.md`** with install and usage, and a changeset for every change a user can see.
 

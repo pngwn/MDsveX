@@ -1,6 +1,6 @@
 # Incremental and async work for plugins: design
 
-Status: draft, 2026-10-14. Nothing here is built. Section 11 lists what needs a ruling.
+Status: decided 2026-10-15, being built. Section 11 has the rulings, section 12 the order of the work.
 
 Sources: what the plugin sessions left out (`last_modified` in `@mdsvex/plugin-page-data`, embeds, bibliographies, build-time diagrams), the workaround in `@mdsvex/plugin-toc`, `packages/parse/PLUGINS.md` (streaming against batch, dirty tracking, `ctx.data`), `packages/parse/src/plugin_dispatch.ts`, `CompilerSession` and `Parsed` in `packages/mdsvex/src/compile.ts`, the gap the Vite plugin already waits in for `src=`, and `design/vite-coupling.md`.
 
@@ -204,7 +204,7 @@ Ids are made today in a pass after the parse (decision D5 of the implementation 
 
 ## 11. Decisions for the maintainer
 
-My pick is first in each.
+Decided 2026-10-15: the first option of each.
 
 1. **The write calls.** `ctx.set` and `ctx.add`. Or one `ctx.set` with an option for list entries.
 2. **Keys.** Flat strings, structure in values. Or paths (`ctx.set(['entries', key], value)`), which need conflict rules for a path and its parent.

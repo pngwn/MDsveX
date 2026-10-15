@@ -674,7 +674,8 @@ The context is new for each document, and any key you set on it is yours, as `ct
 | `ctx.filename` | the path of the document |
 | `ctx.frontmatter` | the parsed frontmatter, `undefined` when the document has none. Don't write to it |
 | `ctx.warn(code, message, node)` | reports a problem. The build prints it with the line of the node |
-| `ctx.data` | what the plugin leaves for the page, see [plugin data](docs#plugin-data). It needs a `name` |
+| `ctx.set(key, value)`, `ctx.add(key, value)` | write what the plugin leaves for the page, see [plugin data](docs#plugin-data). They need a `name` |
+| `ctx.data` | what the plugin has written so far, read-only |
 
 ```js
 const one_title = {
@@ -693,7 +694,7 @@ const one_title = {
 mdsvex({ plugins: [one_title] });
 ```
 
-A handler [bound to a directive](docs#plugins) has the same four beside `directive`, `index` and `state`. Its `children` table also takes `'*'`, a handler for a child of any type, which runs after the one for its type.
+A handler [bound to a directive](docs#plugins) has the same members beside `directive`, `index` and `state`. Its `children` table also takes `'*'`, a handler for a child of any type, which runs after the one for its type.
 
 Things to know:
 
@@ -717,7 +718,7 @@ const no_comments = {
 
 ### Plugin data
 
-A plugin can hand something back from the parse of a document, such as a table of contents or a reading time, by writing to `ctx.data`:
+A plugin can hand something back from the parse of a document, such as a table of contents or a reading time. `ctx.set(key, value)` keeps one value under a key and `ctx.add(key, value)` adds an entry to a list. `ctx.data` reads what the plugin has written so far:
 
 ```js
 const reading_time = {
@@ -727,8 +728,8 @@ const reading_time = {
 		paragraph: {
 			parse(node, ctx) {
 				const words = (ctx.data.words ?? 0) + node.text_content.split(/\s+/).length;
-				ctx.data.words = words;
-				ctx.data.minutes = Math.ceil(words / 200);
+				ctx.set('words', words);
+				ctx.set('minutes', Math.ceil(words / 200));
 			}
 		}
 	}
@@ -748,7 +749,10 @@ plugin_data.reading_time; // { words: 420, minutes: 3 }
 - **The document can read it too**, as `{plugin_data.reading_time.minutes}` in its own markup.
 - **A [template](docs#template-props) gets it as its `plugin_data` prop.**
 - **A document whose plugins left nothing has no such export**, and compiles exactly as it does without plugins. Import it from a document you know has some, or use `?data` below, which always has the export.
-- **The values are JSON**: plain objects, arrays, strings, finite numbers, booleans and `null`. Anything else, such as a `Date`, a `Map`, `NaN` or a function, fails the compile with a `PluginDataError` that names the plugin and the path of the value, `headings[2].id`. A key that holds `undefined` is left out.
+- **A write belongs to the node whose handler made it.** When the parser takes a node back, the writes its handlers made go too, so a handler can write as soon as it knows something.
+- **Lists are in document order.** An entry from `ctx.add` sorts by where its node is in the document, whatever order the handlers ran in. Of two nodes that `ctx.set` one key, the later one in the document wins.
+- **`ctx.data` is read-only.** Assigning to it throws a `TypeError`, and what it holds is frozen.
+- **The values are JSON**: plain objects, arrays, strings, finite numbers, booleans and `null`. Anything else, such as a `Date`, a `Map`, `NaN` or a function, throws a `PluginDataError` from the write, with the plugin, the key, the path of the value, `headings[2].id`, and where the node is. A key that holds `undefined` is left out.
 
 To list documents with what their plugins left, import them with the `?data` query:
 

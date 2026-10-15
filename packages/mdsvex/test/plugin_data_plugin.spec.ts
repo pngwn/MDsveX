@@ -462,7 +462,7 @@ describe('?data with other configs', () => {
 						parse: {
 							heading: {
 								parse(_node, ctx) {
-									ctx.data.at = new Date(0);
+									ctx.set('at', new Date(0) as never);
 								},
 							},
 						},

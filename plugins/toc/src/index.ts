@@ -251,7 +251,7 @@ function headings_of(
 			node
 		);
 	}
-	if (headings.length > 0) ctx.data.headings = headings;
+	if (headings.length > 0) ctx.set('headings', headings);
 	return headings;
 }
 

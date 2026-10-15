@@ -68,9 +68,11 @@ import type { Fenced, SourceFences, SourceNeed } from './fence_sources';
 import type { Snippet, SnippetsOption } from './run_blocks';
 
 export type {
+	DataChange,
 	DirectiveContext,
 	DirectiveEntry,
 	DirectiveHandler,
+	Json,
 	NodeView,
 	ParsePlugin,
 	PluginContext,

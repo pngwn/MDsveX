@@ -240,12 +240,12 @@ const toc = {
   sequential: true,
   heading: {
     parse(node, ctx) {
-      const headings = (ctx.data.headings ??= []);
+      const headings = ctx.data.headings ?? [];
       const last = headings[headings.length - 1];
       if (last && node.depth > last.depth + 1) {
         ctx.warn('skipped_level', `h${node.depth} follows h${last.depth}`, node);
       }
-      headings.push({ depth: node.depth, text: node.text_content, id: node.attrs.id });
+      ctx.add('headings', { depth: node.depth, text: node.text_content, id: node.attrs.id });
     }
   }
 };
@@ -256,9 +256,11 @@ const toc = {
 | `ctx.filename` | the path of the document, `undefined` when whoever runs the parse gave none |
 | `ctx.frontmatter` | the parsed frontmatter, `undefined` for a document without any |
 | `ctx.warn(code, message, node?)` | reports a problem, at the node when one is given |
-| `ctx.data` | an object the plugin writes to, handed back from the parse under the name of the plugin |
+| `ctx.set(key, value)` | one value under a key of what the plugin hands back from the parse |
+| `ctx.add(key, value)` | one entry of a list under a key, in document order |
+| `ctx.data` | what the plugin has written so far, read-only |
 
-A handler bound to a directive gets the same four members beside `directive`, `index` and `state`.
+A handler bound to a directive gets the same members beside `directive`, `index` and `state`.
 
 ### `ctx.filename` and `ctx.frontmatter`
 
@@ -279,18 +281,66 @@ The parser knows neither. Whoever runs the parse tells the dispatcher, see [For 
 
 In `mdsvex` these join the `warnings` of the compile, with `plugin` set to the name of the plugin and `start` as a line and a column. The Vite plugin reports them like any other warning.
 
-### `ctx.data`
+### `ctx.set`, `ctx.add` and `ctx.data`
 
-`ctx.data` is how a plugin hands something back from a parse: a table of contents, a reading time, an excerpt.
+A plugin hands something back from a parse by writing it: a table of contents, a reading time, an excerpt.
 
-- **One object per plugin name, per document.** Two plugins cannot overwrite each other. Plugins that share a name share the object, which is how the `parse` plugin and the bound handlers of one `mdsvex` plugin write to the same place.
-- **A plugin needs a `name` to use it.** Reading `ctx.data` from a plugin without one throws.
-- **A write is undone when the node whose handler made it is revoked,** by the same log as `ctx.state` (see [Revocation](#revocation)). So `ctx.data.title = node.text_content` is safe from any handler.
-- **The log is shallow.** It sees an assignment to a key of `ctx.data` and a `delete`. It does not see a `push` to an array held there, or a write to a nested object. Mutate in place only where nothing is revoked afterwards: in a sequential pass, or in the close callback of a node that is never pending, such as a heading or a block directive.
-- **A count kept by reassigning** (`ctx.data.n = (ctx.data.n ?? 0) + 1`) is exact when the node that is revoked wrote last. When an earlier writer is revoked and a later one stays, the later value still includes the earlier one. A sequential pass has no such case.
-- **A plugin that left nothing has no key** in the result, and a parse where no plugin left anything gives `undefined`.
+```js
+heading: {
+  parse(node, ctx) {
+    return () => {
+      ctx.add('headings', { depth: node.depth, text: node.text_content });
+      ctx.set('last', node.text_content);
+    };
+  }
+}
+```
 
-In `mdsvex` the objects come back as `data` on the result of a compile, keyed by plugin name: `compile(source, { plugins: [toc()] }).data.toc.headings`. The compiled document exports the same object as `plugin_data`, its template takes it as a prop of that name, and a `?data` import gives it without a render. It is written into the module as JSON there, so `mdsvex` throws a `PluginDataError` for a value JSON cannot hold: keep to plain objects, arrays, strings, finite numbers, booleans and `null`.
+- **`ctx.set(key, value)`** keeps one value under a key. **`ctx.add(key, value)`** adds one entry to a list under a key. A key holds one or the other: a `set` to a key that holds a list throws a `TypeError`, and so does an `add` to one that holds a value.
+- **One store per plugin name, per document.** Two plugins cannot overwrite each other. Plugins that share a name share it, which is how the `parse` plugin and the bound handlers of one `mdsvex` plugin write to the same place. A plugin needs a `name` to write or read, without one these throw.
+- **Keys are flat strings.** Structure lives in values. A plugin that wants a map writes keys with a prefix (`entry:smith2020`) or keeps a list.
+
+#### Every write has an owner
+
+A write belongs to the node whose handler or close callback made it, whichever node it is about. A write from a sequential pass belongs to no node.
+
+- **A revoke takes back exactly the owner's writes.** When the parser revokes a node, every `set` and `add` it owned goes and each key holds what it would have held without them. A link with no destination, an emphasis that never closes and the paragraphs of a tight list all go this way, so a handler can write as soon as it knows something.
+- **`add` keeps entries in document order.** An entry sorts by its owner's place in the source, not by when it was written. The close callback of a heading runs after those of the links inside it and still comes first, and a batch parse, a parse fed in pieces and a tree built over the wire give the same list. One owner's entries keep the order it added them. Entries with no owner come after the rest, in the order they were added.
+- **`set` resolves conflicts by document order too.** Of two owners that set one key, the value of the later one in the source stays. One owner that sets a key twice leaves its last value. A `set` with no owner comes after every owner, and of two such the last one stays. So the result does not depend on the order handlers ran in.
+- **Nothing else is undone.** What a plugin keeps on its own keys of `ctx`, or in a variable, is not owned and a revoke leaves it as it was.
+
+#### Values are json
+
+- **A value is checked when it is written.** A value JSON cannot hold throws a `PluginDataError` from the write: a function, `undefined` (in an array or as the value), a `NaN` or an infinity, a bigint, a symbol, an object with a prototype such as a `Date` or a `Map`, a symbol key, or an object that holds itself. The error carries `plugin`, `key`, `path` (where the value is under the key, `headings[2].id`) and `position`, where the owner is in the source, `undefined` over the wire and for a write with no owner. Keep to plain objects, arrays, strings, finite numbers, booleans and `null`. A key of an object that holds `undefined` is left out, as JSON does.
+- **It is copied and frozen.** A change to the object after the write changes nothing, and the copy cannot be changed.
+
+#### Reading
+
+`ctx.data` is the plugin's data as it stands, read-only. A plugin reads it to decide things, whether an id has been used, say, or what the last heading was.
+
+- **Assigning to it throws** a `TypeError` that names `ctx.set`, and so do deleting a key and assigning `ctx.data` itself. What it holds is frozen.
+- **A list reads in document order,** with the entries that are live now. An entry of a pending node is there until the node is revoked.
+- **It spreads and stringifies** as a plain object.
+
+#### What a parse gives back
+
+`dispatcher.data()` gives an object per plugin name, its `add` keys arrays in document order and its `set` keys their values. A plugin that left nothing has no key, and a parse where no plugin left anything gives `undefined`.
+
+In `mdsvex` the objects come back as `data` on the result of a compile, keyed by plugin name: `compile(source, { plugins: [toc()] }).data.toc.headings`. The compiled document exports the same object as `plugin_data`, its template takes it as a prop of that name, and a `?data` import gives it without a render.
+
+#### Following changes
+
+The dispatcher calls a listener for each change to the data of any plugin: a write, or a revoke that took one back.
+
+```js
+const stop = dispatcher.on_data(({ plugin, key, value }) => {
+  // value is what the key holds after the change, undefined once it holds nothing
+});
+```
+
+- **The event carries the value after the change,** not a diff. A list event carries the whole list, frozen and in document order. So a consumer that missed events only needs the latest one per key.
+- **A streaming view** follows these so a component that reads the data renders again as it changes. A compile ignores them and reads `data()` at the end.
+- **A listener stays from one document to the next.** The function `on_data` returns stops it.
 
 ### For whoever runs the parse
 
@@ -309,7 +359,8 @@ dispatcher.data();   // { [plugin name]: object } or undefined
 ```
 
 - **`set_document` is forgotten at a reset.** Call it for each document, after `TreeBuilder.reset()` or `WireTreeBuilder.reset()`.
-- **`warnings` and `data()` are for the document just parsed** and start empty at the next reset. Read them after `run_sequential`. The objects in `data()` are the plugin's own, not copies.
+- **`warnings` and `data()` are for the document just parsed** and start empty at the next reset. Read them after `run_sequential`. `data()` makes a new object for each plugin name at each call, and the values in it are frozen.
+- **`on_data(listener)`** follows each change to the data while the document is parsed, see [Following changes](#following-changes).
 - **A wire consumer has no frontmatter in its tree.** The wire sends a frontmatter node with no text, so `frontmatter` is whatever the consumer was sent beside the stream.
 - **A plugin's name** is its `name` key. A table of bound handlers gets one as `{ name, directives }` in place of the bare table.
 
@@ -604,11 +655,11 @@ A handler is a function, not a `{ parse }` object. Like a plugin handler it may 
 
 `directive_handlers` is an array of tables. When two tables have an entry for the same name the later one replaces the earlier one whole. The tables are read once per array, so pass the same array for every document and build a new one to change a handler.
 
-A table can come with the name of the plugin it belongs to, as `{ name: 'steps', directives: bound }`. The name keys what its handlers write to `ctx.data` and is the `plugin` of their warnings. `mdsvex` passes each plugin's `directives` this way.
+A table can come with the name of the plugin it belongs to, as `{ name: 'steps', directives: bound }`. The name keys what its handlers write with `ctx.set` and `ctx.add` and is the `plugin` of their warnings. `mdsvex` passes each plugin's `directives` this way.
 
 ### The context
 
-A bound handler gets its own context in place of the plugin `ctx`. It has `filename`, `frontmatter`, `warn` and `data` as [the plugin context](#the-context) does, and three members of its own:
+A bound handler gets its own context in place of the plugin `ctx`. It has `filename`, `frontmatter`, `warn`, `set`, `add` and `data` as [the plugin context](#the-context) does, and three members of its own:
 
 - **`ctx.directive`** is the view of the directive the handler is bound to.
 - **`ctx.index`** is how many times this handler has already run in this directive, 0 for the first call. `children.heading` and `descendants.heading` of one entry count apart.
@@ -696,7 +747,7 @@ tabs: {
 
 ### Revocation
 
-What a bound handler does is logged against the node it ran for, like any plugin mutation, its warnings and its writes to `ctx.data` included, and two more things are undone when that node is revoked:
+What a bound handler does is logged against the node it ran for, like any plugin mutation, its warnings and its writes with `ctx.set` and `ctx.add` included, and two more things are undone when that node is revoked:
 
 - **A write to `ctx.state`** is taken back. The log is shallow, as it is for `attrs`: assign a new value to change one, and don't mutate an object held in the state. Revokes do not arrive in the reverse order of the writes (a tight list revokes its paragraphs first to last), so each key keeps what its last surviving write put there.
 - **The `index` it used** is given back, so the count goes down by one. The handlers that ran since keep the index they were given.
@@ -801,7 +852,7 @@ Only the tree is restored. What a plugin keeps in its own variables is not, so a
 
 **Bound handler state.** A write to `ctx.state` and the `index` a bound handler used are logged the same way, see [Handlers Bound to a Directive](#revocation).
 
-**Warnings and data.** A warning from `ctx.warn` and a write to a key of `ctx.data` are logged against the node whose handler made them, see [The Context](#the-context). What a plugin keeps on its own keys of `ctx` is not.
+**Warnings and data.** A warning from `ctx.warn` and a write with `ctx.set` or `ctx.add` are logged against the node whose handler made them, see [The Context](#the-context). A revoke takes back every write its node owned, see [Every write has an owner](#every-write-has-an-owner). What a plugin keeps on its own keys of `ctx` is not.
 
 **Cross-node mutations.** When a plugin reaches through traversal to modify a different node (say, setting an attr on `node.parent`), that mutation is captured in the undo log of the node whose handler is running, not the node that was modified. This is because the revocation boundary is the handler's node — if the parser revokes the parent later, that's a separate revocation event with its own undo log.
 
@@ -826,7 +877,7 @@ Because plugin mutations on traversal-reached nodes are logged against the handl
 
 The close callback runs later, potentially well after the open handler. Its mutations are captured the same way — through the view setters, into the same undo log for the node being mutated. Revocation between open and close is handled by the builder discarding the close callback entirely (it's held in a per-node registration) and running the undo log.
 
-If revocation happens after close has fired, the close callback's mutations are already in the undo log alongside the open handler's mutations, and they get unwound together in reverse order. This is the usual order for an inline delimiter that never closes and for the paragraphs of a tight list: the parser closes the node where its block ends and revokes it afterwards. A paragraph that starts with a tag or an image and holds nothing else is revoked right after its close as well. Any other pending node that has closed is final. Only writes through the node view, warnings and writes to a key of `ctx.data` or `ctx.state` are unwound, so a callback that also writes somewhere else (a list it collects into, say) should not assume its node is final.
+If revocation happens after close has fired, the close callback's mutations are already in the undo log alongside the open handler's mutations, and they get unwound together in reverse order. This is the usual order for an inline delimiter that never closes and for the paragraphs of a tight list: the parser closes the node where its block ends and revokes it afterwards. A paragraph that starts with a tag or an image and holds nothing else is revoked right after its close as well. Any other pending node that has closed is final. Only writes through the node view, warnings, writes with `ctx.set` and `ctx.add` and writes to a key of `ctx.state` are unwound, so a callback that also writes somewhere else (a list it collects into, say) should not assume its node is final.
 
 ## Implementation Notes
 

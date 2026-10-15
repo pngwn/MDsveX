@@ -18,6 +18,7 @@ export const enum UndoEntryKind {
 	State = 8,
 	Count = 9,
 	Warn = 10,
+	Data = 11,
 }
 
 /** the dispatcher owns the redirect links, so undoing a wrap or a close goes through it */
@@ -26,6 +27,11 @@ export interface RedirectHost {
 	unlink(buf: NodeBuffer, wrapper: number): void;
 	/** a close is undone, see UndoEntryCloseWrapper for links */
 	reopen(buf: NodeBuffer, links: number[]): void;
+}
+
+/** the dispatcher keeps the data of plugins, a revoke takes a write back through it */
+export interface DataHost {
+	revoke_data(bag: object, key: string, owner: number): void;
 }
 
 export interface UndoEntryAttrSet {
@@ -120,7 +126,18 @@ export interface UndoEntryWarn {
 	warning: object;
 }
 
+export interface UndoEntryData {
+	kind: UndoEntryKind.Data;
+	host: DataHost;
+	/** the data of one plugin name */
+	bag: object;
+	key: string;
+	/** the node that wrote, every write it made under the key goes */
+	owner: number;
+}
+
 export type UndoEntry =
+	| UndoEntryData
 	| UndoEntryState
 	| UndoEntryCount
 	| UndoEntryWarn
@@ -353,6 +370,12 @@ export class UndoLog {
 		this._append({ kind: UndoEntryKind.Warn, list, warning });
 	}
 
+	/** a write to the data of a plugin, taken back with the node that made it */
+	record_data(host: DataHost, bag: object, key: string, owner: number): void {
+		if (this.active_node === NONE) return;
+		this._append({ kind: UndoEntryKind.Data, host, bag, key, owner });
+	}
+
 	record_prepend(
 		parent: number,
 		created: number,
@@ -473,6 +496,11 @@ export class UndoLog {
 				case UndoEntryKind.Warn: {
 					const at = entry.list.lastIndexOf(entry.warning);
 					if (at !== -1) entry.list.splice(at, 1);
+					break;
+				}
+
+				case UndoEntryKind.Data: {
+					entry.host.revoke_data(entry.bag, entry.key, entry.owner);
 					break;
 				}
 

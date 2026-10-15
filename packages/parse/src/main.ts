@@ -52,12 +52,15 @@ export type {
 	DirectiveHandler,
 	DirectiveHandlers,
 	DirectiveTable,
+	DataChange,
 	DocumentContext,
+	Json,
 	NamedDirectiveHandlers,
 	PluginData,
 	PluginDocument,
 	PluginWarning,
 } from './plugin_types';
+export { PluginDataError } from './plugin_data';
 export type { NodeView, WrapperView, Point, Position } from './node_view';
 export { NodeKind, NodeBuffer, take_src } from './utils';
 export { PluginDispatcher, has_directive_handlers } from './plugin_dispatch';

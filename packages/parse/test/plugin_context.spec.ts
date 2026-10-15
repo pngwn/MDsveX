@@ -370,10 +370,10 @@ const tell = (type: string): ParsePlugin => ({
 	[type]: {
 		parse(node: NodeView, ctx: PluginContext) {
 			ctx.warn('open', type);
-			ctx.data.opened = (ctx.data.opened ?? 0) + 1;
+			ctx.add('opened', type);
 			return () => {
 				ctx.warn('close', node.text_content);
-				ctx.data.closed = node.text_content;
+				ctx.set('closed', node.text_content);
 			};
 		},
 	},
@@ -395,7 +395,7 @@ describe('plugin context: a revoke takes back warnings and data', () => {
 				warning('tell', 'open', 'strong_emphasis'),
 				warning('tell', 'close', 'b'),
 			],
-			data: { tell: { opened: 1, closed: 'b' } },
+			data: { tell: { opened: ['strong_emphasis'], closed: 'b' } },
 		});
 	});
 
@@ -407,7 +407,7 @@ describe('plugin context: a revoke takes back warnings and data', () => {
 				warning('tell', 'open', 'link'),
 				warning('tell', 'close', 'b'),
 			],
-			data: { tell: { opened: 1, closed: 'b' } },
+			data: { tell: { opened: ['link'], closed: 'b' } },
 		});
 	});
 
@@ -441,7 +441,7 @@ describe('plugin context: a revoke takes back warnings and data', () => {
 				warning('tell', 'open', 'paragraph'),
 				warning('tell', 'close', 'b'),
 			],
-			data: { tell: { opened: 2, closed: 'b' } },
+			data: { tell: { opened: ['paragraph', 'paragraph'], closed: 'b' } },
 		});
 	});
 
@@ -453,7 +453,7 @@ describe('plugin context: a revoke takes back warnings and data', () => {
 					descendants: {
 						link(node, ctx) {
 							ctx.warn('link', 'open');
-							ctx.data.links = ctx.index + 1;
+							ctx.set('links', ctx.index + 1);
 						},
 					},
 				},
@@ -493,19 +493,19 @@ describe('plugin context: data', () => {
 					name: 'titles',
 					heading: {
 						parse: (node, ctx) => () => {
-							ctx.data.last = node.text_content;
-							ctx.data.count = (ctx.data.count ?? 0) + 1;
+							ctx.set('last', node.text_content);
+							ctx.add('all', node.text_content);
 						},
 					},
 				},
 				{
 					name: 'depths',
-					heading: { parse: (node, ctx) => void (ctx.data.last = node.depth) },
+					heading: { parse: (node, ctx) => ctx.set('last', node.depth!) },
 				},
 			],
 		}));
 		expect(out.data).toEqual({
-			titles: { last: 'b', count: 2 },
+			titles: { last: 'b', all: ['a', 'b'] },
 			depths: { last: 2 },
 		});
 	});
@@ -513,11 +513,13 @@ describe('plugin context: data', () => {
 	it('plugins of one name share it, with the bound handlers of that name', () => {
 		const out = left(':::box\n## b\n:::\n', () => ({
 			plugins: [
-				{ name: 'kit', heading: { parse: (_n, ctx) => void (ctx.data.a = 1) } },
+				{ name: 'kit', heading: { parse: (_n, ctx) => ctx.set('a', 1) } },
 				{
 					name: 'kit',
 					sequential: true,
-					heading: { parse: (_n, ctx) => void (ctx.data.b = ctx.data.a + 1) },
+					heading: {
+						parse: (_n, ctx) => ctx.set('b', (ctx.data.a as number) + 1),
+					},
 				},
 			],
 			directive_handlers: [
@@ -526,7 +528,7 @@ describe('plugin context: data', () => {
 					directives: {
 						box: {
 							children: {
-								heading: (_n, ctx) => void (ctx.data.c = 3),
+								heading: (_n, ctx) => ctx.set('c', 3),
 							},
 						},
 					},
@@ -561,24 +563,11 @@ describe('plugin context: data', () => {
 				{ name: 'reads', heading: { parse: (_n, ctx) => void ctx.data.x } },
 				{
 					name: 'writes',
-					heading: { parse: (_n, ctx) => void (ctx.data.x = 1) },
+					heading: { parse: (_n, ctx) => ctx.set('x', 1) },
 				},
 			],
 		}));
 		expect(out.data).toEqual({ writes: { x: 1 } });
-	});
-
-	it('a delete is undone with the node as a write is', () => {
-		const out = left('# a\n\n[b]\n', () => ({
-			plugins: [
-				{
-					name: 'p',
-					heading: { parse: (_n, ctx) => void (ctx.data.kept = true) },
-					link: { parse: (_n, ctx) => void delete ctx.data.kept },
-				},
-			],
-		}));
-		expect(out.data).toEqual({ p: { kept: true } });
 	});
 
 	it('a write that stays is not undone by an earlier one that goes', () => {
@@ -587,9 +576,9 @@ describe('plugin context: data', () => {
 			plugins: [
 				{
 					name: 'p',
-					link: { parse: (_n, ctx) => void (ctx.data.who = 'link') },
+					link: { parse: (_n, ctx) => ctx.set('who', 'link') },
 					heading: {
-						parse: (_n, ctx) => () => void (ctx.data.who = 'heading'),
+						parse: (_n, ctx) => () => ctx.set('who', 'heading'),
 					},
 				},
 			],
@@ -597,22 +586,22 @@ describe('plugin context: data', () => {
 		expect(out.data).toEqual({ p: { who: 'heading' } });
 	});
 
-	it('is what the plugin left, not the proxy it wrote through', () => {
-		let proxy: unknown;
+	it('is a plain object, not the view the handlers read', () => {
+		let view: unknown;
 		const out = PATHS[0][1]('# a\n', [
 			{
 				name: 'p',
 				heading: {
 					parse(_n, ctx) {
-						proxy = ctx.data;
-						ctx.data.list = [1];
+						view = ctx.data;
+						ctx.add('list', 1);
 					},
 				},
 			},
 		]);
 		const data = out.dispatcher!.data()!;
 		expect(data.p).toEqual({ list: [1] });
-		expect(data.p).not.toBe(proxy);
+		expect(data.p).not.toBe(view);
 	});
 
 	it('each document starts empty and leaves the last one as it was', () => {
@@ -622,7 +611,7 @@ describe('plugin context: data', () => {
 					name: 'p',
 					heading: {
 						parse: (node, ctx) => () => {
-							ctx.data.titles = [...(ctx.data.titles ?? []), node.text_content];
+							ctx.add('titles', node.text_content);
 							ctx.warn('seen', node.text_content);
 						},
 					},
@@ -843,7 +832,7 @@ describe('parse_markdown_svelte: the plugin context', () => {
 			name: 'toc',
 			heading: {
 				parse(node, ctx) {
-					ctx.data.count = (ctx.data.count ?? 0) + 1;
+					ctx.set('count', ((ctx.data.count as number) ?? 0) + 1);
 					if (ctx.data.count === 2)
 						ctx.warn('second', 'a second heading', node);
 				},
@@ -852,7 +841,7 @@ describe('parse_markdown_svelte: the plugin context', () => {
 		const seq: ParsePlugin = {
 			name: 'seq',
 			sequential: true,
-			heading: { parse: (_n, ctx) => void (ctx.data.ran = true) },
+			heading: { parse: (_n, ctx) => ctx.set('ran', true) },
 		};
 		const result = parse_markdown_svelte(doc, { plugins: [toc, seq] });
 		const warnings: RootPluginWarning[] | undefined = result.warnings;
@@ -891,6 +880,8 @@ describe('parse_markdown_svelte: the plugin context', () => {
 			'frontmatter',
 			'warn',
 			'data',
+			'set',
+			'add',
 		];
 		expect([table, named, document, position, members]).toHaveLength(5);
 	});
