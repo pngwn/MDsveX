@@ -20,6 +20,10 @@
 			"types": "./dist/math.d.ts",
 			"default": "./dist/math.js"
 		},
+		"./host": {
+			"types": "./dist/host.d.ts",
+			"default": "./dist/host.js"
+		},
 		"./highlight/languages": {
 			"types": "./dist/highlight_languages.d.ts",
 			"default": "./dist/highlight_languages.js"
