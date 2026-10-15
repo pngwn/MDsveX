@@ -1,5 +1,10 @@
 import { fence_meta } from 'mdsvex/compile';
-import type { Bundle, DirectiveContext, NodeView, WrapperView } from 'mdsvex';
+import type {
+	Bundle,
+	DirectiveContext,
+	NodeView,
+	WrapperView,
+} from 'mdsvex/compile';
 
 export interface TabsOptions {
 	/**

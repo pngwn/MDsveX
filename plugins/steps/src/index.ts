@@ -1,4 +1,4 @@
-import type { Bundle } from 'mdsvex';
+import type { Bundle } from 'mdsvex/compile';
 
 export interface StepsOptions {
 	/**

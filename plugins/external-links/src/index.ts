@@ -1,4 +1,4 @@
-import type { Bundle } from 'mdsvex';
+import type { Bundle } from 'mdsvex/compile';
 
 export interface ExternalLinksOptions {
 	/** the `target` of an external link, such as `'_blank'`, none by default */
