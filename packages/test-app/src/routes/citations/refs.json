@@ -1,0 +1,31 @@
+[
+	{
+		"id": "lovelace1843",
+		"type": "article-journal",
+		"title": "Notes on the Analytical Engine",
+		"author": [{ "family": "Lovelace", "given": "Ada" }],
+		"issued": { "date-parts": [[1843]] },
+		"container-title": "Scientific Memoirs",
+		"volume": 3,
+		"page": "666-731"
+	},
+	{
+		"id": "turing1936",
+		"type": "article-journal",
+		"title": "On Computable Numbers, with an Application to the Entscheidungsproblem",
+		"author": [{ "family": "Turing", "given": "Alan" }],
+		"issued": { "date-parts": [[1936]] },
+		"container-title": "Proceedings of the London Mathematical Society",
+		"volume": 42,
+		"page": "230-265",
+		"DOI": "10.1112/plms/s2-42.1.230"
+	},
+	{
+		"id": "babbage1864",
+		"type": "book",
+		"title": "Passages from the Life of a Philosopher",
+		"author": [{ "family": "Babbage", "given": "Charles" }],
+		"issued": { "date-parts": [[1864]] },
+		"publisher": "Longman"
+	}
+]

@@ -2,6 +2,7 @@ import { sveltekit } from "@sveltejs/kit/vite";
 import { defineConfig } from "vite";
 import { mdsvex } from "mdsvex";
 import { anchors } from "@mdsvex/plugin-anchors";
+import { citations } from "@mdsvex/plugin-citations";
 import { emoji } from "@mdsvex/plugin-emoji";
 import { external_links } from "@mdsvex/plugin-external-links";
 import { page_data } from "@mdsvex/plugin-page-data";
@@ -36,6 +37,7 @@ export default defineConfig({
 					attrs: { class: "reference" },
 				}),
 				emoji({ label: true }),
+				citations(),
 			],
 			templates: {
 				article: "$lib/templates/Article.svelte",

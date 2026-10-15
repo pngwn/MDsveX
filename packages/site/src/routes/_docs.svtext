@@ -1792,6 +1792,7 @@ The first-party plugins are packages of their own, named `@mdsvex/plugin-*`. Eac
 ```js
 import { mdsvex } from 'mdsvex';
 import { anchors } from '@mdsvex/plugin-anchors';
+import { citations } from '@mdsvex/plugin-citations';
 import { emoji } from '@mdsvex/plugin-emoji';
 import { external_links } from '@mdsvex/plugin-external-links';
 import { page_data } from '@mdsvex/plugin-page-data';
@@ -1810,7 +1811,8 @@ mdsvex({
 		toc(),
 		page_data(),
 		references({ repo: 'you/site' }),
-		emoji()
+		emoji(),
+		citations()
 	]
 });
 ```
@@ -1825,6 +1827,7 @@ mdsvex({
 | [`@mdsvex/plugin-page-data`](docs#page-data) | a reading time, an excerpt, an inferred title, an edit url and a last modified date for each document |
 | [`@mdsvex/plugin-emoji`](docs#emoji) | emoji shortcodes, `:tada:` becomes the emoji, with an optional label for screen readers |
 | [`@mdsvex/plugin-references`](docs#references) | links for `@user`, `#123`, `owner/repo#123` and commits, and for bare urls when asked |
+| [`@mdsvex/plugin-citations`](docs#citations) | `:cite[key]` from a CSL JSON bibliography, and a `::bibliography` that lists what a document cites |
 
 ### Steps
 
@@ -2416,6 +2419,78 @@ references({
 It does not check that a user or an issue exists. With `linkify`, list it before the emoji plugin, so a shortcode inside a url is left alone. [External links](docs#external-links) reads links while the document is parsed and does not see the ones made here, so give them `rel` through `attrs`.
 
 `compile()` takes every plugin the same way, through its `plugins` option.
+
+### Citations
+
+```bash
+pnpm add --save-dev @mdsvex/plugin-citations@next
+```
+
+```js
+import { citations } from '@mdsvex/plugin-citations';
+
+mdsvex({ plugins: [citations()] });
+```
+
+Cites entries of a [CSL JSON](https://citeproc-js.readthedocs.io/en/latest/csl-json/markup.html) file, which the frontmatter names, and lists the entries the document cites where you write `::bibliography`:
+
+```svx
+---
+bibliography: ./refs.json
+---
+
+The engine could do more than count :cite[lovelace1843], as was later proved :cite[turing1936, lovelace1843].
+
+::bibliography[References]
+```
+
+```html
+<p>
+	The engine could do more than count
+	<span class="citation">[<a href="#bib-lovelace1843" id="cite-1" role="doc-biblioref">1</a>]</span>,
+	as was later proved
+	<span class="citation">[<a href="#bib-turing1936" id="cite-2" role="doc-biblioref">2</a>,
+	<a href="#bib-lovelace1843" id="cite-3" role="doc-biblioref">1</a>]</span>.
+</p>
+<section role="doc-bibliography" aria-labelledby="s1-label" class="bibliography">
+	<p class="bibliography-label" id="s1-label">References</p>
+	<ol>
+		<li id="bib-lovelace1843">
+			Ada Lovelace. <cite>Notes on the Analytical Engine.</cite> Scientific Memoirs 3, 666-731. 1843.
+			<a href="#cite-1" role="doc-backlink" aria-label="Back to citation 1">↩︎</a>
+			<a href="#cite-3" role="doc-backlink" aria-label="Back to citation 3">↩︎</a>
+		</li>
+		<li id="bib-turing1936">...</li>
+	</ol>
+</section>
+```
+
+```ts
+citations({
+	bibliography: string, // the file of a document whose frontmatter names none
+	style: 'numeric' | 'author-date' = 'numeric'
+});
+```
+
+- **`:cite[key]`** cites one entry and `:cite[a, b]` several, by the `id` of each in the file. Each key links to its entry and each entry links back to every citation of it.
+- **`style`** is `numeric`, `[1]` and a list numbered by first citation, or `author-date`, `(Lovelace 1843; Turing 1936)` and a list by author.
+- **The file** is the `bibliography` key of the frontmatter, relative to the document, or the `bibliography` option, absolute or relative to the working directory. It is read once for every document and read again when it changes, in the dev server too. A document that cites with no file named fails with a `CitationsError`.
+- **An unknown key** is a warning at the citation, which shows the key as written, without a link.
+- **BibTeX** is not read. Zotero, JabRef and `pandoc refs.bib -t csljson -o refs.json` export CSL JSON.
+
+The citations and their entries are [plugin data](docs#plugin-data), `plugin_data.citations`, so a template can render the list itself with the `Bibliography` component:
+
+```svelte
+<script>
+	import Bibliography from '@mdsvex/plugin-citations/Bibliography.svelte';
+	let { plugin_data, children } = $props();
+</script>
+
+{@render children()}
+<Bibliography data={plugin_data?.citations} />
+```
+
+The file is read while the document compiles, so the Vite plugin and [`compile_async`](docs#compile_async), with a `read` option, take a document that cites, and `compile` throws a `PluginAsyncError`. The formatting is small on purpose: names, year, title, where it was published, the publisher and a link. Citation styles such as APA or Chicago, locators like page numbers, and telling apart two works of one author in one year need a full CSL processor.
 
 ## Syntax highlighting
 
@@ -3703,6 +3778,7 @@ mdsvex 0.x ran remark and rehype, and took their plugins in `remarkPlugins` and 
 | `remark-emoji`, `remark-gemoji` | [`@mdsvex/plugin-emoji`](docs#emoji) | `emoji()` turns `:tada:` into the emoji, with GitHub's names |
 | `remark-github`, `remark-mentions`, `remark-ping` | [`@mdsvex/plugin-references`](docs#references) | `references({ repo: 'you/site' })` links `@user`, `#123` and commits |
 | `remark-linkify-regex`, autolink literals | [`@mdsvex/plugin-references`](docs#references) | `references({ linkify: true })` links bare urls |
+| `rehype-citation` | [`@mdsvex/plugin-citations`](docs#citations) | `:cite[key]` from a CSL JSON file, and `::bibliography` |
 
 ### A component or a few lines
 
@@ -3729,12 +3805,11 @@ mdsvex 0.x ran remark and rehype, and took their plugins in `remarkPlugins` and 
 | `remark-definition-list`, `remark-deflist` | type `<dl>`, `<dt>` and `<dd>` |
 | `remark-flexible-markers`, `remark-ins` | `==mark==` and `++ins++` are text, type `<mark>` and `<ins>` |
 | `remark-wiki-link` | `[[Page]]` is text |
-| `rehype-citation` | no citations |
 | `remark-validate-links`, `remark-lint` | nothing checks links or style. A missing image fails the build when it is [imported](docs#import_images) |
 | `rehype-sanitize` | nothing, and none is planned. A document compiles to a component and runs as code, so don't compile markdown you don't trust |
 | `rehype-minify`, `rehype-format` | not needed, Svelte and Vite own the output |
 
-A plugin that is not listed did one of three things. If it changed elements or attributes, a [parse plugin](docs#parse_plugins) can do the same. If it added syntax, a [directive](docs#directives) is the syntax mdsvex has for that, and plugins can't add more. If it needed to fetch something or read a file while compiling, there is nowhere to do that yet, since handlers are synchronous.
+A plugin that is not listed did one of three things. If it changed elements or attributes, a [parse plugin](docs#parse_plugins) can do the same. If it added syntax, a [directive](docs#directives) is the syntax mdsvex has for that, and plugins can't add more. If it needed to fetch something or read a file while compiling, a plugin does that in [deferred work](docs#deferred-work).
 
 ## Parser changes on `next`
 

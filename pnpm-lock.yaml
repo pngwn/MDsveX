@@ -676,6 +676,9 @@ importers:
       '@mdsvex/plugin-anchors':
         specifier: workspace:*
         version: link:../../plugins/anchors
+      '@mdsvex/plugin-citations':
+        specifier: workspace:*
+        version: link:../../plugins/citations
       '@mdsvex/plugin-emoji':
         specifier: workspace:*
         version: link:../../plugins/emoji
@@ -740,6 +743,27 @@ importers:
       shx:
         specifier: ^0.3.4
         version: 0.3.4
+
+  plugins/citations:
+    devDependencies:
+      '@sveltejs/package':
+        specifier: ^3.0.0
+        version: 3.0.0(svelte@5.57.1(@typescript-eslint/types@8.57.2))(typescript@6.0.2)
+      '@sveltejs/vite-plugin-svelte':
+        specifier: ^6.2.4
+        version: 6.2.4(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0))
+      mdsvex:
+        specifier: workspace:^
+        version: link:../../packages/mdsvex
+      npm-run-all2:
+        specifier: ^7.0.2
+        version: 7.0.2
+      svelte:
+        specifier: ^5.55.0
+        version: 5.57.1(@typescript-eslint/types@8.57.2)
+      vite:
+        specifier: ^7.3.1
+        version: 7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0)
 
   plugins/emoji:
     devDependencies:

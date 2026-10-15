@@ -189,7 +189,10 @@ const REPLACEMENTS: Record<string, Replacement> = {
 	"rehype-callouts": {
 		message: `${NOTHING_YET} Write \`:::note\` with a directive component.`,
 	},
-	"rehype-citation": { message: NOTHING_YET },
+	"rehype-citation": {
+		message:
+			"Install `@mdsvex/plugin-citations` and add `citations()` to `plugins`. Cite with `:cite[key]` from a CSL JSON file named by `bibliography` in the frontmatter, and list the entries with `::bibliography`.",
+	},
 	"remark-validate-links": { message: NOTHING_YET },
 	"rehype-sanitize": {
 		message:
