@@ -3,6 +3,7 @@ import type { AstPath, Doc, ParserOptions, Printer } from 'prettier';
 
 import type { SvxNode, SvxRoot } from './ast';
 import { embed } from './embed';
+import { insert_pragma } from './pragma';
 
 const { hardline, literalline } = doc.builders;
 const { replaceEndOfLine } = doc.utils;
@@ -19,7 +20,42 @@ export const printer: Printer<SvxNode> = {
 	getVisitorKeys() {
 		return ['children'];
 	},
+	/** the node after a prettier-ignore comment, at any depth, is printed as written */
+	hasPrettierIgnore(path) {
+		const siblings = path.siblings as SvxNode[] | null;
+		const index = path.index;
+		if (siblings === null || index === null) return false;
+		const text = (path.stack[0] as SvxRoot).text;
+		for (let i = index - 1; i >= 0; i--) {
+			const sibling = siblings[i];
+			if (is_between(sibling, text)) continue;
+			return comment(sibling, text) === 'prettier-ignore';
+		}
+		return false;
+	},
+	insertPragma: insert_pragma,
 };
+
+/** what may sit between a prettier-ignore comment and what it ignores */
+function is_between(node: SvxNode, text: string): boolean {
+	if (node.type === 'line_break' || node.type === 'soft_break') return true;
+	return node.type === 'text' && text.slice(node.start, node.end).trim() === '';
+}
+
+function comment(node: SvxNode, text: string): string | undefined {
+	if (node.type !== 'html_comment') return undefined;
+	return text.slice(node.value_start, node.value_end).trim();
+}
+
+/**
+ * a block that is a comment, or a paragraph that opens (0) or closes (-1)
+ * with one, a comment on the line before text shares its paragraph
+ */
+function edge_comment(node: SvxNode, text: string, at: 0 | -1): string | undefined {
+	if (node.type !== 'paragraph') return comment(node, text);
+	const child = node.children[at === 0 ? 0 : node.children.length - 1];
+	return child && comment(child, text);
+}
 
 function print_root(
 	path: AstPath<SvxNode>,
@@ -36,8 +72,21 @@ function print_root(
 	if (first.start > 0 && first.type !== 'frontmatter' && text.startsWith('---', first.start)) {
 		parts.push(hardline);
 	}
+	let ignored_to = -1;
 	path.each((child, i) => {
+		if (i <= ignored_to) return;
 		if (i > 0) parts.push(separator(text, children[i - 1], child.node));
+		// a prettier-ignore-start keeps what follows as written up to its end
+		if (edge_comment(child.node, text, 0) === 'prettier-ignore-start') {
+			const end = children.findIndex(
+				(node, j) => j >= i && edge_comment(node, text, -1) === 'prettier-ignore-end'
+			);
+			if (end !== -1) {
+				parts.push(replaceEndOfLine(text.slice(child.node.start, children[end].end)));
+				ignored_to = end;
+				return;
+			}
+		}
 		parts.push(print(child));
 	}, 'children');
 	parts.push(hardline);

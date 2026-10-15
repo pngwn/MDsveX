@@ -2,6 +2,7 @@ import type { Parser, Plugin, SupportLanguage, SupportOptions } from 'prettier';
 
 import { parse } from './ast';
 import type { SvxNode } from './ast';
+import { has_ignore_pragma, has_pragma } from './pragma';
 import { printer } from './printer';
 
 export const languages: SupportLanguage[] = [
@@ -19,6 +20,8 @@ export const parsers: Record<string, Parser<SvxNode>> = {
 		astFormat: 'mdsvex',
 		locStart: (node) => node.start,
 		locEnd: (node) => node.end,
+		hasPragma: has_pragma,
+		hasIgnorePragma: has_ignore_pragma,
 	},
 };
 

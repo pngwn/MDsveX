@@ -29,6 +29,21 @@ Today it:
 
 The formatting of the code follows your Prettier options, `singleQuote`, `semi`, `useTabs` and the rest. A part that does not parse is left as it is, so is `<pre>`, an attribute value and the head of `{#each}`, `{#await}` and `{#snippet}`.
 
+## Leaving parts alone
+
+A `<!-- prettier-ignore -->` comment keeps the block after it as it is written, or the next node when the comment sits in a paragraph or a list item:
+
+```md
+<!-- prettier-ignore -->
+{items.map((item)=>item.name)}
+
+text <!-- prettier-ignore --> {a+b} and more
+```
+
+Everything between `<!-- prettier-ignore-start -->` and `<!-- prettier-ignore-end -->` at the top level of a document is kept as it is written.
+
+`<!-- @format -->` or `<!-- @prettier -->` at the top of a document, or straight after its frontmatter, marks it for `--require-pragma`, and `--insert-pragma` writes `<!-- @format -->` there. `<!-- @noformat -->` leaves a document alone with `--check-ignore-pragma`.
+
 ## Code fences
 
 Code fences are left exactly as they are, their line ranges, annotations and `[!eval]` groups count the lines of the code. Turn on `mdsvexFormatFences` to format a fence whose info string is a language Prettier knows and nothing else:

@@ -18,6 +18,8 @@ export interface SvxRoot extends SvxNode {
 	type: 'root';
 	/** a script of the document is typescript, so are its expressions */
 	ts: boolean;
+	/** the source, for the printer hooks that are given no options */
+	text: string;
 }
 
 /**
@@ -52,6 +54,7 @@ export function parse(text: string): SvxRoot {
 	const root = build(0) as SvxRoot;
 	root.start = 0;
 	root.end = text.length;
+	root.text = text;
 	root.children = blocks(text, root.children);
 	for (const child of root.children) clamp(text, child, child.end);
 	root.ts = root.children.some(
