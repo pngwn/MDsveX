@@ -25,6 +25,7 @@ import {
 	merge_meta,
 } from './utils';
 import { Cursor } from './cursor';
+import type { HeadingIds } from './heading_ids';
 import type { PluginDispatcher } from './plugin_dispatch';
 import { WireTextSource } from './node_view';
 
@@ -42,6 +43,8 @@ export class WireTreeBuilder {
 	private repaired: Set<number> | null;
 	/** what the views of the dispatcher read text from, null without plugins */
 	private texts: WireTextSource | null = null;
+	/** makes the id of each heading as it closes, null for none */
+	private headings: HeadingIds | null = null;
 
 	constructor(capacity = 128, dispatcher?: PluginDispatcher) {
 		this.buf = new NodeBuffer(capacity);
@@ -50,6 +53,21 @@ export class WireTreeBuilder {
 		this.dispatcher = dispatcher ?? null;
 		this.repaired = null;
 		this.bind_strings();
+	}
+
+	/**
+	 * each heading gets its id at its close, after the close callbacks of
+	 * plugins, null for none, started here and at each reset
+	 */
+	set_headings(headings: HeadingIds | null): void {
+		this.headings = headings;
+		if (headings !== null) headings.start();
+		if (this.dispatcher !== null) this.dispatcher.set_headings(headings);
+	}
+
+	/** the document is complete, what heading ids check at the end is checked */
+	end(): void {
+		if (this.headings !== null) this.headings.finish(this.buf);
 	}
 
 	/** a new buffer shares the empty strings every buffer starts with */
@@ -128,6 +146,7 @@ export class WireTreeBuilder {
 		this.repaired = null;
 		// redirects, undo logs and close callbacks hold indices of the old buffer
 		if (this.dispatcher) this.dispatcher.reset();
+		if (this.headings !== null) this.headings.start();
 		this.bind_strings();
 	}
 
@@ -195,6 +214,11 @@ export class WireTreeBuilder {
 			)
 		) {
 			this.buf.commit_node(idx);
+		}
+
+		if (kind === NodeKind.heading && this.headings !== null) {
+			this.headings.close(this.buf, idx);
+			return;
 		}
 
 		// tight list unwrapping, walk sibling chains directly. safe no-op

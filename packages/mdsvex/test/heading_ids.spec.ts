@@ -9,6 +9,7 @@ import {
 	compile,
 	compile_inputs,
 	CompilerSession,
+	HeadingIdError,
 	heading_slug,
 } from '../src/main';
 import type {
@@ -312,22 +313,51 @@ describe('a heading that has an id', () => {
 		},
 	};
 
-	test('keeps the id a parse plugin set, and no made id takes it', () => {
-		const raw = '## Intro\n\n## Fixed\n\n## Intro\n\n## Intro 1';
+	test('keeps the id a parse plugin set, and no made id after it takes it', () => {
+		const raw = '## Fixed\n\n## Intro\n\n## Intro\n\n## Intro 1';
 		expect(
 			ids(compile_every(raw, { heading_ids: true, parse_plugins: [fixed] }))
-		).toEqual(['intro-1', 'intro', 'intro-2', 'intro-1-1']);
+		).toEqual(['intro', 'intro-1', 'intro-2', 'intro-1-1']);
+	});
+
+	test('an id a plugin sets on a later heading is a HeadingIdError when one was made before', () => {
+		const raw = '## Intro\n\n## Fixed\n';
+		const options = { heading_ids: true, parse_plugins: [fixed] };
+		expect(() => compile(raw, options)).toThrow(HeadingIdError);
+		expect(() => new CompilerSession().compile(raw, options)).toThrow(
+			'[mdsvex] the id "intro" of the heading at 3:1 was given to the heading at 1:1 before it, give one of them another id'
+		);
 	});
 
 	test('an id on a heading typed as html is taken too, the html is not touched', () => {
 		const raw =
-			'## Later\n\n<h2 id="later">typed</h2>\n\n<h3>no id</h3>\n\n<div>\n\n<h4 id="deep">in a div</h4>\n\n## Deep\n\n</div>\n\ntext <h5 id="inline">x</h5>\n\n## Inline';
+			'<h2 id="later">typed</h2>\n\n## Later\n\n<h3>no id</h3>\n\n<div>\n\n<h4 id="deep">in a div</h4>\n\n## Deep\n\n</div>\n\ntext <h5 id="inline">x</h5>\n\n## Inline';
 		const code = compile_every(raw, ON);
 		expect(code).toContain('<h2 id="later-1">Later</h2>');
 		expect(code).toContain('<h2 id="later">typed</h2>');
 		expect(code).toContain('<h3>no id</h3>');
 		expect(code).toContain('<h2 id="deep-1">Deep</h2>');
 		expect(code).toContain('<h2 id="inline-1">Inline</h2>');
+	});
+
+	test('an id typed on an element heading after a made one is a HeadingIdError', () => {
+		const raw = '## Later\n\n<h2 id="later">typed</h2>\n';
+		let error: HeadingIdError | undefined;
+		try {
+			compile(raw, ON);
+		} catch (e) {
+			error = e as HeadingIdError;
+		}
+		expect(error).toBeInstanceOf(HeadingIdError);
+		expect(error!.code).toBe('id_taken');
+		expect(error!.id).toBe('later');
+		expect(error!.message).toBe(
+			'[mdsvex] the id "later" of the element <h2> at 3:1 was given to the heading at 1:1 before it, give one of them another id'
+		);
+		expect(ids(compile('## Later\n\n<h2 id="other">x</h2>', ON).code)).toEqual([
+			'later',
+			'other',
+		]);
 	});
 
 	test('only a heading takes an id, and only one that is text', () => {
@@ -361,8 +391,8 @@ describe('a heading whose text slugs to nothing', () => {
 	});
 });
 
-describe('where the pass runs', () => {
-	test('after the fused plugins and ahead of the sequential ones', () => {
+describe('where ids are made', () => {
+	test('at the close of each heading, a fused close callback reads the id', () => {
 		const log: string[] = [];
 		const fused: ParsePlugin = {
 			heading: {
@@ -370,7 +400,8 @@ describe('where the pass runs', () => {
 					log.push(`fused open ${node.attrs.id}`);
 					return () => {
 						log.push(`fused close ${node.text_content} ${node.attrs.id}`);
-						if (node.text_content === 'Two') node.attrs.id = 'second';
+						if (node.depth === 1 && node.text_content === 'Two')
+							node.attrs.id = 'second';
 					};
 				},
 			},
@@ -386,29 +417,30 @@ describe('where the pass runs', () => {
 		};
 		const want = [
 			'fused open undefined',
-			'fused close One undefined',
+			'fused close One one',
 			'fused open undefined',
-			'fused close Two undefined',
+			'fused close Two two',
 			'sequential one',
 			'sequential second',
 		];
-		const raw = '# One\n\n# Two';
+		const raw = '# One\n\n# Two\n\n## Two';
 		const options: CompileOptions = {
 			heading_ids: true,
-			// the order in the array does not move the pass
 			parse_plugins: [sequential, fused],
 		};
+		// an id the plugin set after reading the made one takes its place, so the next two is bare
 		const html =
-			'<h1 id="one"><a href="#one"></a>One</h1><h1 id="second"><a href="#second"></a>Two</h1>';
+			'<h1 id="one"><a href="#one"></a>One</h1><h1 id="second"><a href="#second"></a>Two</h1><h2 id="two"><a href="#two"></a>Two</h2>';
 
 		expect(compile(raw, options).code).toBe(html);
-		expect(log).toEqual(want);
+		expect(log.slice(0, 4)).toEqual(want.slice(0, 4));
+		expect(log).toContain('sequential second');
 
 		const session = new CompilerSession();
 		for (let i = 0; i < 2; i++) {
 			log.length = 0;
 			expect(session.compile(raw, options).code).toBe(html);
-			expect(log).toEqual(want);
+			expect(log.slice(0, 4)).toEqual(want.slice(0, 4));
 		}
 		expect(compile_every(raw, options)).toBe(html);
 	});

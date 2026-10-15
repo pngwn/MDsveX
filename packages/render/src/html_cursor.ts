@@ -7029,16 +7029,23 @@ function fn_href(id: string): string {
 	return escape_code(fn_fragment(id));
 }
 
+/** the id a footnote id is given, another when a heading was given it first */
+function fn_id(notes: FootnoteRender, id: string): string {
+	const moved = notes.moved;
+	return moved === undefined || moved === null ? id : (moved.get(id) ?? id);
+}
+
 /** the link a reference renders as, '' for one in a definition that is not rendered */
 function fn_reference(c: Cursor): string {
-	const at = fn_get(c).references.get(c.index);
+	const notes = fn_get(c);
+	const at = notes.references.get(c.index);
 	if (at === undefined) return '';
 	const number = Math.floor(at / 65536);
 	return (
 		'<sup><a href="#' +
-		fn_href(footnote_id(fn!.labels[number - 1])) +
+		fn_href(fn_id(notes, footnote_id(notes.labels[number - 1]))) +
 		'" id="' +
-		escape_code(footnote_ref_id(number, at % 65536)) +
+		escape_code(fn_id(notes, footnote_ref_id(number, at % 65536))) +
 		'" role="doc-noteref">' +
 		number +
 		'</a></sup>'
@@ -7077,7 +7084,7 @@ function fn_back(notes: FootnoteRender, number: number, count: number): string {
 		const name = nth === 1 ? '' + number : number + '-' + nth;
 		s +=
 			' <a href="#' +
-			fn_href(footnote_ref_id(number, nth)) +
+			fn_href(fn_id(notes, footnote_ref_id(number, nth))) +
 			'" role="doc-backlink" aria-label="' +
 			label.replace('&#123;n&#125;', name) +
 			// the selector keeps the arrow from being drawn as an emoji
@@ -7192,7 +7199,10 @@ function fn_section(
 		const node = definitions[i];
 		if (node === Slot.NONE) continue;
 		let item =
-			open + '<li id="' + escape_code(footnote_id(notes.labels[i])) + '"';
+			open +
+			'<li id="' +
+			escape_code(fn_id(notes, footnote_id(notes.labels[i]))) +
+			'"';
 		open = '';
 		// a reference with no definition took a number, so the list skips it
 		if (i + 1 !== next) item += ' value="' + (i + 1) + '"';
@@ -7248,8 +7258,8 @@ function fn_component(
 			' number={' +
 			number +
 			'}' +
-			js_prop('href', '#' + fn_fragment(footnote_id(label))) +
-			js_prop('id', footnote_ref_id(number, at % 65536)) +
+			js_prop('href', '#' + fn_fragment(fn_id(notes, footnote_id(label)))) +
+			js_prop('id', fn_id(notes, footnote_ref_id(number, at % 65536))) +
 			_attrs(c, FOOTNOTE_HANDLED) +
 			'>'
 	);

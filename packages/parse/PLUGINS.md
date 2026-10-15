@@ -176,7 +176,7 @@ What follows from it:
 - **A removed wrapper takes no more children.** The later children of its parent go to the parent.
 - **Its handlers have run.** A removal in a close callback comes after every handler inside the node. In a sequential pass, a node removed in its own handler is not walked: no handler runs for what it held, and the close callback it returned does not run.
 - **The parser can still revoke it.** A delimiter that never closes is revoked after its paragraph closed, by which time the paragraph's callback may have removed it. Such a revoke undoes what the node's handlers did and repairs nothing, and the node stays out.
-- **`heading_ids` in `mdsvex` runs between the two passes,** so a heading removed in a sequential pass has already taken its id, and one removed in the fused pass has not.
+- **A heading removed in its own close callback gets no id,** see [Heading ids](#heading-ids). One removed later has already taken its id.
 
 ### Grouping siblings: `wrap_from`
 
@@ -392,7 +392,7 @@ const outline = {
 };
 ```
 
-- **It runs once,** after the parse, after the sequential passes (`heading_ids` in `mdsvex` comes before them) and after every deferred task has applied. Hooks run in plugin order, each awaited before the next.
+- **It runs once,** after the parse, after the sequential passes and after every deferred task has applied. Hooks run in plugin order, each awaited before the next.
 - **It gets the root** and walks the tree itself. It may change any node, as a sequential pass may, and nothing in the tree is pending.
 - **Its writes belong to no node** and are never revoked. While a hook that returned a promise waits, its writes are still its own.
 - **It may be async.** One that returns a promise needs a host that waits, `compile_async()` in `mdsvex`. Under a parse that cannot wait it throws a `PluginAsyncError`. One that returns nothing runs under `compile()` too.
@@ -569,6 +569,28 @@ heading: {
 ```
 
 `link` is captured by closure. On close, the callback uses it directly — no lookup, no re-traversal.
+
+**A heading is settled when it closes.** Its line has ended, so anything in it that never closed, an element such as `<head>`, an emphasis with no closer or a link with no destination, is already text when its close callbacks run.
+
+### Heading ids
+
+A builder given a `HeadingIds` with `set_headings` makes the id of each heading at its close, as the `heading_ids` option of `mdsvex` does, the same on the batch builder, fed or whole, and on the wire builder:
+
+```js
+import { HeadingIds, heading_slug } from '@mdsvex/parse';
+
+const ids = new HeadingIds(heading_slug, is_entity_name);
+ids.start(source); // the source the value ranges index, none over the wire
+tree.set_headings(ids);
+// ... parse ...
+ids.finish(tree.get_buffer()); // WireTreeBuilder.end() does this
+```
+
+- **When.** After the close callbacks of the heading, or earlier: the first close callback that reads `node.attrs` gets the id made then. So a plugin that changes the text of a heading in its close callback, by removing a child say, changes the id only if it comes before the first plugin that reads it. An open handler never sees an id.
+- **From the ids before it.** `HeadingIds` is the one place a document's ids are given out, in document order. A made id is never one given before, a repeat gets `-1`, `-2`. An id the document fixes, set on a heading by a plugin or typed on an element heading, is kept, and one that a node before it was given is a `HeadingIdError` (code `id_taken`) naming both. `finish` gives the footnotes their ids last, and one a heading was given moves to the next free one, which `moved` lists for the renderer.
+- **An id a callback sets** after reading the made one takes its place, and the made one is free again.
+- **What is not the author's** is left out: text a plugin added, and what Svelte renders.
+- **A heading a plugin made something else,** or removed in its own close callback, gets none.
 
 ### Streaming vs Batch
 

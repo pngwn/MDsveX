@@ -44,6 +44,24 @@ delete it.
 
 ## Open
 
+### heading ids at each close
+
+- **Source:** heading ids moved from a pass after the parse to the close of
+  each heading (`HeadingIds.close`, the heading arm of `TreeBuilder.close`).
+- **Measured:** compiles with `heading_ids: true` over `micro` and `real`, a
+  throwaway paired loop on `compare_one` (no harness mode turns the option
+  on), against a private baseline of a83b22fd, A/A +0.1%: one-shot
+  `compile` -1.42% and -1.18%, a reused session -1.85% and -2.34%,
+  `micro/heading` -6.1% to -8.8% (about 80ns on a one line document).
+  Documents without the option are level, `core --repeat 2` geomean -0.00%,
+  nothing past the 4.6% floor.
+- **Cause:** a call per heading into `HeadingIds`, its scan of the slots for
+  fixed ids, and the per document `start` and `finish`, against one walk
+  before. The tiny documents pay the fixed part.
+- **Ideas:** skip the slot scan when the parser saw no html heading, fold
+  `finish` into the last close when no footnote was seen. Guesses, none
+  measured.
+
 ### line start element close check
 
 - **Source:** #961, `sure_to_close` in `open_spec_tag`.

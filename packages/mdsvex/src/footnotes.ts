@@ -109,7 +109,8 @@ export function footnotes_of(
 	nodes: NodeBuffer,
 	source: string,
 	options: FootnoteOptions | undefined,
-	filename: string | undefined
+	filename: string | undefined,
+	moved: Map<string, string> | null = null
 ): Footnotes | null {
 	const strict = options === undefined || options.strict !== false;
 	const index = footnote_index(nodes);
@@ -148,6 +149,8 @@ export function footnotes_of(
 			: footnote_index(nodes, true)!;
 	const out = numbered as Footnotes;
 	out.warnings = warnings;
+	// a heading was given the id of a footnote first
+	if (moved !== null) out.moved = moved;
 	if (options !== undefined) {
 		if (options.label !== undefined) out.label = options.label;
 		if (options.back_label !== undefined) out.back_label = options.back_label;

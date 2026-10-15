@@ -1,18 +1,15 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { HeadingIds } from '@mdsvex/parse';
+import { afterAll, beforeEach, describe, expect, test, vi } from 'vitest';
 
-vi.mock('../src/heading_ids', async (original) => {
-	const actual = await original<typeof import('../src/heading_ids')>();
-	return {
-		...actual,
-		assign_heading_ids: vi.fn(actual.assign_heading_ids),
-	};
-});
-
-import { assign_heading_ids } from '../src/heading_ids';
 import { compile, compile_inputs, CompilerSession } from '../src/main';
 import type { CompileOptions, ParsePlugin, TraceTarget } from '../src/main';
 
-const pass = vi.mocked(assign_heading_ids);
+const start = vi.spyOn(HeadingIds.prototype, 'start');
+const close = vi.spyOn(HeadingIds.prototype, 'close');
+afterAll(() => {
+	start.mockRestore();
+	close.mockRestore();
+});
 const raw = '# One\n\n## Two\n\ntext\n';
 const plugins: ParsePlugin[] = [
 	{ heading: { parse() {} } },
@@ -62,13 +59,14 @@ function every(options: CompileOptions): void {
 	session.compile_into(raw, inputs, target());
 }
 
-describe('the heading id pass', () => {
+describe('heading ids', () => {
 	// a block, vitest calls a function a hook returns as its cleanup
 	beforeEach(() => {
-		pass.mockClear();
+		start.mockClear();
+		close.mockClear();
 	});
 
-	test('never runs without the option, so nothing walks the tree', () => {
+	test('are never made without the option, so no heading pays for them', () => {
 		compile(raw);
 		new CompilerSession().compile(raw);
 		every({});
@@ -76,14 +74,24 @@ describe('the heading id pass', () => {
 		every({ parse_plugins: plugins });
 		every({ parse_plugins: plugins, heading_ids: false });
 		every({ components: [{ specifier: 'm', names: ['h1'] }] });
-		expect(pass).not.toHaveBeenCalled();
+		const session = new CompilerSession();
+		session.compile(raw, { heading_ids: true });
+		session.compile(raw, { parse_plugins: plugins, heading_ids: true });
+		start.mockClear();
+		close.mockClear();
+		session.compile(raw);
+		session.compile(raw, { parse_plugins: plugins });
+		expect(start).not.toHaveBeenCalled();
+		expect(close).not.toHaveBeenCalled();
 	});
 
-	test('runs once for a document with the option', () => {
+	test('start once for a document with the option and close once a heading', () => {
 		// compile_into takes inputs, which every leaves without the option
 		every({ heading_ids: true });
-		expect(pass).toHaveBeenCalledTimes(7);
+		expect(start).toHaveBeenCalledTimes(7);
+		expect(close).toHaveBeenCalledTimes(14);
 		every({ heading_ids: true, parse_plugins: plugins });
-		expect(pass).toHaveBeenCalledTimes(14);
+		expect(start).toHaveBeenCalledTimes(14);
+		expect(close).toHaveBeenCalledTimes(28);
 	});
 });
