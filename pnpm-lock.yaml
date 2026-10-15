@@ -504,6 +504,9 @@ importers:
       '@sveltejs/acorn-typescript':
         specifier: ^1.0.13
         version: 1.0.13(acorn@8.18.0)
+      '@types/node':
+        specifier: ^22.15.2
+        version: 22.15.2
       acorn:
         specifier: ^8.18.0
         version: 8.18.0

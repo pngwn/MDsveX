@@ -26,6 +26,8 @@ export interface SvxRoot extends SvxNode {
 	text: string;
 	/** changes to the indent of lines, sorted by offset */
 	edits: Edit[];
+	/** the frontmatter is yaml prettier may format, not text a project parses itself */
+	yaml: boolean;
 }
 
 export interface Edit {
@@ -78,6 +80,7 @@ export function parse(text: string): SvxRoot {
 			child.type === 'html' && child.meta?.tag === 'script' && is_ts(child.meta)
 	);
 	root.edits = indent_edits(root);
+	root.yaml = true;
 	return root;
 }
 

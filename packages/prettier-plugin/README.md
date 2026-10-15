@@ -33,6 +33,20 @@ Today it:
 
 The formatting of the code follows your Prettier options, `singleQuote`, `semi`, `useTabs` and the rest. A part that does not parse is left as it is, so is `<pre>`, an expression over several lines in an attribute and a `{@const}` tag.
 
+## Frontmatter
+
+Frontmatter is formatted as yaml, unless your project parses it itself with the `frontmatter.parse` option of mdsvex. The plugin finds that out from the manifest the mdsvex vite plugin writes to `node_modules/.mdsvex/manifest.json`, looking up from each document as the language server does.
+
+A project that runs Prettier before vite has written the manifest, in CI say, can set it with `mdsvexFrontmatter`:
+
+| value    | frontmatter                                                       |
+| -------- | ----------------------------------------------------------------- |
+| `"auto"` | formatted as yaml unless the manifest says otherwise, the default |
+| `"yaml"` | always formatted as yaml                                          |
+| `"keep"` | kept as written                                                   |
+
+Frontmatter that does not parse as yaml is kept as written either way.
+
 ## Leaving parts alone
 
 A `<!-- prettier-ignore -->` comment keeps the block after it as it is written, or the next node when the comment sits in a paragraph or a list item:

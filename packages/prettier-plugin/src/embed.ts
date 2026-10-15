@@ -30,7 +30,7 @@ export function embed(
 
 	switch (node.type) {
 		case 'frontmatter':
-			if (!at_root) return;
+			if (!at_root || !root_of(path).yaml) return;
 			return async (text_to_doc: TextToDoc) => {
 				const yaml = text.slice(node.value_start, node.value_end);
 				if (yaml.trim() === '') return ['---', hardline, '---'];
