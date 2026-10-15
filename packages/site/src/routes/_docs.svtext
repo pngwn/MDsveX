@@ -228,6 +228,8 @@ const { code, data } = session.render(parsed, inputs);
 - **`settle`** waits for deferred work and applies it, and returns `undefined` when there was none, so a document without any stays synchronous. A document whose plugins deferred work throws if it renders before.
 - **`render`** gives what `compile` gives. A `Parsed` renders once.
 - **The session compiles other documents while one waits.** Each `Parsed` holds its own document.
+- **`parsed.dependencies`**, and `dependencies` on the result, are the absolute paths its plugins read or named, for the host to watch. When one changes, call `session.invalidate([path])` before compiling the documents that depend on it again, so what `ctx.cached` kept from it goes.
+- **`read` and `resolve` options** give plugins `ctx.read` and `ctx.resolve`.
 
 ## Markdown
 
@@ -781,7 +783,41 @@ const titles = {
 
 - **The task gets a node and a `ctx` of its own** and changes the document through them. Its changes apply once it has finished and the parser is sure of the node. If the parser takes the node back, they are dropped.
 - **A task changes its own node** and what is inside it, and writes data for it. Anything else throws a `TypeError`. So the result does not depend on which task finishes first.
-- **The Vite plugin waits** for deferred work before it renders the document, and so does a `?data` import. With `compile`, use [`compile_async`](docs#compile_async).
+- **The Vite plugin waits** for deferred work before it renders the document, and so does a `?data` import. With `compile`, use [`compile_async`](docs#compile_async). In dev it warns when a document has waited five seconds, naming the plugin.
+
+Work that needs the whole document goes in a `document` hook. It runs once, after the parse and after every deferred task, and gets the root of the tree. It may be async:
+
+```js
+const summary = {
+	name: 'summary',
+	parse: {
+		async document(root, ctx) {
+			let headings = 0;
+			for (let child = root.first_child; child !== null; child = child.next)
+				if (child.type === 'heading') headings++;
+			ctx.set('headings', headings);
+		}
+	}
+};
+```
+
+Hooks run in plugin order, each awaited before the next. One that returns a promise needs `compile_async`, as deferred work does.
+
+#### Loading files
+
+A plugin loads what it needs itself, and tells mdsvex what it read:
+
+- **`ctx.depend(path)`** names a file the output depends on, by its absolute path. When it changes, the Vite plugin compiles the document again, and its `?data` import, in dev and in a watch build, and it watches files outside the project root too. `compile` returns them as `dependencies` for any other host to watch.
+- **`ctx.read(path)`** reads a file and depends on it. **`ctx.resolve(specifier)`** resolves a specifier as an import from the document would. The Vite plugin supplies both. With `compile_async`, pass `read` and `resolve` options, `mdsvex/compile` reads no files itself.
+- **`ctx.cached(key, load)`** shares one load between documents: a bibliography read once for every page. A key that is a path is a dependency, and the Vite plugin drops it when that file changes, so a dev server never serves a stale copy.
+
+```js
+ctx.defer(node, async (node, ctx) => {
+	const path = await ctx.resolve(ctx.frontmatter.bibliography);
+	const bib = await ctx.cached(path, (path) => ctx.read(path).then(parse_bib));
+	node.attrs.label = bib.get(node.text_content)?.short;
+});
+```
 
 ### Plugin data
 

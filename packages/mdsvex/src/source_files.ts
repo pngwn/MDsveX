@@ -1,5 +1,5 @@
-// the files documents show with src=, kept by the vite plugin so a change to
-// one compiles the documents that show it again
+// the files documents show with src= and the files their plugins depend on,
+// kept by the vite plugin so a change to one compiles those documents again
 
 /** a path as vite writes it, a windows path arrives with either slash */
 export function slashed(path: string): string {
@@ -9,6 +9,8 @@ export function slashed(path: string): string {
 /** the files each document shows, by document path without a query */
 export function source_files() {
 	const shown = new Map<string, readonly string[]>();
+	/** what the plugins of each document named with ctx.depend */
+	const depended = new Map<string, readonly string[]>();
 
 	return {
 		/** true when no document shows a file, so a compile need not drop its own */
@@ -25,12 +27,21 @@ export function source_files() {
 		files_of(doc: string): readonly string[] {
 			return shown.get(slashed(doc)) ?? [];
 		},
+		/** the dependencies of a document, none drops it */
+		depend(doc: string, files: readonly string[] | undefined): void {
+			if (files === undefined || files.length === 0) {
+				if (depended.size !== 0) depended.delete(slashed(doc));
+			} else depended.set(slashed(doc), files.map(slashed));
+		},
+		/** the documents that show the file or depend on it */
 		docs_showing(file: string): string[] {
 			const docs: string[] = [];
-			if (shown.size === 0) return docs;
+			if (shown.size === 0 && depended.size === 0) return docs;
 			const path = slashed(file);
 			for (const [doc, files] of shown)
 				if (files.includes(path)) docs.push(doc);
+			for (const [doc, files] of depended)
+				if (files.includes(path) && !docs.includes(doc)) docs.push(doc);
 			return docs;
 		},
 	};

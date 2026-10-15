@@ -111,7 +111,22 @@ function deferring(): ParsePlugin[] {
 		'directive_container',
 	];
 	let count = 0;
-	const plugin: ParsePlugin = { name: 'defers' };
+	const plugin: ParsePlugin = {
+		name: 'defers',
+		// the whole tree once every task applied
+		async document(root, ctx) {
+			await Promise.resolve();
+			let marks = 0;
+			const walk = (node: typeof root) => {
+				for (let child = node.first_child; child !== null; child = child.next) {
+					if (child.attrs.tag === 'mark') marks++;
+					walk(child);
+				}
+			};
+			walk(root);
+			ctx.set('marks', marks);
+		},
+	};
 	for (const kind of kinds) {
 		plugin[kind] = {
 			parse(node, ctx) {
@@ -373,7 +388,7 @@ describe.skipIf(census !== undefined)('invariance', () => {
 	);
 
 	test(
-		'a plugin that defers settles to one tree, whole and fed, batch and wire',
+		'a plugin that defers and has a document hook finishes to one tree, whole and fed, batch and wire',
 		{ timeout: process.env.PFM_SEEDS === undefined ? 60_000 : 0 },
 		async () => {
 			const found: string[] = [];
@@ -387,7 +402,7 @@ describe.skipIf(census !== undefined)('invariance', () => {
 					for (const [name, run] of PATHS) {
 						const out = run(source, deferring());
 						const dispatcher = out.dispatcher!;
-						await dispatcher.settle();
+						await dispatcher.finish(out.nodes);
 						const now = JSON.stringify([
 							shape(out.nodes, out.source, 0, {
 								attrs: ['task'],

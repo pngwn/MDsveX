@@ -11,7 +11,13 @@ import {
 	compile_inputs,
 	footnotes_option,
 } from './compile';
-import type { Bundle, ComponentMode, FootnoteOptions, Parsed } from './compile';
+import type {
+	Bundle,
+	CompileInputs,
+	ComponentMode,
+	FootnoteOptions,
+	Parsed,
+} from './compile';
 import { slug_of } from './heading_ids';
 import type { HeadingOptions } from './heading_ids';
 import { smart_of } from './smart_punctuation';
@@ -332,6 +338,33 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	// a document whose plugins defer work stops after its parse too, the
 	// plugin waits for that work in the same gap and then renders it
 	inputs.await_plugins = true;
+	// ctx.read of a plugin, a dependency of the document it reads for
+	inputs.read = async (path) => {
+		const fs = await import('node:fs/promises');
+		return fs.readFile(path, 'utf8');
+	};
+	/** ctx.resolve of a plugin, as an import from the document would resolve */
+	const resolver =
+		(ctx: Rollup.PluginContext, file: string): CompileInputs['resolve'] =>
+		(spec, from) =>
+			ctx
+				.resolve(spec, from ?? file)
+				.then((found) =>
+					found === null || found.external ? null : slashed(clean_id(found.id))
+				);
+	/** a build watches what plugins read, the dev server asks hotUpdate */
+	function track_dependencies(
+		ctx: Rollup.PluginContext,
+		file: string,
+		deps: readonly string[] | undefined
+	): void {
+		shown.depend(file, deps);
+		if (deps === undefined) return;
+		for (const path of deps) {
+			if (command === 'build') ctx.addWatchFile(path);
+			else dev?.watch(path);
+		}
+	}
 	const shown = source_files();
 	const fetched = new WeakMap<Parsed, Record<string, string>>();
 	// a fence marked run is a module, a fake sibling of its document, which
@@ -491,9 +524,10 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		return waits.length === 0 ? undefined : Promise.all(waits);
 	}
 	/** the inputs of a parse that no render follows, it asks for nothing a render would need */
-	function parsing_inputs(file: string) {
+	function parsing_inputs(file: string, ctx: Rollup.PluginContext | undefined) {
 		const parsing = Object.assign(compile_inputs(), inputs);
 		parsing.filename = file;
+		parsing.resolve = ctx === undefined ? undefined : resolver(ctx, file);
 		if (!no_templates)
 			parsing.templates = templates_for(templates, select, file);
 		parsing.directives = registry?.directive_sources();
@@ -510,23 +544,26 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		settled: () =>
 			(registry === null || registry.ready()) &&
 			(templates === null || templates.ready()),
-		module(raw, file) {
+		module(raw, file, ctx) {
 			// no handler can run, so the frontmatter is all there is
 			if (!can_plug)
 				return data_module(
 					read_metadata(raw, options.frontmatter?.parse),
 					undefined
 				);
-			const parsed = compiler.parse(raw, parsing_inputs(file));
+			const parsed = compiler.parse(raw, parsing_inputs(file, ctx));
 			const settled = compiler.settle(parsed);
+			const done = () => {
+				if (ctx !== undefined)
+					track_dependencies(ctx, file, parsed.dependencies);
+				return data_module(parsed.metadata, parsed.data);
+			};
 			if (settled === undefined) {
 				compiler.drop(parsed);
-				return data_module(parsed.metadata, parsed.data);
+				return done();
 			}
 			// what the plugins deferred is in the data, nothing renders
-			return settled
-				.then(() => data_module(parsed.metadata, parsed.data))
-				.finally(() => compiler.drop(parsed));
+			return settled.then(done).finally(() => compiler.drop(parsed));
 		},
 	});
 	let dev: MetadataDev | null = null;
@@ -627,6 +664,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		// without templates or a selector a query has nothing to pick
 		if (!no_templates) inputs.templates = templates_for(templates, select, id);
 		inputs.filename = clean_id(id);
+		inputs.resolve = resolver(ctx, clean_id(id));
 		if (parsed === undefined) {
 			compiler.compile_into(code, inputs, doc);
 			if (doc.waiting !== undefined) return null;
@@ -645,6 +683,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			}
 		}
 		doc.raw = code;
+		track_dependencies(ctx, clean_id(id), doc.dependencies);
 		const made = doc.snippets;
 		if (made !== undefined) {
 			doc.snippets = undefined;
@@ -710,11 +749,26 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		doc.waiting = undefined;
 		const settled = compiler.settle(parsed);
 		if (settled !== undefined) {
+			// a plugin that waits on something slow is named, there is no time limit
+			const slow =
+				command === 'serve'
+					? setTimeout(() => {
+							const plugins = compiler
+								.waiting_for(parsed)
+								.map((name) => `"${name}"`)
+								.join(', ');
+							ctx.warn(
+								`${clean_id(id)} has waited 5 seconds for plugin ${plugins}`
+							);
+						}, 5000)
+					: undefined;
 			try {
 				await settled;
 			} catch (e) {
 				compiler.drop(parsed);
 				throw e;
+			} finally {
+				clearTimeout(slow);
 			}
 		}
 		const needs = parsed.needs;
@@ -837,7 +891,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		}
 		if (raw !== undefined) {
 			await plugs_ready(ctx);
-			const parsing = parsing_inputs(at.doc);
+			const parsing = parsing_inputs(at.doc, ctx);
 			parsing.snippets = true;
 			try {
 				const parsed = compiler.parse(raw, parsing);
@@ -1049,6 +1103,8 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				// the dev server rescans in hotUpdate instead
 				if (command !== 'build') return;
 				const file = clean_id(id);
+				// a document that read it compiles again with what it reads now
+				compiler.invalidate([slashed(file)]);
 				if (registry !== null && registry.files().includes(file))
 					registry.reset();
 				if (templates !== null && templates.files().includes(file))
@@ -1067,14 +1123,17 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				const parsed_again = await queried_data.hot(this.environment, update);
 				if (parsed_again !== undefined)
 					(with_queried ??= update.modules.slice()).push(parsed_again);
-				// a file a fence shows is no module of the document, so nothing else compiles it again
+				// a file a fence shows or a plugin read is no module of the document, so nothing else compiles it again
 				const showing = shown.docs_showing(file);
 				if (showing.length !== 0) {
+					// what ctx.cached kept from it goes before the documents compile again
+					compiler.invalidate([file]);
 					const graph = this.environment.moduleGraph;
 					with_queried ??= update.modules.slice();
 					for (const doc of showing) {
-						const mods = graph.getModulesByFile(doc);
-						if (mods === undefined) continue;
+						const mods = [...(graph.getModulesByFile(doc) ?? [])];
+						const data = graph.getModuleById(queried_data.id_of(doc));
+						if (data !== undefined) mods.push(data);
 						for (const mod of mods) {
 							graph.invalidateModule(mod, new Set(), update.timestamp, true);
 							if (!with_queried.includes(mod)) with_queried.push(mod);

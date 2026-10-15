@@ -260,6 +260,9 @@ const toc = {
 | `ctx.add(key, value)` | one entry of a list under a key, in document order |
 | `ctx.data` | what the plugin has written so far, read-only |
 | `ctx.defer(node, task)` | async work for the node, see [Deferred tasks](#deferred-tasks) |
+| `ctx.depend(path)` | names a file the output depends on, see [Loading](#loading-and-dependencies) |
+| `ctx.read(path)`, `ctx.resolve(specifier)` | read and resolve with what the host passes |
+| `ctx.cached(key, load)` | a load shared by the documents of a compiler |
 
 A handler bound to a directive gets the same members beside `directive`, `index` and `state`.
 
@@ -369,9 +372,54 @@ directive_inline: {
 - **What a task may change:** its node and what is inside it (attrs, `type`, `append`, `prepend`, `wrap_inner`, and `remove` of what is inside), data owned by its node through `ctx.set` and `ctx.add`, and `ctx.warn` about its node or a node reached from it. A node it adds can take attrs and nodes of its own. Anything else throws a `TypeError` in the task: another node, `wrap_from`, removing its own node, or `ctx.defer` again. That is what keeps the final tree independent of the order tasks finish in.
 - **Applied in document order.** A host applies tasks sorted by where their nodes are in the source, and tasks of one node in the order they started. Data is owned by the node, so it sorts as any write does.
 - **A value JSON cannot hold** throws a `PluginDataError` in the task, at the write.
-- **Sharing work** between tasks, such as loading a bibliography once, is up to the plugin for now.
+- **Sharing work** between tasks and documents, such as loading a bibliography once, goes through [`ctx.cached`](#shared-loads).
+- **The task's context** has `filename`, `frontmatter`, `data`, `set`, `add`, `warn`, `depend`, `read`, `resolve` and `cached`.
 
 A parse that cannot wait for async work throws a `PluginAsyncError` at the first `ctx.defer`. In `mdsvex` that is `compile()`, which points to `compile_async()`.
+
+### The document hook
+
+Work that needs the whole document, a check across every heading or numbering that depends on what comes later, goes in a `document` hook:
+
+```js
+const outline = {
+  name: 'outline',
+  document(root, ctx) {
+    for (let child = root.first_child; child !== null; child = child.next) {
+      if (child.type === 'heading') ctx.add('depths', child.depth);
+    }
+  }
+};
+```
+
+- **It runs once,** after the parse, after the sequential passes (`heading_ids` in `mdsvex` comes before them) and after every deferred task has applied. Hooks run in plugin order, each awaited before the next.
+- **It gets the root** and walks the tree itself. It may change any node, as a sequential pass may, and nothing in the tree is pending.
+- **Its writes belong to no node** and are never revoked. While a hook that returned a promise waits, its writes are still its own.
+- **It may be async.** One that returns a promise needs a host that waits, `compile_async()` in `mdsvex`. Under a parse that cannot wait it throws a `PluginAsyncError`. One that returns nothing runs under `compile()` too.
+- **It defers nothing.** `ctx.defer` in a hook throws a `TypeError`, every task has run by then.
+- **On a streaming client** it runs when the host finishes the document, after the stream ended. A plugin that wants to show something sooner does that part per node.
+
+### Loading and dependencies
+
+Plugins load what they need themselves, with `fetch`, `node:fs` or anything else. The core does not wrap the file system. What it does is keep track:
+
+- **`ctx.depend(path)`** names a file the output depends on, from any handler, task or hook. A path that does not exist yet counts too. It takes an absolute path and throws a `TypeError` for any other. `dispatcher.dependencies()` gives them, each once, `undefined` for none, and in `mdsvex` a compile result has them as `dependencies`. A host that watches files compiles the document again when one changes.
+- **`ctx.read(path)`** reads a file with the `read` the host passed in the document (`set_document({ read })`, the `read` option of `mdsvex`) and makes the path a dependency. It returns a promise, so it is for a task or a hook. Without a reader it throws a `TypeError`. `mdsvex/compile` has no reader of its own, which keeps it free of Node, the Vite plugin passes one.
+- **`ctx.resolve(specifier)`** resolves a specifier from the document with the `resolve` the host passed, `null` when nothing matches.
+
+#### Shared loads
+
+Many documents often need the same thing: one bibliography, one endpoint. A variable in the plugin's module goes stale in a dev server, since only the host knows the file changed, and two documents that compile at once both load it. `ctx.cached` does neither:
+
+```js
+const bib = await ctx.cached(path, (path) => ctx.read(path).then(parse_bib));
+```
+
+- **Shared across documents.** The cache is the host's (`set_document({ cache })` with a `PluginCache`), by plugin name, and lives as long as the host keeps it: in `mdsvex` a `CompilerSession`, for the Vite plugin the dev server, for `compile_async` the plugins array passed to it.
+- **It holds the promise,** so documents that ask at once share one load. A load that rejects is not kept and the next document tries again.
+- **A key that is an absolute path is a dependency** of each document that asks, whether the value came from the cache or not.
+- **The host drops path keys.** `PluginCache.invalidate(paths)`, `CompilerSession.invalidate(paths)` in `mdsvex`, drops every entry keyed by one of them, before the documents that depend on them compile again. Other keys, a url say, are never dropped. A plugin that wants them to expire does that itself.
+- **It needs a plugin name.** Without a cache from the host each dispatcher keeps one of its own.
 
 ### For whoever runs the parse
 
@@ -398,12 +446,14 @@ What plugins defer is the host's to wait for:
 ```js
 dispatcher.allow_async = true; // false makes ctx.defer throw a PluginAsyncError
 // ... parse, then run_sequential ...
-const settled = dispatcher.settle(); // undefined when nothing was deferred
-if (settled) await settled;
-dispatcher.data(); // what the tasks wrote is in here now
+const finished = dispatcher.finish(nodes); // undefined when everything ran at once
+if (finished) await finished;
+dispatcher.data(); // what the tasks and hooks wrote is in here now
 ```
 
-- **`settle()`** waits for every task of the document, then applies those whose node is committed, in document order. A task that rejected rejects it with a `PluginTaskError` that names the plugin and the position of the node, with the task's error as `cause`, and then nothing applies. Call it after the parse and the sequential passes. `deferred` is `true` while a task has not applied.
+- **`finish(nodes)`** settles the deferred tasks, then runs the document hooks in plugin order. It returns `undefined` when nothing had to wait, so a document without async work stays synchronous. Call it once, after `run_sequential`.
+
+- **`settle()`** is the first half of `finish`. It waits for every task of the document, then applies those whose node is committed, in document order. A task that rejected rejects it with a `PluginTaskError` that names the plugin and the position of the node, with the task's error as `cause`, and then nothing applies. Call it after the parse and the sequential passes. `deferred` is `true` while a task has not applied.
 - **`apply_ready()`** is for a host that streams. It applies each task that has settled and whose node is committed, in document order, and returns the nodes whose tasks applied, `null` for none. A task that rejected becomes a `task_failed` warning and leaves its node as it was. `on_settled(listener)` calls the listener each time a task settles, so the host knows when to call it.
 - **A reset drops the tasks of the document.** They run on and nothing they do is applied.
 - **A wire consumer has no frontmatter in its tree.** The wire sends a frontmatter node with no text, so `frontmatter` is whatever the consumer was sent beside the stream.

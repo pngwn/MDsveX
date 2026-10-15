@@ -15,6 +15,8 @@ import {
 import {
 	Bag,
 	NO_OWNER,
+	PluginCache,
+	is_absolute,
 	json_copy,
 	type DataChange,
 	type Json,
@@ -207,6 +209,14 @@ interface RegistrationResult {
 	open_wants: Int32Array;
 	/** the name of each plugin by its place, undefined for one without */
 	names: (string | undefined)[];
+	/** the document hooks, in plugin order */
+	documents: DocumentHook[];
+}
+
+/** a document hook and the place of its plugin */
+interface DocumentHook {
+	run: (root: NodeView, ctx: PluginContext) => void | Promise<void>;
+	at: number;
 }
 
 /** above every buffer index, a small integer with all low bits set so an or with an index keeps it */
@@ -221,10 +231,20 @@ function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
 	for (let k = 0; k < NODE_KIND_COUNT; k++) per_kind_at.push([]);
 	const sequential: RegistrationResult['sequential'] = [];
 	const names: (string | undefined)[] = [];
+	const documents: DocumentHook[] = [];
 
 	for (let at = 0; at < plugins.length; at++) {
 		const plugin = plugins[at];
 		names.push(typeof plugin.name === 'string' ? plugin.name : undefined);
+		const hook = plugin.document;
+		if (hook !== undefined) {
+			if (typeof hook !== 'function') {
+				throw new TypeError(
+					'the document hook of a plugin must be a function that takes the root and the context'
+				);
+			}
+			documents.push({ run: hook as DocumentHook['run'], at });
+		}
 		// a sequential plugin gets a table of its own
 		const table: HandlersTable | null = plugin.sequential
 			? new Array(NODE_KIND_COUNT).fill(null)
@@ -252,7 +272,11 @@ function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
 						`the text handler of ${named} needs the tree to be complete, set sequential: true on the plugin`
 					);
 				}
-				text = { parse: entry, all: plugin.all_text === true, at };
+				text = {
+					parse: entry as TextHandler,
+					all: plugin.all_text === true,
+					at,
+				};
 				continue;
 			}
 			if (!entry || typeof entry !== 'object' || !('parse' in entry)) continue;
@@ -293,6 +317,7 @@ function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
 		has_handler,
 		open_wants,
 		names,
+		documents,
 	};
 }
 
@@ -597,6 +622,22 @@ class Context implements PluginContext {
 		this[HOST]._defer(this[PLUGIN], node, task);
 	}
 
+	depend(path: string): void {
+		this[HOST]._depend(path);
+	}
+
+	read(path: string): Promise<string> {
+		return this[HOST]._read(path);
+	}
+
+	resolve(specifier: string): Promise<string | null> {
+		return this[HOST]._resolve(specifier);
+	}
+
+	cached<T>(key: string, load: (key: string) => T | Promise<T>): Promise<T> {
+		return this[HOST]._cached(this[PLUGIN], key, load);
+	}
+
 	warn(code: string, message: string, node?: NodeView): void {
 		this[HOST]._warn(this[PLUGIN], code, message, node);
 	}
@@ -650,6 +691,22 @@ class TaskContext {
 		throw new TypeError(
 			'ctx.defer: a deferred task defers nothing more, do the work in the task'
 		);
+	}
+
+	depend(path: string): void {
+		this[HOST]._depend(path);
+	}
+
+	read(path: string): Promise<string> {
+		return this[HOST]._read(path);
+	}
+
+	resolve(specifier: string): Promise<string | null> {
+		return this[HOST]._resolve(specifier);
+	}
+
+	cached<T>(key: string, load: (key: string) => T | Promise<T>): Promise<T> {
+		return this[HOST]._cached(this[TASK].plugin, key, load);
 	}
 }
 
@@ -921,6 +978,14 @@ export class PluginDispatcher
 	private task_buf: NodeBuffer | null = null;
 	/** what is called when a task settles, kept from one document to the next */
 	private task_listeners: (() => void)[] | null = null;
+	/** the document hooks of the plugins, in plugin order */
+	private documents: DocumentHook[];
+	/** the paths the output depends on, each once, null for none */
+	private deps: Set<string> | null = null;
+	/** what ctx.cached keeps when the host gives no cache, as long as this dispatcher */
+	private own_cache: PluginCache | null = null;
+	/** the plugin whose document hook runs or is awaited, undefined for none */
+	private hook: number = NONE;
 
 	/**
 	 * false when nothing can wait for async work, ctx.defer then throws a
@@ -993,6 +1058,7 @@ export class PluginDispatcher
 		this.has_handler = reg.has_handler;
 		this.sequential = reg.sequential;
 		this.names = reg.names;
+		this.documents = reg.documents;
 		this.text_source = text_source;
 		this.handled = this.handles = reg.open_wants;
 		this.bound = bound_for(directive_handlers);
@@ -1083,6 +1149,173 @@ export class PluginDispatcher
 		if (doc === null) return undefined;
 		const read = doc.frontmatter;
 		return read === undefined ? undefined : read();
+	}
+
+	/**
+	 * settles the deferred tasks, then runs the document hooks in plugin
+	 * order, each awaited, undefined when everything ran at once, so a
+	 * document without async work stays synchronous, call it after the
+	 * parse and the sequential passes
+	 */
+	finish(buf: NodeBuffer): Promise<void> | undefined {
+		const settled = this.settle();
+		if (settled !== undefined) {
+			return settled.then(() => this.run_documents(buf, 0));
+		}
+		return this.run_documents(buf, 0);
+	}
+
+	/** the hooks from one place on, a hook that returns a promise is awaited before the next */
+	private run_documents(
+		buf: NodeBuffer,
+		from: number
+	): Promise<void> | undefined {
+		const documents = this.documents;
+		if (from >= documents.length) return undefined;
+		const ctx = this.contexts ?? this.make_contexts();
+		for (let i = from; i < documents.length; i++) {
+			const { run, at } = documents[i];
+			// the tree is complete and nothing is pending, as in a sequential pass
+			this.hook = at;
+			this.sequential_pass = true;
+			this.running = 0;
+			let result: unknown;
+			try {
+				result = run(this.views(buf).get(0)!, ctx[at]);
+			} catch (e) {
+				this.end_hook();
+				throw e;
+			}
+			if (
+				result !== null &&
+				typeof result === 'object' &&
+				typeof (result as Promise<void>).then === 'function'
+			) {
+				if (!this.allow_async) {
+					this.end_hook();
+					// the hook runs on unheard, its writes fail with no handler
+					(result as Promise<void>).then(undefined, () => {});
+					throw new PluginAsyncError(
+						this.names[at],
+						'document',
+						undefined,
+						this.async_hint
+					);
+				}
+				// writes while it waits are its own, the dispatcher holds no other document
+				return (result as Promise<void>).then(
+					() => {
+						this.end_hook();
+						return this.run_documents(buf, i + 1);
+					},
+					(e: unknown) => {
+						this.end_hook();
+						throw e;
+					}
+				);
+			}
+			this.end_hook();
+		}
+		return undefined;
+	}
+
+	private end_hook(): void {
+		this.hook = NONE;
+		this.sequential_pass = false;
+		this.running = NONE;
+	}
+
+	/** the names of the plugins whose work is still awaited, for a host that warns */
+	waiting(): string[] {
+		const names: string[] = [];
+		const add = (name: string | undefined) => {
+			const named = name ?? 'unnamed';
+			if (!names.includes(named)) names.push(named);
+		};
+		const tasks = this.tasks;
+		if (tasks !== null) {
+			for (let i = 0; i < tasks.length; i++) {
+				const task = tasks[i];
+				if (!task.dropped && task.state === TaskState.Running) add(task.plugin);
+			}
+		}
+		if (this.hook !== NONE) add(this.names[this.hook]);
+		return names;
+	}
+
+	/** the absolute paths the output of the document depends on, each once, undefined for none */
+	dependencies(): string[] | undefined {
+		const deps = this.deps;
+		return deps === null || deps.size === 0 ? undefined : [...deps];
+	}
+
+	/** @internal ctx.depend */
+	_depend(path: string): void {
+		if (typeof path !== 'string' || !is_absolute(path)) {
+			throw new TypeError(
+				`ctx.depend takes an absolute path, got ${JSON.stringify(path)}`
+			);
+		}
+		let deps = this.deps;
+		if (deps === null) deps = this.deps = new Set();
+		deps.add(path);
+	}
+
+	/** @internal ctx.read, with the reader of the host, the path is a dependency */
+	_read(path: string): Promise<string> {
+		const read = this.doc?.read;
+		if (read === undefined) {
+			throw new TypeError(
+				'ctx.read needs a reader, the host passes one as its read option'
+			);
+		}
+		this._depend(path);
+		try {
+			return Promise.resolve(read(path));
+		} catch (e) {
+			return Promise.reject(e);
+		}
+	}
+
+	/** @internal ctx.resolve, with the resolver of the host, from the document */
+	_resolve(specifier: string): Promise<string | null> {
+		const resolve = this.doc?.resolve;
+		if (resolve === undefined) {
+			throw new TypeError(
+				'ctx.resolve needs a resolver, the host passes one as its resolve option'
+			);
+		}
+		if (typeof specifier !== 'string' || specifier === '') {
+			throw new TypeError('ctx.resolve takes a specifier, a string');
+		}
+		try {
+			return Promise.resolve(resolve(specifier, this._filename())).then(
+				(found) => found ?? null
+			);
+		} catch (e) {
+			return Promise.reject(e);
+		}
+	}
+
+	/** @internal ctx.cached, a key that is a path is a dependency each time it is asked */
+	_cached<T>(
+		plugin: string | undefined,
+		key: string,
+		load: (key: string) => T | Promise<T>
+	): Promise<T> {
+		if (plugin === undefined) {
+			throw new Error(
+				'ctx.cached is kept by plugin name, give the plugin a name to use it'
+			);
+		}
+		if (typeof key !== 'string' || typeof load !== 'function') {
+			throw new TypeError(
+				'ctx.cached takes a key, a string, and a load function'
+			);
+		}
+		if (is_absolute(key)) this._depend(key);
+		const cache = this.doc?.cache ?? (this.own_cache ??= new PluginCache());
+		return cache.get(plugin, key, load);
 	}
 
 	/** true while the document has deferred tasks that have not applied */
@@ -1287,6 +1520,11 @@ export class PluginDispatcher
 	): void {
 		if (typeof run !== 'function') {
 			throw new TypeError('ctx.defer takes the node and the task, a function');
+		}
+		if (this.hook !== NONE) {
+			throw new TypeError(
+				'ctx.defer: a document hook runs after every task, it awaits its own work'
+			);
 		}
 		const running = this.running;
 		if (
@@ -1833,7 +2071,7 @@ export class PluginDispatcher
 		const parent = buf.parent_at(wrapper);
 		// a repair moved the wrapper out of its chain
 		if (parent === NONE || this.slot(parent) !== wrapper) {
-			this.finish(buf, wrapper);
+			this.finish_wrapper(buf, wrapper);
 			return;
 		}
 		// only this link and the ones inside the wrapper, a link above it stays
@@ -1866,13 +2104,13 @@ export class PluginDispatcher
 		}
 		// innermost first, so an outer wrapper sees its inner one closed
 		for (let i = links.length - 3; i >= 0; i -= 3) {
-			if (links[i + 2] === 1) this.finish(buf, links[i + 1]);
+			if (links[i + 2] === 1) this.finish_wrapper(buf, links[i + 1]);
 		}
 		return links;
 	}
 
 	/** a wrap_from wrapper takes no more children */
-	private finish(buf: NodeBuffer, wrapper: number): void {
+	private finish_wrapper(buf: NodeBuffer, wrapper: number): void {
 		this.open_from.delete(wrapper);
 		// a child the parser still has open keeps the wrapper open until it closes
 		const last = buf.last_child_at(wrapper);
@@ -1978,7 +2216,7 @@ export class PluginDispatcher
 			}
 			// a parent that closed since takes no more children
 			if (i === 0 && !this.takes_children(buf, parent)) {
-				if (from) this.finish(buf, wrapper);
+				if (from) this.finish_wrapper(buf, wrapper);
 				return;
 			}
 			// a wrapper opened since is among the absorbed and nests in this one
@@ -2815,6 +3053,8 @@ export class PluginDispatcher
 		}
 		this.uncommitted = 0;
 		this.task_buf = null;
+		this.deps = null;
+		this.hook = NONE;
 		if (this.cache !== null) this.cache.invalidate();
 	}
 }

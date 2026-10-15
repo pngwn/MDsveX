@@ -322,3 +322,49 @@ export class Bag {
 		return view;
 	}
 }
+
+/** a path ctx.depend takes, from the root of a file system or a drive */
+export function is_absolute(path: string): boolean {
+	return /^(?:\/|[A-Za-z]:[\\/]|\\\\)/.test(path);
+}
+
+/**
+ * what ctx.cached keeps, by plugin name and key, the host makes one and keeps
+ * it as long as its compiler, a load is shared while it runs and a load that
+ * rejected is not kept
+ */
+export class PluginCache {
+	private by_plugin = new Map<string, Map<string, Promise<unknown>>>();
+
+	get<T>(
+		plugin: string,
+		key: string,
+		load: (key: string) => T | Promise<T>
+	): Promise<T> {
+		let entries = this.by_plugin.get(plugin);
+		if (entries === undefined)
+			this.by_plugin.set(plugin, (entries = new Map()));
+		const hit = entries.get(key);
+		if (hit !== undefined) return hit as Promise<T>;
+		let loading: Promise<T>;
+		try {
+			loading = Promise.resolve(load(key));
+		} catch (e) {
+			loading = Promise.reject(e);
+		}
+		entries.set(key, loading);
+		loading.catch(() => {
+			// the next document tries again
+			if (entries.get(key) === loading) entries.delete(key);
+		});
+		return loading;
+	}
+
+	/** drops every entry keyed by one of these paths, for each plugin, a key that is no path stays */
+	invalidate(paths: Iterable<string>): void {
+		for (const path of paths) {
+			if (!is_absolute(path)) continue;
+			for (const entries of this.by_plugin.values()) entries.delete(path);
+		}
+	}
+}

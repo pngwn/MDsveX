@@ -2,6 +2,7 @@
 
 import {
 	PFMParser,
+	PluginCache,
 	PluginDispatcher,
 	SourceTextSource,
 	has_directive_handlers,
@@ -307,6 +308,16 @@ export interface CompileOptions
 	snippets?: SnippetsOption;
 	/** the document, highlighters, math renderers and their errors see it */
 	filename?: string;
+	/** reads a file for ctx.read of a plugin, mdsvex/compile has no reader of its own */
+	read?: (path: string) => string | Promise<string>;
+	/**
+	 * resolves a specifier from a file for ctx.resolve of a plugin, null when
+	 * nothing matches
+	 */
+	resolve?: (
+		specifier: string,
+		importer: string | undefined
+	) => string | null | undefined | Promise<string | null | undefined>;
 }
 
 /** the sources option once it is known to be on */
@@ -364,6 +375,8 @@ export interface CompileResult {
 	data?: PluginData;
 	/** the code of the fences that run, one per module the document imports, undefined when none runs */
 	snippets?: Snippet[];
+	/** the absolute paths the output depends on, each once, undefined for none */
+	dependencies?: string[];
 }
 
 export interface CompileV3Result {
@@ -380,6 +393,8 @@ export interface CompileV3Result {
 	data?: PluginData;
 	/** the code of the fences that run, one per module the document imports, undefined when none runs */
 	snippets?: Snippet[];
+	/** the absolute paths the output depends on, each once, undefined for none */
+	dependencies?: string[];
 }
 
 export interface CompileTraceResult {
@@ -398,12 +413,14 @@ export interface CompileTraceResult {
 	data?: PluginData;
 	/** the code of the fences that run, one per module the document imports, undefined when none runs */
 	snippets?: Snippet[];
+	/** the absolute paths the output depends on, each once, undefined for none */
+	dependencies?: string[];
 }
 
 /**
- * @internal what a compile reads apart from the document, a caller with
- * many documents keeps one and stores the fields that change, never while
- * a compile runs
+ * what a compile reads apart from the document, made by compile_inputs, a
+ * caller with many documents keeps one and stores the fields that change,
+ * never while a compile runs
  */
 export interface CompileInputs {
 	/** unpacked into the four fields below before a compile reads them */
@@ -447,6 +464,10 @@ export interface CompileInputs {
 	await_plugins: boolean;
 	/** how a fence marked run is imported, false runs none, undefined makes one an error */
 	snippets: SnippetsOption | undefined;
+	/** the read option */
+	read: CompileOptions['read'];
+	/** the resolve option */
+	resolve: CompileOptions['resolve'];
 }
 
 /**
@@ -484,6 +505,8 @@ function fresh_inputs(): CompileInputs {
 		await_sources: false,
 		await_plugins: false,
 		snippets: undefined,
+		read: undefined,
+		resolve: undefined,
 	};
 }
 
@@ -514,6 +537,8 @@ function inputs_of(options: CompileOptions): CompileInputs {
 	const links = options.links;
 	const sources = options.sources;
 	const snippets = options.snippets;
+	const read = options.read;
+	const resolve = options.resolve;
 	// options that set none need no inputs of their own
 	if (
 		bundles === undefined &&
@@ -535,7 +560,9 @@ function inputs_of(options: CompileOptions): CompileInputs {
 		rewrite === undefined &&
 		links === undefined &&
 		sources === undefined &&
-		snippets === undefined
+		snippets === undefined &&
+		read === undefined &&
+		resolve === undefined
 	)
 		return no_inputs;
 	const inputs = compile_inputs();
@@ -558,6 +585,8 @@ function inputs_of(options: CompileOptions): CompileInputs {
 	if (rewrite !== undefined || links !== undefined)
 		inputs.links = links_of(rewrite, links);
 	inputs.sources = sources;
+	inputs.read = read;
+	inputs.resolve = resolve;
 	inputs.snippets = snippets;
 	return inputs;
 }
@@ -1081,9 +1110,19 @@ class PluginHost {
 	readonly frontmatter: () => Metadata | undefined;
 	/** the tree the dispatcher builds into, set by whoever made it */
 	tree: TreeBuilder | null = null;
+	/** the reader and resolver of the document, its handlers call them later */
+	read: CompileOptions['read'] = undefined;
+	resolve: CompileOptions['resolve'] = undefined;
+	/** what ctx.cached keeps, that of the session */
+	cache: PluginCache | undefined = undefined;
+	/**
+	 * the deferred tasks and document hooks the document still waits for,
+	 * null when everything ran during the parse
+	 */
+	pending: Promise<void> | null = null;
 	private source = '';
 	private parse: FrontmatterParse = undefined;
-	private read = false;
+	private parsed_frontmatter = false;
 	private metadata: Metadata | undefined = undefined;
 	/** the export of what the handlers left, undefined when they left nothing */
 	private exported: string | undefined = undefined;
@@ -1101,10 +1140,13 @@ class PluginHost {
 		const dispatcher = this.dispatcher;
 		dispatcher.allow_async = awaits;
 		dispatcher.async_hint = ASYNC_HINT;
+		this.read = inputs.read;
+		this.resolve = inputs.resolve;
+		this.pending = null;
 		this.source = source;
 		this.filename = inputs.filename;
 		this.parse = inputs.frontmatter_parse;
-		this.read = false;
+		this.parsed_frontmatter = false;
 		this.metadata = undefined;
 		this.exported = undefined;
 		this.dispatcher.set_document(this);
@@ -1112,7 +1154,7 @@ class PluginHost {
 
 	/** parsed once, for the first handler that asks or for the compile after the parse */
 	private read_frontmatter(): Metadata | undefined {
-		if (this.read) return this.metadata;
+		if (this.parsed_frontmatter) return this.metadata;
 		const nodes = this.tree!.get_buffer();
 		// frontmatter can only be the first node, and only its own open
 		// handler runs before it has an end
@@ -1129,7 +1171,7 @@ class PluginHost {
 			nodes.value_end_at(first),
 			this.parse
 		);
-		this.read = true;
+		this.parsed_frontmatter = true;
 		return (this.metadata = metadata);
 	}
 
@@ -1166,10 +1208,22 @@ class PluginHost {
 		return exported === undefined ? code : code + '\n' + exported;
 	}
 
+	/**
+	 * after the sequential passes, the deferred tasks and then the document
+	 * hooks, what waits is kept for settle, a promise is never left unheard
+	 */
+	finish(nodes: NodeBuffer): void {
+		const pending = this.dispatcher.finish(nodes);
+		if (pending === undefined) return;
+		pending.catch(() => {});
+		this.pending = pending;
+	}
+
 	/** a document that waits for its render, the dispatcher holds what they left until then */
 	wait(parsed: Parsed): void {
 		parsed._host = this;
 		parsed.data = this.dispatcher.data();
+		parsed.dependencies = this.dispatcher.dependencies();
 	}
 
 	/**
@@ -1177,11 +1231,17 @@ class PluginHost {
 	 * the render, a target that is kept loses the data of its last document
 	 */
 	leave(
-		result: { warnings?: CompileWarning[]; data?: PluginData },
+		result: {
+			warnings?: CompileWarning[];
+			data?: PluginData;
+			dependencies?: string[];
+		},
 		kept: boolean
 	): void {
 		const data = this.dispatcher.data();
 		if (data !== undefined || kept) result.data = data;
+		const deps = this.dispatcher.dependencies();
+		if (deps !== undefined || kept) result.dependencies = deps;
 		const warned = this.dispatcher.warnings;
 		if (warned === undefined) return;
 		const source = this.source;
@@ -1203,7 +1263,7 @@ class PluginHost {
 
 /** a Parsed whose plugins deferred work renders once it settled */
 function unsettled(host: PluginHost, parsed: Parsed): void {
-	if (!host.dispatcher.deferred) return;
+	if (host.pending === null) return;
 	parsed._nodes = null;
 	throw new Error(
 		'[mdsvex] the plugins of this document deferred work, wait for settle(parsed) before its render'
@@ -1267,6 +1327,7 @@ function parse_once(
 	if (slug !== undefined) assign_heading_ids(nodes, source, slug);
 	if (host !== null) {
 		host.dispatcher.run_sequential(nodes);
+		host.finish(nodes);
 	}
 	nodes.trim();
 	return nodes;
@@ -1705,6 +1766,8 @@ export class Parsed {
 	 * when none wrote any, complete once settle resolved
 	 */
 	data: PluginData | undefined = undefined;
+	/** the absolute paths its plugins depend on, complete once settle resolved */
+	dependencies: string[] | undefined = undefined;
 	/** @internal what its plugin handlers left, null when none could run and once a render took it */
 	_host: PluginHost | null = null;
 
@@ -1736,6 +1799,8 @@ export class Parsed {
  */
 export class CompilerSession {
 	private tree: TreeBuilder | null = null;
+	/** what ctx.cached keeps for the documents of this session */
+	private cache = new PluginCache();
 	private parser: PFMParser | null = null;
 	private renderer = new CursorHTMLRenderer({ cache: false });
 	// release already reset the arena, so the next compile can skip it
@@ -1830,6 +1895,7 @@ export class CompilerSession {
 			arena.tree.reset();
 		}
 		arena.host.start(source, inputs, awaits);
+		arena.host.cache = this.cache;
 
 		this.plugin_busy = true;
 		let done = false;
@@ -1840,6 +1906,7 @@ export class CompilerSession {
 			const slug = inputs.heading_ids;
 			if (slug !== undefined) assign_heading_ids(nodes, source, slug);
 			arena.dispatcher.run_sequential(nodes);
+			arena.host.finish(nodes);
 			done = true;
 			return nodes;
 		} finally {
@@ -1889,8 +1956,22 @@ export class CompilerSession {
 	 */
 	settle(parsed: Parsed): Promise<void> | undefined {
 		const host = parsed._host;
-		if (host === null || !host.dispatcher.deferred) return undefined;
-		return settle_plugins(host, parsed);
+		if (host === null || host.pending === null) return undefined;
+		return settle_plugins(host, host.pending, parsed);
+	}
+
+	/**
+	 * drops what ctx.cached keeps under these paths, a host that watches
+	 * calls it before it compiles the documents that depend on them again
+	 */
+	invalidate(paths: Iterable<string>): void {
+		this.cache.invalidate(paths);
+	}
+
+	/** @internal the plugins a parsed document still waits for, for a warning */
+	waiting_for(parsed: Parsed): string[] {
+		const host = parsed._host;
+		return host === null ? [] : host.dispatcher.waiting();
 	}
 
 	/**
@@ -2269,7 +2350,7 @@ export class CompilerSession {
 					out !== undefined &&
 					inputs.await_sources &&
 					!sources_met(shown, given as Sources)) ||
-				(host !== null && out !== undefined && host.dispatcher.deferred)
+				(host !== null && out !== undefined && host.pending !== null)
 			) {
 				const waiting = new Parsed(raw, source, metadata, nodes);
 				waiting.math = waiting._spans = spans;
@@ -2487,6 +2568,8 @@ export interface TraceTarget extends MapTrace {
 	waiting?: Parsed;
 	/** the code of the fences that run, set by every compile that has fences to look at */
 	snippets?: Snippet[];
+	/** what plugins depend on, set by every compile that has plugins */
+	dependencies?: string[];
 }
 
 // a session keeps its arena at its largest document size, so large documents
@@ -2525,10 +2608,29 @@ function render(source: string, options?: CompileOptions): CompileResult {
 	}
 }
 
+/** a session for each plugins array, what ctx.cached keeps lasts as long as the array */
+const async_sessions = new WeakMap<object, CompilerSession>();
+
+function async_session(options: CompileOptions): CompilerSession {
+	const key = (options.plugins ?? options.parse_plugins) as object;
+	let session = async_sessions.get(key);
+	if (session === undefined) {
+		session = new CompilerSession();
+		async_sessions.set(key, session);
+	}
+	return session;
+}
+
 /** settle out of line, the data of the document is whole once the tasks applied */
-async function settle_plugins(host: PluginHost, parsed: Parsed): Promise<void> {
-	await host.dispatcher.settle();
+async function settle_plugins(
+	host: PluginHost,
+	pending: Promise<void>,
+	parsed: Parsed
+): Promise<void> {
+	await pending;
+	host.pending = null;
 	parsed.data = host.dispatcher.data();
+	parsed.dependencies = host.dispatcher.dependencies();
 }
 
 /**
@@ -2545,7 +2647,7 @@ export async function compile_async(
 ): Promise<CompileResult> {
 	if (options === undefined || !has_plugins(options))
 		return render(source, options);
-	const session = new CompilerSession();
+	const session = async_session(options);
 	const inputs = inputs_of(options);
 	const parsed = session.parse(source, inputs);
 	const settled = session.settle(parsed);
