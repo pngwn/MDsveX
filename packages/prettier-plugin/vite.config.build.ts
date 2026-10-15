@@ -12,8 +12,9 @@ export default defineConfig({
 		outDir: 'dist',
 		reportCompressedSize: true,
 		rollupOptions: {
-			// prettier is the one the user runs, the parser is a dependency
-			external: [/^prettier(\/|$)/, /^@mdsvex\//],
+			// prettier is the one the user runs, the parser is a dependency, and
+			// node builtins are only loaded in node, to find the mdsvex manifest
+			external: [/^prettier(\/|$)/, /^@mdsvex\//, /^node:/],
 			output: {
 				entryFileNames: '[name].js',
 			},

@@ -3496,6 +3496,59 @@ A `RunError` has a `code` (`run_module`, `run_pre`, `run_lang`, `run_eval` or `r
 
 The editor shows a block that runs as code, and reports one the build would reject at its fence. It doesn't check the code as a module yet.
 
+## Formatting with Prettier
+
+`@mdsvex/prettier-plugin` formats documents with [Prettier](https://prettier.io):
+
+```bash
+pnpm add --save-dev prettier @mdsvex/prettier-plugin@next
+```
+
+```json
+{
+	"plugins": ["@mdsvex/prettier-plugin"]
+}
+```
+
+Prettier picks the plugin for `.svx` and `.pfm` files from their extension. For another extension in `extensions`, add an override that sets `"parser": "mdsvex"` for it.
+
+The plugin tidies the markdown and keeps what its author chose: list markers, numbering, table spacing and emphasis stay as written. It folds blank lines between blocks to one, takes the spaces off the ends of prose lines, folds the spaces after a list marker to one, moves a nested list to the content column of its item and puts a space after a `>` that has none.
+
+The code in a document is formatted with your Prettier options:
+
+| part | formatted |
+| --- | --- |
+| frontmatter | as yaml, unless the project parses it with [`frontmatter.parse`](docs#custom-frontmatter-parsers) |
+| imports, `<script>`, `<style>` | as code, TypeScript with `lang="ts"`, scss or less with `lang` |
+| `{expression}`, `{@html}`, `{@render}`, `{@const}` | on one line |
+| the heads of `{#if}`, `{#each}`, `{#await}`, `{#key}`, `{#snippet}` | on one line |
+| attribute expressions | on one line, the tag keeps its line breaks and the order of its attributes |
+| code fences | kept as written, see `mdsvexFormatFences` below |
+
+A part that does not parse is kept as written.
+
+### Plugin options
+
+| option | default | what it does |
+| --- | --- | --- |
+| `mdsvexFormatFences` | `false` | formats a fence whose info string is only a language Prettier knows. A fence with meta, such as a line range, or with an annotation is still kept, as its line numbers count the lines of the code |
+| `mdsvexFrontmatter` | `"auto"` | `"auto"` formats frontmatter as yaml unless the manifest the Vite plugin writes says the project parses it itself, `"yaml"` always formats it and `"keep"` never does |
+
+### Leaving parts alone
+
+```svx
+<!-- prettier-ignore -->
+{items.map((item)=>item.name)}
+
+<!-- prettier-ignore-start -->
+| kept | as  |
+| ---- | --- |
+| it   | is  |
+<!-- prettier-ignore-end -->
+```
+
+`<!-- prettier-ignore -->` keeps the block after it, or the next node when it sits in a paragraph. Everything between `<!-- prettier-ignore-start -->` and `<!-- prettier-ignore-end -->` at the top of a document is kept. `<!-- @format -->` at the top, or after the frontmatter, works with `--require-pragma` and `--insert-pragma`.
+
 ## Without Vite
 
 The Vite plugin reads files, finds the names your modules export, serves modules that don't exist on disk and reloads pages as you edit. [`compile`](docs#compile) does none of that. It takes text and returns Svelte source, never touches the filesystem and runs in a browser, a worker or Node. Everything below is what a build tool, a playground or an editor that isn't Vite supplies to get the same output.
