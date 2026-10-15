@@ -307,6 +307,11 @@ export class ViewCache {
 		return new NodeView(index, this.buf, this.text_source, this, this.undo);
 	}
 
+	/** @internal the buffer the views read */
+	get buffer(): NodeBuffer {
+		return this.buf;
+	}
+
 	/** @internal a callback reads the attrs of the heading whose id waits, it is made first */
 	make_lazy(buf: NodeBuffer): void {
 		const index = this.lazy;

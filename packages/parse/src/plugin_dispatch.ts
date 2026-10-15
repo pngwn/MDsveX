@@ -47,7 +47,7 @@ import type {
 	TextHandler,
 	TaskContext as PublicTaskContext,
 } from './plugin_types';
-import type { HeadingIds } from './heading_ids';
+import { HeadingIds } from './heading_ids';
 import { RunPieces, TextRun } from './text_run';
 import {
 	DraftView,
@@ -639,6 +639,10 @@ class Context implements PluginContext {
 		return this[HOST]._cached(this[PLUGIN], key, load);
 	}
 
+	id(base: string, options?: { fixed?: boolean }): string {
+		return this[HOST]._id(base, options?.fixed === true);
+	}
+
 	warn(code: string, message: string, node?: NodeView): void {
 		this[HOST]._warn(this[PLUGIN], code, message, node);
 	}
@@ -1047,6 +1051,8 @@ export class PluginDispatcher
 
 	/** makes the id of each heading at its close, the builder gives it */
 	private headings: HeadingIds | null = null;
+	/** the ids ctx.id gives when the builder has no heading ids, null until the first */
+	private own_ids: HeadingIds | null = null;
 
 	constructor(
 		plugins: ParsePlugin[] | undefined,
@@ -1724,8 +1730,34 @@ export class PluginDispatcher
 		}
 	}
 
+	/**
+	 * @internal a free id for ctx.id, owned by the node whose handler runs and
+	 * free again when it is revoked, fixed checks the id as one the document
+	 * gives instead
+	 */
+	_id(base: string, fixed: boolean): string {
+		if (typeof base !== 'string' || base === '') {
+			throw new TypeError('ctx.id takes a base, a string that is not empty');
+		}
+		const running = this.running;
+		if (running === NONE && !this.sequential_pass) {
+			throw new TypeError(NO_HANDLER('ctx.id'));
+		}
+		const ids =
+			this.headings ?? (this.own_ids ??= new HeadingIds(null, () => false));
+		const owner = this.sequential_pass ? 0 : running;
+		const buf = this.cache!.buffer;
+		const id = fixed ? ids.fixed(buf, base, owner) : ids.claim(base, owner);
+		// the registry is the bag of an id, it gives the id back when the owner goes
+		if (owner !== 0 && this.undo.recording) {
+			this.undo.record_data(this, ids, id, owner);
+		}
+		return id;
+	}
+
 	/** @internal a revoke takes back what a node wrote under a key */
 	revoke_data(bag: object, key: string, owner: number): void {
+		if (bag instanceof HeadingIds) return bag.release(key);
 		const own = bag as Bag;
 		if (own.revoke(key, owner) && this.data_listeners !== null) {
 			this.data_changed(own, key);
@@ -3076,6 +3108,7 @@ export class PluginDispatcher
 		this.task_buf = null;
 		this.deps = null;
 		this.hook = NONE;
+		if (this.own_ids !== null) this.own_ids.start();
 		if (this.cache !== null) this.cache.invalidate();
 	}
 }
