@@ -1,6 +1,6 @@
 # @mdsvex/plugin-page-data
 
-Facts about each [mdsvex](https://mdsvex.pngwn.io) document, for its template and for pages that list documents: a reading time and word count, an excerpt, a title read from the first heading, and an edit url.
+Facts about each [mdsvex](https://mdsvex.pngwn.io) document, for its template and for pages that list documents: a reading time and word count, an excerpt, a title read from the first heading, an edit url, and the date it was last changed.
 
 ```bash
 pnpm add --save-dev @mdsvex/plugin-page-data@next
@@ -15,7 +15,10 @@ export default {
 	plugins: [
 		mdsvex({
 			plugins: [
-				page_data({ edit_url: 'https://github.com/you/site/edit/main/' }),
+				page_data({
+					edit_url: 'https://github.com/you/site/edit/main/',
+					last_modified: 'git',
+				}),
 			],
 		}),
 	],
@@ -42,6 +45,7 @@ plugin_data.page;
 //   words: 842,
 //   minutes: 5,
 //   edit_url: 'https://github.com/you/site/edit/main/src/routes/blog/moving-to-runes.svx',
+//   last_modified: '2026-10-15T09:30:00.000Z',
 // }
 ```
 
@@ -60,10 +64,12 @@ page_data({
 		string |
 		{ base: string, root: string } |
 		((filename: string) => string | undefined), // off
+	last_modified:
+		'git' | 'fs' | ((filename: string) => Promise<string | Date | undefined>), // off
 });
 ```
 
-An option of the wrong shape throws a `PageDataError` when the plugin is made.
+An option of the wrong shape throws a `PageDataError` when the plugin is made, with `code` set to `'option'`.
 
 ## Reading time
 
@@ -159,7 +165,40 @@ page_data({
 - **A function** gets the path of the document and returns the url, or nothing for no url.
 - A document outside the root has no `edit_url`, and the build warns `outside_root`. With `compile()` and no `filename` there is none either, and the warning is `no_filename`.
 
-**The date a document was last changed is not here.** It comes from git or the file system, and a parse plugin can read neither: its handlers are synchronous and are given the path of the document, not a way to read around it. Read it where you list the documents instead, in a `+page.server.js` or a Vite plugin.
+## Last modified
+
+`last_modified` is when the document last changed, as an ISO string in UTC. It is off until you say where the date comes from:
+
+```js
+page_data({ last_modified: 'git' });
+// '2026-10-15T09:30:00.000Z'
+```
+
+- **`'git'`** is the date of the last commit that touched the file, its committer date, which is when the change landed on the branch. A file that is not committed yet has no date.
+- **`'fs'`** is the modification time of the file.
+- **A function** is given the path of the document and returns a `Date`, a string a `Date` can read, or nothing for no date. It can be async. Anything else rejects with a `PageDataError` whose `code` is `'option'`.
+
+```js
+page_data({
+	last_modified: async (filename) => (await cms.page(filename))?.updated_at,
+});
+```
+
+Finding the date waits, so a document with `last_modified` on needs a compile that waits. The Vite plugin waits, and so does `compile_async` from `mdsvex`. `compile` throws a `PluginAsyncError` for it, which is how mdsvex says a plugin has async work.
+
+### Where it works
+
+`'git'` and `'fs'` need Node, which they import when they first run, so the package still loads in a browser. Chosen where there is no Node, in the playground for instance, they throw a `PageDataError` with `code` set to `'node'` when the plugin is made. A function works anywhere.
+
+`'git'` runs `git`. When git can not be run, or a document is not inside a git repository, the compile fails with a `PageDataError` whose `code` is `'git'`. A file that is not there gives no date and the warning `not_found`, with either. With no `filename` there is no date and the warning is `no_filename`.
+
+### How `'git'` reads the history
+
+It runs one `git log` for the whole repository and keeps the date of each file, shared by every document the compiler takes (the dev server, a build, or a `compile_async` given the same `plugins` array each time). On this repository, 1,064 commits, that is one process of about 90 ms against 25 ms for each file with one `git log` per file, which is 45 seconds for its 1,513 markdown files, or 8 with eight at once. A repository with a very long history pays more for the one log, but still once.
+
+- **A shallow clone** has no history before its cut, and CI checks out one commit by default. A file whose last commit is the cut gets no date and the warning `shallow_history`, never the date of the cut. Fetch the whole history, `fetch-depth: 0` with `actions/checkout`.
+- **In the dev server** the history is read once. A commit made while it runs shows after a restart. The date you see while writing is the one of the last commit either way, since what you are changing is not committed.
+- **`'fs'` in CI** is the time of the checkout for every file, so it suits a site built where it is written.
 
 ## An index page
 
@@ -194,4 +233,18 @@ const { data } = compile(source, {
 data?.page;
 ```
 
-An empty document has no `page` key. The data is the same from a tree built over the wire format.
+An empty document has no `page` key, or only `last_modified`. The data is the same from a tree built over the wire format.
+
+With `last_modified`, use `compile_async`, and pass the same `plugins` array to each call so the history of `'git'` is read once:
+
+```js
+import { compile_async } from 'mdsvex';
+
+const plugins = [page_data({ last_modified: 'git' })];
+for (const file of files) {
+	const { data } = await compile_async(await readFile(file, 'utf8'), {
+		filename: file,
+		plugins,
+	});
+}
+```

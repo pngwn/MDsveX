@@ -13,7 +13,8 @@ export default defineConfig({
 		reportCompressedSize: true,
 		rollupOptions: {
 			// a plugin runs against the mdsvex and svelte of the app, never a copy
-			external: [/^@mdsvex\//, /^mdsvex(\/|$)/, /^svelte(\/|$)/],
+			// node is imported on first use, by last_modified alone
+			external: [/^@mdsvex\//, /^mdsvex(\/|$)/, /^svelte(\/|$)/, /^node:/],
 			output: {
 				entryFileNames: '[name].js',
 			},

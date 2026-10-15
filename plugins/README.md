@@ -2,16 +2,16 @@
 
 Each directory here is one npm package, `@mdsvex/plugin-<name>`, that exports a function returning a plugin for the `plugins` option of `mdsvex()` and `compile()`.
 
-| package                         | directory                            | what it adds                                                             |
-| ------------------------------- | ------------------------------------ | ------------------------------------------------------------------------ |
-| `@mdsvex/plugin-steps`          | [`steps`](./steps)                   | numbered steps, one for each heading inside `:::steps`                   |
-| `@mdsvex/plugin-tabs`           | [`tabs`](./tabs)                     | tabs and code groups, one tab for each heading or fence inside `:::tabs` |
-| `@mdsvex/plugin-anchors`        | [`anchors`](./anchors)               | a link to itself on every heading that has an id                         |
-| `@mdsvex/plugin-external-links` | [`external-links`](./external-links) | `rel` and `target` on every link that leaves the site                    |
-| `@mdsvex/plugin-toc`            | [`toc`](./toc)                       | the headings of a document as data, and a `::toc` that lists them        |
-| `@mdsvex/plugin-page-data`      | [`page-data`](./page-data)           | a reading time, an excerpt, an inferred title and an edit url            |
-| `@mdsvex/plugin-emoji`          | [`emoji`](./emoji)                   | emoji shortcodes, `:tada:` becomes the emoji, with an optional label     |
-| `@mdsvex/plugin-references`     | [`references`](./references)         | links for `@user`, `#123`, `owner/repo#123`, commits and bare urls       |
+| package                         | directory                            | what it adds                                                                        |
+| ------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------- |
+| `@mdsvex/plugin-steps`          | [`steps`](./steps)                   | numbered steps, one for each heading inside `:::steps`                              |
+| `@mdsvex/plugin-tabs`           | [`tabs`](./tabs)                     | tabs and code groups, one tab for each heading or fence inside `:::tabs`            |
+| `@mdsvex/plugin-anchors`        | [`anchors`](./anchors)               | a link to itself on every heading that has an id                                    |
+| `@mdsvex/plugin-external-links` | [`external-links`](./external-links) | `rel` and `target` on every link that leaves the site                               |
+| `@mdsvex/plugin-toc`            | [`toc`](./toc)                       | the headings of a document as data, and a `::toc` that lists them                   |
+| `@mdsvex/plugin-page-data`      | [`page-data`](./page-data)           | a reading time, an excerpt, an inferred title, an edit url and a last modified date |
+| `@mdsvex/plugin-emoji`          | [`emoji`](./emoji)                   | emoji shortcodes, `:tada:` becomes the emoji, with an optional label                |
+| `@mdsvex/plugin-references`     | [`references`](./references)         | links for `@user`, `#123`, `owner/repo#123`, commits and bare urls                  |
 
 The other files in this directory are the audit of the remark and rehype plugins these replace. [`PLUGIN_AUDIT.md`](./PLUGIN_AUDIT.md) says, for each thing those plugins did, whether mdsvex has it and where.
 
