@@ -27,9 +27,9 @@ export function shape(source: string): string {
 	const walk = (node: SvxNode, depth: number) => {
 		let line = '  '.repeat(depth) + node.type;
 		if (node.meta) {
-			const meta = Object.entries(node.meta).filter(
-				([k]) => !OFFSET_META.has(k)
-			);
+			const meta = Object.entries(node.meta)
+				.filter(([k]) => !OFFSET_META.has(k))
+				.map(([k, v]) => [k, k === 'attributes' ? attributes(v) : v]);
 			if (meta.length > 0)
 				line += ' ' + JSON.stringify(Object.fromEntries(meta));
 		}
@@ -105,6 +105,23 @@ function meaning(node: SvxNode, source: string): string | undefined {
 			return raw(source.slice(node.start, node.end));
 	}
 	return undefined;
+}
+
+/** attribute expressions by their syntax tree, a value that mixes text and braces without its spaces */
+function attributes(value: unknown): unknown {
+	if (value === null || typeof value !== 'object') return value;
+	const out: Record<string, unknown> = {};
+	for (const [name, v] of Object.entries(value)) {
+		const key = name.replace(/\s+/g, '');
+		if (typeof v === 'object' && v !== null && 'value' in v) {
+			out[key] = expression(String((v as { value: unknown }).value));
+		} else if (typeof v === 'string' && v.includes('{')) {
+			out[key] = head(v);
+		} else {
+			out[key] = v;
+		}
+	}
+	return out;
 }
 
 /** the head of an each, await or snippet, its spacing and the quotes of its strings left out */

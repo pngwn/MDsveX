@@ -151,6 +151,7 @@ function is_whole(node: SvxNode): boolean {
 		case 'html_comment':
 		case 'frontmatter':
 		case 'import_statement':
+		case 'definition':
 		case 'raw':
 			return true;
 		case 'html':
@@ -171,8 +172,7 @@ function own_kept(node: SvxNode): [number, number][] {
 	if (node.type === 'svelte_branch')
 		return [[node.value_start, node.value_end]];
 	// the open tag, whose attribute values may hold spaces at a line end
-	if (node.type === 'html')
-		return [[node.start, node.children[0]?.start ?? node.end]];
+	if (node.type === 'html') return [[node.start, node.value_start]];
 	return [];
 }
 

@@ -100,7 +100,11 @@ async function snippet(source: string, context: HeadContext): Promise<string> {
 	);
 }
 
-function expression(source: string, context: HeadContext): Promise<string> {
+/** an expression on one line */
+export function expression(
+	source: string,
+	context: HeadContext
+): Promise<string> {
 	return one_line(
 		source,
 		context.ts ? '__ts_expression' : '__js_expression',
@@ -133,11 +137,8 @@ async function one_line(
 	parser: string,
 	context: HeadContext
 ): Promise<string> {
-	const printed = await context.text_to_doc(code, {
-		parser,
-		semi: true,
-		arrowParens: 'always',
-	});
+	// a semicolon ends the declarations the bindings are wrapped in
+	const printed = await context.text_to_doc(code, { parser, semi: true });
 	const { formatted } = printDocToString(removeLines(printed), {
 		...context.options,
 		printWidth: Infinity,

@@ -4,7 +4,8 @@ import type { AstPath, Doc, Options, ParserOptions } from 'prettier';
 import { attribute, is_ts } from './ast';
 import type { SvxNode } from './ast';
 import { head } from './heads';
-import { print_source, root_of } from './printer';
+import { is_raw_text, print_source, root_of } from './printer';
+import { print_open_tag } from './tag';
 
 const { hardline, indent } = doc.builders;
 const { removeLines, willBreak } = doc.utils;
@@ -48,16 +49,32 @@ export function embed(
 				text_to_doc(text.slice(node.start, node.end), { parser: 'babel-ts' });
 
 		case 'html': {
-			if (!at_root) return;
 			const tag = node.meta?.tag;
-			const parser =
-				tag === 'script'
-					? script_parser(node)
-					: tag === 'style'
-						? style_parser(node)
-						: undefined;
-			if (parser === undefined) return;
-			return (text_to_doc) => element(text_to_doc, node, text, parser);
+			if (tag === 'script' || tag === 'style') {
+				const parser = !at_root
+					? undefined
+					: tag === 'script'
+						? script_parser(node)
+						: style_parser(node);
+				if (parser === undefined) return;
+				return (text_to_doc) => element(text_to_doc, node, text, parser);
+			}
+			if (is_raw_text(node)) return;
+			const open = text.slice(node.start, node.value_start);
+			const ts = root_of(path).ts;
+			return async (text_to_doc, print, path, options) => {
+				const head = await print_open_tag(open, { text_to_doc, options, ts });
+				if (head === undefined) return undefined;
+				return [
+					head,
+					print_source(
+						path,
+						options as ParserOptions<SvxNode>,
+						print,
+						node.value_start
+					),
+				];
+			};
 		}
 
 		case 'mustache':

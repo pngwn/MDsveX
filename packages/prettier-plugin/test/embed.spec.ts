@@ -259,3 +259,71 @@ describe('fences', () => {
 		);
 	});
 });
+
+describe('open tags', () => {
+	test('the spaces between attributes fold to one', async () => {
+		expect(await svx('<Test value={count}    label="a"  />\n')).toBe(
+			'<Test value={count} label="a" />\n'
+		);
+		expect(await svx('<div class="a"   >\n\nx\n\n</div>\n')).toBe(
+			'<div class="a">\n\nx\n\n</div>\n'
+		);
+	});
+
+	test('attribute expressions are formatted on one line', async () => {
+		expect(
+			await svx('<button onclick={()=>count++} disabled={ !ok }>go</button>\n')
+		).toBe('<button onclick={() => count++} disabled={!ok}>go</button>\n');
+	});
+
+	test('shorthand, spread and attach', async () => {
+		expect(await svx('<Foo { a } {...  props} {@attach  tip( x )}/>\n')).toBe(
+			'<Foo {a} {...props} {@attach tip(x)}/>\n'
+		);
+	});
+
+	test('an expression in a quoted value, kept when its quotes would clash', async () => {
+		expect(await svx("<a href='/x/{id+1}'>a</a>\n")).toBe(
+			"<a href='/x/{id + 1}'>a</a>\n"
+		);
+		const clash = '<a title="Hi {first+\' \'+last}">a</a>\n';
+		expect(await svx(clash)).toBe(clash);
+	});
+
+	test('the spaces in a quoted value are kept', async () => {
+		const source = '<div title="a   b">\n\nx\n\n</div>\n';
+		expect(await svx(source)).toBe(source);
+	});
+
+	test('an open tag over lines keeps its lines and indent', async () => {
+		expect(await svx('<Foo\n    a={x+1}\n    b="c"\n>\n\nx\n\n</Foo>\n')).toBe(
+			'<Foo\n    a={x + 1}\n    b="c"\n>\n\nx\n\n</Foo>\n'
+		);
+	});
+
+	test('an expression over lines in an attribute is kept', async () => {
+		const source = '<Foo a={() => {\n  go();\n}} />\n';
+		expect(await svx(source)).toBe(source);
+	});
+
+	test('in a paragraph, a list and a quote', async () => {
+		expect(
+			await svx(
+				'see <a href={url+"/x"}>it</a>\n\n- <b x={ 1 }>b</b>\n\n> <i y={ 2 }>i</i>\n'
+			)
+		).toBe(
+			'see <a href={url + "/x"}>it</a>\n\n- <b x={1}>b</b>\n\n> <i y={2}>i</i>\n'
+		);
+	});
+
+	test('the children are formatted too', async () => {
+		expect(await svx('<div a={ x }>\n\n{b+c}\n\n</div>\n')).toBe(
+			'<div a={x}>\n\n{b + c}\n\n</div>\n'
+		);
+	});
+
+	test('a tag with a brace that does not close is kept', async () => {
+		const source = '<Counter prop="{[1, 2]]}"/>\n';
+		expect(await svx(source)).toBe(source);
+	});
+});
