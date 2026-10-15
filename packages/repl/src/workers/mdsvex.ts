@@ -1,4 +1,3 @@
-import * as acorn from 'acorn';
 import {
 	compile,
 	SourceError,
@@ -26,6 +25,8 @@ import {
 	PLUGIN_ID,
 	TEMPLATE_DIRECTIVES_ID,
 	TEMPLATE_ID,
+	read_exports,
+	type ScannedExports,
 } from 'mdsvex/host';
 import { mappings_to_v3, type SourceMapV3 } from '@mdsvex/render/sourcemap';
 import { strip_types } from './typescript_strip_types';
@@ -567,37 +568,17 @@ export function resolve_virtual(id: string, config: ResolvedConfig) {
 	return target;
 }
 
-const SCRIPT = /<script\b([^>]*)>([\s\S]*?)<\/script>/g;
-
-function module_script(source: string) {
-	for (const match of source.matchAll(SCRIPT)) {
-		const attrs = match[1];
-		if (
-			/\bmodule\b/.test(attrs) ||
-			/context\s*=\s*["']module["']/.test(attrs)
-		) {
-			return { code: match[2], ts: /lang\s*=\s*["']ts["']/.test(attrs) };
-		}
-	}
-	return null;
-}
-
-/** a module program, for a svelte file that of its module script, null without one */
-function program_of(name: string, files: FileMap): acorn.Program | null {
+/** the exports of a workspace module, null when it is not in the workspace */
+function exports_of(name: string, files: FileMap): ScannedExports | null {
 	const source = files.get(name);
 	if (source === undefined) return null;
-
-	let code = source;
-	if (name.endsWith('.svelte')) {
-		const script = module_script(source);
-		if (!script) return null;
-		code = script.ts ? strip_types(script.code) : script.code;
-	} else if (name.endsWith('.ts')) {
-		code = strip_types(source);
-	}
-
+	const kind = name.endsWith('.svelte') ? 'svelte' : 'js';
 	try {
-		return acorn.parse(code, { ecmaVersion: 'latest', sourceType: 'module' });
+		return read_exports(
+			source,
+			kind,
+			name.endsWith('.js') ? undefined : strip_types
+		);
 	} catch (e) {
 		throw new Error(
 			`could not scan the exports of ${name}: ${(e as Error).message}`
@@ -612,19 +593,11 @@ function relative_to(name: string, from: string) {
 
 /** the module export * as directives from names, as a workspace path, null for none */
 function directives_source(name: string, files: FileMap): string | null {
-	const program = program_of(name, files);
-	if (program === null) return null;
-	for (const node of program.body) {
-		if (node.type !== 'ExportAllDeclaration' || !node.exported) continue;
-		const exported =
-			node.exported.type === 'Identifier'
-				? node.exported.name
-				: String(node.exported.value);
-		if (exported !== DIRECTIVES_EXPORT) continue;
-		const from = String(node.source.value);
-		return from.startsWith('.') ? relative_to(name, from) : from;
-	}
-	return null;
+	const from = exports_of(name, files)?.namespaces.find(
+		(n) => n.name === DIRECTIVES_EXPORT
+	)?.specifier;
+	if (from === undefined) return null;
+	return from.startsWith('.') ? relative_to(name, from) : from;
 }
 
 /** export names of a module, following star exports through the workspace, without evaluating it */
@@ -636,48 +609,18 @@ export function scan_exports(
 	if (seen.has(name)) return [];
 	seen.add(name);
 
-	const program = program_of(name, files);
-	if (program === null) return [];
+	const scanned = exports_of(name, files);
+	if (scanned === null) return [];
 
 	const names: string[] = [];
 	const add = (n: string) => {
 		if (n !== 'default' && !names.includes(n)) names.push(n);
 	};
-
-	for (const node of program.body) {
-		if (node.type === 'ExportNamedDeclaration') {
-			const decl = node.declaration;
-			if (decl?.type === 'VariableDeclaration') {
-				for (const d of decl.declarations) {
-					if (d.id.type === 'Identifier') add(d.id.name);
-				}
-			} else if (decl && 'id' in decl && decl.id) {
-				add(decl.id.name);
-			}
-			for (const spec of node.specifiers) {
-				add(
-					spec.exported.type === 'Identifier'
-						? spec.exported.name
-						: String(spec.exported.value)
-				);
-			}
-		} else if (node.type === 'ExportAllDeclaration') {
-			if (node.exported) {
-				add(
-					node.exported.type === 'Identifier'
-						? node.exported.name
-						: String(node.exported.value)
-				);
-			} else {
-				const from = String(node.source.value);
-				if (from.startsWith('.')) {
-					for (const n of scan_exports(relative_to(name, from), files, seen))
-						add(n);
-				}
-			}
-		}
-	}
-
+	for (const n of scanned.names) add(n);
+	for (const from of scanned.stars)
+		if (from.startsWith('.'))
+			for (const n of scan_exports(relative_to(name, from), files, seen))
+				add(n);
 	return names;
 }
 

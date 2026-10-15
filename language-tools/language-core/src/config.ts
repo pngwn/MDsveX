@@ -9,7 +9,6 @@ import { fileURLToPath } from 'node:url';
 import type * as TS from 'typescript';
 
 import temml from 'temml';
-import { module_script } from 'mdsvex';
 import type {
 	CompileOptions,
 	ComponentMode,
@@ -28,8 +27,10 @@ import {
 	TEMPLATE_DIRECTIVES_ID,
 	TEMPLATE_ID,
 	manifest_resolver,
+	read_exports,
 } from 'mdsvex/host';
 import type {
+	ScannedExports,
 	ManifestMath,
 	ManifestModule,
 	ManifestTemplate,
@@ -438,69 +439,41 @@ function directives_of(
 
 /**
  * the names a module exports without running it, of a svelte file its module
- * script, read from the typescript syntax tree so it needs no vite
+ * script, types stripped by typescript so it needs no vite
  */
 export function scan_exports(file: string, ts: typeof TS | undefined): Scanned {
 	const none: Scanned = { names: [], directives: null };
 	if (ts === undefined) return none;
-	let code: string | null;
+	let code: string;
 	try {
 		code = fs.readFileSync(file, 'utf8');
 	} catch {
 		return none;
 	}
-	if (file.endsWith('.svelte')) code = module_script(code);
-	if (code === null) return none;
-	const sf = ts.createSourceFile(file + '.ts', code, ts.ScriptTarget.Latest);
-	const names: string[] = [];
-	let directives: string | null = null;
-	const text = (n: TS.ModuleExportName) =>
-		ts.isIdentifier(n) ? n.text : n.text;
-	const exported = (s: TS.Statement) =>
-		ts.canHaveModifiers(s) &&
-		(ts.getModifiers(s) ?? []).some(
-			(m) => m.kind === ts.SyntaxKind.ExportKeyword
+	const strip = (js: string) =>
+		ts.transpileModule(js, {
+			fileName: file + '.ts',
+			compilerOptions: {
+				target: ts.ScriptTarget.ESNext,
+				module: ts.ModuleKind.ESNext,
+			},
+		}).outputText;
+	let scanned: ScannedExports;
+	try {
+		scanned = read_exports(
+			code,
+			file.endsWith('.svelte') ? 'svelte' : 'js',
+			strip
 		);
-	const is_default = (s: TS.Statement) =>
-		ts.canHaveModifiers(s) &&
-		(ts.getModifiers(s) ?? []).some(
-			(m) => m.kind === ts.SyntaxKind.DefaultKeyword
-		);
-	for (const s of sf.statements) {
-		if (ts.isExportDeclaration(s)) {
-			if (s.isTypeOnly) continue;
-			const clause = s.exportClause;
-			if (clause === undefined) continue;
-			if (ts.isNamespaceExport(clause)) {
-				const name = text(clause.name);
-				names.push(name);
-				if (
-					name === DIRECTIVES_EXPORT &&
-					s.moduleSpecifier !== undefined &&
-					ts.isStringLiteral(s.moduleSpecifier)
-				)
-					directives = s.moduleSpecifier.text;
-			} else {
-				for (const e of clause.elements)
-					if (!e.isTypeOnly) names.push(text(e.name));
-			}
-		} else if (ts.isExportAssignment(s)) {
-			names.push('default');
-		} else if (exported(s)) {
-			if (is_default(s)) names.push('default');
-			else if (ts.isVariableStatement(s)) {
-				for (const d of s.declarationList.declarations)
-					if (ts.isIdentifier(d.name)) names.push(d.name.text);
-			} else if (
-				(ts.isFunctionDeclaration(s) || ts.isClassDeclaration(s)) &&
-				s.name !== undefined
-			)
-				names.push(s.name.text);
-		}
+	} catch {
+		return none;
 	}
+	const directives =
+		scanned.namespaces.find((n) => n.name === DIRECTIVES_EXPORT)?.specifier ??
+		null;
 	// a directives export the plugin rejects is not a namespace, it is no element either
 	return {
-		names: names.filter((n) => n !== DIRECTIVES_EXPORT),
+		names: scanned.names.filter((n) => n !== DIRECTIVES_EXPORT),
 		directives,
 	};
 }
