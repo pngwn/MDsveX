@@ -1,5 +1,15 @@
-import { rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import {
+	mkdirSync,
+	mkdtempSync,
+	realpathSync,
+	rmSync,
+	symlinkSync,
+	utimesSync,
+	writeFileSync,
+} from 'node:fs';
 import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -9,8 +19,8 @@ import {
 	PageDataError,
 } from '@mdsvex/plugin-page-data';
 import type { PageData, PageDataOptions } from '@mdsvex/plugin-page-data';
-import { compile, mdsvex } from 'mdsvex';
-import { describe, expect, test } from 'vitest';
+import { compile, compile_async, mdsvex, PluginAsyncError } from 'mdsvex';
+import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 
 import { PATHS } from '../../../packages/parse/test/plugin_harness';
 import { write_app } from '../../test/app';
@@ -543,6 +553,393 @@ describe('edit url', () => {
 	});
 });
 
+describe('last modified', () => {
+	/** what a compile that waits leaves */
+	async function later(
+		source: string,
+		options: PageDataOptions,
+		more?: Options
+	) {
+		return compile_async(source, {
+			plugins: [page_data(options)],
+			...more,
+		});
+	}
+
+	async function modified(
+		filename: string | undefined,
+		option: PageDataOptions['last_modified']
+	): Promise<string | undefined> {
+		const { data } = await later(
+			'text\n',
+			{ last_modified: option },
+			{ filename }
+		);
+		return (data?.page as PageData | undefined)?.last_modified;
+	}
+
+	async function rejected(make: () => Promise<unknown>): Promise<any> {
+		try {
+			await make();
+		} catch (error) {
+			return error;
+		}
+		return undefined;
+	}
+
+	test('off by default, and compile takes the document then', () => {
+		expect(page('text\n', undefined, { filename: '/a.svx' })).toEqual({
+			excerpt: 'text',
+			words: 1,
+			minutes: 1,
+		});
+	});
+
+	test('compile throws a PluginAsyncError, since the date is found later', () => {
+		const error = thrown(() =>
+			run('text\n', { last_modified: () => undefined }, { filename: '/a.svx' })
+		);
+		expect(error).toBeInstanceOf(PluginAsyncError);
+	});
+
+	describe('a function', () => {
+		test('is given the filename, a Date or a string is the date as an ISO string', async () => {
+			const seen: string[] = [];
+			const option = async (filename: string) => {
+				seen.push(filename);
+				return new Date(Date.UTC(2026, 9, 15, 9, 30));
+			};
+			expect(await modified('/site/a.svx', option)).toBe(
+				'2026-10-15T09:30:00.000Z'
+			);
+			expect(seen).toEqual(['/site/a.svx']);
+			expect(await modified('/a.svx', () => '2026-10-15T11:30:00+02:00')).toBe(
+				'2026-10-15T09:30:00.000Z'
+			);
+			expect(await modified('/a.svx', () => '2026-10-15')).toBe(
+				'2026-10-15T00:00:00.000Z'
+			);
+		});
+
+		test('nothing leaves the key out', async () => {
+			const { data, warnings } = await later(
+				'text\n',
+				{ last_modified: async () => undefined },
+				{ filename: '/a.svx' }
+			);
+			expect(data).toEqual({ page: { excerpt: 'text', words: 1, minutes: 1 } });
+			expect(warnings).toBeUndefined();
+		});
+
+		test('the date is plain json in plugin_data', async () => {
+			const { code } = await later(
+				'text\n',
+				{ last_modified: () => new Date(0) },
+				{ filename: '/a.svx' }
+			);
+			expect(code).toContain(
+				'export const plugin_data = {"page":{"excerpt":"text","words":1,"minutes":1,"last_modified":"1970-01-01T00:00:00.000Z"}};'
+			);
+		});
+
+		test('a value that is no date rejects with a PageDataError', async () => {
+			for (const [value, said] of [
+				['yesterday', '"yesterday"'],
+				[new Date(Number.NaN), 'an invalid Date'],
+				[1700000000000, '1700000000000'],
+				[null, 'null'],
+			] as const) {
+				const error = await rejected(() =>
+					modified('/a.svx', (() => value) as any)
+				);
+				expect(error, said).toBeInstanceOf(PageDataError);
+				expect(error.code).toBe('option');
+				expect(error.message).toBe(
+					`[@mdsvex/plugin-page-data] last_modified must give a date, a string a Date can read or undefined, it gave ${said}`
+				);
+			}
+		});
+
+		test('a compile with no filename has none and is reported', async () => {
+			let called = false;
+			const { data, warnings } = await later('text\n', {
+				last_modified: () => {
+					called = true;
+					return new Date();
+				},
+			});
+			expect(called).toBe(false);
+			expect((data?.page as PageData).last_modified).toBeUndefined();
+			expect(warnings?.map((w) => [w.code, w.message])).toEqual([
+				[
+					'no_filename',
+					'the compile was given no filename, so the document has no last modified date',
+				],
+			]);
+		});
+
+		test('an empty document still has one', async () => {
+			const { data } = await later(
+				'',
+				{ last_modified: () => new Date(0) },
+				{ filename: '/a.svx' }
+			);
+			expect(data).toEqual({
+				page: { last_modified: '1970-01-01T00:00:00.000Z' },
+			});
+		});
+	});
+
+	describe('fs', () => {
+		let dir: string;
+		beforeAll(() => {
+			dir = mkdtempSync(join(tmpdir(), 'page-data-fs-'));
+		});
+		afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+		test('is the modification time of the file', async () => {
+			const file = join(dir, 'post.svx');
+			writeFileSync(file, 'text\n');
+			const when = new Date(Date.UTC(2025, 0, 2, 3, 4, 5));
+			utimesSync(file, when, when);
+			expect(await modified(file, 'fs')).toBe('2025-01-02T03:04:05.000Z');
+		});
+
+		test('a file that is not there has none and is reported', async () => {
+			const file = join(dir, 'gone.svx');
+			const { data, warnings } = await later(
+				'text\n',
+				{ last_modified: 'fs' },
+				{ filename: file }
+			);
+			expect((data?.page as PageData).last_modified).toBeUndefined();
+			expect(warnings?.map((w) => [w.code, w.message])).toEqual([
+				['not_found', `${file} is not a file, so it has no last modified date`],
+			]);
+		});
+	});
+
+	describe('git', () => {
+		let repo: string;
+
+		function git(cwd: string, args: string[], date?: string) {
+			return execFileSync(
+				'git',
+				[
+					'-c',
+					'user.name=Test',
+					'-c',
+					'user.email=test@example.com',
+					'-c',
+					'commit.gpgsign=false',
+					...args,
+				],
+				{
+					cwd,
+					env: {
+						...process.env,
+						...(date && { GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date }),
+					},
+					stdio: ['ignore', 'pipe', 'pipe'],
+				}
+			).toString();
+		}
+
+		function commit(cwd: string, files: Record<string, string>, date: string) {
+			for (const [name, text] of Object.entries(files)) {
+				mkdirSync(dirname(join(cwd, name)), { recursive: true });
+				writeFileSync(join(cwd, name), text);
+			}
+			git(cwd, ['add', '.']);
+			git(cwd, ['commit', '-q', '-m', 'change'], date);
+		}
+
+		beforeAll(() => {
+			// the real path, as git and vite give it, tmpdir is a link on macos
+			repo = realpathSync.native(mkdtempSync(join(tmpdir(), 'page-data-git-')));
+			git(repo, ['init', '-q']);
+			commit(
+				repo,
+				{ 'a.svx': 'a\n', 'docs/b.svx': 'b\n', 'docs/old.svx': 'old\n' },
+				'2024-03-01T10:00:00+01:00'
+			);
+			commit(repo, { 'docs/b.svx': 'b again\n' }, '2024-06-01T12:00:00Z');
+			commit(repo, { 'a.svx': 'a again\n' }, '2025-01-01T00:00:00Z');
+		});
+		afterAll(() => rmSync(repo, { recursive: true, force: true }));
+
+		test('is the date of the last commit that touched the file', async () => {
+			const plugins = [page_data({ last_modified: 'git' })];
+			const of = async (name: string) =>
+				(
+					(
+						await compile_async('text\n', {
+							plugins,
+							filename: join(repo, name),
+						})
+					).data?.page as PageData
+				).last_modified;
+			expect(await of('a.svx')).toBe('2025-01-01T00:00:00.000Z');
+			expect(await of('docs/b.svx')).toBe('2024-06-01T12:00:00.000Z');
+			expect(await of('docs/old.svx')).toBe('2024-03-01T09:00:00.000Z');
+		});
+
+		test('one log serves every document of a compiler, a commit since is not seen', async () => {
+			const plugins = [page_data({ last_modified: 'git' })];
+			const of = async (list: typeof plugins, name: string) =>
+				(
+					(
+						await compile_async('text\n', {
+							plugins: list,
+							filename: join(repo, name),
+						})
+					).data?.page as PageData
+				).last_modified;
+			expect(await of(plugins, 'a.svx')).toBe('2025-01-01T00:00:00.000Z');
+			commit(repo, { 'docs/new.svx': 'new\n' }, '2025-02-01T00:00:00Z');
+			try {
+				expect(await of(plugins, 'docs/new.svx')).toBeUndefined();
+				expect(
+					await of([page_data({ last_modified: 'git' })], 'docs/new.svx')
+				).toBe('2025-02-01T00:00:00.000Z');
+			} finally {
+				git(repo, ['reset', '-q', '--hard', 'HEAD~1']);
+			}
+		});
+
+		test('a file that is not committed has none and is not reported', async () => {
+			writeFileSync(join(repo, 'draft.svx'), 'draft\n');
+			try {
+				const { data, warnings } = await later(
+					'text\n',
+					{ last_modified: 'git' },
+					{ filename: join(repo, 'draft.svx') }
+				);
+				expect((data?.page as PageData).last_modified).toBeUndefined();
+				expect(warnings).toBeUndefined();
+			} finally {
+				rmSync(join(repo, 'draft.svx'));
+			}
+		});
+
+		test('a path through a link is the file it links to', async () => {
+			const link = realpathSync.native(
+				mkdtempSync(join(tmpdir(), 'page-data-link-'))
+			);
+			try {
+				// a junction on windows, which needs no rights a link does
+				symlinkSync(join(repo, 'docs'), join(link, 'docs'), 'junction');
+				expect(await modified(join(link, 'docs/b.svx'), 'git')).toBe(
+					'2024-06-01T12:00:00.000Z'
+				);
+			} finally {
+				rmSync(link, { recursive: true, force: true });
+			}
+		});
+
+		test('a file that is not there has none and is reported', async () => {
+			const { warnings } = await later(
+				'text\n',
+				{ last_modified: 'git' },
+				{ filename: join(repo, 'gone.svx') }
+			);
+			expect(warnings?.map((w) => w.code)).toEqual(['not_found']);
+		});
+
+		test('a file whose commit is where a shallow clone was cut has none and is reported', async () => {
+			const clone = realpathSync(
+				mkdtempSync(join(tmpdir(), 'page-data-shallow-'))
+			);
+			try {
+				git(clone, [
+					'clone',
+					'-q',
+					'--depth',
+					'2',
+					pathToFileURL(repo).href,
+					'.',
+				]);
+				const plugins = [page_data({ last_modified: 'git' })];
+				const at = (name: string) =>
+					compile_async('text\n', { plugins, filename: join(clone, name) });
+				expect(((await at('a.svx')).data?.page as PageData).last_modified).toBe(
+					'2025-01-01T00:00:00.000Z'
+				);
+				const cut = await at('docs/old.svx');
+				expect((cut.data?.page as PageData).last_modified).toBeUndefined();
+				expect(cut.warnings?.map((w) => [w.code, w.message])).toEqual([
+					[
+						'shallow_history',
+						`the history of ${join(clone, 'docs/old.svx')} was cut by a shallow clone, so the date of its last commit is not known, fetch the whole history (fetch-depth: 0)`,
+					],
+				]);
+			} finally {
+				rmSync(clone, { recursive: true, force: true });
+			}
+		});
+
+		test('a repository with no commit has no dates', async () => {
+			const fresh = realpathSync.native(
+				mkdtempSync(join(tmpdir(), 'page-data-fresh-'))
+			);
+			try {
+				git(fresh, ['init', '-q']);
+				writeFileSync(join(fresh, 'a.svx'), 'a\n');
+				const { data, warnings } = await later(
+					'text\n',
+					{ last_modified: 'git' },
+					{ filename: join(fresh, 'a.svx') }
+				);
+				expect((data?.page as PageData).last_modified).toBeUndefined();
+				expect(warnings).toBeUndefined();
+			} finally {
+				rmSync(fresh, { recursive: true, force: true });
+			}
+		});
+
+		test('a document outside a repository rejects with a PageDataError', async () => {
+			const outside = realpathSync(
+				mkdtempSync(join(tmpdir(), 'page-data-none-'))
+			);
+			try {
+				writeFileSync(join(outside, 'a.svx'), 'a\n');
+				const error = await rejected(() =>
+					modified(join(outside, 'a.svx'), 'git')
+				);
+				expect(error).toBeInstanceOf(PageDataError);
+				expect(error.code).toBe('git');
+				expect(error.message).toContain(
+					`[@mdsvex/plugin-page-data] last_modified is 'git' and ${join(outside, 'a.svx')} is not inside a git repository: `
+				);
+			} finally {
+				rmSync(outside, { recursive: true, force: true });
+			}
+		});
+	});
+
+	test("'git' and 'fs' throw a PageDataError where there is no node, a function does not", () => {
+		const versions = process.versions;
+		for (const option of ['git', 'fs'] as const) {
+			vi.stubGlobal('process', { ...process, versions: {} });
+			let error;
+			try {
+				error = thrown(() => page_data({ last_modified: option }));
+				expect(
+					thrown(() => page_data({ last_modified: () => undefined }))
+				).toBeUndefined();
+			} finally {
+				vi.unstubAllGlobals();
+			}
+			expect(process.versions).toBe(versions);
+			expect(error).toBeInstanceOf(PageDataError);
+			expect(error.code).toBe('node');
+			expect(error.message).toBe(
+				`[@mdsvex/plugin-page-data] last_modified is '${option}', which needs node, give last_modified a function to find the date here`
+			);
+		}
+	});
+});
+
 describe('options', () => {
 	test('an option of the wrong shape throws when the plugin is made', () => {
 		for (const [options, message] of [
@@ -587,6 +984,14 @@ describe('options', () => {
 				{ edit_url: '' },
 				'edit_url must be a base url, an object with a base and a root, or a function, got ""',
 			],
+			[
+				{ last_modified: 'mtime' },
+				`last_modified must be 'git', 'fs' or a function, got "mtime"`,
+			],
+			[
+				{ last_modified: true },
+				`last_modified must be 'git', 'fs' or a function, got true`,
+			],
 		] as const) {
 			const error = thrown(() => page_data(options as any));
 			expect(error, message).toBeInstanceOf(PageDataError);
@@ -608,11 +1013,12 @@ describe('every parser path', () => {
 		for (let i = 0; i < PATHS.length; i++) {
 			const [name, path] = PATHS[i];
 			const bundle = page_data(options);
-			const { dispatcher } = path(source, {
+			const { dispatcher, nodes } = path(source, {
 				// mdsvex names the parse plugin of a bundle after the bundle
 				plugins: [{ name: bundle.name, ...bundle.parse! }],
 				document: { filename: '/repo/doc.svx', frontmatter: () => frontmatter },
 			});
+			expect(dispatcher!.finish(nodes), name).toBeUndefined();
 			expect(dispatcher!.quiet(), name).toBe(true);
 			const found = dispatcher!.data()?.page as PageData | undefined;
 			if (i === 0) first = found;
@@ -693,6 +1099,27 @@ describe('every parser path', () => {
 		});
 	});
 
+	test('a last modified date, once the hook has waited', async () => {
+		for (let i = 0; i < PATHS.length; i++) {
+			const [name, path] = PATHS[i];
+			const bundle = page_data({ last_modified: async () => new Date(0) });
+			const { dispatcher, nodes } = path('# A\n\nb c\n', {
+				plugins: [{ name: bundle.name, ...bundle.parse! }],
+				document: { filename: '/repo/doc.svx' },
+			});
+			await dispatcher!.finish(nodes);
+			expect(dispatcher!.data(), name).toEqual({
+				page: {
+					title: 'A',
+					excerpt: 'b c',
+					words: 3,
+					minutes: 1,
+					last_modified: '1970-01-01T00:00:00.000Z',
+				},
+			});
+		}
+	});
+
 	test('the frontmatter the host gives decides the title', () => {
 		expect(parsed('# Heading\n', undefined, { title: 'Written' })).toEqual({
 			words: 1,
@@ -717,6 +1144,26 @@ describe('vite plugin', () => {
 		);
 		expect(result.code).toContain(
 			'"page":{"title":"Hello","excerpt":"Some words here.","words":4,"minutes":1,"edit_url":"https://e.dit/src/doc.svx"}'
+		);
+	});
+
+	test('it waits for the last modified date', async () => {
+		const [plugin] = mdsvex({
+			plugins: [
+				page_data({
+					last_modified: async (file) =>
+						file === '/app/src/doc.svx' ? new Date(0) : undefined,
+				}),
+			],
+		});
+		const transform = plugin.transform as Function;
+		const result = await transform.call(
+			{ addWatchFile() {} },
+			'Some words.\n',
+			'/app/src/doc.svx'
+		);
+		expect(result.code).toContain(
+			'"page":{"excerpt":"Some words.","words":2,"minutes":1,"last_modified":"1970-01-01T00:00:00.000Z"}'
 		);
 	});
 });

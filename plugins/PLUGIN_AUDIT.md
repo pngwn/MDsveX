@@ -193,7 +193,7 @@ Facts about a page, for templates, listings and `<svelte:head>`. **Shared state:
 | **Reading time and word count** | remark-reading-time (1M), rehype-infer-reading-time-meta (3k) | `plugin`, exists (`@mdsvex/plugin-page-data`) | `plugin_data.page.words` and `minutes`. Prose only, counted as `reading-time` counts. |
 | **Excerpt and description** | rehype-infer-description-meta (64k), rehype-truncate (7k) | `plugin`, exists (`@mdsvex/plugin-page-data`) | First paragraph, or text up to `<!-- more -->`. Plain text only, a parse plugin has no rendered HTML. |
 | **Inferred title** | rehype-infer-title-meta, remark-title | `plugin`, exists (`@mdsvex/plugin-page-data`) | The first `h1` when frontmatter has no `title`. It goes in `plugin_data`, never in `metadata`. |
-| **Source info** | not on the lists (Astro's last-modified recipe is the reference) | `plugin`, the edit url exists (`@mdsvex/plugin-page-data`), last modified does not | Last modified from git, and the source path for an "Edit this page" link. Last modified needs git or the file system, which a synchronous handler can't read. |
+| **Source info** | not on the lists (Astro's last-modified recipe is the reference) | `plugin`, exists (`@mdsvex/plugin-page-data`, `edit_url` and `last_modified`) | Last modified from git, and the source path for an "Edit this page" link. Last modified is read in an async document hook, from one `git log` for the repository, the file system, or a function. |
 | **Frontmatter transforms** | issue #831 | `core` hook, not built | Defaults and derived fields. The features above went to `plugin_data` in its place, so `metadata` is always exactly the frontmatter. |
 | **Head tags** | rehype-meta (7k) | `component` (template) | The template renders `<svelte:head>` from `metadata`. |
 
@@ -232,8 +232,8 @@ Resolution, Composition, Code and Collections moved to the Vite plugin, so they 
 | **Read frontmatter**, plus the file path | exists (`ctx.frontmatter`, `ctx.filename`) | per-page options such as `toc: false` or `lang: ja` |
 | **Hand data back** | exists (`ctx.data`, exported as `plugin_data`). Nothing writes to `metadata` | TOC data, Document data, numbering |
 | **Diagnostics** (warnings with positions) | exists (`ctx.warn`) | link validation, plus any plugin that wants to report errors |
-| **A document hook** (run once with the whole tree) | missing. The toc and page data plugins walk from the root in a `sequential` handler | anything that reads the whole document |
-| **Async hooks**, or a pre-pass | missing | bibliographies, oEmbed, build-time mermaid, last modified dates, citations |
+| **A document hook** (run once with the whole tree) | exists (`document(root, ctx)`, which may be async). The page data plugin reads the document there | anything that reads the whole document |
+| **Async hooks**, or a pre-pass | exists (`ctx.defer` for work on a node, an async `document` hook, `ctx.read` and `ctx.cached` for files, `compile_async`) | bibliographies, oEmbed, build-time mermaid, last modified dates (exists), citations |
 
 ---
 
@@ -263,7 +263,7 @@ Ranked on usefulness to mdsvex users × popularity × cost. Items tagged `core` 
 | 18 | Unwrap lone images (core option, exists), then figure and caption | Presentation | core + component | 540k + 90k |
 | 19 | Code from a file (`src=`) | Code | vite, exists | 156k |
 | 20 | Runnable blocks (`run`) | Code | vite, exists | issue #832 |
-| 21 | Excerpt, inferred title, source info (all exist but last modified) | Document data | plugin, exists | 64k+ |
+| 21 | Excerpt, inferred title, source info | Document data | plugin, exists | 64k+ |
 | 22 | Copy button and code tabs (code tabs exist, `@mdsvex/plugin-tabs`) | Code | component + plugin+API | expressive-code 5.4M |
 | 23 | Definition lists | Presentation | core / component | 818k |
 | 24 | Link validation | Quality | plugin+API | 639k |

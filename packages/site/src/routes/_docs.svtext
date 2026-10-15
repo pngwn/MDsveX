@@ -1822,7 +1822,7 @@ mdsvex({
 | [`@mdsvex/plugin-anchors`](docs#anchors) | a link to itself on every heading that has an id |
 | [`@mdsvex/plugin-external-links`](docs#external-links) | `rel` and `target` on every link that leaves the site |
 | [`@mdsvex/plugin-toc`](docs#table-of-contents) | the headings of a document as data, and a `::toc` directive that lists them |
-| [`@mdsvex/plugin-page-data`](docs#page-data) | a reading time, an excerpt, an inferred title and an edit url for each document |
+| [`@mdsvex/plugin-page-data`](docs#page-data) | a reading time, an excerpt, an inferred title, an edit url and a last modified date for each document |
 | [`@mdsvex/plugin-emoji`](docs#emoji) | emoji shortcodes, `:tada:` becomes the emoji, with an optional label for screen readers |
 | [`@mdsvex/plugin-references`](docs#references) | links for `@user`, `#123`, `owner/repo#123` and commits, and for bare urls when asked |
 
@@ -2237,18 +2237,20 @@ plugin_data.page;
 //   excerpt: 'Signals changed how I write components. Here is what I learned.',
 //   words: 842,
 //   minutes: 5,
-//   edit_url: 'https://github.com/you/site/edit/main/src/routes/blog/moving-to-runes.svx'
+//   edit_url: 'https://github.com/you/site/edit/main/src/routes/blog/moving-to-runes.svx',
+//   last_modified: '2026-10-15T09:30:00.000Z'
 // }
 ```
 
-`metadata` is not touched, it stays exactly the frontmatter. Each part can be turned off. `title`, `excerpt` and `edit_url` are only there when their part found something, and a document with no prose has `words: 0` and `minutes: 0`:
+`metadata` is not touched, it stays exactly the frontmatter. Each part can be turned off. `title`, `excerpt`, `edit_url` and `last_modified` are only there when their part found something, and a document with no prose has `words: 0` and `minutes: 0`:
 
 ```ts
 page_data({
 	reading_time: boolean | { words_per_minute: number } = true,
 	excerpt: boolean | { max_length: number, ellipsis: string } = true,
 	title: boolean = true,
-	edit_url: string | { base: string, root: string } | ((filename: string) => string | undefined)
+	edit_url: string | { base: string, root: string } | ((filename: string) => string | undefined),
+	last_modified: 'git' | 'fs' | ((filename: string) => Promise<string | Date | undefined>)
 });
 ```
 
@@ -2262,7 +2264,15 @@ page_data({
 page_data({ edit_url: 'https://github.com/you/site/edit/main/' });
 ```
 
-The date a document was last changed is not here. It comes from git or the file system, which a parse plugin can't read.
+- **`last_modified`** is off until you choose where the date comes from. `'git'` is the date of the last commit that touched the document, `'fs'` is the modification time of its file, and a function is given the path of the document and returns the date. It is an ISO string in UTC:
+
+```js
+page_data({ last_modified: 'git' });
+```
+
+`'git'` and `'fs'` need Node, and throw a `PageDataError` when the plugin is made anywhere else. `'git'` reads the history of the repository once with one `git log`, for every document, so a site of a thousand pages runs git twice, not a thousand times. A file that is not committed yet has no date. A shallow clone, which CI makes by default, cuts the history, so a file whose last commit is before the cut has no date and is reported as `shallow_history`: fetch the whole history (`fetch-depth: 0` in GitHub Actions). In the dev server the history is read once, so a commit made while it runs shows after a restart. `'fs'` gives the time of the checkout in CI, so it is for a site built where it is written.
+
+Finding the date waits, so the Vite plugin and `compile_async` take a document with `last_modified` on, and `compile` throws a `PluginAsyncError` for it.
 
 A [`?data` import](docs#plugin-data) gives all of it without rendering the document, which is what a page that lists posts wants:
 

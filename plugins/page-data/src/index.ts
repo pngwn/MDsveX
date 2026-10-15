@@ -1,7 +1,10 @@
 import type { Bundle, NodeView, PluginContext } from 'mdsvex/compile';
 
+import { last_modified_of } from './last_modified.js';
+import type { FailCode, LastModified } from './last_modified.js';
 import { count_words } from './words.js';
 
+export type { LastModified, Modified } from './last_modified.js';
 export { count_words } from './words.js';
 
 const PACKAGE = '@mdsvex/plugin-page-data';
@@ -44,6 +47,13 @@ export interface PageDataOptions {
 		| string
 		| EditUrlOptions
 		| ((filename: string) => string | undefined);
+	/**
+	 * `last_modified`, off by default, `'git'` is the date of the last commit
+	 * that touched the document, `'fs'` the modification time of its file,
+	 * both need node, a function is given the path and returns the date or
+	 * nothing, a document with it needs compile_async
+	 */
+	last_modified?: LastModified;
 }
 
 /** what the plugin leaves in `plugin_data.page`, each key only when its part is on and found something */
@@ -58,6 +68,8 @@ export interface PageData {
 	minutes?: number;
 	/** where the source of the document can be edited */
 	edit_url?: string;
+	/** when the document last changed, an ISO string such as `2026-10-15T09:30:00.000Z` */
+	last_modified?: string;
 }
 
 declare module 'mdsvex/compile' {
@@ -66,14 +78,18 @@ declare module 'mdsvex/compile' {
 	}
 }
 
-/** an option of the wrong shape */
+/**
+ * code `option` for an option of the wrong shape or a last_modified function
+ * that gave no date, `node` for git or fs where there is no node, `git` for
+ * git that would not run or a document outside a repository
+ */
 export class PageDataError extends Error {
-	code: 'option';
+	code: FailCode;
 
-	constructor(message: string) {
+	constructor(message: string, code: FailCode = 'option') {
 		super(`[${PACKAGE}] ${message}`);
 		this.name = 'PageDataError';
-		this.code = 'option';
+		this.code = code;
 	}
 }
 
@@ -366,10 +382,10 @@ function edit_url_of(option: PageDataOptions['edit_url']): EditUrl | undefined {
 	};
 }
 
-function no_filename(ctx: PluginContext): undefined {
+function no_filename(ctx: PluginContext, what = 'edit url'): undefined {
 	ctx.warn(
 		'no_filename',
-		'the compile was given no filename, so the document has no edit url'
+		`the compile was given no filename, so the document has no ${what}`
 	);
 	return undefined;
 }
@@ -424,13 +440,16 @@ export function page_data(options: PageDataOptions = {}): Bundle {
 	}
 	const with_title = options.title !== false;
 	const edit_url = edit_url_of(options.edit_url);
+	const last_modified = last_modified_of(
+		options.last_modified,
+		(code, message) => new PageDataError(message, code)
+	);
 
-	/** the whole document in one go, a sequential pass has no hook for a document */
-	function document(from: NodeView, ctx: PluginContext): void {
-		if (ctx.done === true) return;
-		ctx.done = true;
-		let root = from;
-		for (let up = root.parent; up !== null; up = up.parent) root = up;
+	/** what the text of the document gives, an empty one gives nothing */
+	function read_document(root: NodeView, ctx: PluginContext): void {
+		let child = root.first_child;
+		while (child !== null && child.type === 'line_break') child = child.next;
+		if (child === null) return;
 		const state: Reading = {
 			run: '',
 			count: reading !== undefined,
@@ -474,27 +493,23 @@ export function page_data(options: PageDataOptions = {}): Bundle {
 			if (url !== undefined) ctx.set('edit_url', url);
 		}
 	}
-	const first = { parse: document };
+
+	async function modified(ctx: PluginContext): Promise<void> {
+		const filename = ctx.filename;
+		if (filename === undefined) return no_filename(ctx, 'last modified date');
+		const date = await last_modified!(filename, ctx);
+		if (date !== undefined) ctx.set('last_modified', date);
+	}
 
 	return {
 		name: NAME,
 		parse: {
-			// the tree is settled, a count kept while nodes are revoked is not exact
-			sequential: true,
-			// whichever comes first in a document, every later call returns at once
-			frontmatter: first,
-			paragraph: first,
-			heading: first,
-			list: first,
-			block_quote: first,
-			table: first,
-			code_fence: first,
-			html: first,
-			html_comment: first,
-			thematic_break: first,
-			directive_leaf: first,
-			directive_container: first,
-			svelte_block: first,
+			// once the tree is settled, a count kept while nodes are revoked is not exact
+			document(root, ctx) {
+				read_document(root, ctx);
+				// only this part waits, so compile() takes a document without it
+				if (last_modified !== undefined) return modified(ctx);
+			},
 		},
 	};
 }

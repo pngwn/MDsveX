@@ -776,6 +776,9 @@ importers:
 
   plugins/page-data:
     devDependencies:
+      '@types/node':
+        specifier: ^22.15.2
+        version: 22.15.2
       mdsvex:
         specifier: workspace:^
         version: link:../../packages/mdsvex
