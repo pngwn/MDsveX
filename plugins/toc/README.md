@@ -168,10 +168,10 @@ On a line of its own, `::toc` renders the same component in the document:
 - **The brackets are the label.** `::toc` alone has none.
 - **`::toc(max_depth=2)`** and `min_depth` narrow that list. The data keeps every entry.
 - **Any other arg is an attribute of the `<nav>`**, such as `::toc(class=inline)`.
-- **It lists the whole document**, the headings after it as well. The plugin fills it in once the document has been parsed and its ids are set, and hands the list to the component as JSON.
-- **While a document streams**, nothing is shown in its place until the stream ends, when the list is known and the directive is rendered again.
+- **It lists the whole document**, the headings after it as well. Each heading is added to the data as it closes, with its id, and the component reads the data from the context of the document.
+- **While a document streams**, the list grows as headings arrive, in a view that gives `Node.svelte` the live data (`PluginStream` in `@mdsvex/render/stream`).
 - **With nothing to list it renders nothing**, and the build warns `no_headings`.
-- A `toc` export from your own directives module replaces the component. It gets `headings` as a JSON string, the `label` snippet, and the args.
+- A `toc` export from your own directives module replaces the component. It gets the `label` snippet and the args, and reads the headings from the context, `getContext(Symbol.for('mdsvex.plugin_data')).current.toc.headings`.
 
 ## Warnings
 
