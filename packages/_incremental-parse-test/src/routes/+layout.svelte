@@ -38,6 +38,18 @@ function toggle(slug: string, is_fixture: boolean) {
 		<nav class="sidebar">
 			<div class="panel-header">Examples</div>
 			<div class="nav-list">
+				<div class="section">
+					<div class="section-label">Streaming with plugins</div>
+					{#each [["toc", "Growing table of contents"], ["deferred", "Lookup that lands later"]] as [slug, name] (slug)}
+						<a
+							class="nav-link"
+							class:active={page.url.pathname === `/stream/${slug}`}
+							href="/stream/{slug}"
+						>
+							{name}
+						</a>
+					{/each}
+				</div>
 				{#each sections.slice(0, fixture_start === -1 ? sections.length : fixture_start) as section (section.slug)}
 					<div class="section">
 						<button class="section-label" onclick={() => toggle(section.slug, false)}>
