@@ -489,6 +489,22 @@ importers:
         specifier: ^0.3.4
         version: 0.3.4
 
+  packages/prettier-plugin:
+    dependencies:
+      '@mdsvex/parse':
+        specifier: workspace:^
+        version: link:../parse
+    devDependencies:
+      npm-run-all2:
+        specifier: ^7.0.2
+        version: 7.0.2
+      prettier:
+        specifier: ^3.8.1
+        version: 3.8.1
+      shx:
+        specifier: ^0.3.4
+        version: 0.3.4
+
   packages/render:
     dependencies:
       '@mdsvex/parse':
