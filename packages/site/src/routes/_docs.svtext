@@ -210,6 +210,19 @@ const { code, dependencies } = await compile_async(source, {
 });
 ```
 
+What plugins load with [`ctx.cached`](docs#loading-files) is kept between calls for as long as you pass the same `plugins` array, which suits a build that runs once. A host that compiles again when files change passes a `CompilerSession` of its own as the third argument, and calls its `invalidate` with the paths that changed before compiling the documents whose `dependencies` list them:
+
+```js
+import { CompilerSession, compile_async } from 'mdsvex/compile';
+
+const session = new CompilerSession();
+const { code, dependencies } = await compile_async(source, options, session);
+
+// later, when a watched file changes
+session.invalidate([changed]);
+await compile_async(source, options, session);
+```
+
 #### Compiling in steps
 
 A host that is not Vite, such as a playground or another bundler, compiles in steps so it can fetch what a document needs between them. This is what the Vite plugin does:
@@ -3553,7 +3566,7 @@ These need a dev server or Vite's config, so they stay with the plugin:
 - **[`compile_async`](docs#compile_async)** does it in one call. Pass `read` and `resolve` and it reads the files fences show with `src=` and what plugins load, then waits for deferred work. Use it for a build where the host can read files, in Node or a worker with a virtual filesystem.
 - **[Compiling in steps](docs#compiling-in-steps)** hands the waiting to you: `parse`, then `settle` for deferred work, then read each of `parsed.needs` yourself and `render`. Use it when files arrive another way, such as a fetch or an editor's open buffers, or to compile other documents while one waits. The playground compiles this way.
 
-The result's `dependencies` are absolute paths: what plugins read or named, and, when `compile_async` read them, the files fences show and the module of the template. Compiling in steps, you know the files you read for `needs` yourself. To rebuild as the Vite plugin does in dev, watch those files, and when one changes call `session.invalidate([path])` on your `CompilerSession`, so what [`ctx.cached`](docs#loading-files) kept from it goes, then compile the documents that list it again. `compile_async` has no session you can invalidate yet, so a host that rebuilds compiles in steps.
+The result's `dependencies` are absolute paths: what plugins read or named, and, when `compile_async` read them, the files fences show and the module of the template. Compiling in steps, you know the files you read for `needs` yourself. To rebuild as the Vite plugin does in dev, watch those files, and when one changes call `session.invalidate([path])` on your `CompilerSession`, so what [`ctx.cached`](docs#loading-files) kept from it goes, then compile the documents that list it again. With `compile_async`, pass that session as its third argument.
 
 ## Migrating from mdsvex 0.x
 
