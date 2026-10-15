@@ -263,6 +263,7 @@ const toc = {
 | `ctx.depend(path)` | names a file the output depends on, see [Loading](#loading-and-dependencies) |
 | `ctx.read(path)`, `ctx.resolve(specifier)` | read and resolve with what the host passes |
 | `ctx.cached(key, load)` | a load shared by the documents of a compiler |
+| `ctx.id(base)` | an id no element of the document has, see [Ids](#ids) |
 
 A handler bound to a directive gets the same members beside `directive`, `index` and `state`.
 
@@ -345,6 +346,26 @@ const stop = dispatcher.on_data(({ plugin, key, value }) => {
 - **The event carries the value after the change,** not a diff. A list event carries the whole list, frozen and in document order. So a consumer that missed events only needs the latest one per key.
 - **A streaming view** follows these so a component that reads the data renders again as it changes. A compile ignores them and reads `data()` at the end.
 - **A listener stays from one document to the next.** The function `on_data` returns stops it.
+
+### Ids
+
+A plugin that gives a node an id asks for one, so it never takes an id a heading, a footnote or another plugin has:
+
+```js
+link: {
+  parse(node, ctx) {
+    return () => {
+      node.attrs.id = ctx.id(node.text_content); // 'install', then 'install-1'
+    };
+  }
+}
+```
+
+- **A free id from the base.** The base itself, or the next repeat of it that is free, `-1`, `-2`, as heading ids are numbered. Ids are given in the order handlers ask, which is document order for the fused pass, and the sequential passes and document hooks come after it.
+- **One set of ids for the document.** With a `HeadingIds` on the builder, `heading_ids` in `mdsvex`, the headings, the element headings with an id, the footnotes and every plugin share it, see [Heading ids](#heading-ids). Without one, a dispatcher keeps a set of its own for the ids plugins ask for.
+- **Owned like a write.** The id belongs to the node whose handler asked, and a revoke of that node frees it.
+- **`ctx.id(id, { fixed: true })`** is for an id the author wrote, such as `{#install}` in a heading a plugin reads. It is kept as it is, and one a node before it was given is a `HeadingIdError`. An id set straight on a heading with `node.attrs.id` counts as fixed too.
+- **Only in a handler,** a close callback, a sequential pass or a document hook. A deferred task has none, ask in the handler that defers.
 
 ### Deferred tasks
 

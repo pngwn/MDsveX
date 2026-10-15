@@ -80,6 +80,15 @@ export interface DocumentContext {
 	 */
 	add(key: string, value: unknown): void;
 	/**
+	 * an id no element of the document has, base itself or the next free
+	 * repeat of it, base-1, base-2, set it on the node it is for, it is owned
+	 * by the node whose handler runs and free again when that node is revoked,
+	 * with heading_ids in mdsvex it shares one set of ids with the headings,
+	 * element headings and footnotes, fixed keeps base as it is, an id the
+	 * author wrote, and one a node before it was given is a HeadingIdError
+	 */
+	id(base: string, options?: { fixed?: boolean }): string;
+	/**
 	 * starts async work for the node whose handler or close callback runs,
 	 * the task gets a node and a context of its own and changes the document
 	 * through them, the changes apply once the task settled and the node is

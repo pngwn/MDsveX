@@ -3,7 +3,7 @@
 
 import { footnote_ids, footnote_index } from './buf_utils';
 import { SourceTextSource } from './node_view';
-import { NodeBuffer, NodeKind } from './utils';
+import { NodeBuffer, NodeKind, kind_to_string } from './utils';
 
 const NONE = 0xffffffff;
 
@@ -62,15 +62,15 @@ const is_heading_tag = /^h[1-6]$/;
  * close callback changes the id when it runs before the first that reads it
  */
 export class HeadingIds {
-	/** what the ids are made with */
-	readonly slug: HeadingSlug;
+	/** what heading ids are made with, null for a document whose headings get none */
+	readonly slug: HeadingSlug | null;
 	/** a named character reference html knows, dropped from the text where others stay */
 	private named: (name: string) => boolean;
 	/** what the value ranges of the buffer index, empty for a tree built over the wire */
 	private source = '';
 	/** every id given, by how many repeats of it github-slugger counted */
 	private seen = new Map<string, number>();
-	/** each id given, by the node it was given to, NONE for a footnote */
+	/** each id given, by the node it was given to, NONE for a footnote, 0 for no node */
 	private given = new Map<string, number>();
 	/** slots below this were looked at for ids already fixed */
 	private scanned = 1;
@@ -95,7 +95,7 @@ export class HeadingIds {
 		name: string | undefined
 	) => string;
 
-	constructor(slug: HeadingSlug, named: (name: string) => boolean) {
+	constructor(slug: HeadingSlug | null, named: (name: string) => boolean) {
 		this.slug = slug;
 		this.named = named;
 		// a numeric reference is its character, a named one is dropped, no table of their values is bundled
@@ -138,9 +138,10 @@ export class HeadingIds {
 		const meta = buf.metadata_at(index);
 		const id = meta?.id;
 		if (typeof id === 'string') return this.fix(buf, id, index);
-		if (id != null && id !== false) return;
+		const slug = this.slug;
+		if (slug === null || (id != null && id !== false)) return;
 
-		const base = this.slug(this.text_of(buf, index).trim(), {
+		const base = slug(this.text_of(buf, index).trim(), {
 			depth: buf.extra_at(index),
 		});
 		if (typeof base !== 'string')
@@ -180,6 +181,28 @@ export class HeadingIds {
 			given.set(free, NONE);
 			(this.moved ??= new Map()).set(id, free);
 		}
+	}
+
+	/**
+	 * a free id from base, base itself or the next repeat of it, given to a
+	 * node, 0 for none
+	 */
+	claim(base: string, node: number): string {
+		const id = this.unique(base);
+		this.given.set(id, node);
+		return id;
+	}
+
+	/** an id fixed for a node, a HeadingIdError when a node before it was given it */
+	fixed(buf: NodeBuffer, id: string, node: number): string {
+		this.fix(buf, id, node);
+		return id;
+	}
+
+	/** the node an id was given to was revoked, the id is free again */
+	release(id: string): void {
+		this.given.delete(id);
+		this.seen.delete(id);
 	}
 
 	/** a callback read the id early and then gave the heading one of its own, which is fixed */
@@ -229,8 +252,12 @@ export class HeadingIds {
 
 	/** how an error names a node */
 	private what(buf: NodeBuffer, node: number): string {
-		if (buf.kind_at(node) !== NodeKind.html) return 'heading';
-		return `element <${buf.metadata_at(node)?.tag}>`;
+		if (node === 0) return 'plugin';
+		if (node === NONE) return 'footnote';
+		const kind = buf.kind_at(node);
+		if (kind === NodeKind.html)
+			return `element <${buf.metadata_at(node)?.tag}>`;
+		return kind_to_string(kind).replace(/_/g, ' ');
 	}
 
 	/** slug made unique as github-slugger does, the first is bare, then -1, -2 */
@@ -249,7 +276,7 @@ export class HeadingIds {
 
 	/** where a node is, nothing over the wire */
 	private at(buf: NodeBuffer, node: number): string {
-		if (this.source === '') return '';
+		if (this.source === '' || node === 0 || node === NONE) return '';
 		const at = new SourceTextSource(this.source).point(buf.start_at(node));
 		return ` at ${at.line}:${at.column + 1}`;
 	}
