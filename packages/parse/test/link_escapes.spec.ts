@@ -34,6 +34,7 @@ describe('a backslash escape in a link destination or title', () => {
 		expect(every_path('[x]: /u\\)b "t \\" u"\n\n[a][x] ![b][x]\n')).toBe(
 			lines(
 				'root',
+				'  definition label="x" href="/u)b" title="t \\" u"',
 				'  line_break',
 				'  paragraph',
 				'    link href="/u)b" title="t \\" u"',

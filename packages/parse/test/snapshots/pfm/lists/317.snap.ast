@@ -6,6 +6,7 @@ root
     list_item
       paragraph
         text "b"
+      definition label="ref" href="/url"
     list_item
       paragraph
         text "d"

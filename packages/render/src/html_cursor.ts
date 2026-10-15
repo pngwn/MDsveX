@@ -40,6 +40,7 @@ import type { MapTrace, SourceMapV3 } from './sourcemap';
 import { ComponentScope, component_imports } from './scope';
 import type { ComponentImport, ReplaceWarning } from './scope';
 import { is_entity_name } from './entities';
+import { top_block } from './component';
 
 export type { Mapping, CodeInformation, MappingData } from './mappings';
 export { MapSink } from './mappings';
@@ -615,6 +616,7 @@ const enum K {
 	DIRECTIVE_LABEL = 35,
 	FOOTNOTE_REFERENCE = 36,
 	FOOTNOTE_DEFINITION = 37,
+	DEFINITION = 38,
 }
 
 export const K_ROOT = K.ROOT;
@@ -1870,8 +1872,9 @@ function render_node(c: Cursor, sink?: MapSink): void {
 			break;
 
 		default:
-			// a label renders only as the snippet of a replaced directive, and a
-			// footnote definition in the section at the end
+			// a label renders only as the snippet of a replaced directive, a
+			// footnote definition in the section at the end and a link reference
+			// definition not at all
 			if (c.kind < K.DIRECTIVE_LABEL) render_children(c, sink);
 			else if (c.kind === K.FOOTNOTE_REFERENCE) {
 				const pre = mo.length;
@@ -2494,8 +2497,9 @@ function fold_node(c: Cursor, p: number): number {
 			return push_dyn(p, module_script());
 
 		default:
-			// a label renders only as the snippet of a replaced directive, and a
-			// footnote definition in the section at the end
+			// a label renders only as the snippet of a replaced directive, a
+			// footnote definition in the section at the end and a link reference
+			// definition not at all
 			if (c.kind >= K.DIRECTIVE_LABEL)
 				return c.kind === K.FOOTNOTE_REFERENCE
 					? push_dyn(p, fn_reference(c))
@@ -3163,8 +3167,9 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			return 0;
 
 		default:
-			// a label renders only as the snippet of a replaced directive, and a
-			// footnote definition in the section at the end
+			// a label renders only as the snippet of a replaced directive, a
+			// footnote definition in the section at the end and a link reference
+			// definition not at all
 			if (c.kind >= K.DIRECTIVE_LABEL)
 				return c.kind === K.FOOTNOTE_REFERENCE
 					? fn_reference_mapped(c, sink, p, true)
@@ -3717,8 +3722,9 @@ function mp_node(c: Cursor, sink: MapSink, p: number): number {
 			return 0;
 
 		default:
-			// a label renders only as the snippet of a replaced directive, and a
-			// footnote definition in the section at the end
+			// a label renders only as the snippet of a replaced directive, a
+			// footnote definition in the section at the end and a link reference
+			// definition not at all
 			if (c.kind >= K.DIRECTIVE_LABEL)
 				return c.kind === K.FOOTNOTE_REFERENCE
 					? fn_reference_mapped(c, sink, p, false)
@@ -5869,6 +5875,21 @@ export class CursorHTMLRenderer {
 		sink.release();
 	}
 
+	/**
+	 * the nodes changed after their block was rendered, as the node of a
+	 * deferred task that applied does, apply_ready gives them, each block that
+	 * holds one renders again at the next update, a renderer without a cache
+	 * renders every block anyway
+	 */
+	invalidate(buf: NodeBuffer, nodes: readonly number[]): void {
+		const closed = this.closed;
+		if (closed === null) return;
+		for (let i = 0; i < nodes.length; i++) {
+			const block = top_block(buf, nodes[i]);
+			if (block !== Slot.NONE) closed.delete(block);
+		}
+	}
+
 	reset(): void {
 		this.blocks.length = 0;
 		this.closed?.clear();
@@ -7029,16 +7050,23 @@ function fn_href(id: string): string {
 	return escape_code(fn_fragment(id));
 }
 
+/** the id a footnote id is given, another when a heading was given it first */
+function fn_id(notes: FootnoteRender, id: string): string {
+	const moved = notes.moved;
+	return moved === undefined || moved === null ? id : (moved.get(id) ?? id);
+}
+
 /** the link a reference renders as, '' for one in a definition that is not rendered */
 function fn_reference(c: Cursor): string {
-	const at = fn_get(c).references.get(c.index);
+	const notes = fn_get(c);
+	const at = notes.references.get(c.index);
 	if (at === undefined) return '';
 	const number = Math.floor(at / 65536);
 	return (
 		'<sup><a href="#' +
-		fn_href(footnote_id(fn!.labels[number - 1])) +
+		fn_href(fn_id(notes, footnote_id(notes.labels[number - 1]))) +
 		'" id="' +
-		escape_code(footnote_ref_id(number, at % 65536)) +
+		escape_code(fn_id(notes, footnote_ref_id(number, at % 65536))) +
 		'" role="doc-noteref">' +
 		number +
 		'</a></sup>'
@@ -7077,7 +7105,7 @@ function fn_back(notes: FootnoteRender, number: number, count: number): string {
 		const name = nth === 1 ? '' + number : number + '-' + nth;
 		s +=
 			' <a href="#' +
-			fn_href(footnote_ref_id(number, nth)) +
+			fn_href(fn_id(notes, footnote_ref_id(number, nth))) +
 			'" role="doc-backlink" aria-label="' +
 			label.replace('&#123;n&#125;', name) +
 			// the selector keeps the arrow from being drawn as an emoji
@@ -7192,7 +7220,10 @@ function fn_section(
 		const node = definitions[i];
 		if (node === Slot.NONE) continue;
 		let item =
-			open + '<li id="' + escape_code(footnote_id(notes.labels[i])) + '"';
+			open +
+			'<li id="' +
+			escape_code(fn_id(notes, footnote_id(notes.labels[i]))) +
+			'"';
 		open = '';
 		// a reference with no definition took a number, so the list skips it
 		if (i + 1 !== next) item += ' value="' + (i + 1) + '"';
@@ -7248,8 +7279,8 @@ function fn_component(
 			' number={' +
 			number +
 			'}' +
-			js_prop('href', '#' + fn_fragment(footnote_id(label))) +
-			js_prop('id', footnote_ref_id(number, at % 65536)) +
+			js_prop('href', '#' + fn_fragment(fn_id(notes, footnote_id(label)))) +
+			js_prop('id', fn_id(notes, footnote_ref_id(number, at % 65536))) +
 			_attrs(c, FOOTNOTE_HANDLED) +
 			'>'
 	);

@@ -4,6 +4,10 @@ import type { TraceTarget } from '../src/compile';
 import { smart_of } from '../src/smart_punctuation';
 import { toc } from './toc_plugin';
 
+/** the instance script that gives the plugin data to the components of a document */
+const DATA_CONTEXT =
+	"<script>\nimport { setContext as set_context_MDSVEX } from 'svelte';\nset_context_MDSVEX(Symbol.for('mdsvex.plugin_data'), { current: plugin_data });\n</script>";
+
 function target(): TraceTarget {
 	return {
 		source: '',
@@ -120,7 +124,9 @@ describe('smart_punctuation', () => {
 		const body = '<h1 id="one----its">“One” – it’s</h1><p>“Words” here…</p>';
 		const source = '# "One" -- it\'s\n\n"Words" here...\n';
 		const { code } = compile(source, options);
-		expect(code).toBe('<script module>\n' + data + '</script>' + body);
+		expect(code).toBe(
+			DATA_CONTEXT + '<script module>\n' + data + '</script>' + body
+		);
 		expect(compile(source, { ...options, sourcemap: true }).code).toBe(code);
 		expect(new CompilerSession().compile(source, options).code).toBe(code);
 		expect(
@@ -141,7 +147,8 @@ describe('smart_punctuation', () => {
 			{ heading_ids: true, plugins: [toc()], smart_punctuation: true }
 		);
 		expect(code).toBe(
-			'<script module>\nexport const plugin_data = {"toc":{"headings":[{"depth":1,"text":"\\"One\\"","id":"one"}]}};\n' +
+			DATA_CONTEXT +
+				'<script module>\nexport const plugin_data = {"toc":{"headings":[{"depth":1,"text":"\\"One\\"","id":"one"}]}};\n' +
 				'\n\texport const a = "x--y";\n</script><h1 id="one">“One”</h1>'
 		);
 	});

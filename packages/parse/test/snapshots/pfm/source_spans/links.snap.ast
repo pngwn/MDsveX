@@ -1,0 +1,49 @@
+root [0,218] value=[0,218]
+  definition [0,19] value=[1,2] label="r" href="/r" title="ref title"
+  line_break [20,21]
+  paragraph [21,82]
+    link [21,37] value=[22,28] href="/u" title="t"
+      text [22,28] value=[22,28] "inline"
+    text [37,42] value=[37,42] " and "
+    image [42,58] value=[44,49] src="/i.png"
+      text [44,49] value=[44,49] "image"
+    text [58,63] value=[58,63] " and "
+    link [63,82] value=[64,77] href="/n"
+      strong_emphasis [64,72] value=[65,71]
+        text [65,71] value=[65,71] "nested"
+      text [72,77] value=[72,77] " text"
+  line_break [82,83]
+  line_break [83,84]
+  paragraph [84,141]
+    link [84,93] value=[85,89] href="/r" title="ref title"
+      text [85,89] value=[85,89] "full"
+    text [93,94] value=[93,94] " "
+    text [94,104] value=[94,104] "[collapsed"
+    text [104,105] value=[104,105] "]"
+    text [105,106] value=[105,106] "["
+    text [106,108] value=[106,108] "] "
+    text [108,110] value=[108,110] "[r"
+    text [110,112] value=[110,112] "] "
+    image [112,125] value=[114,121] src="/r" title="ref title"
+      text [114,121] value=[114,121] "img ref"
+    text [125,126] value=[125,126] " "
+    text [126,134] value=[126,134] "[missing"
+    text [134,135] value=[134,135] "]"
+    text [135,140] value=[135,140] "[nope"
+    text [140,141] value=[140,141] "]"
+  line_break [141,142]
+  line_break [142,143]
+  paragraph [143,189]
+    link [143,165] value=[144,164] href="https://auto.example"
+      text [144,164] value=[144,164] "https://auto.example"
+    text [165,166] value=[165,166] " "
+    text [166,177] value=[166,177] "[not a link"
+    text [177,179] value=[177,179] "] "
+    link [179,189] value=[180,180] href="/empty"
+  line_break [189,190]
+  line_break [190,191]
+  paragraph [191,217]
+    link [191,217] value=[192,212] href="/l"
+      image [192,212] value=[194,207] src="/i"
+        text [194,207] value=[194,207] "image in link"
+  line_break [217,218]

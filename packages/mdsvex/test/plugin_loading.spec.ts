@@ -155,6 +155,53 @@ describe('read, resolve and dependencies', () => {
 		expect(reads).toBe(2);
 		files['/site/terms.txt'] = 'A term\n';
 	});
+
+	test('compile_async takes the session a watching host invalidates', async () => {
+		let reads = 0;
+		const counting = async (path: string) => {
+			reads++;
+			return read(path);
+		};
+		const plugins = [glossary()];
+		const options = {
+			plugins,
+			filename: '/site/post.svx',
+			read: counting,
+			resolve,
+		};
+		const session = new CompilerSession();
+		await compile_async(DOC, options, session);
+		await compile_async(DOC, options, session);
+		expect(reads).toBe(1);
+		files['/site/terms.txt'] = 'A new term\n';
+		session.invalidate(['/site/terms.txt']);
+		const after = await compile_async(DOC, options, session);
+		expect(after.code).toContain('title="A new term"');
+		expect(after.dependencies).toEqual(['/site/terms.txt']);
+		expect(reads).toBe(2);
+		files['/site/terms.txt'] = 'A term\n';
+	});
+
+	test('without a session compile_async keeps loads for its plugins array', async () => {
+		let reads = 0;
+		const counting = async (path: string) => {
+			reads++;
+			return read(path);
+		};
+		const options = () => ({
+			plugins,
+			filename: '/site/post.svx',
+			read: counting,
+			resolve,
+		});
+		let plugins = [glossary()];
+		await compile_async(DOC, options());
+		await compile_async(DOC, options());
+		expect(reads).toBe(1);
+		plugins = [glossary()];
+		await compile_async(DOC, options());
+		expect(reads).toBe(2);
+	});
 });
 
 describe('the vite plugin', () => {

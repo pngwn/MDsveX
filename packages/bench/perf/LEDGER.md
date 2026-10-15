@@ -44,6 +44,24 @@ delete it.
 
 ## Open
 
+### heading ids at each close
+
+- **Source:** heading ids moved from a pass after the parse to the close of
+  each heading (`HeadingIds.close`, the heading arm of `TreeBuilder.close`).
+- **Measured:** compiles with `heading_ids: true` over `micro` and `real`, a
+  throwaway paired loop on `compare_one` (no harness mode turns the option
+  on), against a private baseline of a83b22fd, A/A +0.1%: one-shot
+  `compile` -1.42% and -1.18%, a reused session -1.85% and -2.34%,
+  `micro/heading` -6.1% to -8.8% (about 80ns on a one line document).
+  Documents without the option are level, `core --repeat 2` geomean -0.00%,
+  nothing past the 4.6% floor.
+- **Cause:** a call per heading into `HeadingIds`, its scan of the slots for
+  fixed ids, and the per document `start` and `finish`, against one walk
+  before. The tiny documents pay the fixed part.
+- **Ideas:** skip the slot scan when the parser saw no html heading, fold
+  `finish` into the last close when no footnote was seen. Guesses, none
+  measured.
+
 ### line start element close check
 
 - **Source:** #961, `sure_to_close` in `open_spec_tag`.
@@ -373,6 +391,26 @@ delete it.
   f20a7cae at the top of the collection stack, and level against the commit
   the stack starts from. Left open as a row to read alone, there is no work
   in the document to take out.
+
+### a node for each link reference definition and element ranges
+
+- **Source:** #1196, `try_parse_link_ref_definition` now emits
+  a `definition` node (open, `label`, `href`, `title`, value range, close),
+  `html_leaf_value` and the `set_value_start`/`set_value_end` calls at each
+  element open and close.
+- **Measured:** `quick --repeat 2` and `core --modes incremental` against
+  995490cf with the default 3.0% floor: no row past it, geomean +0.02% and
+  fed +0.03%. Documents of one construct, 300 lines each, `compare_one` one
+  workload a process, both leads: only definitions -14.2% and -15.8%
+  (124us to 142us, about 70ns a definition), elements on every line -1.5%
+  and -1.3%, links +1.8% and +0.5%, prose +2.9% and +1.6% (noise).
+- **Cause:** a definition used to cost a map entry and nothing in the tree.
+  Its node and the metadata object for its three attrs are the 70ns. An
+  element pays one or two more value writes through the emitter.
+- **Ideas:** only documents that write definitions pay, so this is the cost
+  of the feature rather than a drop. A metadata object built once with all
+  three keys instead of three `attr` calls would likely take most of it, not
+  measured.
 
 ### tiny documents
 

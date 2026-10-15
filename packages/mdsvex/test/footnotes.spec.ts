@@ -178,14 +178,19 @@ describe('footnotes', () => {
 		expect(session.compile('x\n').code).toBe('<p>x</p>');
 	});
 
-	test('a heading whose slug is a footnote id moves aside', () => {
+	test('a footnote whose id a heading was given moves aside', () => {
+		// a heading takes its id as it closes, the footnotes are numbered at the end
 		const code = compile_all('# fn 1\n\n## fnref 1\n\nx[^1]\n\n[^1]: y\n', {
 			heading_ids: true,
 		});
-		expect(code).toContain('<h1 id="fn-1-1">fn 1</h1>');
-		expect(code).toContain('<h2 id="fnref-1-1">fnref 1</h2>');
-		expect(code).toContain('<li id="fn-1">');
-		expect(code).toContain('id="fnref-1" role="doc-noteref"');
+		expect(code).toContain('<h1 id="fn-1">fn 1</h1>');
+		expect(code).toContain('<h2 id="fnref-1">fnref 1</h2>');
+		expect(code).toContain('<li id="fn-1-1">');
+		expect(code).toContain('href="#fn-1-1" id="fnref-1-1" role="doc-noteref"');
+		expect(code).toContain('href="#fnref-1-1" role="doc-backlink"');
+		expect(compile_all('# fn 1\n\nx[^1]\n\n[^1]: y\n')).toContain(
+			'<li id="fn-1">'
+		);
 	});
 
 	test('a table cell, a heading and a link hold a reference', () => {
@@ -336,6 +341,19 @@ describe('footnote replacements', () => {
 		expect(
 			compile('a[^n]\n\n[^n]: *one*\n', { components, sourcemap: true }).code
 		).toBe(out.code);
+	});
+
+	test('footnote gets the ids a footnote moved to', () => {
+		const raw = '# fn n\n\na[^n]\n\n[^n]: one\n';
+		for (const sourcemap of [false, true]) {
+			const code = compile(raw, {
+				components,
+				heading_ids: true,
+				sourcemap,
+			}).code;
+			expect(code).toContain('href={"#fn-n-1"} id={"fnref-1"}>');
+			expect(code).toContain('<li id="fn-n-1">');
+		}
 	});
 
 	test('a document with no footnote imports neither', () => {

@@ -1,4 +1,5 @@
 root
+  definition label="ref" href="/uri"
   line_break
   paragraph
     text "["

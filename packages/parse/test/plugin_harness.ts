@@ -1,6 +1,7 @@
 import { expect } from 'vitest';
 
 import { PFMParser, WireEmitter } from '../src/main';
+import type { HeadingIds } from '../src/heading_ids';
 import { SourceTextSource, WireTextSource } from '../src/node_view';
 import { PluginDispatcher } from '../src/plugin_dispatch';
 import type { Emitter } from '../src/opcodes';
@@ -96,6 +97,8 @@ export interface PluginSetup {
 	on_data?: (change: DataChange) => void;
 	/** called with the dispatcher before the parse */
 	setup?: (dispatcher: PluginDispatcher) => void;
+	/** makes heading ids at each close, finished when the document ends */
+	headings?: HeadingIds;
 }
 
 /** a plain array is the global plugins alone */
@@ -125,6 +128,12 @@ function dispatcher_for(
 		if (setup.setup !== undefined) setup.setup(dispatcher);
 	}
 	return dispatcher;
+}
+
+function headings_of(setup: Plugins | undefined): HeadingIds | undefined {
+	return setup === undefined || Array.isArray(setup)
+		? undefined
+		: setup.headings;
 }
 
 /**
@@ -198,6 +207,11 @@ export function run_batch(
 ): PluginRun {
 	const dispatcher = dispatcher_for(plugins, false, source);
 	const tree = new TreeBuilder(source.length || 16, dispatcher);
+	const headings = headings_of(plugins);
+	if (headings !== undefined) {
+		headings.start(source);
+		tree.set_headings(headings);
+	}
 	const parser = new PFMParser(relayed ? new Relay(tree) : tree);
 	if (chunk === 0) parser.parse(source);
 	else {
@@ -208,6 +222,7 @@ export function run_batch(
 		parser.finish();
 	}
 	const nodes = tree.get_buffer();
+	if (headings !== undefined) headings.finish(nodes);
 	if (dispatcher) dispatcher.run_sequential(nodes);
 	return { nodes, source, dispatcher: dispatcher ?? null };
 }
@@ -225,6 +240,8 @@ export function run_wire(
 	const parser = new PFMParser(emitter);
 	const dispatcher = dispatcher_for(plugins, true, source);
 	const builder = new WireTreeBuilder(128, dispatcher);
+	const headings = headings_of(plugins);
+	if (headings !== undefined) builder.set_headings(headings);
 	if (chunk === 0) {
 		emitter.set_source(source);
 		parser.parse(source);
@@ -239,6 +256,7 @@ export function run_wire(
 		parser.finish();
 	}
 	builder.apply(emitter.flush());
+	builder.end();
 	const nodes = builder.get_buffer();
 	if (dispatcher) dispatcher.run_sequential(nodes);
 	return { nodes, source: null, dispatcher: dispatcher ?? null };

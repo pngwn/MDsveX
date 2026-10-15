@@ -49,9 +49,10 @@ import type {
 	MathOption,
 	MathRenderer,
 } from './highlight_run';
-import { assign_heading_ids, slug_of } from './heading_ids';
+import { make_heading_ids, slug_of } from './heading_ids';
 import { footnotes_of } from './footnotes';
 import type { FootnoteOptions, Footnotes } from './footnotes';
+import type { HeadingIds } from '@mdsvex/parse';
 import type { HeadingOptions, HeadingSlug } from './heading_ids';
 import { smart_of } from './smart_punctuation';
 import type { SmartOptions, SmartPunctuation } from './smart_punctuation';
@@ -108,7 +109,7 @@ export type {
 	MathOption,
 	MathRenderer,
 } from './highlight_run';
-export { heading_slug } from './heading_ids';
+export { HeadingIdError, heading_slug, make_heading_ids } from './heading_ids';
 export type { ImageNeed } from './image_imports';
 export { SourceError } from './fence_sources';
 export { FootnoteError } from './footnotes';
@@ -127,6 +128,7 @@ export type {
 	RewriteContext,
 } from './link_urls';
 export type {
+	HeadingIdErrorCode,
 	HeadingIdsOptions,
 	HeadingInfo,
 	HeadingOptions,
@@ -1088,6 +1090,17 @@ function prepare(
 
 // null while taken, so a compile inside a plugin makes its own
 let spare_parser: PFMParser | null = null;
+/** the footnote ids the heading ids of the last parse with them moved, see HeadingIds.moved */
+let moved_ids: Map<string, string> | null = null;
+
+function take_moved(): Map<string, string> | null {
+	const moved = moved_ids;
+	moved_ids = null;
+	return moved;
+}
+
+/** heading ids a one shot parse lends out, a compile a plugin handler starts finds none and makes its own */
+let spare_ids: HeadingIds | null = null;
 let spare_renderer: CursorHTMLRenderer | null = null;
 
 function take_renderer(): CursorHTMLRenderer {
@@ -1189,6 +1202,8 @@ class PluginHost {
 		const wrapper = renderer.template;
 		try {
 			this.exported = plugin_data_export(data);
+			// what a component reads the data from, as Node.svelte gives it while streaming
+			add_lines(renderer, DATA_CONTEXT);
 			if (wrapper === undefined) return;
 			if (metadata !== undefined && has_own.call(metadata, PLUGIN_DATA_EXPORT))
 				throw frontmatter_error(
@@ -1313,6 +1328,8 @@ function parse_once(
 		host.tree = tree;
 		host.start(source, inputs, awaits);
 	}
+	const slug = inputs.heading_ids;
+	const headings = slug === undefined ? null : lend_ids(tree, slug, source);
 	let parser = spare_parser;
 	if (parser === null) parser = new PFMParser(tree);
 	else {
@@ -1326,15 +1343,55 @@ function parse_once(
 	spare_parser = parser;
 
 	const nodes = tree.get_buffer();
-	// fused plugins set their ids before this, sequential ones read them after
-	const slug = inputs.heading_ids;
-	if (slug !== undefined) assign_heading_ids(nodes, source, slug);
+	// sequential plugins read the ids, every heading has its own by now
+	if (headings !== null) {
+		headings.finish(nodes);
+		moved_ids = headings.moved;
+		spare_ids = headings;
+	}
 	if (host !== null) {
 		host.dispatcher.run_sequential(nodes);
 		host.finish(nodes);
 	}
 	nodes.trim();
 	return nodes;
+}
+
+/** the spare heading ids for a one shot parse, given back after it, a throw drops them */
+function lend_ids(
+	tree: TreeBuilder,
+	slug: HeadingSlug,
+	source: string
+): HeadingIds {
+	let headings = spare_ids;
+	if (headings === null || headings.slug !== slug)
+		headings = make_heading_ids(slug);
+	else spare_ids = null;
+	tree.set_headings(headings);
+	headings.start(source);
+	return headings;
+}
+
+/**
+ * heading ids for a kept builder, kept by it from one document to the next
+ * while the slug is the same, null and none on the builder without the option
+ */
+function ids_for(
+	tree: TreeBuilder,
+	slug: HeadingSlug | undefined,
+	source: string
+): HeadingIds | null {
+	if (slug === undefined) {
+		tree.set_headings(null);
+		return null;
+	}
+	let headings = tree.get_headings();
+	if (headings === null || headings.slug !== slug) {
+		headings = make_heading_ids(slug);
+		tree.set_headings(headings);
+	}
+	headings.start(source);
+	return headings;
 }
 
 // must equal NONE in @mdsvex/parse
@@ -1527,7 +1584,13 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 	const spans = take_math();
 	// only a document the parser noted a footnote in is looked through
 	const notes = take_footnote()
-		? footnotes_of(nodes, source, inputs.footnotes, inputs.filename)
+		? footnotes_of(
+				nodes,
+				source,
+				inputs.footnotes,
+				inputs.filename,
+				inputs.heading_ids === undefined ? null : take_moved()
+			)
 		: null;
 	// a handler that read the frontmatter already parsed it
 	const metadata =
@@ -1597,7 +1660,7 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 	}
 	// give_renderer clears these, a throw drops the renderer
 	if (images !== null) {
-		renderer.imports = images.lines;
+		add_lines(renderer, images.lines);
 		renderer.urls = images.lookup;
 	}
 	if (fenced !== null) {
@@ -1687,12 +1750,28 @@ function give_fences(
 	if (fenced.runs !== -1 && renderer.scope?.get('pre') === undefined)
 		throw pre_error(filename, source, fenced.runs);
 	renderer.fences = fenced.fences;
-	const lines = fenced.lines;
+	add_lines(renderer, fenced.lines);
+}
+
+/** lines for the instance script of the next render, after those it has */
+function add_lines(
+	renderer: CursorHTMLRenderer,
+	lines: readonly string[] | undefined
+): void {
 	if (lines === undefined) return;
 	const before = renderer.imports;
 	renderer.imports =
 		before === undefined || before.length === 0 ? lines : before.concat(lines);
 }
+
+/**
+ * a document with plugin data gives it to its components in the context, under
+ * the key @mdsvex/render/stream reads, current is the data and never changes
+ */
+const DATA_CONTEXT: readonly string[] = [
+	"import { setContext as set_context_MDSVEX } from 'svelte';",
+	`set_context_MDSVEX(Symbol.for('mdsvex.plugin_data'), { current: ${PLUGIN_DATA_EXPORT} });`,
+];
 
 /** true when handlers of a plugin may run, which keeps a document off a shared session */
 function has_plugins(options: CompileOptions): boolean {
@@ -1831,11 +1910,19 @@ export class CompilerSession {
 		else if (!this.released) tree.reset();
 		this.released = false;
 
+		const slug = inputs.heading_ids;
+		// one call that a document without the option never makes
+		const headings =
+			slug === undefined && tree.get_headings() === null
+				? null
+				: ids_for(tree, slug, source);
 		this.parser!.set_options(inputs);
 		this.parser!.parse_normalized(source);
 		const nodes = tree.get_buffer();
-		const slug = inputs.heading_ids;
-		if (slug !== undefined) assign_heading_ids(nodes, source, slug);
+		if (headings !== null) {
+			headings.finish(nodes);
+			moved_ids = headings.moved;
+		}
 		return nodes;
 	}
 
@@ -1900,6 +1987,12 @@ export class CompilerSession {
 		}
 		arena.host.start(source, inputs, awaits);
 		arena.host.cache = this.cache;
+		const slug = inputs.heading_ids;
+		// one call that a document without the option never makes
+		const headings =
+			slug === undefined && arena.tree.get_headings() === null
+				? null
+				: ids_for(arena.tree, slug, source);
 
 		this.plugin_busy = true;
 		let done = false;
@@ -1907,8 +2000,10 @@ export class CompilerSession {
 			arena.parser.set_options(inputs);
 			arena.parser.parse_normalized(source);
 			const nodes = arena.tree.get_buffer();
-			const slug = inputs.heading_ids;
-			if (slug !== undefined) assign_heading_ids(nodes, source, slug);
+			if (headings !== null) {
+				headings.finish(nodes);
+				moved_ids = headings.moved;
+			}
 			arena.dispatcher.run_sequential(nodes);
 			arena.host.finish(nodes);
 			done = true;
@@ -2333,7 +2428,13 @@ export class CompilerSession {
 			spans = this.spans = take_math();
 			// only a document the parser noted a footnote in is looked through
 			notes = this.notes = take_footnote()
-				? footnotes_of(nodes, source, inputs.footnotes, inputs.filename)
+				? footnotes_of(
+						nodes,
+						source,
+						inputs.footnotes,
+						inputs.filename,
+						inputs.heading_ids === undefined ? null : take_moved()
+					)
 				: null;
 			// the parser notes each image it makes, so only a document with one
 			// is walked, with plugins the walk decides, they make images unseen
@@ -2441,7 +2542,7 @@ export class CompilerSession {
 			| CompileTraceResult
 			| TraceTarget;
 		if (swaps !== null) {
-			renderer.imports = swaps.lines;
+			add_lines(renderer, swaps.lines);
 			renderer.urls = swaps.lookup;
 		}
 		const smart = inputs.smart_punctuation;
@@ -2543,6 +2644,8 @@ export class CompilerSession {
 				renderer.fences = undefined;
 				renderer.imports = undefined;
 			}
+			// share gave the lines of the data context
+			if (host !== null) renderer.imports = undefined;
 			if (smart !== undefined) renderer.smart_punctuation = undefined;
 			if (notes !== null) renderer.footnotes = undefined;
 		}
@@ -2643,12 +2746,19 @@ async function settle_plugins(
  * result as compile once that work applied, a document whose plugins defer
  * nothing compiles as compile does, safe in a browser
  *
+ * session holds what ctx.cached loads, a host that watches passes its own and
+ * calls its invalidate when a dependency changes, without one the loads are
+ * kept for as long as the plugins array is
+ *
  * @example
  * const { code, data } = await compile_async(source, { plugins: [citations()] });
+ * session.invalidate(changed);
+ * await compile_async(source, options, session);
  */
 export async function compile_async(
 	source: string,
-	options?: CompileOptions
+	options?: CompileOptions,
+	session?: CompilerSession
 ): Promise<CompileResult> {
 	if (
 		options === undefined ||
@@ -2656,7 +2766,7 @@ export async function compile_async(
 			(options.read === undefined || options.resolve === undefined))
 	)
 		return render(source, options);
-	const session = async_session(options);
+	session ??= async_session(options);
 	const inputs = inputs_of(options);
 	const parsed = session.parse(source, inputs);
 	let read: string[] | undefined;

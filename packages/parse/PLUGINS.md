@@ -45,6 +45,7 @@ The view exposes:
 - Type-specific properties surfaced directly (`depth` for headings, `info` for code fences, etc.)
 - `info` — the info string of a code fence, its language and everything after it, see [The info string of a fence](#the-info-string-of-a-fence). `lang` is the same string under its older name.
 - `math` — `true` for a `code_span` written as inline math (`` $`x`$ ``), whose text is the LaTeX, `false` for any other code span and `undefined` for any other node. A `code_span` handler sees both.
+- A `definition` is a link reference definition, `[label]: href "title"`. It carries `label`, `href` and `title` (only when not empty) in `node.attrs`, has no children and renders nothing. The links that use it already carry its `href` and `title`.
 - A `footnote_reference` and a `footnote_definition` carry their label as `node.attrs.label`. The text of a reference is empty, and the text of a definition is that of its blocks. `footnote_index(buf)` from `@mdsvex/parse/buf-utils` numbers the footnotes of a finished tree as the compile does.
 
 **Writable properties**
@@ -176,7 +177,7 @@ What follows from it:
 - **A removed wrapper takes no more children.** The later children of its parent go to the parent.
 - **Its handlers have run.** A removal in a close callback comes after every handler inside the node. In a sequential pass, a node removed in its own handler is not walked: no handler runs for what it held, and the close callback it returned does not run.
 - **The parser can still revoke it.** A delimiter that never closes is revoked after its paragraph closed, by which time the paragraph's callback may have removed it. Such a revoke undoes what the node's handlers did and repairs nothing, and the node stays out.
-- **`heading_ids` in `mdsvex` runs between the two passes,** so a heading removed in a sequential pass has already taken its id, and one removed in the fused pass has not.
+- **A heading removed in its own close callback gets no id,** see [Heading ids](#heading-ids). One removed later has already taken its id.
 
 ### Grouping siblings: `wrap_from`
 
@@ -263,6 +264,7 @@ const toc = {
 | `ctx.depend(path)` | names a file the output depends on, see [Loading](#loading-and-dependencies) |
 | `ctx.read(path)`, `ctx.resolve(specifier)` | read and resolve with what the host passes |
 | `ctx.cached(key, load)` | a load shared by the documents of a compiler |
+| `ctx.id(base)` | an id no element of the document has, see [Ids](#ids) |
 
 A handler bound to a directive gets the same members beside `directive`, `index` and `state`.
 
@@ -346,6 +348,26 @@ const stop = dispatcher.on_data(({ plugin, key, value }) => {
 - **A streaming view** follows these so a component that reads the data renders again as it changes. A compile ignores them and reads `data()` at the end.
 - **A listener stays from one document to the next.** The function `on_data` returns stops it.
 
+### Ids
+
+A plugin that gives a node an id asks for one, so it never takes an id a heading, a footnote or another plugin has:
+
+```js
+link: {
+  parse(node, ctx) {
+    return () => {
+      node.attrs.id = ctx.id(node.text_content); // 'install', then 'install-1'
+    };
+  }
+}
+```
+
+- **A free id from the base.** The base itself, or the next repeat of it that is free, `-1`, `-2`, as heading ids are numbered. Ids are given in the order handlers ask, which is document order for the fused pass, and the sequential passes and document hooks come after it.
+- **One set of ids for the document.** With a `HeadingIds` on the builder, `heading_ids` in `mdsvex`, the headings, the element headings with an id, the footnotes and every plugin share it, see [Heading ids](#heading-ids). Without one, a dispatcher keeps a set of its own for the ids plugins ask for.
+- **Owned like a write.** The id belongs to the node whose handler asked, and a revoke of that node frees it.
+- **`ctx.id(id, { fixed: true })`** is for an id the author wrote, such as `{#install}` in a heading a plugin reads. It is kept as it is, and one a node before it was given is a `HeadingIdError`. An id set straight on a heading with `node.attrs.id` counts as fixed too.
+- **Only in a handler,** a close callback, a sequential pass or a document hook. A deferred task has none, ask in the handler that defers.
+
 ### Deferred tasks
 
 A handler cannot wait: the parser does not pause for it, and neither does a stream. `ctx.defer(node, task)` starts async work for a node and lets the parse carry on:
@@ -392,7 +414,7 @@ const outline = {
 };
 ```
 
-- **It runs once,** after the parse, after the sequential passes (`heading_ids` in `mdsvex` comes before them) and after every deferred task has applied. Hooks run in plugin order, each awaited before the next.
+- **It runs once,** after the parse, after the sequential passes and after every deferred task has applied. Hooks run in plugin order, each awaited before the next.
 - **It gets the root** and walks the tree itself. It may change any node, as a sequential pass may, and nothing in the tree is pending.
 - **Its writes belong to no node** and are never revoked. While a hook that returned a promise waits, its writes are still its own.
 - **It may be async.** One that returns a promise needs a host that waits, `compile_async()` in `mdsvex`. Under a parse that cannot wait it throws a `PluginAsyncError`. One that returns nothing runs under `compile()` too.
@@ -569,6 +591,28 @@ heading: {
 ```
 
 `link` is captured by closure. On close, the callback uses it directly — no lookup, no re-traversal.
+
+**A heading is settled when it closes.** Its line has ended, so anything in it that never closed, an element such as `<head>`, an emphasis with no closer or a link with no destination, is already text when its close callbacks run.
+
+### Heading ids
+
+A builder given a `HeadingIds` with `set_headings` makes the id of each heading at its close, as the `heading_ids` option of `mdsvex` does, the same on the batch builder, fed or whole, and on the wire builder:
+
+```js
+import { HeadingIds, heading_slug } from '@mdsvex/parse';
+
+const ids = new HeadingIds(heading_slug, is_entity_name);
+ids.start(source); // the source the value ranges index, none over the wire
+tree.set_headings(ids);
+// ... parse ...
+ids.finish(tree.get_buffer()); // WireTreeBuilder.end() does this
+```
+
+- **When.** After the close callbacks of the heading, or earlier: the first close callback that reads `node.attrs` gets the id made then. So a plugin that changes the text of a heading in its close callback, by removing a child say, changes the id only if it comes before the first plugin that reads it. An open handler never sees an id.
+- **From the ids before it.** `HeadingIds` is the one place a document's ids are given out, in document order. A made id is never one given before, a repeat gets `-1`, `-2`. An id the document fixes, set on a heading by a plugin or typed on an element heading, is kept, and one that a node before it was given is a `HeadingIdError` (code `id_taken`) naming both. `finish` gives the footnotes their ids last, and one a heading was given moves to the next free one, which `moved` lists for the renderer.
+- **An id a callback sets** after reading the made one takes its place, and the made one is free again.
+- **What is not the author's** is left out: text a plugin added, and what Svelte renders.
+- **A heading a plugin made something else,** or removed in its own close callback, gets none.
 
 ### Streaming vs Batch
 

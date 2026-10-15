@@ -122,7 +122,29 @@ describe('pfm-tests fixtures', () => {
 	}
 });
 
-// 4. Svelte fixtures
+// 4. Source span fixtures
+
+describe('source span fixtures', () => {
+	const dir = join(FIXTURE_DIR, 'pfm', 'source_spans');
+	const files = readdirSync(dir)
+		.filter((f) => f.endsWith('.md'))
+		.sort();
+
+	for (const file of files) {
+		const name = basename(file, '.md');
+		test(name, async () => {
+			const input = readFileSync(join(dir, file), 'utf8');
+			const { nodes } = parse_markdown_svelte(input);
+			const ast = print_ast(nodes, input, 0, 0, true);
+			await expect(ast).toMatchFileSnapshot(
+				join(SNAPSHOT_DIR, 'pfm', 'source_spans', `${name}.snap.ast`),
+				`Input: \n${input}\n\n${ast}`
+			);
+		});
+	}
+});
+
+// 5. Svelte fixtures
 
 function find_svelte_files(dir: string, base: string = ''): string[] {
 	const entries = readdirSync(dir, { withFileTypes: true });

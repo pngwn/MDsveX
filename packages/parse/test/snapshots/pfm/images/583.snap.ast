@@ -6,3 +6,4 @@ root
     text "]"
   line_break
   line_break
+  definition label="BAR" href="/url"

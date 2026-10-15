@@ -6,3 +6,5 @@ root
     text "]"
   line_break
   line_break
+  definition label="foo" href="first"
+  definition label="foo" href="second"

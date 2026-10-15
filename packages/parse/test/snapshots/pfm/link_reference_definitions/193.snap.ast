@@ -1,4 +1,5 @@
 root
+  definition label="foo" href="/url" title="the title"
   line_break
   paragraph
     link href="/url" title="the title"

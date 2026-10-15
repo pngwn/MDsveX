@@ -199,12 +199,18 @@ importers:
       '@mdsvex/parse':
         specifier: workspace:*
         version: link:../parse
+      '@mdsvex/plugin-toc':
+        specifier: workspace:*
+        version: link:../../plugins/toc
       '@mdsvex/render':
         specifier: workspace:*
         version: link:../render
       lucide-svelte:
         specifier: ^1.0.1
         version: 1.0.1(svelte@5.55.0)
+      mdsvex:
+        specifier: workspace:*
+        version: link:../mdsvex
     devDependencies:
       '@sveltejs/adapter-auto':
         specifier: ^7.0.0
@@ -523,8 +529,8 @@ importers:
         specifier: workspace:*
         version: link:../parse
       svelte:
-        specifier: ^5.0.0
-        version: 5.55.0
+        specifier: ^5.7.0
+        version: 5.57.1(@typescript-eslint/types@8.57.2)
 
   packages/repl:
     dependencies:

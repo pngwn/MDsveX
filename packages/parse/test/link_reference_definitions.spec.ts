@@ -457,6 +457,7 @@ describe('a footnote definition is no link reference definition', () => {
 		expect(every_path('[a]: /u\n[^c]: d\n\n[x][a]\n')).toBe(
 			lines(
 				'root',
+				'  definition label="a" href="/u"',
 				...note('c', 'text "d"'),
 				'  line_break',
 				'  line_break',

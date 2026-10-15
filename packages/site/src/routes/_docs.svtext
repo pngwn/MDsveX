@@ -210,6 +210,19 @@ const { code, dependencies } = await compile_async(source, {
 });
 ```
 
+What plugins load with [`ctx.cached`](docs#loading-files) is kept between calls for as long as you pass the same `plugins` array, which suits a build that runs once. A host that compiles again when files change passes a `CompilerSession` of its own as the third argument, and calls its `invalidate` with the paths that changed before compiling the documents whose `dependencies` list them:
+
+```js
+import { CompilerSession, compile_async } from 'mdsvex/compile';
+
+const session = new CompilerSession();
+const { code, dependencies } = await compile_async(source, options, session);
+
+// later, when a watched file changes
+session.invalidate([changed]);
+await compile_async(source, options, session);
+```
+
 #### Compiling in steps
 
 A host that is not Vite, such as a playground or another bundler, compiles in steps so it can fetch what a document needs between them. This is what the Vite plugin does:
@@ -1151,7 +1164,9 @@ The id is the one GitHub makes: the text in lowercase, punctuation dropped, each
 
 The text is what a reader sees. Emphasis, links and code contribute their text without the markup, and an image contributes its alt text. What Svelte renders contributes nothing, because it isn't known until the page runs: an expression such as `{version}`, a component and a directive. A heading that is left with no text, such as `## {title}`, gets no `id`.
 
-A heading that already has an `id` keeps it, whether a [parse plugin](docs#parse_plugins) set it or you typed the heading as HTML, and no generated id repeats it. Headings typed as HTML are otherwise left alone.
+A heading that already has an `id` keeps it, whether a [parse plugin](docs#parse_plugins) set it or you typed the heading as HTML, and no id made after it repeats it. Headings typed as HTML are otherwise left alone.
+
+Each heading gets its id as it closes, from the ids before it, and an id never changes once given. An id you write yourself, on a heading typed as HTML or through a plugin that reads one from your text, is kept, and one that an element before it already has fails the compile with a `HeadingIdError` that names both. Footnotes are numbered at the end, so a footnote whose id a heading took moves aside instead: `## Fn 1` keeps `fn-1` and the footnote `[^1]` becomes `fn-1-1`.
 
 For another scheme, pass a `slug` function. It gets the text and the depth of the heading, and mdsvex numbers duplicates in what it returns. An empty string leaves the heading without an `id`. `heading_slug` is the default:
 
@@ -1165,14 +1180,15 @@ mdsvex({
 });
 ```
 
-The ids are set after the parse and before sequential parse plugins, so one can add an anchor that points at its heading:
+The id is there for the function a parse plugin returns from its handler, which runs when the heading closes, and for every sequential plugin, so one can add an anchor that points at its heading:
 
 ```js
 const anchors = {
-	sequential: true,
 	heading: {
 		parse(node) {
-			node.prepend('link', { href: `#${node.attrs.id}`, 'aria-hidden': 'true' });
+			return () => {
+				node.prepend('link', { href: `#${node.attrs.id}`, 'aria-hidden': 'true' });
+			};
 		}
 	}
 };
@@ -1182,7 +1198,7 @@ mdsvex({ heading_ids: true, parse_plugins: [anchors] });
 
 [`@mdsvex/plugin-anchors`](docs#anchors) is that plugin, with a choice of where the link goes.
 
-A [replacement](docs#custom-components) for a heading gets the `id` as a prop. `compile()` takes the option too. The ids belong to the compile, so `@mdsvex/parse` used on its own, for a streaming render, makes none. The editor reads the option from the manifest the plugin writes, or from `heading_ids: true` in an `mdsvex.config.json`, which can't hold a `slug` function.
+A [replacement](docs#custom-components) for a heading gets the `id` as a prop. `compile()` takes the option too. A streaming render makes the same ids as the heading arrives: `make_heading_ids()` from `mdsvex/compile`, given a `slug` or not, goes to the builder with `set_headings`. The editor reads the option from the manifest the plugin writes, or from `heading_ids: true` in an `mdsvex.config.json`, which can't hold a `slug` function.
 
 ### `smart_punctuation`
 
@@ -3496,10 +3512,12 @@ Import the compiler from `mdsvex/compile`, highlighting from `mdsvex/highlight` 
 | [math](docs#math-with-compile) | a renderer from `load_math` in `mdsvex/math` |
 | [images as imports](docs#import_images) | `import_images: true`, then a bundler that imports images |
 | [links](docs#links) | `routes`, and `base` as a string or `{ import, from }` |
-| [code from a file](docs#code-from-a-file) | the text of each file in `sources` |
+| [code from a file](docs#code-from-a-file) | the text of each file in `sources`, or `read` and `resolve` with [`compile_async`](docs#compile_async) |
 | [code that runs](docs#running-with-compile) | `snippets`, then serving each of `result.snippets` as a module |
 | templates, components, directives | each module as its specifier and the names it exports, see below |
-| plugins | `plugins`, as for the Vite plugin |
+| plugins | `plugins`, as for the Vite plugin, and [`compile_async`](docs#compile_async) for one that [defers work](docs#deferred-work) |
+| plugins that [load files](docs#loading-files) | `read` and `resolve`, with `compile_async` |
+| rebuilding when a file changes | watching `dependencies` on the result, see [below](docs#files-and-plugins-that-wait) |
 | [plugin data](docs#plugin-data) | nothing, it is `data` on the result |
 | a template for one import | the `template` option of that compile, in place of `?template=` |
 
@@ -3539,10 +3557,16 @@ These need a dev server or Vite's config, so they stay with the plugin:
 - **The checks on `?metadata` and `?data` imports.** In dev the plugin serves a document only when Vite would serve the file, so a request can't read files outside the project.
 - **Source maps back to markdown.** `compile` with `sourcemap: true` maps its own output, and `mappings_to_v3` from `@mdsvex/render/sourcemap` turns that into a v3 map. Chaining it with the Svelte compiler's map is up to your bundler.
 - **`?template=`** on an import. Use the `template` option of the compile.
-- **Hot update** of documents, of the files a fence shows and of template and component modules.
+- **Hot update** of documents, of the files a fence shows and of template and component modules. A host that rebuilds watches `dependencies` instead, see below.
 
-<!-- placeholder: compile_async and a public parse, then render, from design/plugin-async.md, document them here once merged -->
-**Coming soon:** an async compile that waits for plugins, and a public two-step compile that tells a host which files a document shows before it renders, so `sources` can be filled in one pass.
+### Files and plugins that wait
+
+`compile` reads nothing and waits for nothing. There are two ways to give a document the files it shows and the work its plugins defer:
+
+- **[`compile_async`](docs#compile_async)** does it in one call. Pass `read` and `resolve` and it reads the files fences show with `src=` and what plugins load, then waits for deferred work. Use it for a build where the host can read files, in Node or a worker with a virtual filesystem.
+- **[Compiling in steps](docs#compiling-in-steps)** hands the waiting to you: `parse`, then `settle` for deferred work, then read each of `parsed.needs` yourself and `render`. Use it when files arrive another way, such as a fetch or an editor's open buffers, or to compile other documents while one waits. The playground compiles this way.
+
+The result's `dependencies` are absolute paths: what plugins read or named, and, when `compile_async` read them, the files fences show and the module of the template. Compiling in steps, you know the files you read for `needs` yourself. To rebuild as the Vite plugin does in dev, watch those files, and when one changes call `session.invalidate([path])` on your `CompilerSession`, so what [`ctx.cached`](docs#loading-files) kept from it goes, then compile the documents that list it again. With `compile_async`, pass that session as its third argument.
 
 ## Migrating from mdsvex 0.x
 

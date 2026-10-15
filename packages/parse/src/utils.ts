@@ -151,6 +151,8 @@ export const enum NodeKind {
 	directive_label = 35,
 	footnote_reference = 36,
 	footnote_definition = 37,
+	/** a link reference definition, it renders nothing, the links that use it carry its url */
+	definition = 38,
 }
 
 /**
@@ -249,12 +251,14 @@ export const kind_to_string = (kind: NodeKind): string => {
 			return 'footnote_reference';
 		case NodeKind.footnote_definition:
 			return 'footnote_definition';
+		case NodeKind.definition:
+			return 'definition';
 	}
 };
 
 /** reverse mapping from string name to numeric NodeKind. built once at module load. */
 const _string_to_kind = new Map<string, NodeKind>();
-for (let i = 0; i <= 37; i++) {
+for (let i = 0; i <= 38; i++) {
 	_string_to_kind.set(kind_to_string(i as NodeKind), i as NodeKind);
 }
 

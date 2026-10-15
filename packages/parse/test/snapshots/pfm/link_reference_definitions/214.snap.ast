@@ -1,4 +1,5 @@
 root
+  definition label="foo" href="/url"
   line_break
   heading depth=1 "[Foo][]"
     link href="/url"

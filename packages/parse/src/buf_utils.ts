@@ -85,6 +85,11 @@ export interface FootnoteIndex {
 	references: Map<number, number>;
 	/** in document order, the references of the body before those inside definitions */
 	problems: FootnoteProblem[];
+	/**
+	 * the id each footnote id is given in its place, by that id, when a
+	 * heading was given it first, see HeadingIds, unset or null for none
+	 */
+	moved?: Map<string, string> | null;
 }
 
 /** the id of the definition of a footnote, by its label so a link to it survives a renumbering */

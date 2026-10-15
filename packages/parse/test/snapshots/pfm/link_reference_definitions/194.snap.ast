@@ -1,4 +1,5 @@
 root
+  definition label="Foo*bar\\]" href="my_(url)" title="title (with parens)"
   line_break
   paragraph
     link href="my_(url)" title="title (with parens)"

@@ -10,6 +10,7 @@ import { describe, expect, test } from 'vitest';
 import {
 	expect_parity,
 	PATHS,
+	run_wire,
 } from '../../../packages/parse/test/plugin_harness';
 
 type Options = Parameters<typeof compile>[1];
@@ -413,35 +414,31 @@ describe('the ::toc directive', () => {
 		);
 	}
 
-	/** the headings arg the component is given, parsed back */
-	function listed(source: string, plugins: Bundle[] = [toc()]): unknown {
-		const match = /headings=\{("(?:[^"\\]|\\.)*")\}/.exec(
-			body(source, plugins)
-		);
-		return match === null ? undefined : JSON.parse(JSON.parse(match[1]));
-	}
-
 	test('its component is imported from the package', () => {
 		expect(run('::toc\n\n## One\n').code).toMatch(
-			/^<script>\nimport \{ toc as Toc_MDSVEX_D_G \} from '@mdsvex\/plugin-toc\/directives';\n<\/script>/
+			/^<script>\nimport \{ toc as Toc_MDSVEX_D_G \} from '@mdsvex\/plugin-toc\/directives';\n/
 		);
 	});
 
-	test('it gets the headings written after it as json', () => {
-		expect(body('::toc\n\n## One\n\n### Two\n')).toBe(
-			'<Toc_MDSVEX_D_G headings={"[{\\"depth\\":2,\\"id\\":\\"one\\",\\"text\\":\\"One\\"},{\\"depth\\":3,\\"id\\":\\"two\\",\\"text\\":\\"Two\\"}]"} />' +
-				'<h2 id="one">One</h2><h3 id="two">Two</h3>'
+	test('its component reads the headings from the data of the document', () => {
+		const source = '::toc\n\n## One\n\n### Two\n';
+		expect(body(source)).toBe(
+			'<Toc_MDSVEX_D_G /><h2 id="one">One</h2><h3 id="two">Two</h3>'
+		);
+		expect(run(source).code).toContain(
+			"set_context_MDSVEX(Symbol.for('mdsvex.plugin_data'), { current: plugin_data });"
 		);
 	});
 
-	test('before, between and after the headings it lists the same', () => {
-		const all = [
-			{ depth: 2, id: 'one', text: 'One' },
-			{ depth: 2, id: 'two', text: 'Two' },
-		];
-		expect(listed('::toc\n\n## One\n\n## Two\n')).toEqual(all);
-		expect(listed('## One\n\n::toc\n\n## Two\n')).toEqual(all);
-		expect(listed('## One\n\n## Two\n\n::toc\n')).toEqual(all);
+	test('before, between and after the headings it is the same', () => {
+		for (const source of [
+			'::toc\n\n## One\n\n## Two\n',
+			'## One\n\n::toc\n\n## Two\n',
+			'## One\n\n## Two\n\n::toc\n',
+		]) {
+			expect(entries(source)).toEqual(['2 one One', '2 two Two']);
+			expect(body(source)).toContain('<Toc_MDSVEX_D_G />');
+		}
 	});
 
 	test('its brackets are the label of the list', () => {
@@ -454,18 +451,14 @@ describe('the ::toc directive', () => {
 		const source =
 			'::toc(max_depth=2)\n\n::toc(min_depth=3)\n\n## One\n\n### Two\n';
 		const code = body(source);
-		expect(code).toContain(
-			'<Toc_MDSVEX_D_G max_depth="2" headings={"[{\\"depth\\":2,\\"id\\":\\"one\\",\\"text\\":\\"One\\"}]"} />'
-		);
-		expect(code).toContain(
-			'<Toc_MDSVEX_D_G min_depth="3" headings={"[{\\"depth\\":3,\\"id\\":\\"two\\",\\"text\\":\\"Two\\"}]"} />'
-		);
+		expect(code).toContain('<Toc_MDSVEX_D_G max_depth="2" />');
+		expect(code).toContain('<Toc_MDSVEX_D_G min_depth="3" />');
 		expect(entries(source)).toEqual(['2 one One', '3 two Two']);
 	});
 
 	test('a depth arg that is no depth is reported and ignored', () => {
 		const source = '::toc(max_depth=two)\n\n## One\n';
-		expect(listed(source)).toEqual([{ depth: 2, id: 'one', text: 'One' }]);
+		expect(body(source)).toContain('<Toc_MDSVEX_D_G max_depth="two" />');
 		expect(run(source).warnings).toEqual([
 			{
 				plugin: 'toc',
@@ -479,7 +472,7 @@ describe('the ::toc directive', () => {
 
 	test('other args reach the component as they are', () => {
 		expect(body('::toc(class=side)\n\n## One\n')).toContain(
-			'<Toc_MDSVEX_D_G class="side" headings='
+			'<Toc_MDSVEX_D_G class="side" />'
 		);
 	});
 
@@ -490,14 +483,14 @@ describe('the ::toc directive', () => {
 			'# Title\n\n::toc\n',
 			'## One\n\n::toc(min_depth=3)\n',
 		]) {
-			expect(body(source)).toContain('headings="[]"');
+			expect(body(source)).toMatch(/<Toc_MDSVEX_D_G( min_depth="3")? \/>/);
 			expect(codes(source)).toEqual(['no_headings']);
 		}
 	});
 
 	test('a heading left out is not listed', () => {
-		expect(listed('::toc\n\n## One\n\n## Two <!-- no-toc -->\n')).toEqual([
-			{ depth: 2, id: 'one', text: 'One' },
+		expect(entries('::toc\n\n## One\n\n## Two <!-- no-toc -->\n')).toEqual([
+			'2 one One',
 		]);
 	});
 
@@ -522,14 +515,15 @@ describe('the ::toc directive', () => {
 
 	test('inside steps and tabs it still lists the whole document', () => {
 		const source = ':::steps\n## One\n\n::toc\n\n## Two\n:::\n\n## Three\n';
-		expect(listed(source, [steps(), toc()])).toEqual([
-			{ depth: 2, id: 'one', text: 'One' },
-			{ depth: 2, id: 'two', text: 'Two' },
-			{ depth: 2, id: 'three', text: 'Three' },
+		expect(entries(source, [steps(), toc()])).toEqual([
+			'2 one One',
+			'2 two Two',
+			'2 three Three',
 		]);
-		expect(
-			listed(':::tabs\n### A\n\n::toc\n:::\n\n## After\n', [tabs(), toc()])
-		).toEqual([{ depth: 2, id: 'after', text: 'After' }]);
+		expect(codes(source, [steps(), toc()])).toEqual([]);
+		const tabbed = ':::tabs\n### A\n\n::toc\n:::\n\n## After\n';
+		expect(entries(tabbed, [tabs(), toc()])).toEqual(['2 after After']);
+		expect(codes(tabbed, [tabs(), toc()])).toEqual([]);
 	});
 });
 
@@ -662,7 +656,9 @@ describe('every parser path', () => {
 		let first: { entries: string[]; codes: string[] } | undefined;
 		let positions: unknown;
 		for (const [name, path] of PATHS) {
-			const { dispatcher } = path(source, setup());
+			const { dispatcher, nodes } = path(source, setup());
+			// a host runs the document hooks once the parse is done
+			dispatcher!.finish(nodes);
 			const headings: TocHeading[] = dispatcher!.data()?.toc?.headings ?? [];
 			const found = {
 				entries: headings.map(
@@ -704,20 +700,33 @@ describe('every parser path', () => {
 		});
 	});
 
-	test('the directive is given its list and keeps no helper node', () => {
+	test('fed over the wire the list grows as each heading closes', () => {
+		const source = '::toc\n\n## One\n\ntext\n\n### Two\n\n## Three\n';
+		const lengths: number[] = [];
+		const { plugins, directive_handlers } = setup();
+		run_wire(
+			source,
+			{
+				plugins,
+				directive_handlers,
+				on_data: ({ plugin, key, value }) => {
+					if (plugin === 'toc' && key === 'headings')
+						lengths.push((value as unknown[]).length);
+				},
+			},
+			1
+		);
+		expect(lengths).toEqual([1, 2, 3]);
+	});
+
+	test('the directive is left as written', () => {
 		expect(tree('::toc[Contents]\n\n## One\n\n### Two\n')).toEqual([
 			'root',
-			[
-				'directive_leaf name="toc" args={"headings":"[{\\"depth\\":2,\\"id\\":\\"one\\",\\"text\\":\\"One\\"},{\\"depth\\":3,\\"id\\":\\"two\\",\\"text\\":\\"Two\\"}]"}',
-				['directive_label', 'text:Contents'],
-			],
+			['directive_leaf name="toc"', ['directive_label', 'text:Contents']],
 			['heading', 'text:One'],
 			['heading', 'text:Two'],
 		]);
-		expect(tree('::toc\n')).toEqual([
-			'root',
-			'directive_leaf name="toc" args={"headings":"[]"}',
-		]);
+		expect(tree('::toc\n')).toEqual(['root', 'directive_leaf name="toc"']);
 	});
 
 	test('a heading that holds an unclosed delimiter', () => {
@@ -752,7 +761,8 @@ describe('every parser path', () => {
 			parsed('# T\n\n### Skips\n\n::toc(min_depth=6)\n\n:::toc\n:::\n')
 		).toEqual({
 			entries: ['3 skips Skips'],
-			codes: ['not_a_leaf', 'skipped_level', 'no_headings'],
+			// in document order, a list is checked once the document is whole
+			codes: ['skipped_level', 'not_a_leaf', 'no_headings'],
 		});
 	});
 });

@@ -9,3 +9,4 @@ root
     text "]"
   line_break
   line_break
+  definition label="*foo* bar" href="/url" title="title"
