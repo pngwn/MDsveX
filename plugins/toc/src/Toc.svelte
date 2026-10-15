@@ -1,4 +1,5 @@
 <script>
+	import { getContext } from 'svelte';
 	import { toc_tree } from './tree.js';
 
 	/**
@@ -24,10 +25,17 @@
 
 	const id = $props.id();
 
+	// what the plugin wrote, from a compiled document or a stream, current changes as headings arrive
+	/** @type {{ readonly current: { toc?: { headings?: import('./tree.js').TocHeading[] } } | undefined } | undefined} */
+	const data = getContext(Symbol.for('mdsvex.plugin_data'));
+
 	const tree = $derived.by(() => {
-		// the directive gives its headings as json, an arg is always a string
+		// an arg is always a string, so headings written in a directive are json
 		/** @type {import('./tree.js').TocHeading[]} */
-		const all = typeof headings === 'string' ? JSON.parse(headings) : (headings ?? []);
+		const all =
+			typeof headings === 'string'
+				? JSON.parse(headings)
+				: (headings ?? data?.current?.toc?.headings ?? []);
 		const min = Number(min_depth);
 		const max = Number(max_depth);
 		return toc_tree(all.filter((heading) => heading.depth >= min && heading.depth <= max));

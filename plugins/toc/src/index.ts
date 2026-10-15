@@ -135,27 +135,27 @@ function is_marked(node: NodeView): boolean {
 	return false;
 }
 
-/** headings sit at block level, a node that holds only inline content or none is not entered */
-function find(parent: NodeView, headings: NodeView[]): void {
+/** every ::toc leaf, they sit at block level, a node that holds only inline content is not entered */
+function lists_in(parent: NodeView, lists: NodeView[]): void {
 	for (let child = parent.first_child; child !== null; child = child.next) {
 		switch (child.type) {
-			case 'heading':
-				headings.push(child);
+			case 'directive_leaf':
+				if (child.attrs.name === NAME) lists.push(child);
 				break;
 			case 'text':
 			case 'line_break':
+			case 'heading':
 			case 'paragraph':
 			case 'code_fence':
 			case 'table':
 			case 'thematic_break':
 			case 'html_comment':
-			case 'directive_leaf':
 			case 'frontmatter':
 			case 'import_statement':
 				break;
 			// a block quote, a list, an element, a container and the wrappers plugins make
 			default:
-				find(child, headings);
+				lists_in(child, lists);
 		}
 	}
 }
@@ -167,119 +167,114 @@ function depth_arg(
 	list: NodeView,
 	ctx: PluginContext,
 	name: string,
-	fallback: number
+	fallback: number,
+	warn: boolean
 ): number {
 	const value = list.attrs.args?.[name];
 	if (value === undefined) return fallback;
 	if (DEPTH.test(value)) return Number(value);
-	ctx.warn(
-		'bad_depth',
-		`${name} of ::${NAME} must be a heading depth from 1 to 6, got ${JSON.stringify(value)}`,
-		list
-	);
+	if (warn)
+		ctx.warn(
+			'bad_depth',
+			`${name} of ::${NAME} must be a heading depth from 1 to 6, got ${JSON.stringify(value)}`,
+			list
+		);
 	return fallback;
 }
 
 const HAS_WORD = /[\p{L}\p{N}]/u;
 
-/**
- * every entry of the table, read once for a document, a sequential pass has
- * no hook for its end and a `::toc` lists the headings written after it
- */
-function headings_of(
-	from: NodeView,
+/** what the plugin keeps on the context of a document between headings */
+interface Seen {
+	/** the depth of the last heading that could be listed, 0 before the first */
+	before: number;
+	/** a heading had an id */
+	any_id: boolean;
+	/** a heading without one had words to make one from */
+	sluggable: boolean;
+}
+
+function seen_of(ctx: PluginContext): Seen {
+	return (ctx.toc_seen ??= { before: 0, any_id: false, sluggable: false });
+}
+
+/** the entry of a heading as it closes, when it is one the table lists */
+function close_heading(
+	node: NodeView,
 	ctx: PluginContext,
 	min: number,
 	max: number
-): TocHeading[] {
-	if (ctx.headings !== undefined) return ctx.headings;
-	let root = from;
-	for (let up = root.parent; up !== null; up = up.parent) root = up;
-	const found: NodeView[] = [];
-	find(root, found);
-
-	const headings: TocHeading[] = (ctx.headings = []);
-	const without_id: NodeView[] = [];
-	let any_id = false;
-	let sluggable = false;
-	let before = 0;
-	for (const node of found) {
-		const id = node.attrs.id;
-		const has_id = typeof id === 'string' && id !== '';
-		if (has_id) any_id = true;
-		if (is_marked(node)) continue;
-		const depth = node.depth!;
-		const last = before;
-		before = depth;
-		if (depth < min || depth > max) continue;
-		if (last !== 0 && depth > last + 1) {
-			ctx.warn(
-				'skipped_level',
-				`a level ${depth} heading follows a level ${last} heading, a level is skipped`,
-				node
-			);
-		}
-		const text = text_of(node).trim();
-		if (!has_id) {
-			without_id.push(node);
-			if (HAS_WORD.test(text)) sluggable = true;
-			continue;
-		}
-		const heading: TocHeading = { depth, id, text };
-		const position = node.position;
-		if (position !== undefined && position.end !== undefined) {
-			heading.position = {
-				start: { ...position.start },
-				end: { ...position.end },
-			};
-		}
-		headings.push(heading);
+): void {
+	// a plugin may have made it something else, a label of tabs say
+	if (node.type !== 'heading' || is_marked(node)) return;
+	const seen = seen_of(ctx);
+	const id = node.attrs.id;
+	const has_id = typeof id === 'string' && id !== '';
+	if (has_id) seen.any_id = true;
+	const depth = node.depth!;
+	const last = seen.before;
+	seen.before = depth;
+	if (depth < min || depth > max) return;
+	if (last !== 0 && depth > last + 1) {
+		ctx.warn(
+			'skipped_level',
+			`a level ${depth} heading follows a level ${last} heading, a level is skipped`,
+			node
+		);
 	}
+	const text = text_of(node).trim();
+	if (!has_id) {
+		if (HAS_WORD.test(text)) seen.sluggable = true;
+		ctx.warn(
+			'heading_without_id',
+			'a heading with no id is left out of the table of contents',
+			node
+		);
+		return;
+	}
+	const heading: TocHeading = { depth, id, text };
+	const position = node.position;
+	if (position !== undefined && position.end !== undefined) {
+		heading.position = {
+			start: { ...position.start },
+			end: { ...position.end },
+		};
+	}
+	ctx.add('headings', heading);
+}
 
+/** once the document is whole, the checks that need every heading */
+function finish(root: NodeView, ctx: PluginContext): void {
+	const seen = seen_of(ctx);
 	// the options of the compile are not passed to a plugin, so this is read off the tree
-	if (sluggable && !any_id) {
+	if (seen.sluggable && !seen.any_id) {
 		throw new TocError(
 			'heading_ids',
 			`no heading of ${ctx.filename ?? 'the document'} has an id, turn on the heading_ids option of mdsvex, this plugin makes no ids of its own`,
 			ctx.filename
 		);
 	}
-	for (const node of without_id) {
-		ctx.warn(
-			'heading_without_id',
-			'a heading with no id is left out of the table of contents',
-			node
-		);
+	const lists: NodeView[] = [];
+	lists_in(root, lists);
+	if (lists.length === 0) return;
+	const headings = (ctx.data.headings ?? []) as unknown as TocHeading[];
+	for (const list of lists) {
+		const min = depth_arg(list, ctx, 'min_depth', 1, false);
+		const max = depth_arg(list, ctx, 'max_depth', 6, false);
+		if (!headings.some(({ depth }) => depth >= min && depth <= max)) {
+			ctx.warn(
+				'no_headings',
+				`::${NAME} has no headings to list and renders nothing`,
+				list
+			);
+		}
 	}
-	if (headings.length > 0) ctx.set('headings', headings);
-	return headings;
-}
-
-/** gives a `::toc` its headings, the args of a directive are strings so its component reads json */
-function fill(
-	list: NodeView,
-	headings: TocHeading[],
-	ctx: PluginContext
-): void {
-	const min = depth_arg(list, ctx, 'min_depth', 1);
-	const max = depth_arg(list, ctx, 'max_depth', 6);
-	const listed = [];
-	for (const { depth, id, text } of headings) {
-		if (depth >= min && depth <= max) listed.push({ depth, id, text });
-	}
-	if (listed.length === 0) {
-		ctx.warn(
-			'no_headings',
-			`::${NAME} has no headings to list and renders nothing`,
-			list
-		);
-	}
-	list.attrs.args = { ...list.attrs.args, headings: JSON.stringify(listed) };
 }
 
 /**
  * a table of contents as data, the headings of a document in
- * `plugin_data.toc.headings`, and a `::toc` directive that lists them in place
+ * `plugin_data.toc.headings`, added as each heading arrives, and a `::toc`
+ * directive whose component lists them from that data
  *
  * the ids come from the `heading_ids` option of mdsvex, which has to be on
  *
@@ -297,7 +292,6 @@ export function toc(options: TocOptions = {}): Bundle {
 			`min_depth ${min} is deeper than max_depth ${max}`
 		);
 	}
-
 	return {
 		name: NAME,
 		module: `${PACKAGE}/directives`,
@@ -312,32 +306,19 @@ export function toc(options: TocOptions = {}): Bundle {
 						);
 						return;
 					}
-					// a sequential handler is never called for a directive a component takes, it is for this node
-					node.append('html_comment');
+					// a block directive has its args by now
+					depth_arg(node, ctx, 'min_depth', 1, true);
+					depth_arg(node, ctx, 'max_depth', 6, true);
 				},
 			},
 		},
 		parse: {
-			// heading_ids sets the ids after the parse, a fused handler would read none
-			sequential: true,
 			heading: {
 				parse(node, ctx) {
-					headings_of(node, ctx, min, max);
+					return () => close_heading(node, ctx, min, max);
 				},
 			},
-			html_comment: {
-				parse(node, ctx) {
-					const list = node.parent;
-					if (
-						list === null ||
-						list.type !== 'directive_leaf' ||
-						list.attrs.name !== NAME
-					)
-						return;
-					node.remove();
-					fill(list, headings_of(list, ctx, min, max), ctx);
-				},
-			},
+			document: finish,
 		},
 	};
 }
