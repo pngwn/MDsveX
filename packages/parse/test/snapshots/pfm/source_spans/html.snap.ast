@@ -1,0 +1,49 @@
+root [0,242] value=[0,242]
+  html [0,34] value=[24,28] tag="div" class="a" id=[object Object]
+    text [24,28] value=[24,28] "text"
+  line_break [34,35]
+  line_break [35,36]
+  html [36,68] value=[45,58] tag="section"
+    line_break [45,46]
+    line_break [46,47]
+    heading [47,56] value=[49,56] depth=1 "Heading"
+      text [49,56] value=[49,56] "Heading"
+    line_break [56,57]
+    line_break [57,58]
+  line_break [68,69]
+  line_break [69,70]
+  html [70,75] value=[75,75] tag="br" self_closing=true
+  line_break [75,76]
+  line_break [76,77]
+  html [77,81] value=[81,81] tag="hr" self_closing=true
+  line_break [81,82]
+  line_break [82,83]
+  paragraph [83,134]
+    html [83,97] value=[89,90] tag="span"
+      text [89,90] value=[89,90] "x"
+    text [97,100] value=[97,100] " y "
+    html [100,113] value=[113,113] tag="img" src="a" self_closing=true
+    text [113,116] value=[113,116] " z "
+    html [116,134] value=[120,129] tag="em"
+      text [120,121] value=[120,121] "e"
+      html [121,129] value=[124,125] tag="b"
+        text [124,125] value=[124,125] "b"
+  line_break [134,135]
+  line_break [135,136]
+  html [136,154] value=[139,150] tag="p"
+    html [139,150] value=[142,150] tag="b"
+      text [142,150] value=[142,150] "implicit"
+  line_break [154,155]
+  line_break [155,156]
+  html [156,185] value=[172,177] tag="Chart" data=[object Object]
+    text [172,177] value=[172,177] "label"
+  line_break [185,186]
+  line_break [186,187]
+  html [187,216] value=[195,207] tag="script"
+  line_break [216,217]
+  line_break [217,218]
+  paragraph [218,241]
+    text [218,223] value=[218,223] "text "
+    text [223,229] value=[223,229] "<span>"
+    text [229,241] value=[229,241] "never closed"
+  line_break [241,242]

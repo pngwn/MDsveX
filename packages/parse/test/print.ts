@@ -43,16 +43,26 @@ const INFO_KEYS = new Set(['info_start', 'info_end']);
  *     heading depth=2 "Hello"
  *     paragraph
  *       text "world"
+ *
+ * With spans each node also shows its start and end, and its value range when set:
+ *   heading [0,8] value=[2,7] depth=2 "Hello"
  */
 export function print_ast(
 	nodes: NodeBuffer,
 	source: string,
 	index: number = 0,
-	depth: number = 0
+	depth: number = 0,
+	spans: boolean = false
 ): string {
 	const node = nodes.get_node(index);
 	const indent = '  '.repeat(depth);
 	const parts: string[] = [node.kind];
+	// the offsets a printer slices the source with, a value range of 0,0 is unset
+	if (spans) {
+		parts.push(`[${node.start},${node.end}]`);
+		const [vs, ve] = node.value;
+		if (vs !== 0 || ve !== 0) parts.push(`value=[${vs},${ve}]`);
+	}
 
 	// Collect metadata key=value pairs
 	const meta = node.metadata;
@@ -102,7 +112,7 @@ export function print_ast(
 
 	// Recurse into children
 	for (const child of node.children) {
-		lines.push(print_ast(nodes, source, child, depth + 1));
+		lines.push(print_ast(nodes, source, child, depth + 1, spans));
 	}
 
 	return lines.join('\n');

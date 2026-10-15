@@ -4472,6 +4472,13 @@ export class PFMParser {
 		this.chomp(open_tag.end, true);
 	}
 
+	/** an element with no close tag holds nothing, its open tag is all of it */
+	private html_leaf_value(html_id: number, end: number): void {
+		const out = this.out;
+		out.set_value_start(html_id, end);
+		out.set_value_end(html_id, end);
+	}
+
 	/**
 	 * try to parse an html opening tag starting at pos (the char after `<`).
 	 * returns null if not a valid tag.
@@ -5111,6 +5118,7 @@ export class PFMParser {
 			this.out.attr(html_id, 'tag', tag.tag);
 			if (tag.has_attrs) this.tag_attributes(html_id, tag);
 			this.out.attr(html_id, 'self_closing', true);
+			this.html_leaf_value(html_id, tag.end);
 			this.emit_close(html_id, tag.end);
 			this.chomp(tag.end, true);
 			return;
@@ -5136,6 +5144,7 @@ export class PFMParser {
 		const html_id = this.emit_open_pending(NodeKind.html, this.cursor, parent);
 		this.out.attr(html_id, 'tag', tag.tag);
 		if (tag.has_attrs) this.tag_attributes(html_id, tag);
+		this.out.set_value_start(html_id, tag.end);
 		this.html_tag_stack.push({ id: html_id, tag: tag.tag });
 		if (tag.lines) this.note_tag_end(tag.end);
 		this.node_stack.push(html_id);
@@ -5496,6 +5505,8 @@ export class PFMParser {
 			this.close_node_inside_html();
 		}
 		this.pending_remove(html_id);
+		// the close tag starts at the cursor, an element it closes on the way has none
+		this.out.set_value_end(html_id, this.cursor);
 		this.emit_close(html_id, end);
 		this.node_stack.pop();
 		while (this.states.length > 0) {
@@ -6167,9 +6178,10 @@ export class PFMParser {
 	 *
 	 * returns position after the definition on success, -1 if not a
 	 * definition, or -2 if more input is needed (incremental stall).
-	 * on success, stores the definition in this.ref_map.
+	 * on success, stores the definition in this.ref_map and emits its
+	 * node under parent.
 	 */
-	private try_parse_link_ref_definition(pos: number): number {
+	private try_parse_link_ref_definition(pos: number, parent: number): number {
 		// in a block quote or a list item a definition is one line, its lf stays for them
 		const lines = this.frames.length === 0;
 
@@ -6296,6 +6308,8 @@ export class PFMParser {
 		}
 
 		const url = string_slice.call(source, url_start - base, url_end - base);
+		// the node ends after its destination or title, not the spaces and linefeed after
+		let def_end = p;
 
 		// skip optional whitespace before title (no line break yet)
 		const pre_title_p = p;
@@ -6343,7 +6357,7 @@ export class PFMParser {
 						}
 						if (title_result) {
 							title = title_result.title;
-							p = title_result.end;
+							p = def_end = title_result.end;
 						} else {
 							// no title - position is after url, at the newline
 							p = nl_p;
@@ -6367,7 +6381,7 @@ export class PFMParser {
 					return -2; // need more input to complete title
 				} else if (title_result) {
 					title = title_result.title;
-					p = title_result.end;
+					p = def_end = title_result.end;
 				} else {
 					// invalid title - this makes the whole definition invalid
 					return -1;
@@ -6390,18 +6404,27 @@ export class PFMParser {
 			return -1;
 		if (p < length && lines) p++; // skip newline
 
+		const href = unescape_link(url);
+		const text = title === '' ? '' : unescape_link(title);
+
 		// store definition - first one wins
 		const normalized = normalize_label(label);
 		if (normalized) {
 			let refs = this.ref_map;
 			if (refs === NO_REFS) refs = this.ref_map = new Map();
 			if (!refs.has(normalized)) {
-				refs.set(normalized, {
-					url: unescape_link(url),
-					title: unescape_link(title),
-				});
+				refs.set(normalized, { url: href, title: text });
 			}
 		}
+
+		const id = this.emit_open(NodeKind.definition, label_start - 1, parent);
+		this.out.attr(id, 'label', label);
+		this.out.attr(id, 'href', href);
+		// a link only gets a title that is not empty, so a definition does too
+		if (text) this.out.attr(id, 'title', text);
+		this.out.set_value_start(id, label_start);
+		this.out.set_value_end(id, label_end);
+		this.emit_close(id, def_end);
 
 		return p;
 	}
@@ -7741,6 +7764,7 @@ export class PFMParser {
 								this.cursor,
 								current_node
 							);
+							this.out.set_value_start(link_id, this.cursor + 1);
 							this.node_stack.push(link_id);
 							this.states.push(StateKind.link_text);
 							this.link_text_start = this.cursor + 1;
@@ -7782,6 +7806,7 @@ export class PFMParser {
 									this.cursor,
 									current_node
 								);
+								this.out.set_value_start(img_id, this.cursor + 2);
 								this.node_stack.push(img_id);
 								this.states.push(StateKind.link_text);
 								this.link_text_start = this.cursor + 2;
@@ -7932,6 +7957,7 @@ export class PFMParser {
 									if (open_tag.has_attrs)
 										this.tag_attributes(html_id, open_tag);
 									this.out.attr(html_id, 'self_closing', true);
+									this.html_leaf_value(html_id, open_tag.end);
 									this.emit_close(html_id, open_tag.end);
 									this.chomp(open_tag.end, true);
 									this.states.pop();
@@ -7948,6 +7974,7 @@ export class PFMParser {
 									this.out.attr(html_id, 'tag', open_tag.tag);
 									if (open_tag.has_attrs)
 										this.tag_attributes(html_id, open_tag);
+									this.out.set_value_start(html_id, open_tag.end);
 									this.html_tag_stack.push({ id: html_id, tag: open_tag.tag });
 									if (open_tag.lines) this.note_tag_end(open_tag.end);
 									this.node_stack.push(html_id);
@@ -10154,6 +10181,7 @@ export class PFMParser {
 					// close this html element - commit the pending node
 					this.html_tag_stack.pop();
 					this.pending_remove(current_node);
+					this.out.set_value_end(current_node, this.cursor);
 					this.emit_close(current_node, close.end);
 					this.node_stack.pop();
 					this.states.pop();
@@ -10349,6 +10377,7 @@ export class PFMParser {
 			);
 			this.out.attr(html_id, 'tag', tag.tag);
 			if (tag.has_attrs) this.tag_attributes(html_id, tag);
+			this.out.set_value_start(html_id, tag.end);
 			this.html_tag_stack.push({ id: html_id, tag: tag.tag });
 			if (tag.lines) this.note_tag_end(tag.end);
 			this.node_stack.push(html_id);
@@ -10435,12 +10464,14 @@ export class PFMParser {
 					while (this.html_tag_stack.length > opener_idx + 1) {
 						const intermediate = this.html_tag_stack.pop()!;
 						if (!this.is_closed(intermediate.id)) {
+							this.out.set_value_end(intermediate.id, this.cursor);
 							this.emit_close(intermediate.id, this.cursor);
 						}
 					}
 					// close this html element - commit the pending node
 					this.html_tag_stack.pop();
 					this.pending_remove(current_node);
+					this.out.set_value_end(current_node, this.cursor);
 					this.emit_close(current_node, close.end);
 					this.html_block_depth--;
 					this.node_stack.pop();
@@ -11228,7 +11259,10 @@ export class PFMParser {
 						return 1;
 					}
 				}
-				const def_end = this.try_parse_link_ref_definition(this.cursor);
+				const def_end = this.try_parse_link_ref_definition(
+					this.cursor,
+					current_node
+				);
 				if (def_end === -2) return -1;
 				if (def_end >= 0) {
 					this.chomp(def_end, true);
@@ -12568,8 +12602,8 @@ export class PFMParser {
 			const id = this.node_stack[i];
 			if (done > 0 && !(id >= done)) continue;
 			if (!this.is_closed(id) && !this.pending_has(id)) {
-				this.out.set_value_end(id, length - 1);
-				this.emit_close(id, length - 1);
+				this.out.set_value_end(id, length);
+				this.emit_close(id, length);
 			}
 		}
 

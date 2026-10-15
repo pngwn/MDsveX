@@ -33,3 +33,5 @@ root
     text "]"
   line_break
   line_break
+  definition label="id" href="url/to/image.jpg" title="Optional title attribute"
+  definition label="My Image" href="url/to/image2.jpg" title="Optional title attribute"

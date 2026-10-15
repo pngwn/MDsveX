@@ -1,4 +1,5 @@
 root
+  definition label="foo" href="/url\\bar*baz" title="foo\"bar\\baz"
   line_break
   paragraph
     link href="/url\\bar*baz" title="foo\"bar\\baz"

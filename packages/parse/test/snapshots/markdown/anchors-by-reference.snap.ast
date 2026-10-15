@@ -26,3 +26,7 @@ root
     text "] reference-style link."
   line_break
   line_break
+  definition label="id" href="http://example.com/" title="Optional Title Here"
+  definition label="foo" href="http://example.com/" title="Optional Title Here"
+  definition label="bar" href="http://example.com/" title="Optional Title Here"
+  definition label="4" href="http://example.com/" title="Optional Title Here"

@@ -1,4 +1,7 @@
 root
+  definition label="foo" href="/foo-url" title="foo"
+  definition label="bar" href="/bar-url" title="bar"
+  definition label="baz" href="/baz-url"
   line_break
   paragraph
     link href="/foo-url" title="foo"

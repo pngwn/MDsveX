@@ -2,6 +2,9 @@ import { describe, expect, test } from 'vitest';
 
 import { every_path, lines } from './stream_shape';
 
+const DEFINED = (title: string): string =>
+	`  definition label="r" href="/u" title="${title}"`;
+
 const LINKED = (title: string): string[] => [
 	'  paragraph',
 	`    link href="/u" title="${title}"`,
@@ -57,19 +60,19 @@ describe('a definition title in parentheses', () => {
 
 	test('an escaped parenthesis is part of the title', () => {
 		expect(every_path('[r]: /u (t \\(u\\) v)\n\n[x][r]\n')).toBe(
-			lines('root', '  line_break', ...LINKED('t (u) v'))
+			lines('root', DEFINED('t (u) v'), '  line_break', ...LINKED('t (u) v'))
 		);
 	});
 
 	test('a title over two lines is read as before', () => {
 		expect(every_path('[r]: /u (t\nu)\n\n[x][r]\n')).toBe(
-			lines('root', '  line_break', ...LINKED('t\\nu'))
+			lines('root', DEFINED('t\\nu'), '  line_break', ...LINKED('t\\nu'))
 		);
 	});
 
 	test('a quoted title may hold a parenthesis', () => {
 		expect(every_path('[r]: /u "t (u"\n\n[x][r]\n')).toBe(
-			lines('root', '  line_break', ...LINKED('t (u'))
+			lines('root', DEFINED('t (u'), '  line_break', ...LINKED('t (u'))
 		);
 	});
 });

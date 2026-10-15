@@ -1,4 +1,5 @@
 root
+  definition label="r" href="/r.png" title="ref"
   line_break
   image src="/r.png" title="ref"
     text "a"

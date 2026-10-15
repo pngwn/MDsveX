@@ -2,6 +2,9 @@ import { describe, expect, test } from 'vitest';
 
 import { every_path, lines } from './stream_shape';
 
+const DEFINED = (title?: string): string =>
+	`  definition label="foo" href="/url"${title === undefined ? '' : ` title="${title}"`}`;
+
 const LINK = (title?: string): string[] => [
 	'  paragraph',
 	`    link href="/url"${title === undefined ? '' : ` title="${title}"`}`,
@@ -14,6 +17,7 @@ describe('a line after a definition that starts like a title', () => {
 		expect(every_path('[foo]: /url\n"title" ok\n\n[x][foo]\n')).toBe(
 			lines(
 				'root',
+				DEFINED(),
 				'  paragraph',
 				'    text "\\"title\\" ok"',
 				'  line_break',
@@ -27,6 +31,7 @@ describe('a line after a definition that starts like a title', () => {
 		expect(every_path("[foo]: /url\n'title' ok\n\n[x][foo]\n")).toBe(
 			lines(
 				'root',
+				DEFINED(),
 				'  paragraph',
 				'    text "\'title\' ok"',
 				'  line_break',
@@ -37,6 +42,7 @@ describe('a line after a definition that starts like a title', () => {
 		expect(every_path('[foo]: /url\n(title) ok\n\n[x][foo]\n')).toBe(
 			lines(
 				'root',
+				DEFINED(),
 				'  paragraph',
 				'    text "(title) ok"',
 				'  line_break',
@@ -50,6 +56,7 @@ describe('a line after a definition that starts like a title', () => {
 		expect(every_path('[foo]: /url\n"title\nmore" ok\n\n[x][foo]\n')).toBe(
 			lines(
 				'root',
+				DEFINED(),
 				'  paragraph',
 				'    text "\\"title"',
 				'    soft_break',
@@ -63,13 +70,13 @@ describe('a line after a definition that starts like a title', () => {
 
 	test('a title alone on the line is the title', () => {
 		expect(every_path('[foo]: /url\n"title"\n\n[x][foo]\n')).toBe(
-			lines('root', '  line_break', ...LINK('title'))
+			lines('root', DEFINED('title'), '  line_break', ...LINK('title'))
 		);
 	});
 
 	test('spaces after the title are not text', () => {
 		expect(every_path('[foo]: /url\n"title"  \n\n[x][foo]\n')).toBe(
-			lines('root', '  line_break', ...LINK('title'))
+			lines('root', DEFINED('title'), '  line_break', ...LINK('title'))
 		);
 	});
 
@@ -77,6 +84,7 @@ describe('a line after a definition that starts like a title', () => {
 		expect(every_path('[foo]: /url\n"title" [x][foo]')).toBe(
 			lines(
 				'root',
+				DEFINED(),
 				'  paragraph',
 				'    text "\\"title\\" "',
 				'    link href="/url"',

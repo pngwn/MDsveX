@@ -20,3 +20,5 @@ root
   line_break
   line_break
   line_break
+  definition label="Google" href="http://google.com/"
+  definition label="Daring Fireball" href="http://daringfireball.net/"

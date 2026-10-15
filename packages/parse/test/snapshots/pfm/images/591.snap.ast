@@ -4,3 +4,4 @@ root
     text "]"
   line_break
   line_break
+  definition label="foo" href="/url" title="title"

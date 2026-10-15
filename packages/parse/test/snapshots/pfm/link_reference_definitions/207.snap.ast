@@ -1,1 +1,2 @@
 root
+  definition label="foo" href="/url"

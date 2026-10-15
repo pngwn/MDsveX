@@ -1,5 +1,5 @@
 import { ParseStallError, parse_markdown_svelte } from '../src/main';
-import type { NodeBuffer } from '../src/utils';
+import { type NodeBuffer, is_raw_text_tag } from '../src/utils';
 import { contained, pieces_of, smaller, spaced } from './grammar';
 import type { Container, Level, Piece, Seen } from './grammar';
 import {
@@ -327,7 +327,12 @@ function words_of(nodes: NodeBuffer, source: string): [string, string] {
 		}
 		const stored = nodes._strings[index];
 		const [start, end] = n.value;
-		if (n.kind === 'text' || VALUES.has(n.kind) || n.kind === 'html') {
+		// the value of an element is what is between its tags, text only in a raw text element
+		if (
+			n.kind === 'text' ||
+			VALUES.has(n.kind) ||
+			(n.kind === 'html' && is_raw_text_tag(n.metadata.tag))
+		) {
 			if (stored !== undefined) text += ` ${stored}`;
 			else if (start !== NONE && end !== NONE && end > start) {
 				text += ` ${source.slice(start, end)}`;

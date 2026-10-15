@@ -232,7 +232,11 @@ export class HeadingIds {
 				const id = meta?.attributes?.id;
 				if (typeof id === 'string' && is_heading_tag.test(meta.tag))
 					this.fix(buf, id, i);
-			} else if (kind >= NodeKind.footnote_reference) this.footnotes = true;
+			} else if (
+				kind === NodeKind.footnote_reference ||
+				kind === NodeKind.footnote_definition
+			)
+				this.footnotes = true;
 		}
 		this.scanned = size;
 	}
