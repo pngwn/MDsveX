@@ -200,6 +200,16 @@ const { code, data } = await compile_async(source, { plugins: [citations()] });
 
 A document whose plugins defer nothing compiles exactly as it does with `compile`. A task that fails rejects with a `PluginTaskError` that names the plugin and the line of the node, with the task's error as its `cause`.
 
+Given `read` and `resolve` options, `compile_async` reads the files fences show with `src=` itself, resolved from `filename`, so a host that is not Vite needs no `sources`. The result's `dependencies` then name those files and the module of the template, beside what plugins read, for the host to watch:
+
+```js
+const { code, dependencies } = await compile_async(source, {
+	filename: '/site/post.svx',
+	read: (path) => fs.readFile(path, 'utf8'),
+	resolve: (specifier, from) => path.resolve(path.dirname(from), specifier)
+});
+```
+
 #### Compiling in steps
 
 A host that is not Vite, such as a playground or another bundler, compiles in steps so it can fetch what a document needs between them. This is what the Vite plugin does:
