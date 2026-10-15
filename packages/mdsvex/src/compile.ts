@@ -2746,12 +2746,19 @@ async function settle_plugins(
  * result as compile once that work applied, a document whose plugins defer
  * nothing compiles as compile does, safe in a browser
  *
+ * session holds what ctx.cached loads, a host that watches passes its own and
+ * calls its invalidate when a dependency changes, without one the loads are
+ * kept for as long as the plugins array is
+ *
  * @example
  * const { code, data } = await compile_async(source, { plugins: [citations()] });
+ * session.invalidate(changed);
+ * await compile_async(source, options, session);
  */
 export async function compile_async(
 	source: string,
-	options?: CompileOptions
+	options?: CompileOptions,
+	session?: CompilerSession
 ): Promise<CompileResult> {
 	if (
 		options === undefined ||
@@ -2759,7 +2766,7 @@ export async function compile_async(
 			(options.read === undefined || options.resolve === undefined))
 	)
 		return render(source, options);
-	const session = async_session(options);
+	session ??= async_session(options);
 	const inputs = inputs_of(options);
 	const parsed = session.parse(source, inputs);
 	let read: string[] | undefined;
