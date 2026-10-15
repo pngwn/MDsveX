@@ -14,8 +14,8 @@ export interface HeadContext {
 }
 
 /**
- * what follows the keyword in the head of a block branch, formatted on one
- * line, undefined to keep the head as it is written
+ * what follows the keyword in the head of a block branch or a const tag,
+ * formatted on one line, undefined to keep it as it is written
  */
 export async function head(
 	tag: string,
@@ -37,6 +37,8 @@ export async function head(
 				return await pattern(source, context);
 			case 'snippet':
 				return await snippet(source, context);
+			case 'const':
+				return await declaration(source, context);
 		}
 	} catch {
 		// a part that does not parse keeps the head as written
@@ -90,6 +92,17 @@ async function await_head(
 	const binding = source.slice(at + word.length).trim();
 	if (binding === '') return `${promise} ${word}`;
 	return `${promise} ${word} ${await pattern(binding, context)}`;
+}
+
+/** the declaration of a const tag, `total = a + b`, typed in a typescript document */
+async function declaration(
+	source: string,
+	context: HeadContext
+): Promise<string> {
+	return unwrap(
+		await one_line(`const ${source};`, js(context), context),
+		/^const (.*);$/
+	);
 }
 
 /** `name(params)`, typed in a typescript document */

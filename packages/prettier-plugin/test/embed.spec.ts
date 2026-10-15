@@ -130,8 +130,30 @@ describe('expressions', () => {
 		);
 	});
 
-	test('a const tag is kept', async () => {
-		expect(await svx('{@const  a=1}\n')).toBe('{@const  a=1}\n');
+	test('a const tag', async () => {
+		expect(await svx('{@const  total=a+b}\n')).toBe('{@const total = a + b}\n');
+		expect(await svx('{@const {x,y}=point}\n')).toBe(
+			'{@const { x, y } = point}\n'
+		);
+	});
+
+	test('a typed const tag in a typescript document', async () => {
+		expect(
+			await svx('<script lang="ts">\n</script>\n\n{@const  n:number=1}\n')
+		).toBe('<script lang="ts"></script>\n\n{@const n: number = 1}\n');
+	});
+
+	test('a const tag inside a block', async () => {
+		expect(
+			await svx(
+				'{#each items as item}\n\n{@const  name=item.name}\n\n{/each}\n'
+			)
+		).toBe('{#each items as item}\n\n{@const name = item.name}\n\n{/each}\n');
+	});
+
+	test('a const tag that does not parse is kept', async () => {
+		const sources = ['{@const  = 1}\n', '{@const  a = 1, b = 2;; }\n'];
+		for (const source of sources) expect(await svx(source)).toBe(source);
 	});
 });
 

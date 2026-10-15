@@ -82,6 +82,7 @@ export function embed(
 
 		case 'svelte_tag': {
 			const tag = node.meta?.tag;
+			if (tag === 'const') return const_tag(path, text);
 			if (tag !== 'html' && tag !== 'render') return;
 			return expression(path, text, `{@${tag} `, '}');
 		}
@@ -164,6 +165,18 @@ function expression(
 		if (multiline) return [open, code, close];
 		const line = removeLines(code);
 		return willBreak(line) ? undefined : [open, line, close];
+	};
+}
+
+/** a const tag, its declaration on one line */
+function const_tag(path: AstPath<SvxNode>, text: string): Embedded | undefined {
+	const node = path.node;
+	const source = text.slice(node.value_start, node.value_end);
+	if (source.trim() === '') return;
+	const ts = root_of(path).ts;
+	return async (text_to_doc, _print, _path, options) => {
+		const inside = await head('const', source, { text_to_doc, options, ts });
+		return inside === undefined ? undefined : `{@const ${inside}}`;
 	};
 }
 

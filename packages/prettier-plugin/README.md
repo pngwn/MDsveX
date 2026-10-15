@@ -27,11 +27,11 @@ Today it:
 - folds the spaces after a list marker to one, moves a nested list to the content column of its item and a list at the top to the left edge, what an item holds moves with it
 - puts a space after a `>` that has text straight after it
 - formats the yaml frontmatter, the imports at the top, `<script>` (TypeScript with `lang="ts"`) and `<style>` (css, scss or less)
-- formats `{expressions}`, `{@html}` and `{@render}` tags, an expression in prose stays on one line
+- formats `{expressions}`, `{@html}` and `{@render}` tags, an expression in prose stays on one line, and the declaration of a `{@const}` tag on one line
 - tidies open tags: the spaces between attributes fold to one and each `{expression}`, spread and `{@attach}` is formatted on one line, the tag keeps its line breaks, quotes and the order of its attributes
 - formats the heads of blocks on one line: `{#if}`, `{:else if}`, `{#key}`, `{#each}` with its binding, index and key, `{#await}`, `{:then}`, `{:catch}` and `{#snippet}` with its parameters
 
-The formatting of the code follows your Prettier options, `singleQuote`, `semi`, `useTabs` and the rest. A part that does not parse is left as it is, so is `<pre>`, an expression over several lines in an attribute and a `{@const}` tag.
+The formatting of the code follows your Prettier options, `singleQuote`, `semi`, `useTabs` and the rest. A part that does not parse is left as it is, so is `<pre>`, an expression over several lines in an attribute and a `{@debug}` tag.
 
 ## Frontmatter
 

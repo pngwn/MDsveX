@@ -83,6 +83,7 @@ function meaning(node: SvxNode, source: string): string | undefined {
 		case 'mustache':
 			return expression(value());
 		case 'svelte_tag':
+			if (node.meta?.tag === 'const') return program(`const ${value()};`);
 			return node.meta?.tag === 'html' || node.meta?.tag === 'render'
 				? expression(value())
 				: raw(source.slice(node.start, node.end));
