@@ -18,6 +18,10 @@ import {
 } from '../src/main';
 import type { Bundle } from '../src/main';
 
+/** the instance script that gives the plugin data to the components of a document */
+const DATA_CONTEXT =
+	"<script>\nimport { setContext as set_context_MDSVEX } from 'svelte';\nset_context_MDSVEX(Symbol.for('mdsvex.plugin_data'), { current: plugin_data });\n</script>";
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 /** a label for each heading from a lookup that takes a while, and a list of what it found */
@@ -47,7 +51,8 @@ describe('compile_async', () => {
 	test('waits for what plugins deferred, then renders', async () => {
 		const { code, data } = await compile_async(DOC, { plugins: [labels()] });
 		expect(code).toBe(
-			'<script module>\nexport const plugin_data = {"labels":{"found":["One","Two"]}};\n</script>' +
+			DATA_CONTEXT +
+				'<script module>\nexport const plugin_data = {"labels":{"found":["One","Two"]}};\n</script>' +
 				'<h1 title="label One">One</h1><h2 title="label Two">Two</h2>'
 		);
 		expect(data).toEqual({ labels: { found: ['One', 'Two'] } });

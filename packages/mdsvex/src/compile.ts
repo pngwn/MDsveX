@@ -1202,6 +1202,8 @@ class PluginHost {
 		const wrapper = renderer.template;
 		try {
 			this.exported = plugin_data_export(data);
+			// what a component reads the data from, as Node.svelte gives it while streaming
+			add_lines(renderer, DATA_CONTEXT);
 			if (wrapper === undefined) return;
 			if (metadata !== undefined && has_own.call(metadata, PLUGIN_DATA_EXPORT))
 				throw frontmatter_error(
@@ -1658,7 +1660,7 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 	}
 	// give_renderer clears these, a throw drops the renderer
 	if (images !== null) {
-		renderer.imports = images.lines;
+		add_lines(renderer, images.lines);
 		renderer.urls = images.lookup;
 	}
 	if (fenced !== null) {
@@ -1748,12 +1750,28 @@ function give_fences(
 	if (fenced.runs !== -1 && renderer.scope?.get('pre') === undefined)
 		throw pre_error(filename, source, fenced.runs);
 	renderer.fences = fenced.fences;
-	const lines = fenced.lines;
+	add_lines(renderer, fenced.lines);
+}
+
+/** lines for the instance script of the next render, after those it has */
+function add_lines(
+	renderer: CursorHTMLRenderer,
+	lines: readonly string[] | undefined
+): void {
 	if (lines === undefined) return;
 	const before = renderer.imports;
 	renderer.imports =
 		before === undefined || before.length === 0 ? lines : before.concat(lines);
 }
+
+/**
+ * a document with plugin data gives it to its components in the context, under
+ * the key @mdsvex/render/stream reads, current is the data and never changes
+ */
+const DATA_CONTEXT: readonly string[] = [
+	"import { setContext as set_context_MDSVEX } from 'svelte';",
+	`set_context_MDSVEX(Symbol.for('mdsvex.plugin_data'), { current: ${PLUGIN_DATA_EXPORT} });`,
+];
 
 /** true when handlers of a plugin may run, which keeps a document off a shared session */
 function has_plugins(options: CompileOptions): boolean {
@@ -2524,7 +2542,7 @@ export class CompilerSession {
 			| CompileTraceResult
 			| TraceTarget;
 		if (swaps !== null) {
-			renderer.imports = swaps.lines;
+			add_lines(renderer, swaps.lines);
 			renderer.urls = swaps.lookup;
 		}
 		const smart = inputs.smart_punctuation;
@@ -2626,6 +2644,8 @@ export class CompilerSession {
 				renderer.fences = undefined;
 				renderer.imports = undefined;
 			}
+			// share gave the lines of the data context
+			if (host !== null) renderer.imports = undefined;
 			if (smart !== undefined) renderer.smart_punctuation = undefined;
 			if (notes !== null) renderer.footnotes = undefined;
 		}

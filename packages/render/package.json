@@ -38,6 +38,10 @@
 			"types": "./dist/sourcemap.d.ts",
 			"import": "./dist/sourcemap.js"
 		},
+		"./stream": {
+			"types": "./dist/stream.d.ts",
+			"import": "./dist/stream.js"
+		},
 		"./Node.svelte": {
 			"types": "./src/Node.svelte",
 			"svelte": "./src/Node.svelte",
@@ -45,7 +49,7 @@
 		}
 	},
 	"peerDependencies": {
-		"svelte": "^5.0.0"
+		"svelte": "^5.7.0"
 	},
 	"peerDependenciesMeta": {
 		"svelte": {

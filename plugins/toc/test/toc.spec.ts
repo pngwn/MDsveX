@@ -423,7 +423,7 @@ describe('the ::toc directive', () => {
 
 	test('its component is imported from the package', () => {
 		expect(run('::toc\n\n## One\n').code).toMatch(
-			/^<script>\nimport \{ toc as Toc_MDSVEX_D_G \} from '@mdsvex\/plugin-toc\/directives';\n<\/script>/
+			/^<script>\nimport \{ toc as Toc_MDSVEX_D_G \} from '@mdsvex\/plugin-toc\/directives';\n/
 		);
 	});
 

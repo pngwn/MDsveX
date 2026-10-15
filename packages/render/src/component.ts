@@ -22,6 +22,17 @@ import type { NodeBuffer } from '@mdsvex/parse/utils';
 const NONE = 0xffffffff;
 const K_LINE_BREAK = 6;
 
+/** the child of the root that holds a node, NONE for a node out of the tree */
+export function top_block(buf: NodeBuffer, node: number): number {
+	if (node === 0) return NONE;
+	for (;;) {
+		const parent = buf.parent_at(node);
+		if (parent === 0) return node;
+		if (parent === NONE) return NONE;
+		node = parent;
+	}
+}
+
 //  block entry
 
 export interface ComponentBlock {
@@ -77,6 +88,18 @@ export class ComponentRenderer {
 		}
 
 		return changed ? (this.blocks = [...this.blocks]) : this.blocks;
+	}
+
+	/**
+	 * the nodes changed after their block closed, as the node of a deferred
+	 * task that applied does, apply_ready gives them, each block that holds
+	 * one renders again at the next update
+	 */
+	invalidate(buf: NodeBuffer, nodes: readonly number[]): void {
+		for (let i = 0; i < nodes.length; i++) {
+			const block = top_block(buf, nodes[i]);
+			if (block !== NONE) this.closed.delete(block);
+		}
 	}
 
 	reset(): void {

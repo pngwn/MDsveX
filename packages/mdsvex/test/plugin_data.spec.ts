@@ -11,6 +11,10 @@ import type { Bundle, CompileOptions, Json } from '../src/main';
 import { reading_time } from './reading_time_plugin';
 import { toc } from './toc_plugin';
 
+/** the instance script that gives the plugin data to the components of a document */
+const DATA_CONTEXT =
+	"<script>\nimport { setContext as set_context_MDSVEX } from 'svelte';\nset_context_MDSVEX(Symbol.for('mdsvex.plugin_data'), { current: plugin_data });\n</script>";
+
 const POST = '---\ntitle: Post\n---\n\n# One\n\nSome words here.\n\n## Two\n';
 const TOC =
 	'{"headings":[{"depth":1,"text":"One","id":"one"},{"depth":2,"text":"Two","id":"two"}]}';
@@ -35,7 +39,8 @@ describe('the plugin_data export', () => {
 	test('follows the metadata export in the module script', () => {
 		const { code, data } = compile(POST, options);
 		expect(code).toBe(
-			'<script module>\nexport const metadata = {"title":"Post"};\n' +
+			DATA_CONTEXT +
+				'<script module>\nexport const metadata = {"title":"Post"};\n' +
 				`export const plugin_data = {"toc":${TOC}};\n</script>` +
 				'<h1 id="one">One</h1><p>Some words here.</p><h2 id="two">Two</h2>'
 		);
@@ -45,7 +50,8 @@ describe('the plugin_data export', () => {
 	test('a document without frontmatter gets a module script for it', () => {
 		const { code } = compile('# One\n', options);
 		expect(code).toBe(
-			'<script module>\nexport const plugin_data = {"toc":{"headings":[{"depth":1,"text":"One","id":"one"}]}};\n</script>' +
+			DATA_CONTEXT +
+				'<script module>\nexport const plugin_data = {"toc":{"headings":[{"depth":1,"text":"One","id":"one"}]}};\n</script>' +
 				'<h1 id="one">One</h1>'
 		);
 	});
@@ -56,7 +62,8 @@ describe('the plugin_data export', () => {
 			options
 		);
 		expect(code).toBe(
-			'<script module>\nexport const plugin_data = {"toc":{"headings":[{"depth":1,"text":"One","id":"one"}]}};\n' +
+			DATA_CONTEXT +
+				'<script module>\nexport const plugin_data = {"toc":{"headings":[{"depth":1,"text":"One","id":"one"}]}};\n' +
 				'\n\texport const a = 1;\n</script><h1 id="one">One</h1>'
 		);
 	});
