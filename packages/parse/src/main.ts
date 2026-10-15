@@ -59,8 +59,10 @@ export type {
 	PluginData,
 	PluginDocument,
 	PluginWarning,
+	TaskContext,
 } from './plugin_types';
 export { PluginDataError } from './plugin_data';
+export { PluginAsyncError, PluginTaskError } from './plugin_tasks';
 export type { NodeView, WrapperView, Point, Position } from './node_view';
 export { NodeKind, NodeBuffer, take_src } from './utils';
 export { PluginDispatcher, has_directive_handlers } from './plugin_dispatch';

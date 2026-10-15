@@ -329,6 +329,9 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	// a document that shows a file with src= stops after its parse, the
 	// plugin reads the file and the document renders with it
 	inputs.await_sources = true;
+	// a document whose plugins defer work stops after its parse too, the
+	// plugin waits for that work in the same gap and then renders it
+	inputs.await_plugins = true;
 	const shown = source_files();
 	const fetched = new WeakMap<Parsed, Record<string, string>>();
 	// a fence marked run is a module, a fake sibling of its document, which
@@ -515,8 +518,15 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 					undefined
 				);
 			const parsed = compiler.parse(raw, parsing_inputs(file));
-			compiler.drop(parsed);
-			return data_module(parsed.metadata, parsed.data);
+			const settled = compiler.settle(parsed);
+			if (settled === undefined) {
+				compiler.drop(parsed);
+				return data_module(parsed.metadata, parsed.data);
+			}
+			// what the plugins deferred is in the data, nothing renders
+			return settled
+				.then(() => data_module(parsed.metadata, parsed.data))
+				.finally(() => compiler.drop(parsed));
 		},
 	});
 	let dev: MetadataDev | null = null;
@@ -685,9 +695,10 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 
 	/**
 	 * for a document that stopped after its parse, called straight after its
-	 * compile, resolves each file its fences show as an import from the
-	 * document would, reads it, and renders the document with the text, a
-	 * document with math first loads the renderer it would meet unloaded
+	 * compile, waits for what its plugins deferred, resolves each file its
+	 * fences show as an import from the document would, reads it, and renders
+	 * the document with the text, a document with math first loads the
+	 * renderer it would meet unloaded
 	 */
 	async function show_sources(
 		ctx: Rollup.TransformPluginContext,
@@ -697,12 +708,29 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		const doc = stored.get(id)!;
 		const parsed = doc.waiting!;
 		doc.waiting = undefined;
+		const settled = compiler.settle(parsed);
+		if (settled !== undefined) {
+			try {
+				await settled;
+			} catch (e) {
+				compiler.drop(parsed);
+				throw e;
+			}
+		}
+		const needs = parsed.needs;
+		// it waited for its plugins alone
+		if (needs === undefined || !needs.some((need) => need.type === 'source')) {
+			if (!shown.empty) shown.drop(clean_id(id));
+			if (parsed.math && inputs.math === math_pending)
+				return load_math(() => again(parsed));
+			return again(parsed);
+		}
 		const file = clean_id(id);
 		const fs = await import('node:fs/promises');
 		const sources: Record<string, string> = {};
 		const files: string[] = [];
 		await Promise.all(
-			parsed.needs!.map(async (need) => {
+			needs.map(async (need) => {
 				if (need.type !== 'source') return;
 				const resolved = await ctx.resolve(need.spec, file);
 				if (resolved === null || resolved.external)

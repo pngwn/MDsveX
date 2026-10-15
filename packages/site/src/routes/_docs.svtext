@@ -188,6 +188,47 @@ The output imports from those specifiers exactly as written.
 
 A directive with no component is an error. For a preview or an editor, pass `strict_directives: false` to render it as its children instead.
 
+#### `compile_async`
+
+A plugin that waits for something, a file or an endpoint, [defers](docs#deferred-work) that work, and `compile` throws a `PluginAsyncError` when one does. `compile_async` takes the same options, waits for that work, and gives the same result once it applied:
+
+```js
+import { compile_async } from 'mdsvex/compile';
+
+const { code, data } = await compile_async(source, { plugins: [citations()] });
+```
+
+A document whose plugins defer nothing compiles exactly as it does with `compile`. A task that fails rejects with a `PluginTaskError` that names the plugin and the line of the node, with the task's error as its `cause`.
+
+#### Compiling in steps
+
+A host that is not Vite, such as a playground or another bundler, compiles in steps so it can fetch what a document needs between them. This is what the Vite plugin does:
+
+```js
+import { CompilerSession, compile_inputs } from 'mdsvex/compile';
+
+const session = new CompilerSession();
+const inputs = compile_inputs(options); // the options compile takes
+const parsed = session.parse(source, inputs);
+
+// 1. what the plugins deferred, undefined when there is nothing to wait for
+await session.settle(parsed);
+
+// 2. what the document needs: the files its fences show with src=, and images
+for (const need of parsed.needs ?? []) {
+	if (need.type === 'source') sources[need.spec] = await read(need.spec);
+}
+inputs.sources = sources;
+
+// 3. the render, with the same result compile gives
+const { code, data } = session.render(parsed, inputs);
+```
+
+- **`parse`** runs the parser and the plugins. The `Parsed` it returns holds the document, its `metadata`, the `data` its plugins wrote so far and `needs`.
+- **`settle`** waits for deferred work and applies it, and returns `undefined` when there was none, so a document without any stays synchronous. A document whose plugins deferred work throws if it renders before.
+- **`render`** gives what `compile` gives. A `Parsed` renders once.
+- **The session compiles other documents while one waits.** Each `Parsed` holds its own document.
+
 ## Markdown
 
 mdsvex reads its own flavour of markdown, [Penguin-Flavoured Markdown][pfm]. It is CommonMark with the ambiguous parts taken out, the GFM additions most people use, and a few of its own. Most of a document reads as it does anywhere else. This section covers the rest.
@@ -711,10 +752,36 @@ const no_comments = {
 };
 ```
 
-- **Handlers are synchronous** and can't read files. A plugin can't add syntax either, only change the tree the parser made.
+- **Handlers are synchronous.** For work that waits, see [deferred work](docs#deferred-work) below. A plugin can't add syntax either, only change the tree the parser made.
 - **A plugin sees the text as written.** [`smart_punctuation`](docs#smart_punctuation) is applied when the page renders, after every handler.
 
 [`PLUGINS.md`][plugins-md] in the repository has the whole API, with what a revoke undoes and how handlers run over a stream.
+
+### Deferred work
+
+A handler can't wait for a file or a fetch. It starts that work with `ctx.defer(node, task)` and the parse goes on:
+
+```js
+const titles = {
+	name: 'titles',
+	parse: {
+		link: {
+			parse(node, ctx) {
+				return () =>
+					ctx.defer(node, async (node, ctx) => {
+						const page = await fetch(node.attrs.href).then((r) => r.text());
+						node.attrs.title = page.match(/<title>(.*?)<\/title>/)?.[1];
+						ctx.add('links', node.attrs.href);
+					});
+			}
+		}
+	}
+};
+```
+
+- **The task gets a node and a `ctx` of its own** and changes the document through them. Its changes apply once it has finished and the parser is sure of the node. If the parser takes the node back, they are dropped.
+- **A task changes its own node** and what is inside it, and writes data for it. Anything else throws a `TypeError`. So the result does not depend on which task finishes first.
+- **The Vite plugin waits** for deferred work before it renders the document, and so does a `?data` import. With `compile`, use [`compile_async`](docs#compile_async).
 
 ### Plugin data
 

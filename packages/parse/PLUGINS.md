@@ -259,6 +259,7 @@ const toc = {
 | `ctx.set(key, value)` | one value under a key of what the plugin hands back from the parse |
 | `ctx.add(key, value)` | one entry of a list under a key, in document order |
 | `ctx.data` | what the plugin has written so far, read-only |
+| `ctx.defer(node, task)` | async work for the node, see [Deferred tasks](#deferred-tasks) |
 
 A handler bound to a directive gets the same members beside `directive`, `index` and `state`.
 
@@ -342,6 +343,36 @@ const stop = dispatcher.on_data(({ plugin, key, value }) => {
 - **A streaming view** follows these so a component that reads the data renders again as it changes. A compile ignores them and reads `data()` at the end.
 - **A listener stays from one document to the next.** The function `on_data` returns stops it.
 
+### Deferred tasks
+
+A handler cannot wait: the parser does not pause for it, and neither does a stream. `ctx.defer(node, task)` starts async work for a node and lets the parse carry on:
+
+```js
+directive_inline: {
+  parse(node, ctx) {
+    if (node.attrs.name !== 'cite') return;
+    return () =>
+      ctx.defer(node, async (node, ctx) => {
+        const entry = await lookup(node.text_content);
+        node.attrs.label = entry.short;
+        ctx.set(`entry:${entry.key}`, entry);
+      });
+  }
+}
+```
+
+- **The node is the one whose handler or close callback runs.** Any other node is a `TypeError`, and so is a task that is not a function.
+- **It starts at once,** in the handler, and the parse goes on while it runs.
+- **The task gets a node and a context of its own** and changes the document through them. They read as the handler's do. The handler's `node` and `ctx` belong to the handler: a write through them once the handler returned is a `TypeError` that says so. Naming the parameters `node` and `ctx`, as above, shadows the handler's.
+- **Its changes are kept and applied later,** once the task has settled and its node is committed. A read inside the task sees the tree as it is with the task's own attrs on top. `ctx.data` reads the data as it stands, without what the task wrote.
+- **A revoked node takes its tasks with it.** What they did is dropped and nothing is reported, errors included. A task on a node that is never pending, or one deferred from a close callback of a node that closed for good or from a sequential pass, is committed at once.
+- **What a task may change:** its node and what is inside it (attrs, `type`, `append`, `prepend`, `wrap_inner`, and `remove` of what is inside), data owned by its node through `ctx.set` and `ctx.add`, and `ctx.warn` about its node or a node reached from it. A node it adds can take attrs and nodes of its own. Anything else throws a `TypeError` in the task: another node, `wrap_from`, removing its own node, or `ctx.defer` again. That is what keeps the final tree independent of the order tasks finish in.
+- **Applied in document order.** A host applies tasks sorted by where their nodes are in the source, and tasks of one node in the order they started. Data is owned by the node, so it sorts as any write does.
+- **A value JSON cannot hold** throws a `PluginDataError` in the task, at the write.
+- **Sharing work** between tasks, such as loading a bibliography once, is up to the plugin for now.
+
+A parse that cannot wait for async work throws a `PluginAsyncError` at the first `ctx.defer`. In `mdsvex` that is `compile()`, which points to `compile_async()`.
+
 ### For whoever runs the parse
 
 `mdsvex` does this for its own compiles. A caller with a builder of its own talks to the dispatcher:
@@ -361,6 +392,20 @@ dispatcher.data();   // { [plugin name]: object } or undefined
 - **`set_document` is forgotten at a reset.** Call it for each document, after `TreeBuilder.reset()` or `WireTreeBuilder.reset()`.
 - **`warnings` and `data()` are for the document just parsed** and start empty at the next reset. Read them after `run_sequential`. `data()` makes a new object for each plugin name at each call, and the values in it are frozen.
 - **`on_data(listener)`** follows each change to the data while the document is parsed, see [Following changes](#following-changes).
+
+What plugins defer is the host's to wait for:
+
+```js
+dispatcher.allow_async = true; // false makes ctx.defer throw a PluginAsyncError
+// ... parse, then run_sequential ...
+const settled = dispatcher.settle(); // undefined when nothing was deferred
+if (settled) await settled;
+dispatcher.data(); // what the tasks wrote is in here now
+```
+
+- **`settle()`** waits for every task of the document, then applies those whose node is committed, in document order. A task that rejected rejects it with a `PluginTaskError` that names the plugin and the position of the node, with the task's error as `cause`, and then nothing applies. Call it after the parse and the sequential passes. `deferred` is `true` while a task has not applied.
+- **`apply_ready()`** is for a host that streams. It applies each task that has settled and whose node is committed, in document order, and returns the nodes whose tasks applied, `null` for none. A task that rejected becomes a `task_failed` warning and leaves its node as it was. `on_settled(listener)` calls the listener each time a task settles, so the host knows when to call it.
+- **A reset drops the tasks of the document.** They run on and nothing they do is applied.
 - **A wire consumer has no frontmatter in its tree.** The wire sends a frontmatter node with no text, so `frontmatter` is whatever the consumer was sent beside the stream.
 - **A plugin's name** is its `name` key. A table of bound handlers gets one as `{ name, directives }` in place of the bare table.
 
@@ -849,6 +894,8 @@ Only the tree is restored. What a plugin keeps in its own variables is not, so a
 **`remove`.** A removal is not captured, because it is only allowed where it cannot need undoing, see [Removing a node](#removing-a-node).
 
 **`run.replace`.** Not captured either. A text handler only runs in a sequential pass, see [Text Handlers](#when-it-runs).
+
+**Deferred tasks.** A revoke drops the tasks of the node, see [Deferred tasks](#deferred-tasks).
 
 **Bound handler state.** A write to `ctx.state` and the `index` a bound handler used are logged the same way, see [Handlers Bound to a Directive](#revocation).
 

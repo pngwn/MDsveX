@@ -67,6 +67,32 @@ export interface DocumentContext {
 	 * sequential pass come after the rest in the order they were added
 	 */
 	add(key: string, value: unknown): void;
+	/**
+	 * starts async work for the node whose handler or close callback runs,
+	 * the task gets a node and a context of its own and changes the document
+	 * through them, the changes apply once the task settled and the node is
+	 * committed, and go if the node is revoked, it may change the node and
+	 * what is inside it and write data owned by the node, anything else is a
+	 * TypeError, a parse that can not wait throws a PluginAsyncError
+	 */
+	defer(
+		node: NodeView,
+		task: (node: NodeView, ctx: TaskContext) => Promise<void> | void
+	): void;
+}
+
+/**
+ * what a deferred task gets beside its node, its writes are kept and apply
+ * with the rest of the task, data reads as it stands without them
+ */
+export interface TaskContext {
+	readonly filename: string | undefined;
+	readonly frontmatter: Record<string, unknown> | undefined;
+	readonly data: Readonly<Record<string, Json>>;
+	set(key: string, value: unknown): void;
+	add(key: string, value: unknown): void;
+	/** a node to point at is the node of the task or one reached from it */
+	warn(code: string, message: string, node?: NodeView): void;
 }
 
 /**
