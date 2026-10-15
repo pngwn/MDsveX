@@ -234,17 +234,18 @@ for each batch from the wire:
 
 These appear as direct children of root:
 
-| Kind             | Extra          | Attrs              | Content               | Notes                                                  |
-| ---------------- | -------------- | ------------------ | --------------------- | ------------------------------------------------------ |
-| `heading`        | depth (1–6)    | ,                  | inline content        | Render as `<h1>`–`<h6>`                                |
-| `paragraph`      | ,              | ,                  | inline content        |                                                        |
-| `code_fence`     | backtick count | `info`: language   | raw text              | Content is raw (no inline parsing)                     |
-| `block_quote`    | ,              | ,                  | block children        | Contains paragraphs, etc.                              |
-| `list`           | ,              | `ordered`, `start` | list_item children    |                                                        |
-| `list_item`      | ,              | `checked`          | block/inline content  | `checked` only on a task item, the marker is not text  |
-| `thematic_break` | ,              | ,                  | empty                 | Render as `<hr>`                                       |
-| `table`          | ,              | `alignments[]`     | header + row children |                                                        |
-| `line_break`     | ,              | ,                  | ,                     | Structural separator between blocks; skip in rendering |
+| Kind             | Extra          | Attrs                    | Content               | Notes                                                  |
+| ---------------- | -------------- | ------------------------ | --------------------- | ------------------------------------------------------ |
+| `heading`        | depth (1–6)    | ,                        | inline content        | Render as `<h1>`–`<h6>`                                |
+| `paragraph`      | ,              | ,                        | inline content        |                                                        |
+| `code_fence`     | backtick count | `info`: language         | raw text              | Content is raw (no inline parsing)                     |
+| `block_quote`    | ,              | ,                        | block children        | Contains paragraphs, etc.                              |
+| `list`           | ,              | `ordered`, `start`       | list_item children    |                                                        |
+| `list_item`      | ,              | `checked`                | block/inline content  | `checked` only on a task item, the marker is not text  |
+| `thematic_break` | ,              | ,                        | empty                 | Render as `<hr>`                                       |
+| `table`          | ,              | `alignments[]`           | header + row children |                                                        |
+| `line_break`     | ,              | ,                        | ,                     | Structural separator between blocks; skip in rendering |
+| `definition`     | ,              | `label`, `href`, `title` | empty                 | `[label]: href "title"`, renders nothing               |
 
 ### Inline nodes
 
@@ -264,6 +265,8 @@ These appear inside paragraphs, headings, list items, and other inline container
 | `soft_break`      | ,              | ,               | Line break within a paragraph -> space or `\n`      |
 
 A `code_span` whose `extra` is `1` is inline math, written ``$`x`$``. Its content is the LaTeX, without the dollars. A client with no math renderer shows it as it shows any other code span.
+
+A `definition` is a link reference definition, in a block quote or a list item too. Its attrs are the label as written and the `href` and `title` the links that use it carry, `title` only when it is not empty. It renders nothing, the links already hold its url.
 
 A `footnote_reference` is a leaf with the attr `label` and no content. A `footnote_definition` is a block with the same attr, and its content is the blocks of the note. Nothing on the wire numbers them or moves a definition: a client shows the label where the reference is and the definition where it was written, or numbers the labels by first reference and collects the definitions at the end, as the compile does.
 

@@ -1,5 +1,6 @@
 root
   block_quote
+    definition label="foo" href="/url"
   line_break
   line_break
   paragraph

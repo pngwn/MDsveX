@@ -88,6 +88,7 @@ const KIND_NAMES: string[] = [
 	"directive_label",
 	"footnote_reference",
 	"footnote_definition",
+	"definition",
 ];
 
 /** tracks progressive text emission for a node. */

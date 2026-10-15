@@ -72,6 +72,7 @@
 	const K_DIRECTIVE_LABEL = 35;
 	const K_FOOTNOTE_REFERENCE = 36;
 	const K_FOOTNOTE_DEFINITION = 37;
+	const K_DEFINITION = 38;
 
 	const NEWLINE = '\n';
 
@@ -412,6 +413,8 @@
 		<sup class="footnote-reference">{meta?.label}</sup>
 		{@render child_nodes(idx)}
 	</div>
+{:else if kind === K_DEFINITION}
+	<!-- a link reference definition renders nothing, the links that use it carry its url -->
 {:else}
 	{@render child_nodes(idx)}
 {/if}

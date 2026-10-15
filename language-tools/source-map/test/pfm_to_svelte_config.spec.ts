@@ -157,7 +157,7 @@ describe("pfmToSvelte with a config", () => {
 		const hovers = added(source, r).filter(([, , caps]) => caps === "sn");
 		expect(hovers).toContainEqual(["##", "h2", "sn"]);
 		expect(hovers).toContainEqual(["!", "img", "sn"]);
-		expect(hovers).toContainEqual(["](/x)", "a", "sn"]);
+		expect(hovers).toContainEqual(["[", "a", "sn"]);
 		expect(hovers).toContainEqual(["Callout", "Callout", "sn"]);
 		// the template value points at the template
 		expect(hovers).toContainEqual(["docs", "Template_MDSVEX", "sn"]);

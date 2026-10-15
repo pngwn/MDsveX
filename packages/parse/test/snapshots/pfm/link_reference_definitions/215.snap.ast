@@ -1,4 +1,5 @@
 root
+  definition label="foo" href="/url"
   paragraph
     text "bar"
     soft_break

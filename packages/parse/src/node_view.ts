@@ -13,7 +13,10 @@ import type { HeadingIds } from './heading_ids';
 /** the kind a plugin names, a footnote it makes is noted as the parser notes one */
 function kind_named(type: string): NodeKind | undefined {
 	const kind = string_to_kind(type);
-	if (kind !== undefined && kind >= NodeKind.footnote_reference)
+	if (
+		kind === NodeKind.footnote_reference ||
+		kind === NodeKind.footnote_definition
+	)
 		note_footnote();
 	return kind;
 }

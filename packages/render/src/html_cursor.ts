@@ -616,6 +616,7 @@ const enum K {
 	DIRECTIVE_LABEL = 35,
 	FOOTNOTE_REFERENCE = 36,
 	FOOTNOTE_DEFINITION = 37,
+	DEFINITION = 38,
 }
 
 export const K_ROOT = K.ROOT;
@@ -1871,8 +1872,9 @@ function render_node(c: Cursor, sink?: MapSink): void {
 			break;
 
 		default:
-			// a label renders only as the snippet of a replaced directive, and a
-			// footnote definition in the section at the end
+			// a label renders only as the snippet of a replaced directive, a
+			// footnote definition in the section at the end and a link reference
+			// definition not at all
 			if (c.kind < K.DIRECTIVE_LABEL) render_children(c, sink);
 			else if (c.kind === K.FOOTNOTE_REFERENCE) {
 				const pre = mo.length;
@@ -2495,8 +2497,9 @@ function fold_node(c: Cursor, p: number): number {
 			return push_dyn(p, module_script());
 
 		default:
-			// a label renders only as the snippet of a replaced directive, and a
-			// footnote definition in the section at the end
+			// a label renders only as the snippet of a replaced directive, a
+			// footnote definition in the section at the end and a link reference
+			// definition not at all
 			if (c.kind >= K.DIRECTIVE_LABEL)
 				return c.kind === K.FOOTNOTE_REFERENCE
 					? push_dyn(p, fn_reference(c))
@@ -3164,8 +3167,9 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			return 0;
 
 		default:
-			// a label renders only as the snippet of a replaced directive, and a
-			// footnote definition in the section at the end
+			// a label renders only as the snippet of a replaced directive, a
+			// footnote definition in the section at the end and a link reference
+			// definition not at all
 			if (c.kind >= K.DIRECTIVE_LABEL)
 				return c.kind === K.FOOTNOTE_REFERENCE
 					? fn_reference_mapped(c, sink, p, true)
@@ -3718,8 +3722,9 @@ function mp_node(c: Cursor, sink: MapSink, p: number): number {
 			return 0;
 
 		default:
-			// a label renders only as the snippet of a replaced directive, and a
-			// footnote definition in the section at the end
+			// a label renders only as the snippet of a replaced directive, a
+			// footnote definition in the section at the end and a link reference
+			// definition not at all
 			if (c.kind >= K.DIRECTIVE_LABEL)
 				return c.kind === K.FOOTNOTE_REFERENCE
 					? fn_reference_mapped(c, sink, p, false)

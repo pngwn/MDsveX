@@ -1,4 +1,5 @@
 root
+  definition label="ΑΓΩ" href="/φου"
   line_break
   paragraph
     link href="/φου"
