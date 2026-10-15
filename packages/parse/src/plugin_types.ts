@@ -1,5 +1,5 @@
 import type { NodeView } from './node_view';
-import type { Json } from './plugin_data';
+import type { Json, PluginCache } from './plugin_data';
 import type { TextRun } from './text_run';
 
 export type { DataChange, Json } from './plugin_data';
@@ -31,6 +31,18 @@ export interface PluginDocument {
 	 * complete
 	 */
 	frontmatter?: () => Record<string, unknown> | undefined;
+	/** reads a file for ctx.read, the host supplies it, without one ctx.read throws */
+	read?: (path: string) => string | Promise<string>;
+	/**
+	 * resolves a specifier from a file for ctx.resolve, null when nothing
+	 * matches, without one ctx.resolve throws
+	 */
+	resolve?: (
+		specifier: string,
+		importer: string | undefined
+	) => string | null | undefined | Promise<string | null | undefined>;
+	/** what ctx.cached keeps, shared by the documents of one compiler */
+	cache?: PluginCache;
 }
 
 /** what every handler learns about its document and can hand back */
@@ -79,6 +91,18 @@ export interface DocumentContext {
 		node: NodeView,
 		task: (node: NodeView, ctx: TaskContext) => Promise<void> | void
 	): void;
+	/** names an absolute path the output depends on, it need not exist yet */
+	depend(path: string): void;
+	/** the text of a file with the reader the host passes, the path is a dependency */
+	read(path: string): Promise<string>;
+	/** a specifier resolved from the document by the host, null when nothing matches */
+	resolve(specifier: string): Promise<string | null>;
+	/**
+	 * a value shared by the documents of the compiler, loaded once while the
+	 * load runs and kept, a key that is an absolute path is a dependency and
+	 * is dropped when the host invalidates that path
+	 */
+	cached<T>(key: string, load: (key: string) => T | Promise<T>): Promise<T>;
 }
 
 /**
@@ -93,6 +117,10 @@ export interface TaskContext {
 	add(key: string, value: unknown): void;
 	/** a node to point at is the node of the task or one reached from it */
 	warn(code: string, message: string, node?: NodeView): void;
+	depend(path: string): void;
+	read(path: string): Promise<string>;
+	resolve(specifier: string): Promise<string | null>;
+	cached<T>(key: string, load: (key: string) => T | Promise<T>): Promise<T>;
 }
 
 /**
@@ -131,6 +159,11 @@ export interface ParsePlugin {
 	/** runs of text, only a sequential plugin has one */
 	text?: TextHandler;
 	/**
+	 * runs once, after the parse, the sequential passes and every deferred
+	 * task, in plugin order, each awaited, its writes belong to no node
+	 */
+	document?: (root: NodeView, ctx: PluginContext) => void | Promise<void>;
+	/**
 	 * true to also give the text handler what it is kept from, the characters
 	 * the author escaped, the text of an autolink, the alt text of an image and
 	 * the text of an element that holds code, such as code or kbd
@@ -139,6 +172,7 @@ export interface ParsePlugin {
 	[nodeType: string]:
 		| { parse: NodeHandler['parse'] }
 		| TextHandler
+		| ((root: NodeView, ctx: PluginContext) => void | Promise<void>)
 		| boolean
 		| string
 		| undefined;
