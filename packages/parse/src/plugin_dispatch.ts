@@ -47,6 +47,7 @@ import type {
 	TextHandler,
 	TaskContext as PublicTaskContext,
 } from './plugin_types';
+import type { HeadingIds } from './heading_ids';
 import { RunPieces, TextRun } from './text_run';
 import {
 	DraftView,
@@ -1044,6 +1045,9 @@ export class PluginDispatcher
 	/** true when a directive name may have handlers, builders then report each name */
 	readonly binds: boolean;
 
+	/** makes the id of each heading at its close, the builder gives it */
+	private headings: HeadingIds | null = null;
+
 	constructor(
 		plugins: ParsePlugin[] | undefined,
 		text_source: TextSource,
@@ -1076,6 +1080,11 @@ export class PluginDispatcher
 		cache.clear();
 		cache.rebind(buf, this.text_source);
 		return cache;
+	}
+
+	/** a close callback that reads the attrs of a heading gets the id made then, see HeadingIds */
+	set_headings(headings: HeadingIds | null): void {
+		this.headings = headings;
 	}
 
 	/** a context for each plugin, new for each document */
@@ -2615,9 +2624,21 @@ export class PluginDispatcher
 			this.running = buf_idx;
 			this.closing = true;
 			this.final_close = !pending;
+			// the id of a heading is made when a callback reads its attrs, or by the builder after them
+			const headings = this.headings;
+			const cache = this.cache;
+			if (
+				headings !== null &&
+				cache !== null &&
+				buf.kind_at(buf_idx) === NodeKind.heading
+			) {
+				cache.headings = headings;
+				cache.lazy = buf_idx;
+			}
 			for (let i = 0; i < cbs.length; i++) {
 				cbs[i]();
 			}
+			if (cache !== null) cache.lazy = NONE;
 			undo.clear_active_node();
 			this.running = NONE;
 			this.closing = false;

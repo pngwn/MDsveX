@@ -6,6 +6,7 @@ import {
 	make_meta,
 	merge_meta,
 } from './utils';
+import type { HeadingIds } from './heading_ids';
 import type { PluginDispatcher } from './plugin_dispatch';
 
 const NONE = 0xffffffff;
@@ -44,6 +45,8 @@ export class TreeBuilder implements Emitter {
 	private plain_from = 0;
 	/** the parser emitting here, null for another source of opcodes */
 	private ids: IdSource | null = null;
+	/** makes the id of each heading as it closes, null for none */
+	private headings: HeadingIds | null = null;
 
 	constructor(capacity: number, dispatcher?: PluginDispatcher) {
 		this.nodes = new NodeBuffer(capacity);
@@ -80,6 +83,20 @@ export class TreeBuilder implements Emitter {
 	private refresh(dispatcher: PluginDispatcher): void {
 		this.wants = dispatcher.open_wants;
 		this.plain_from = dispatcher.plain_from();
+	}
+
+	/**
+	 * each heading gets its id at its close, after the close callbacks of
+	 * plugins, null for none, the caller starts it for each document
+	 */
+	set_headings(headings: HeadingIds | null): void {
+		this.headings = headings;
+		if (this.dispatcher !== null) this.dispatcher.set_headings(headings);
+	}
+
+	/** what set_headings gave, null for none */
+	get_headings(): HeadingIds | null {
+		return this.headings;
 	}
 
 	follow(ids: IdSource): void {
@@ -225,6 +242,7 @@ export class TreeBuilder implements Emitter {
 			idx >= this.plain_from &&
 			kind !== undefined &&
 			kind !== NodeKind.list &&
+			kind !== NodeKind.heading &&
 			(kind !== NodeKind.paragraph || n[b + NodeField.pending] === 0)
 		) {
 			n[b + NodeField.pending] = 0;
@@ -276,6 +294,11 @@ export class TreeBuilder implements Emitter {
 		// and the parser either revokes (tight) or commits (loose) them.
 		if (kind === undefined) kind = this.opened_kind(idx);
 		const n = nodes._n;
+		if (kind === NodeKind.heading) {
+			n[b + NodeField.pending] = 0;
+			if (this.headings !== null) this.headings.close(nodes, idx);
+			return;
+		}
 		if (
 			kind === NodeKind.paragraph &&
 			n[b + NodeField.pending] === 1 &&

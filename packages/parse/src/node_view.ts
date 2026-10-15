@@ -8,6 +8,7 @@ import {
 	string_to_kind,
 } from './utils';
 import { type UndoLog, ATTR_DID_NOT_EXIST } from './undo_log';
+import type { HeadingIds } from './heading_ids';
 
 /** the kind a plugin names, a footnote it makes is noted as the parser notes one */
 function kind_named(type: string): NodeKind | undefined {
@@ -248,6 +249,10 @@ export class ViewCache {
 	host: StructureHost | null;
 	/** @internal the document the views are made for, a view of an earlier one throws */
 	gen = 0;
+	/** @internal a heading whose close callbacks run before its id is made, NONE for none */
+	lazy = NONE;
+	/** @internal what makes the id of lazy */
+	headings: HeadingIds | null = null;
 
 	constructor(
 		buf: NodeBuffer,
@@ -302,6 +307,13 @@ export class ViewCache {
 		return new NodeView(index, this.buf, this.text_source, this, this.undo);
 	}
 
+	/** @internal a callback reads the attrs of the heading whose id waits, it is made first */
+	make_lazy(buf: NodeBuffer): void {
+		const index = this.lazy;
+		this.lazy = NONE;
+		this.headings!.close(buf, index);
+	}
+
 	/** discard all cached views. */
 	clear(): void {
 		this.first = null;
@@ -345,9 +357,18 @@ class AttrsTarget {
 	}
 }
 
+/** the metadata of the node, the id of a heading that waits for one is made first */
+function meta_of(target: AttrsTarget): any {
+	const buf = target[VIEW]._live();
+	const idx = target[IDX];
+	const cache = target[VIEW]._views();
+	if (idx === cache.lazy) cache.make_lazy(buf);
+	return buf.metadata_at(idx);
+}
+
 const ATTRS_HANDLER: ProxyHandler<AttrsTarget> = {
 	get(target, prop: string): any {
-		const meta = target[VIEW]._live().metadata_at(target[IDX]);
+		const meta = meta_of(target);
 		return meta ? meta[prop] : undefined;
 	},
 
@@ -388,17 +409,17 @@ const ATTRS_HANDLER: ProxyHandler<AttrsTarget> = {
 	},
 
 	has(target, prop: string): boolean {
-		const meta = target[VIEW]._live().metadata_at(target[IDX]);
+		const meta = meta_of(target);
 		return meta ? prop in meta : false;
 	},
 
 	ownKeys(target): string[] {
-		const meta = target[VIEW]._live().metadata_at(target[IDX]);
+		const meta = meta_of(target);
 		return meta ? Object.keys(meta) : [];
 	},
 
 	getOwnPropertyDescriptor(target, prop: string) {
-		const meta = target[VIEW]._live().metadata_at(target[IDX]);
+		const meta = meta_of(target);
 		if (meta && prop in meta) {
 			return {
 				configurable: true,
@@ -458,6 +479,11 @@ export class NodeView {
 	_live(): NodeBuffer {
 		if (this._gen !== this._cache.gen) throw new Error(STALE_VIEW);
 		return this._buf;
+	}
+
+	/** @internal the cache the view was made by */
+	_views(): ViewCache {
+		return this._cache;
 	}
 
 	/** @internal a write needs a handler that runs, a view without a dispatcher writes freely */

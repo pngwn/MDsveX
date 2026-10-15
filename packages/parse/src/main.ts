@@ -65,6 +65,12 @@ export { PluginCache, PluginDataError } from './plugin_data';
 export { PluginAsyncError, PluginTaskError } from './plugin_tasks';
 export type { NodeView, WrapperView, Point, Position } from './node_view';
 export { NodeKind, NodeBuffer, take_src } from './utils';
+export { HeadingIds, HeadingIdError, heading_slug } from './heading_ids';
+export type {
+	HeadingIdErrorCode,
+	HeadingInfo,
+	HeadingSlug,
+} from './heading_ids';
 export { PluginDispatcher, has_directive_handlers } from './plugin_dispatch';
 export { SourceTextSource, WireTextSource } from './node_view';
 
@@ -6569,6 +6575,59 @@ export class PFMParser {
 		return true;
 	}
 
+	/** the line of a heading ended, out of _run as it runs once a heading */
+	private end_heading(id: number): void {
+		const source = this.source;
+		const base = this.source_base;
+		// trim trailing whitespace from heading value
+		let value_end = this.cursor;
+		while (
+			value_end > 0 &&
+			(char_code_at.call(source, value_end - 1 - base) === SPACE ||
+				char_code_at.call(source, value_end - 1 - base) === TAB)
+		) {
+			value_end--;
+		}
+		if (this.pending_count !== this.pending_para_count) this.settle_heading(id);
+		this.out.set_value_end(id, value_end);
+		this.emit_close(id, this.cursor);
+		this.in_heading = false;
+		this.node_stack.pop();
+		this.states.pop();
+	}
+
+	/**
+	 * a node still pending in a heading cannot close after its line, it
+	 * becomes text before the heading closes, so what reads the heading at its
+	 * close reads that text, the sweep after the close does the same later,
+	 * and for an element in a container only once the container closed
+	 */
+	private settle_heading(heading: number): void {
+		const stale = this.cold.stale_html;
+		let pi = 0;
+		while (pi < this.pending_count) {
+			const pid = this.pending_ids[pi];
+			// the heading is the open block, every node opened after it is inside it
+			if (pid <= heading) {
+				pi++;
+				continue;
+			}
+			const kind = this.kind_of(pid);
+			if (kind === NodeKind.html) {
+				stale.push(pid, this.pending_starts[pi]);
+				pi++;
+				continue;
+			}
+			// a swap remove puts the last entry here, so this slot is read again
+			this.out.revoke(pid);
+			if (kind === NodeKind.directive_inline) this.directive_text_pop(pid);
+			this.pending_remove(pid);
+		}
+		if (stale.length === 0) return;
+		for (let i = 0; i < stale.length; i += 2) this.pending_remove(stale[i]);
+		this.revoke_stale_html();
+	}
+
 	// an inline construct that streams nested content (emphasis, strong,
 	// strikethrough, superscript, subscript, link/image/directive text)
 	// opened a span but reached end of input with no matching close. pop the
@@ -7101,20 +7160,7 @@ export class PFMParser {
 					// heading content: parse inlines until linefeed or eof.
 					if (code === LINEFEED || code !== code) {
 						if (!this.finished && code !== code) break main_loop;
-						// trim trailing whitespace from heading value
-						let value_end = this.cursor;
-						while (
-							value_end > 0 &&
-							(char_code_at.call(source, value_end - 1 - base) === SPACE ||
-								char_code_at.call(source, value_end - 1 - base) === TAB)
-						) {
-							value_end--;
-						}
-						this.out.set_value_end(current_node, value_end);
-						this.emit_close(current_node, this.cursor);
-						this.in_heading = false;
-						this.node_stack.pop();
-						this.states.pop();
+						this.end_heading(current_node);
 						continue;
 					}
 					// dispatch to inline parsing for heading content
