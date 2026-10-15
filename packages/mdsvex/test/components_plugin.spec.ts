@@ -56,6 +56,15 @@ describe('scan_exports', () => {
 		expect(await scan_exports(code, 'js')).toEqual(['pre', 'a', 'Kind']);
 	});
 
+	test('reads every name a declaration exports', async () => {
+		const code = [
+			'export const p = P,',
+			'\th1 = H1;',
+			'export const { em, x: strong } = parts;',
+		].join('\n');
+		expect(await scan_exports(code, 'js')).toEqual(['p', 'h1', 'em', 'strong']);
+	});
+
 	test('reports export * re-exports it cannot see through', async () => {
 		const result = await scan_exports_detail(
 			"export * from './md.js';\nexport { default as p } from './P.svelte';",
