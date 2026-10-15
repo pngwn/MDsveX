@@ -3278,6 +3278,70 @@ A `RunError` has a `code` (`run_module`, `run_pre`, `run_lang`, `run_eval` or `r
 
 The editor shows a block that runs as code, and reports one the build would reject at its fence. It doesn't check the code as a module yet.
 
+## Without Vite
+
+The Vite plugin reads files, finds the names your modules export, serves modules that don't exist on disk and reloads pages as you edit. [`compile`](docs#compile) does none of that. It takes text and returns Svelte source, never touches the filesystem and runs in a browser, a worker or Node. Everything below is what a build tool, a playground or an editor that isn't Vite supplies to get the same output.
+
+Import the compiler from `mdsvex/compile`, highlighting from `mdsvex/highlight` and math from `mdsvex/math`. None of them loads Vite or a Node builtin, and neither does `mdsvex/host`, which holds the pieces of the plugin a host needs beside the compiler.
+
+### What a host supplies
+
+| feature | with `compile` |
+| --- | --- |
+| markdown, frontmatter, `metadata` | nothing |
+| footnotes, smart punctuation, heading ids, `unwrap_images` | the option |
+| [highlighting](docs#highlighting-with-compile) | a highlighter from `mdsvex/highlight`, with its languages loaded up front |
+| [math](docs#math-with-compile) | a renderer from `load_math` in `mdsvex/math` |
+| [images as imports](docs#import_images) | `import_images: true`, then a bundler that imports images |
+| [links](docs#links) | `routes`, and `base` as a string or `{ import, from }` |
+| [code from a file](docs#code-from-a-file) | the text of each file in `sources` |
+| [code that runs](docs#running-with-compile) | `snippets`, then serving each of `result.snippets` as a module |
+| templates, components, directives | each module as its specifier and the names it exports, see below |
+| plugins | `plugins`, as for the Vite plugin |
+| [plugin data](docs#plugin-data) | nothing, it is `data` on the result |
+| a template for one import | the `template` option of that compile, in place of `?template=` |
+
+### Finding the names a module exports
+
+`compile` takes templates, components and directives as a specifier and the names that module exports (see [`compile`](docs#compile)), and writes the specifier into the output as given. The Vite plugin finds the names by reading each module's exports without running it. `read_exports` from `mdsvex/host` does the same for you, with the TypeScript stripper you already have:
+
+```js
+import { read_exports } from 'mdsvex/host';
+import ts from 'typescript';
+
+const strip = (code) =>
+	ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ESNext } }).outputText;
+
+const { names, stars, namespaces } = read_exports(source, 'svelte', strip);
+```
+
+For a `.svelte` file it reads the `<script module>`. Without a stripper it reads the code as JavaScript. `stars` lists the `export * from` specifiers whose names it can't see, and `namespaces` the `export * as name from` ones, which is how a module [declares its directives](docs#declaring-directives).
+
+`names` includes `default`. Leave it out for a template, whose default export is the template itself. For a [document used as a template](docs#documents-as-templates), read the exports of its compiled `code` and leave out `metadata` as well.
+
+### Virtual ids, `?metadata` and `?data`
+
+The Vite plugin writes `mdsvex:components`, `mdsvex:template/<name>` and the other `mdsvex:*` ids in place of real paths and resolves them itself. `compile` writes whatever specifier you give it, so a host can use real paths and skip this. To match the plugin's output, `mdsvex/host` exports the prefixes (`COMPONENTS_ID`, `DIRECTIVES_ID`, `TEMPLATE_ID`, `TEMPLATE_DIRECTIVES_ID`, `PLUGIN_ID`, `PLUGIN_COMPONENTS_ID`), and `manifest_resolver(manifest)` returns the file an id and an imported name stand for.
+
+A [`?metadata`](docs#frontmatter) or [`?data`](docs#plugin-data) import loads a module made from the document. `metadata_module(source, parse)` builds the first from the text of the document, with your [frontmatter parser](docs#custom-frontmatter-parsers) or `undefined`, and `data_module(result.metadata, result.data)` the second from a compile of it.
+
+### The editor manifest
+
+The editor reads `node_modules/.mdsvex/manifest.json`, which the Vite plugin writes, or else `mdsvex.config.json`, which can't hold functions. A host can write the manifest itself. `queue_manifest(build, output)` writes it a little after the last change and only when it changed, `manifest_json` gives the exact text the plugin writes, and `MANIFEST_PATH` is where it goes.
+
+### Vite only
+
+These need a dev server or Vite's config, so they stay with the plugin:
+
+- **`links.base: true`**, which reads Vite's `base`. Give `compile` the base as a string, or as `{ import, from }` for a base known when the page renders.
+- **The checks on `?metadata` and `?data` imports.** In dev the plugin serves a document only when Vite would serve the file, so a request can't read files outside the project.
+- **Source maps back to markdown.** `compile` with `sourcemap: true` maps its own output, and `mappings_to_v3` from `@mdsvex/render/sourcemap` turns that into a v3 map. Chaining it with the Svelte compiler's map is up to your bundler.
+- **`?template=`** on an import. Use the `template` option of the compile.
+- **Hot update** of documents, of the files a fence shows and of template and component modules.
+
+<!-- placeholder: compile_async and a public parse, then render, from design/plugin-async.md, document them here once merged -->
+**Coming soon:** an async compile that waits for plugins, and a public two-step compile that tells a host which files a document shows before it renders, so `sources` can be filled in one pass.
+
 ## Migrating from mdsvex 0.x
 
 Layouts are now [templates](docs#templates-1). The idea is the same, a component that wraps documents and replaces their elements, with new names and Svelte 5 components.
