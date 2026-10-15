@@ -40,11 +40,16 @@ describe('spaces at line ends', () => {
 	});
 
 	test('stay in a fence', async () => {
-		expect(await svx('```js\nlet a = 1;  \n```\n')).toBe('```js\nlet a = 1;  \n```\n');
+		expect(await svx('```js\nlet a = 1;  \n```\n')).toBe(
+			'```js\nlet a = 1;  \n```\n'
+		);
 	});
 
 	test('stay in a template string and pre', async () => {
-		const sources = ['<script>\n  let a = `b  \nc`;\n</script>\n', '<pre>\na  \n</pre>\n'];
+		const sources = [
+			'<script>\n  let a = `b  \nc`;\n</script>\n',
+			'<pre>\na  \n</pre>\n',
+		];
 		for (const source of sources) expect(await svx(source)).toBe(source);
 	});
 
@@ -77,7 +82,9 @@ describe('indentation', () => {
 describe('language', () => {
 	test('.svx and .pfm files use the plugin', async () => {
 		for (const filepath of ['page.svx', 'note.pfm']) {
-			expect(await format('# a  \n', { filepath, plugins: [plugin] })).toBe('# a\n');
+			expect(await format('# a  \n', { filepath, plugins: [plugin] })).toBe(
+				'# a\n'
+			);
 		}
 	});
 });

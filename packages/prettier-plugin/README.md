@@ -25,9 +25,10 @@ Today it:
 - takes the spaces off the end of a line of prose
 - ends the document with one line end
 - formats the yaml frontmatter, the imports at the top, `<script>` (TypeScript with `lang="ts"`) and `<style>` (css, scss or less)
-- formats `{expressions}`, `{@html}` and `{@render}` tags and the heads of `{#if}`, `{:else if}` and `{#key}`, an expression in prose stays on one line
+- formats `{expressions}`, `{@html}` and `{@render}` tags, an expression in prose stays on one line
+- formats the heads of blocks on one line: `{#if}`, `{:else if}`, `{#key}`, `{#each}` with its binding, index and key, `{#await}`, `{:then}`, `{:catch}` and `{#snippet}` with its parameters
 
-The formatting of the code follows your Prettier options, `singleQuote`, `semi`, `useTabs` and the rest. A part that does not parse is left as it is, so is `<pre>`, an attribute value and the head of `{#each}`, `{#await}` and `{#snippet}`.
+The formatting of the code follows your Prettier options, `singleQuote`, `semi`, `useTabs` and the rest. A part that does not parse is left as it is, so is `<pre>`, an attribute value and a `{@const}` tag.
 
 ## Leaving parts alone
 

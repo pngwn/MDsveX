@@ -10,9 +10,9 @@ function svx(source: string, options: Options = {}): Promise<string> {
 
 describe('prettier-ignore', () => {
 	test('keeps the next block as written', async () => {
-		expect(await svx('<!-- prettier-ignore -->\n<script>\nlet a=1\n</script>\n')).toBe(
-			'<!-- prettier-ignore -->\n<script>\nlet a=1\n</script>\n'
-		);
+		expect(
+			await svx('<!-- prettier-ignore -->\n<script>\nlet a=1\n</script>\n')
+		).toBe('<!-- prettier-ignore -->\n<script>\nlet a=1\n</script>\n');
 	});
 
 	test('keeps the spaces at the ends of its lines, but its last', async () => {
@@ -23,8 +23,12 @@ describe('prettier-ignore', () => {
 
 	test('start and end in the paragraph of the text they hold', async () => {
 		expect(
-			await svx('<!-- prettier-ignore-start -->\n{c+d}\n<!-- prettier-ignore-end -->\n\n{e+f}\n')
-		).toBe('<!-- prettier-ignore-start -->\n{c+d}\n<!-- prettier-ignore-end -->\n\n{e + f}\n');
+			await svx(
+				'<!-- prettier-ignore-start -->\n{c+d}\n<!-- prettier-ignore-end -->\n\n{e+f}\n'
+			)
+		).toBe(
+			'<!-- prettier-ignore-start -->\n{c+d}\n<!-- prettier-ignore-end -->\n\n{e + f}\n'
+		);
 	});
 
 	test('only the next block, the one after is formatted', async () => {
@@ -49,7 +53,9 @@ describe('prettier-ignore', () => {
 	});
 
 	test('another comment does nothing', async () => {
-		expect(await svx('<!-- note -->\n{a+b}\n')).toBe('<!-- note -->\n{a + b}\n');
+		expect(await svx('<!-- note -->\n{a+b}\n')).toBe(
+			'<!-- note -->\n{a + b}\n'
+		);
 	});
 });
 
@@ -76,9 +82,9 @@ describe('pragma', () => {
 		expect(await svx('<!-- @format -->\n\n{a+b}\n', options)).toBe(
 			'<!-- @format -->\n\n{a + b}\n'
 		);
-		expect(await svx('---\nt: 1\n---\n\n<!-- @prettier -->\n\n{a+b}\n', options)).toBe(
-			'---\nt: 1\n---\n\n<!-- @prettier -->\n\n{a + b}\n'
-		);
+		expect(
+			await svx('---\nt: 1\n---\n\n<!-- @prettier -->\n\n{a+b}\n', options)
+		).toBe('---\nt: 1\n---\n\n<!-- @prettier -->\n\n{a + b}\n');
 	});
 
 	test('insertPragma puts one after the frontmatter', async () => {
@@ -87,7 +93,9 @@ describe('pragma', () => {
 		expect(await svx('---\nt: 1\n---\n\n# a\n', options)).toBe(
 			'---\nt: 1\n---\n\n<!-- @format -->\n\n# a\n'
 		);
-		expect(await svx('<!-- @format -->\n\n# a\n', options)).toBe('<!-- @format -->\n\n# a\n');
+		expect(await svx('<!-- @format -->\n\n# a\n', options)).toBe(
+			'<!-- @format -->\n\n# a\n'
+		);
 	});
 
 	test('checkIgnorePragma leaves a document with @noformat alone', async () => {

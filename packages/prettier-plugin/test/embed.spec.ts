@@ -27,15 +27,15 @@ describe('frontmatter', () => {
 
 describe('imports', () => {
 	test('are formatted as code', async () => {
-		expect(await svx("import A from './a.svelte'\nimport {b,c} from \"d\"\n\n# a\n")).toBe(
-			'import A from "./a.svelte";\nimport { b, c } from "d";\n\n# a\n'
-		);
+		expect(
+			await svx('import A from \'./a.svelte\'\nimport {b,c} from "d"\n\n# a\n')
+		).toBe('import A from "./a.svelte";\nimport { b, c } from "d";\n\n# a\n');
 	});
 
 	test('follow the options of the project', async () => {
-		expect(await svx('import { a } from "b";\n', { singleQuote: true, semi: false })).toBe(
-			"import { a } from 'b'\n"
-		);
+		expect(
+			await svx('import { a } from "b";\n', { singleQuote: true, semi: false })
+		).toBe("import { a } from 'b'\n");
 	});
 
 	test('one too long for a line breaks over lines', async () => {
@@ -98,7 +98,9 @@ describe('expressions', () => {
 	});
 
 	test('in a list and a quote', async () => {
-		expect(await svx('- {  foo  }\n\n> {a?b:c}\n')).toBe('- {foo}\n\n> {a ? b : c}\n');
+		expect(await svx('- {  foo  }\n\n> {a?b:c}\n')).toBe(
+			'- {foo}\n\n> {a ? b : c}\n'
+		);
 	});
 
 	test('use typescript when a script does', async () => {
@@ -138,16 +140,82 @@ describe('blocks', () => {
 		expect(await svx('{#if a&&b}\n\nx\n\n{:else if  c}\n\ny\n\n{/if}\n')).toBe(
 			'{#if a && b}\n\nx\n\n{:else if c}\n\ny\n\n{/if}\n'
 		);
-		expect(await svx('{#key  id}\n\nx\n\n{/key}\n')).toBe('{#key id}\n\nx\n\n{/key}\n');
+		expect(await svx('{#key  id}\n\nx\n\n{/key}\n')).toBe(
+			'{#key id}\n\nx\n\n{/key}\n'
+		);
 	});
 
 	test('the content of a branch is printed too', async () => {
-		expect(await svx('{#if a}\n\n{b+c}\n\n{/if}\n')).toBe('{#if a}\n\n{b + c}\n\n{/if}\n');
+		expect(await svx('{#if a}\n\n{b+c}\n\n{/if}\n')).toBe(
+			'{#if a}\n\n{b + c}\n\n{/if}\n'
+		);
 	});
 
-	test('an each head is kept', async () => {
-		const source = '{#each  items as item}\n\nx\n\n{/each}\n';
-		expect(await svx(source)).toBe(source);
+	test('an each head, with its binding, index and key', async () => {
+		const cases: [string, string][] = [
+			['{#each  items as item}', '{#each items as item}'],
+			[
+				'{#each list.filter(x=>x.ok) as {id,name}, i (id)}',
+				'{#each list.filter((x) => x.ok) as { id, name }, i (id)}',
+			],
+			['{#each items as [a,b]}', '{#each items as [a, b]}'],
+			['{#each items as item (item.id)}', '{#each items as item (item.id)}'],
+			['{#each items as { a = f( 1 ) }}', '{#each items as { a = f(1) }}'],
+			['{#each {length:3}, i}', '{#each { length: 3 }, i}'],
+			['{#each  items}', '{#each items}'],
+		];
+		for (const [head, out] of cases) {
+			expect(await svx(`${head}\n\nx\n\n{/each}\n`)).toBe(
+				`${out}\n\nx\n\n{/each}\n`
+			);
+		}
+	});
+
+	test('an each head with a string that holds the keywords', async () => {
+		expect(
+			await svx("{#each fn(' as ', 'x, y') as item}\n\nx\n\n{/each}\n")
+		).toBe('{#each fn(" as ", "x, y") as item}\n\nx\n\n{/each}\n');
+	});
+
+	test('an await head and its then and catch branches', async () => {
+		expect(
+			await svx(
+				'{#await  load(id)}\n\na\n\n{:then  {data}}\n\nb\n\n{:catch  e}\n\nc\n\n{/await}\n'
+			)
+		).toBe(
+			'{#await load(id)}\n\na\n\n{:then { data }}\n\nb\n\n{:catch e}\n\nc\n\n{/await}\n'
+		);
+		expect(await svx('{#await p  then  [a,b]}\n\nx\n\n{/await}\n')).toBe(
+			'{#await p then [a, b]}\n\nx\n\n{/await}\n'
+		);
+		expect(await svx('{#await p.then(f)  catch err}\n\nx\n\n{/await}\n')).toBe(
+			'{#await p.then(f) catch err}\n\nx\n\n{/await}\n'
+		);
+		expect(await svx('{#await p then}\n\nx\n\n{/await}\n')).toBe(
+			'{#await p then}\n\nx\n\n{/await}\n'
+		);
+	});
+
+	test('a snippet head', async () => {
+		expect(await svx('{#snippet  row(item,i=0)}\n\nx\n\n{/snippet}\n')).toBe(
+			'{#snippet row(item, i = 0)}\n\nx\n\n{/snippet}\n'
+		);
+		expect(
+			await svx(
+				'<script lang="ts">\n</script>\n\n{#snippet row<T>(item:T, {a}:{a:string})}\n\nx\n\n{/snippet}\n'
+			)
+		).toBe(
+			'<script lang="ts"></script>\n\n{#snippet row<T>(item: T, { a }: { a: string })}\n\nx\n\n{/snippet}\n'
+		);
+	});
+
+	test('a head that does not parse is kept', async () => {
+		const sources = [
+			'{#each items as }\n\nx\n\n{/each}\n',
+			'{#each items as item, 1 }\n\nx\n\n{/each}\n',
+			'{#snippet row(item: T)}\n\nx\n\n{/snippet}\n',
+		];
+		for (const source of sources) expect(await svx(source)).toBe(source);
 	});
 });
 
@@ -162,9 +230,11 @@ describe('fences', () => {
 		expect(await svx(js, { mdsvexFormatFences: true } as Options)).toBe(
 			'```js\nlet a = 1;\n```\n'
 		);
-		expect(await svx('```css\na{color:red}\n```\n', { mdsvexFormatFences: true } as Options)).toBe(
-			'```css\na {\n  color: red;\n}\n```\n'
-		);
+		expect(
+			await svx('```css\na{color:red}\n```\n', {
+				mdsvexFormatFences: true,
+			} as Options)
+		).toBe('```css\na {\n  color: red;\n}\n```\n');
 	});
 
 	test('with meta, annotations or an unknown language are kept', async () => {
@@ -176,12 +246,16 @@ describe('fences', () => {
 			'```md\n*a*\n```\n',
 		];
 		for (const source of sources) {
-			expect(await svx(source, { mdsvexFormatFences: true } as Options)).toBe(source);
+			expect(await svx(source, { mdsvexFormatFences: true } as Options)).toBe(
+				source
+			);
 		}
 	});
 
 	test('inside a list are kept', async () => {
 		const source = '- a\n\n  ```js\n  let a=1\n  ```\n';
-		expect(await svx(source, { mdsvexFormatFences: true } as Options)).toBe(source);
+		expect(await svx(source, { mdsvexFormatFences: true } as Options)).toBe(
+			source
+		);
 	});
 });

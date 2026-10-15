@@ -51,7 +51,11 @@ function comment(node: SvxNode, text: string): string | undefined {
  * a block that is a comment, or a paragraph that opens (0) or closes (-1)
  * with one, a comment on the line before text shares its paragraph
  */
-function edge_comment(node: SvxNode, text: string, at: 0 | -1): string | undefined {
+function edge_comment(
+	node: SvxNode,
+	text: string,
+	at: 0 | -1
+): string | undefined {
 	if (node.type !== 'paragraph') return comment(node, text);
 	const child = node.children[at === 0 ? 0 : node.children.length - 1];
 	return child && comment(child, text);
@@ -69,7 +73,11 @@ function print_root(
 	const parts: Doc[] = [];
 	// a --- on the first line opens frontmatter, keep the line that held it off
 	const first = children[0];
-	if (first.start > 0 && first.type !== 'frontmatter' && text.startsWith('---', first.start)) {
+	if (
+		first.start > 0 &&
+		first.type !== 'frontmatter' &&
+		text.startsWith('---', first.start)
+	) {
 		parts.push(hardline);
 	}
 	let ignored_to = -1;
@@ -79,10 +87,13 @@ function print_root(
 		// a prettier-ignore-start keeps what follows as written up to its end
 		if (edge_comment(child.node, text, 0) === 'prettier-ignore-start') {
 			const end = children.findIndex(
-				(node, j) => j >= i && edge_comment(node, text, -1) === 'prettier-ignore-end'
+				(node, j) =>
+					j >= i && edge_comment(node, text, -1) === 'prettier-ignore-end'
 			);
 			if (end !== -1) {
-				parts.push(replaceEndOfLine(text.slice(child.node.start, children[end].end)));
+				parts.push(
+					replaceEndOfLine(text.slice(child.node.start, children[end].end))
+				);
 				ignored_to = end;
 				return;
 			}
@@ -150,14 +161,18 @@ function is_whole(node: SvxNode): boolean {
 
 export function is_raw_text(node: SvxNode): boolean {
 	const tag = node.meta?.tag;
-	return tag === 'script' || tag === 'style' || tag === 'pre' || tag === 'textarea';
+	return (
+		tag === 'script' || tag === 'style' || tag === 'pre' || tag === 'textarea'
+	);
 }
 
 /** the parts of a node outside its children whose spaces are content */
 function own_kept(node: SvxNode): [number, number][] {
-	if (node.type === 'svelte_branch') return [[node.value_start, node.value_end]];
+	if (node.type === 'svelte_branch')
+		return [[node.value_start, node.value_end]];
 	// the open tag, whose attribute values may hold spaces at a line end
-	if (node.type === 'html') return [[node.start, node.children[0]?.start ?? node.end]];
+	if (node.type === 'html')
+		return [[node.start, node.children[0]?.start ?? node.end]];
 	return [];
 }
 
@@ -166,7 +181,12 @@ function own_kept(node: SvxNode): [number, number][] {
  * hardline trims what was printed, unless they are content or follow a
  * backslash, where taking them off would make a hard break
  */
-function source(text: string, from: number, to: number, keep: [number, number][]): Doc {
+function source(
+	text: string,
+	from: number,
+	to: number,
+	keep: [number, number][]
+): Doc {
 	const parts: Doc[] = [];
 	let line_start = from;
 	for (let i = from; i < to; i++) {
@@ -175,7 +195,8 @@ function source(text: string, from: number, to: number, keep: [number, number][]
 		let trail = i;
 		while (trail > 0 && is_blank(text.charCodeAt(trail - 1))) trail--;
 		const kept =
-			trail < i && (text.charCodeAt(trail - 1) === 92 || in_ranges(keep, trail));
+			trail < i &&
+			(text.charCodeAt(trail - 1) === 92 || in_ranges(keep, trail));
 		parts.push(kept ? literalline : hardline);
 		line_start = i + 1;
 	}

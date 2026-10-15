@@ -58,7 +58,8 @@ export function parse(text: string): SvxRoot {
 	root.children = blocks(text, root.children);
 	for (const child of root.children) clamp(text, child, child.end);
 	root.ts = root.children.some(
-		(child) => child.type === 'html' && child.meta?.tag === 'script' && is_ts(child.meta)
+		(child) =>
+			child.type === 'html' && child.meta?.tag === 'script' && is_ts(child.meta)
 	);
 	return root;
 }

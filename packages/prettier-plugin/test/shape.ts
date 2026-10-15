@@ -27,8 +27,11 @@ export function shape(source: string): string {
 	const walk = (node: SvxNode, depth: number) => {
 		let line = '  '.repeat(depth) + node.type;
 		if (node.meta) {
-			const meta = Object.entries(node.meta).filter(([k]) => !OFFSET_META.has(k));
-			if (meta.length > 0) line += ' ' + JSON.stringify(Object.fromEntries(meta));
+			const meta = Object.entries(node.meta).filter(
+				([k]) => !OFFSET_META.has(k)
+			);
+			if (meta.length > 0)
+				line += ' ' + JSON.stringify(Object.fromEntries(meta));
 		}
 		const own = meaning(node, source);
 		if (own !== undefined) line += ' ' + own;
@@ -52,7 +55,11 @@ export function shape(source: string): string {
 			// the text of a revoked tag holds its line ends
 			value = value.replace(/[ \t]+\n/g, '\n');
 			const next = children[i + 1]?.type;
-			if (next === undefined || next === 'soft_break' || next === 'line_break') {
+			if (
+				next === undefined ||
+				next === 'soft_break' ||
+				next === 'line_break'
+			) {
 				value = value.replace(/[ \t]+$/, '');
 			}
 			if (value === '') continue;
@@ -78,14 +85,17 @@ function meaning(node: SvxNode, source: string): string | undefined {
 				? expression(value())
 				: raw(source.slice(node.start, node.end));
 		case 'svelte_branch':
-			return node.meta?.tag === 'if' || node.meta?.tag === 'else if' || node.meta?.tag === 'key'
+			return node.meta?.tag === 'if' ||
+				node.meta?.tag === 'else if' ||
+				node.meta?.tag === 'key'
 				? expression(value())
-				: raw(value());
+				: head(value());
 		case 'html': {
 			const tag = node.meta?.tag;
 			if (tag === 'script') return program(value());
 			if (tag === 'style') return css(value());
-			if (tag === 'pre' || tag === 'textarea') return raw(source.slice(node.start, node.end));
+			if (tag === 'pre' || tag === 'textarea')
+				return raw(source.slice(node.start, node.end));
 			return undefined;
 		}
 		case 'code_fence':
@@ -97,6 +107,14 @@ function meaning(node: SvxNode, source: string): string | undefined {
 	return undefined;
 }
 
+/** the head of an each, await or snippet, its spacing and the quotes of its strings left out */
+function head(text: string): string {
+	return (
+		'head ' +
+		JSON.stringify(text.replace(/\s+/g, '').replace(/'([^'"]*)'/g, '"$1"'))
+	);
+}
+
 function raw(text: string): string {
 	return JSON.stringify(text.replace(/[ \t]+$/, ''));
 }
@@ -106,7 +124,13 @@ function strip(value: unknown): unknown {
 	if (value === null || typeof value !== 'object') return value;
 	const out: Record<string, unknown> = {};
 	for (const [key, v] of Object.entries(value)) {
-		if (key === 'start' || key === 'end' || key === 'loc' || key === 'range' || key === 'raw') {
+		if (
+			key === 'start' ||
+			key === 'end' ||
+			key === 'loc' ||
+			key === 'range' ||
+			key === 'raw'
+		) {
 			continue;
 		}
 		out[key] = strip(v);
@@ -159,9 +183,17 @@ function css(text: string): string {
 			case 'rule':
 				return { selector: squash(node.selector), nodes: node.nodes.map(rule) };
 			case 'atrule':
-				return { at: node.name, params: squash(node.params), nodes: node.nodes?.map(rule) };
+				return {
+					at: node.name,
+					params: squash(node.params),
+					nodes: node.nodes?.map(rule),
+				};
 			case 'decl':
-				return { prop: node.prop, value: squash(node.value), important: node.important };
+				return {
+					prop: node.prop,
+					value: squash(node.value),
+					important: node.important,
+				};
 			case 'comment':
 				return { comment: node.text };
 		}
