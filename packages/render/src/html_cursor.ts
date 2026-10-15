@@ -40,6 +40,7 @@ import type { MapTrace, SourceMapV3 } from './sourcemap';
 import { ComponentScope, component_imports } from './scope';
 import type { ComponentImport, ReplaceWarning } from './scope';
 import { is_entity_name } from './entities';
+import { top_block } from './component';
 
 export type { Mapping, CodeInformation, MappingData } from './mappings';
 export { MapSink } from './mappings';
@@ -5867,6 +5868,21 @@ export class CursorHTMLRenderer {
 		this.render_mapped(buf, source, sink, true, module_code);
 		capture_trace(sink, out);
 		sink.release();
+	}
+
+	/**
+	 * the nodes changed after their block was rendered, as the node of a
+	 * deferred task that applied does, apply_ready gives them, each block that
+	 * holds one renders again at the next update, a renderer without a cache
+	 * renders every block anyway
+	 */
+	invalidate(buf: NodeBuffer, nodes: readonly number[]): void {
+		const closed = this.closed;
+		if (closed === null) return;
+		for (let i = 0; i < nodes.length; i++) {
+			const block = top_block(buf, nodes[i]);
+			if (block !== Slot.NONE) closed.delete(block);
+		}
 	}
 
 	reset(): void {

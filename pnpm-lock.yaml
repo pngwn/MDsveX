@@ -495,8 +495,8 @@ importers:
         specifier: workspace:*
         version: link:../parse
       svelte:
-        specifier: ^5.0.0
-        version: 5.55.0
+        specifier: ^5.7.0
+        version: 5.57.1(@typescript-eslint/types@8.57.2)
 
   packages/repl:
     dependencies:

@@ -6,6 +6,7 @@
 		buf_text,
 		buf_text_content,
 	} from '@mdsvex/parse/buf-utils';
+	import { setContext } from 'svelte';
 	import type { Component } from 'svelte';
 	import Node from './Node.svelte';
 
@@ -16,12 +17,24 @@
 		idx,
 		source,
 		components,
+		directives,
+		plugin_data,
 	}: {
 		buf: NodeBuffer;
 		idx: number;
 		source: string;
+		/** a component for an element by its tag */
 		components?: ComponentMap;
+		/** a component for a directive by its name, args are its props, label and children snippets */
+		directives?: ComponentMap;
+		/** what plugins wrote, a component reads it from the context, see PluginStream */
+		plugin_data?: { readonly current: unknown };
 	} = $props();
+
+	// the key of @mdsvex/render/stream and of a compiled document, Symbol.for so every copy agrees
+	// svelte-ignore state_referenced_locally
+	if (plugin_data !== undefined)
+		setContext(Symbol.for('mdsvex.plugin_data'), plugin_data);
 
 	const NONE = 0xffffffff;
 
@@ -53,6 +66,9 @@
 	// a cell extra is its grid column, merged cells leave gaps in a row
 	const K_TABLE_CELL = 25;
 	const K_HTML_COMMENT = 26;
+	const K_DIRECTIVE_INLINE = 30;
+	const K_DIRECTIVE_LEAF = 31;
+	const K_DIRECTIVE_CONTAINER = 32;
 	const K_DIRECTIVE_LABEL = 35;
 	const K_FOOTNOTE_REFERENCE = 36;
 	const K_FOOTNOTE_DEFINITION = 37;
@@ -142,6 +158,34 @@
 		}
 		return buf.metadata_at(parent)?.checked;
 	});
+
+	/** the directive_label of a leaf or container, its first child, or NONE */
+	function label_of(node: number): number {
+		if (kind === K_DIRECTIVE_INLINE) return NONE;
+		const first = buf.first_child_at(node);
+		return first !== NONE &&
+			buf.parent_at(first) === node &&
+			buf.kind_at(first) === K_DIRECTIVE_LABEL
+			? first
+			: NONE;
+	}
+
+	/** a child other than the label and line breaks, a component gets no empty children */
+	function has_body(node: number): boolean {
+		for (const child of buf_children(buf, node)) {
+			const k = buf.kind_at(child);
+			if (k !== K_LINE_BREAK && k !== K_DIRECTIVE_LABEL) return true;
+		}
+		return false;
+	}
+
+	let directive = $derived(
+		kind === K_DIRECTIVE_INLINE ||
+			kind === K_DIRECTIVE_LEAF ||
+			kind === K_DIRECTIVE_CONTAINER
+			? directives?.[meta?.name as string]
+			: undefined
+	);
 </script>
 
 {#snippet task_box()}
@@ -158,9 +202,24 @@
 		{:else if kind === K_LINE_BREAK}
 			<!-- skip -->
 		{:else}
-			<Node {buf} idx={child_idx} {source} {components} />
+			<Node
+				{buf}
+				idx={child_idx}
+				{source}
+				{components}
+				{directives}
+				{plugin_data}
+			/>
 		{/if}
 	{/each}
+{/snippet}
+
+{#snippet directive_label()}
+	{@render child_nodes(label_of(idx))}
+{/snippet}
+
+{#snippet directive_body()}
+	{@render child_nodes(idx)}
 {/snippet}
 
 {#snippet table_body(table_idx: number)}
@@ -226,7 +285,14 @@
 	</table>
 {/snippet}
 
-{#if kind === K_ROOT}
+{#if directive}
+	{@const Directive = directive}
+	<Directive
+		{...meta?.args}
+		label={label_of(idx) !== NONE ? directive_label : undefined}
+		children={has_body(idx) ? directive_body : undefined}
+	/>
+{:else if kind === K_ROOT}
 	{@render child_nodes(idx)}
 {:else if kind === K_HEADING}
 	<svelte:element this={'h' + extra} {...get_attrs(meta)}>
