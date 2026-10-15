@@ -1,6 +1,8 @@
 import { parse_markdown_svelte } from '@mdsvex/parse';
 import { kind_to_string } from '@mdsvex/parse/utils';
 
+import { indent_edits } from './indent';
+
 const NONE = 0xffffffff;
 
 export interface SvxNode {
@@ -11,6 +13,8 @@ export interface SvxNode {
 	value_start: number;
 	value_end: number;
 	meta: Record<string, unknown> | undefined;
+	/** what the node holds when the source does not show it as one slice, the code of a fence in a list item without the indent of its lines */
+	content: string | undefined;
 	children: SvxNode[];
 }
 
@@ -20,6 +24,17 @@ export interface SvxRoot extends SvxNode {
 	ts: boolean;
 	/** the source, for the printer hooks that are given no options */
 	text: string;
+	/** changes to the indent of lines, sorted by offset */
+	edits: Edit[];
+}
+
+export interface Edit {
+	/** the offset in the source */
+	at: number;
+	/** how many chars from there are left out */
+	remove: number;
+	/** what is put there */
+	insert: string;
 }
 
 /**
@@ -47,6 +62,7 @@ export function parse(text: string): SvxRoot {
 			value_start: nodes.value_start_at(i),
 			value_end: nodes.value_end_at(i),
 			meta: meta && Object.keys(meta).length > 0 ? { ...meta } : undefined,
+			content: nodes._strings[i],
 			children,
 		};
 	}
@@ -56,25 +72,55 @@ export function parse(text: string): SvxRoot {
 	root.end = text.length;
 	root.text = text;
 	root.children = blocks(text, root.children);
-	for (const child of root.children) clamp(text, child, child.end);
+	for (const child of root.children) clamp(text, child, child.end, child.start);
 	root.ts = root.children.some(
 		(child) =>
 			child.type === 'html' && child.meta?.tag === 'script' && is_ts(child.meta)
 	);
+	root.edits = indent_edits(root);
 	return root;
 }
 
 /**
  * no node ends in a line end and none reaches past its parent, some spans
- * take in the line end after them and an unclosed child can run on
+ * take in the line end after them and an unclosed child can run on, and a
+ * block that starts a line takes in its indent, so a change to the indent
+ * of a line falls in one node
  */
-function clamp(text: string, node: SvxNode, limit: number) {
+function clamp(text: string, node: SvxNode, limit: number, floor = 0) {
 	node.start = Math.min(node.start, limit);
 	let end = Math.min(node.end, limit);
 	while (end > node.start && text.charCodeAt(end - 1) === 10) end--;
 	node.end = end;
-	for (const child of node.children) clamp(text, child, end);
+	if (BLOCKS.has(node.type)) {
+		let start = node.start;
+		while (start > floor && is_blank(text.charCodeAt(start - 1))) start--;
+		const before = text.charCodeAt(start - 1);
+		if (start === 0 || before === 10 || before === 62) node.start = start;
+	}
+	let prev_end = node.start;
+	for (const child of node.children) {
+		clamp(text, child, end, prev_end);
+		prev_end = child.end;
+	}
 }
+
+const BLOCKS = new Set([
+	'paragraph',
+	'heading',
+	'code_fence',
+	'block_quote',
+	'list',
+	'list_item',
+	'table',
+	'thematic_break',
+	'html',
+	'svelte_block',
+	'directive_leaf',
+	'directive_container',
+	'footnote_definition',
+	'definition',
+]);
 
 /**
  * the blocks of the root without the line breaks between them, each ending
@@ -116,6 +162,7 @@ function push_raw(text: string, from: number, to: number, out: SvxNode[]) {
 		value_start: start,
 		value_end: end,
 		meta: undefined,
+		content: undefined,
 		children: [],
 	});
 }

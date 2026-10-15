@@ -1,7 +1,7 @@
 import { doc } from 'prettier';
 import type { AstPath, Doc, ParserOptions, Printer } from 'prettier';
 
-import type { SvxNode, SvxRoot } from './ast';
+import type { Edit, SvxNode, SvxRoot } from './ast';
 import { embed } from './embed';
 import { insert_pragma } from './pragma';
 
@@ -125,7 +125,10 @@ export function print_source(
 ): Doc {
 	const node = path.node;
 	const text = options.originalText;
-	if (is_whole(node)) return replaceEndOfLine(text.slice(node.start, node.end));
+	const edits = root_of(path).edits;
+	if (is_whole(node)) {
+		return source(text, node.start, node.end, [], edits, true);
+	}
 
 	const keep = own_kept(node);
 	const parts: Doc[] = [];
@@ -133,11 +136,11 @@ export function print_source(
 	path.each((child) => {
 		const c = child.node;
 		if (c.start < pos) return;
-		parts.push(source(text, pos, c.start, keep));
+		parts.push(source(text, pos, c.start, keep, edits));
 		parts.push(print(child));
 		pos = c.end;
 	}, 'children');
-	if (pos < node.end) parts.push(source(text, pos, node.end, keep));
+	if (pos < node.end) parts.push(source(text, pos, node.end, keep, edits));
 	return parts;
 }
 
@@ -185,23 +188,53 @@ function source(
 	text: string,
 	from: number,
 	to: number,
-	keep: [number, number][]
+	keep: [number, number][],
+	edits: Edit[],
+	whole = false
 ): Doc {
 	const parts: Doc[] = [];
-	let line_start = from;
-	for (let i = from; i < to; i++) {
-		if (text.charCodeAt(i) !== 10) continue;
-		parts.push(text.slice(line_start, i));
+	let line = '';
+	let piece = from;
+	let e = first_edit(edits, from);
+	for (let i = from; i < to; ) {
+		const edit = edits[e];
+		if (edit !== undefined && edit.at === i) {
+			line += text.slice(piece, i) + edit.insert;
+			i += Math.min(edit.remove, to - i);
+			piece = i;
+			e++;
+			continue;
+		}
+		if (text.charCodeAt(i) !== 10) {
+			i++;
+			continue;
+		}
+		parts.push(line + text.slice(piece, i));
+		line = '';
 		let trail = i;
 		while (trail > 0 && is_blank(text.charCodeAt(trail - 1))) trail--;
 		const kept =
-			trail < i &&
-			(text.charCodeAt(trail - 1) === 92 || in_ranges(keep, trail));
+			whole ||
+			(trail < i &&
+				(text.charCodeAt(trail - 1) === 92 || in_ranges(keep, trail)));
 		parts.push(kept ? literalline : hardline);
-		line_start = i + 1;
+		i++;
+		piece = i;
 	}
-	parts.push(text.slice(line_start, to));
+	parts.push(line + text.slice(piece, to));
 	return parts;
+}
+
+/** the index of the first edit at or after offset */
+function first_edit(edits: Edit[], offset: number): number {
+	let lo = 0;
+	let hi = edits.length;
+	while (lo < hi) {
+		const mid = (lo + hi) >> 1;
+		if (edits[mid].at < offset) lo = mid + 1;
+		else hi = mid;
+	}
+	return lo;
 }
 
 function in_ranges(ranges: [number, number][], pos: number): boolean {

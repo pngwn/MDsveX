@@ -23,8 +23,8 @@ export async function print_open_tag(
 	if (parts === undefined) return undefined;
 
 	const out: Doc[] = [];
-	// nothing but indent is on the line so far
-	let line_start = false;
+	// nothing but indent is on the line so far, a tag that starts a line holds its indent
+	let line_start = true;
 	for (let i = 0; i < parts.length; i++) {
 		const part = parts[i];
 		if (part.kind === 'expression') {

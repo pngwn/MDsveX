@@ -25,6 +25,8 @@ const CORPUS = [
 		...files_in(join(REPO, 'packages/parse/test/fixtures/pfm'), ['.md']),
 		...files_in(join(REPO, 'packages/parse/test/fixtures/markdown'), ['.md']),
 		...files_in(join(REPO, 'packages'), ['.svx', '.svtext']),
+		// real readmes and the fixtures run together
+		...files_in(join(REPO, 'packages/bench/perf/corpus'), ['.md']),
 		...files_in(join(REPO, 'language-tools/vscode-pfm/test-fixture'), ['.pfm']),
 	]),
 ];

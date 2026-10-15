@@ -48,7 +48,9 @@ export function shape(source: string): string {
 			// texts split and merge as offsets move
 			let value = '';
 			while (i < children.length && children[i].type === 'text') {
-				value += source.slice(children[i].value_start, children[i].value_end);
+				value +=
+					children[i].content ??
+					source.slice(children[i].value_start, children[i].value_end);
 				i++;
 			}
 			i--;
@@ -98,8 +100,18 @@ function meaning(node: SvxNode, source: string): string | undefined {
 				return raw(source.slice(node.start, node.end));
 			return undefined;
 		}
-		case 'code_fence':
+		case 'code_fence': {
+			const { info_start, info_end } = node.meta as {
+				info_start?: number;
+				info_end?: number;
+			};
+			const info =
+				info_start === undefined ? '' : source.slice(info_start, info_end);
+			// the code as a renderer sees it, a fence in a container holds it as a string
+			return 'fence ' + JSON.stringify([info.trim(), node.content ?? value()]);
+		}
 		case 'code_span':
+			return 'code ' + JSON.stringify(node.content ?? value());
 		case 'html_comment':
 		case 'raw':
 			return raw(source.slice(node.start, node.end));

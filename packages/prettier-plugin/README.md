@@ -24,6 +24,8 @@ Today it:
 - folds a run of blank lines between blocks to one
 - takes the spaces off the end of a line of prose
 - ends the document with one line end
+- folds the spaces after a list marker to one, moves a nested list to the content column of its item and a list at the top to the left edge, what an item holds moves with it
+- puts a space after a `>` that has text straight after it
 - formats the yaml frontmatter, the imports at the top, `<script>` (TypeScript with `lang="ts"`) and `<style>` (css, scss or less)
 - formats `{expressions}`, `{@html}` and `{@render}` tags, an expression in prose stays on one line
 - tidies open tags: the spaces between attributes fold to one and each `{expression}`, spread and `{@attach}` is formatted on one line, the tag keeps its line breaks, quotes and the order of its attributes
