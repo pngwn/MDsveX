@@ -24,5 +24,20 @@ Today it:
 - folds a run of blank lines between blocks to one
 - takes the spaces off the end of a line of prose
 - ends the document with one line end
+- formats the yaml frontmatter, the imports at the top, `<script>` (TypeScript with `lang="ts"`) and `<style>` (css, scss or less)
+- formats `{expressions}`, `{@html}` and `{@render}` tags and the heads of `{#if}`, `{:else if}` and `{#key}`, an expression in prose stays on one line
 
-Code fences, frontmatter, `<script>`, `<style>`, `<pre>`, expressions and attribute values are left exactly as they are.
+The formatting of the code follows your Prettier options, `singleQuote`, `semi`, `useTabs` and the rest. A part that does not parse is left as it is, so is `<pre>`, an attribute value and the head of `{#each}`, `{#await}` and `{#snippet}`.
+
+## Code fences
+
+Code fences are left exactly as they are, their line ranges, annotations and `[!eval]` groups count the lines of the code. Turn on `mdsvexFormatFences` to format a fence whose info string is a language Prettier knows and nothing else:
+
+```json
+{
+	"plugins": ["@mdsvex/prettier-plugin"],
+	"mdsvexFormatFences": true
+}
+```
+
+A fence with meta (` ```js {1-3} `), an annotation (`[!hl]`) or a markdown language is still left as it is, and so is a fence inside a list or a quote.

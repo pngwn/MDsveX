@@ -43,13 +43,8 @@ describe('spaces at line ends', () => {
 		expect(await svx('```js\nlet a = 1;  \n```\n')).toBe('```js\nlet a = 1;  \n```\n');
 	});
 
-	test('stay in frontmatter, script, style and pre', async () => {
-		const sources = [
-			'---\na: |\n  b  \n---\n',
-			'<script>\nlet a = `b  \nc`;\n</script>\n',
-			'<style>\na {}  \n</style>\n',
-			'<pre>\na  \n</pre>\n',
-		];
+	test('stay in a template string and pre', async () => {
+		const sources = ['<script>\n  let a = `b  \nc`;\n</script>\n', '<pre>\na  \n</pre>\n'];
 		for (const source of sources) expect(await svx(source)).toBe(source);
 	});
 

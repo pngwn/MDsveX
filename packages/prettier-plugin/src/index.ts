@@ -1,4 +1,4 @@
-import type { Parser, Plugin, SupportLanguage } from 'prettier';
+import type { Parser, Plugin, SupportLanguage, SupportOptions } from 'prettier';
 
 import { parse } from './ast';
 import type { SvxNode } from './ast';
@@ -24,6 +24,16 @@ export const parsers: Record<string, Parser<SvxNode>> = {
 
 export const printers = { mdsvex: printer };
 
-const plugin: Plugin<SvxNode> = { languages, parsers, printers };
+export const options: SupportOptions = {
+	mdsvexFormatFences: {
+		type: 'boolean',
+		category: 'mdsvex',
+		default: false,
+		description:
+			'Format the code in a fence whose info string is a language Prettier knows and nothing else.',
+	},
+};
+
+const plugin: Plugin<SvxNode> = { languages, parsers, printers, options };
 
 export default plugin;

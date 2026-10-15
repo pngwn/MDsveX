@@ -1,19 +1,21 @@
 import { doc } from 'prettier';
 import type { AstPath, Doc, ParserOptions, Printer } from 'prettier';
 
-import type { SvxNode } from './ast';
+import type { SvxNode, SvxRoot } from './ast';
+import { embed } from './embed';
 
-const { hardline } = doc.builders;
+const { hardline, literalline } = doc.builders;
 const { replaceEndOfLine } = doc.utils;
 
-type Print = (path: AstPath<SvxNode>) => Doc;
+export type Print = (path: AstPath<SvxNode>) => Doc;
 
 export const printer: Printer<SvxNode> = {
 	print(path, options, print) {
 		const node = path.node;
 		if (node.type === 'root') return print_root(path, options, print);
-		return verbatim(node, options.originalText);
+		return print_source(path, options, print);
 	},
+	embed: embed as Printer<SvxNode>['embed'],
 	getVisitorKeys() {
 		return ['children'];
 	},
@@ -51,27 +53,36 @@ function separator(text: string, prev: SvxNode, next: SvxNode): Doc {
 	return lines === 1 ? hardline : [hardline, hardline];
 }
 
-/** the source of a node with the spaces that end its lines taken off */
-function verbatim(node: SvxNode, text: string): Doc {
-	const keep = kept_ranges(node);
-	let out = '';
-	let line_start = node.start;
-	for (let i = node.start; i <= node.end; i++) {
-		if (i < node.end && text.charCodeAt(i) !== 10) continue;
-		let trail = i;
-		while (trail > line_start && is_blank(text.charCodeAt(trail - 1))) trail--;
-		const line =
-			trail === i || is_kept(keep, trail) || ends_in_backslash(text, line_start, trail)
-				? text.slice(line_start, i)
-				: text.slice(line_start, trail);
-		out += i < node.end ? line + '\n' : line;
-		line_start = i + 1;
-	}
-	return replaceEndOfLine(out);
+/**
+ * the source of a node with each child printed in its place, from `from`
+ * when an embed printed the start of the node itself
+ */
+export function print_source(
+	path: AstPath<SvxNode>,
+	options: ParserOptions<SvxNode>,
+	print: Print,
+	from = path.node.start
+): Doc {
+	const node = path.node;
+	const text = options.originalText;
+	if (is_whole(node)) return replaceEndOfLine(text.slice(node.start, node.end));
+
+	const keep = own_kept(node);
+	const parts: Doc[] = [];
+	let pos = from;
+	path.each((child) => {
+		const c = child.node;
+		if (c.start < pos) return;
+		parts.push(source(text, pos, c.start, keep));
+		parts.push(print(child));
+		pos = c.end;
+	}, 'children');
+	if (pos < node.end) parts.push(source(text, pos, node.end, keep));
+	return parts;
 }
 
-/** the spans whose spaces are content, code, expressions and raw html */
-function kept_ranges(node: SvxNode, out: [number, number][] = []): [number, number][] {
+/** nodes whose whole source is content */
+function is_whole(node: SvxNode): boolean {
 	switch (node.type) {
 		case 'code_fence':
 		case 'code_span':
@@ -81,36 +92,57 @@ function kept_ranges(node: SvxNode, out: [number, number][] = []): [number, numb
 		case 'frontmatter':
 		case 'import_statement':
 		case 'raw':
-			out.push([node.start, node.end]);
-			return out;
-		case 'svelte_branch':
-			out.push([node.value_start, node.value_end]);
-			break;
-		case 'html': {
-			const tag = node.meta?.tag;
-			if (tag === 'script' || tag === 'style' || tag === 'pre' || tag === 'textarea') {
-				out.push([node.start, node.end]);
-				return out;
-			}
-			// the open tag, whose attribute values may hold spaces at a line end
-			out.push([node.start, node.children[0]?.start ?? node.end]);
-			break;
-		}
+			return true;
+		case 'html':
+			return is_raw_text(node);
 	}
-	for (const child of node.children) kept_ranges(child, out);
-	return out;
+	return false;
 }
 
-function is_kept(ranges: [number, number][], pos: number): boolean {
+export function is_raw_text(node: SvxNode): boolean {
+	const tag = node.meta?.tag;
+	return tag === 'script' || tag === 'style' || tag === 'pre' || tag === 'textarea';
+}
+
+/** the parts of a node outside its children whose spaces are content */
+function own_kept(node: SvxNode): [number, number][] {
+	if (node.type === 'svelte_branch') return [[node.value_start, node.value_end]];
+	// the open tag, whose attribute values may hold spaces at a line end
+	if (node.type === 'html') return [[node.start, node.children[0]?.start ?? node.end]];
+	return [];
+}
+
+/**
+ * source text as a doc, a line end takes the spaces before it off, as a
+ * hardline trims what was printed, unless they are content or follow a
+ * backslash, where taking them off would make a hard break
+ */
+function source(text: string, from: number, to: number, keep: [number, number][]): Doc {
+	const parts: Doc[] = [];
+	let line_start = from;
+	for (let i = from; i < to; i++) {
+		if (text.charCodeAt(i) !== 10) continue;
+		parts.push(text.slice(line_start, i));
+		let trail = i;
+		while (trail > 0 && is_blank(text.charCodeAt(trail - 1))) trail--;
+		const kept =
+			trail < i && (text.charCodeAt(trail - 1) === 92 || in_ranges(keep, trail));
+		parts.push(kept ? literalline : hardline);
+		line_start = i + 1;
+	}
+	parts.push(text.slice(line_start, to));
+	return parts;
+}
+
+function in_ranges(ranges: [number, number][], pos: number): boolean {
 	for (const [start, end] of ranges) if (pos >= start && pos < end) return true;
 	return false;
 }
 
-/** a backslash before the end of a line would become a hard break */
-function ends_in_backslash(text: string, start: number, end: number): boolean {
-	return end > start && text.charCodeAt(end - 1) === 92;
-}
-
 function is_blank(c: number): boolean {
 	return c === 32 || c === 9;
+}
+
+export function root_of(path: AstPath<SvxNode>): SvxRoot {
+	return path.stack[0] as SvxRoot;
 }

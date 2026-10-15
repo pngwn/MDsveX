@@ -16,6 +16,8 @@ export interface SvxNode {
 
 export interface SvxRoot extends SvxNode {
 	type: 'root';
+	/** a script of the document is typescript, so are its expressions */
+	ts: boolean;
 }
 
 /**
@@ -51,7 +53,23 @@ export function parse(text: string): SvxRoot {
 	root.start = 0;
 	root.end = text.length;
 	root.children = blocks(text, root.children);
+	for (const child of root.children) clamp(text, child, child.end);
+	root.ts = root.children.some(
+		(child) => child.type === 'html' && child.meta?.tag === 'script' && is_ts(child.meta)
+	);
 	return root;
+}
+
+/**
+ * no node ends in a line end and none reaches past its parent, some spans
+ * take in the line end after them and an unclosed child can run on
+ */
+function clamp(text: string, node: SvxNode, limit: number) {
+	node.start = Math.min(node.start, limit);
+	let end = Math.min(node.end, limit);
+	while (end > node.start && text.charCodeAt(end - 1) === 10) end--;
+	node.end = end;
+	for (const child of node.children) clamp(text, child, end);
 }
 
 /**
@@ -96,6 +114,16 @@ function push_raw(text: string, from: number, to: number, out: SvxNode[]) {
 		meta: undefined,
 		children: [],
 	});
+}
+
+export function attribute(meta: SvxNode['meta'], name: string): unknown {
+	const attributes = meta?.attributes as Record<string, unknown> | undefined;
+	return attributes?.[name];
+}
+
+export function is_ts(meta: SvxNode['meta']): boolean {
+	const lang = attribute(meta, 'lang') ?? attribute(meta, 'type');
+	return lang === 'ts' || lang === 'typescript' || lang === 'text/typescript';
 }
 
 function is_space(c: number): boolean {
