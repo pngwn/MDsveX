@@ -308,11 +308,15 @@ export interface CompileOptions
 	snippets?: SnippetsOption;
 	/** the document, highlighters, math renderers and their errors see it */
 	filename?: string;
-	/** reads a file for ctx.read of a plugin, mdsvex/compile has no reader of its own */
+	/**
+	 * reads a file for ctx.read of a plugin, and with resolve the files fences
+	 * show with src= in compile_async, mdsvex/compile has no reader of its own
+	 */
 	read?: (path: string) => string | Promise<string>;
 	/**
 	 * resolves a specifier from a file for ctx.resolve of a plugin, null when
-	 * nothing matches
+	 * nothing matches, compile_async resolves src= files and the template
+	 * module with it and reports them in dependencies
 	 */
 	resolve?: (
 		specifier: string,
@@ -2612,7 +2616,8 @@ function render(source: string, options?: CompileOptions): CompileResult {
 const async_sessions = new WeakMap<object, CompilerSession>();
 
 function async_session(options: CompileOptions): CompilerSession {
-	const key = (options.plugins ?? options.parse_plugins) as object;
+	const key = (options.plugins ?? options.parse_plugins) as object | undefined;
+	if (key === undefined) return new CompilerSession();
 	let session = async_sessions.get(key);
 	if (session === undefined) {
 		session = new CompilerSession();
@@ -2645,21 +2650,74 @@ export async function compile_async(
 	source: string,
 	options?: CompileOptions
 ): Promise<CompileResult> {
-	if (options === undefined || !has_plugins(options))
+	if (
+		options === undefined ||
+		(!has_plugins(options) &&
+			(options.read === undefined || options.resolve === undefined))
+	)
 		return render(source, options);
 	const session = async_session(options);
 	const inputs = inputs_of(options);
 	const parsed = session.parse(source, inputs);
-	const settled = session.settle(parsed);
-	if (settled !== undefined) {
-		try {
-			await settled;
-		} catch (e) {
-			session.drop(parsed);
-			throw e;
-		}
+	let read: string[] | undefined;
+	try {
+		await session.settle(parsed);
+		// with a reader and a resolver the files fences show are read here
+		if (options.read !== undefined && options.resolve !== undefined)
+			read = await read_sources(parsed, inputs, options);
+	} catch (e) {
+		session.drop(parsed);
+		throw e;
 	}
-	return session.render(parsed, inputs, options.sourcemap);
+	const result = session.render(parsed, inputs, options.sourcemap);
+	if (options.resolve !== undefined)
+		await own_dependencies(result, read, options);
+	return result;
+}
+
+/** reads each file a fence shows that sources lacks, the paths it read */
+async function read_sources(
+	parsed: Parsed,
+	inputs: CompileInputs,
+	options: CompileOptions
+): Promise<string[] | undefined> {
+	const given = options.sources;
+	const needs = parsed.needs;
+	if (given === false || needs === undefined) return undefined;
+	const resolve = options.resolve!;
+	const read = options.read!;
+	const sources: Record<string, string> = { ...given };
+	const paths: string[] = [];
+	await Promise.all(
+		needs.map(async (need) => {
+			if (need.type !== 'source' || need.spec in sources) return;
+			const path = await resolve(need.spec, options.filename);
+			// a file it can not find throws the SourceError of the render
+			if (path == null) return;
+			sources[need.spec] = await read(path);
+			paths.push(path);
+		})
+	);
+	if (paths.length === 0) return undefined;
+	inputs.sources = sources;
+	return paths;
+}
+
+/** the files the compile read and the module of its template join what plugins depend on */
+async function own_dependencies(
+	result: CompileResult,
+	read: string[] | undefined,
+	options: CompileOptions
+): Promise<void> {
+	const deps = new Set(result.dependencies);
+	if (read !== undefined) for (const path of read) deps.add(path);
+	const name = result.template;
+	const entry = name === undefined ? undefined : options.templates?.[name];
+	if (entry !== undefined) {
+		const path = await options.resolve!(entry.specifier, options.filename);
+		if (path != null) deps.add(path);
+	}
+	if (deps.size !== 0) result.dependencies = [...deps];
 }
 
 /** @internal for tests */
