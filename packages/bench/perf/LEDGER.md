@@ -394,7 +394,7 @@ delete it.
 
 ### a node for each link reference definition and element ranges
 
-- **Source:** the source spans PR, `try_parse_link_ref_definition` now emits
+- **Source:** #1196, `try_parse_link_ref_definition` now emits
   a `definition` node (open, `label`, `href`, `title`, value range, close),
   `html_leaf_value` and the `set_value_start`/`set_value_end` calls at each
   element open and close.
