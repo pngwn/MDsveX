@@ -1,0 +1,11 @@
+---
+bibliography: ./refs.json
+---
+
+# Citations
+
+The engine could do more than count :cite[lovelace1843]. Its designer wrote about it decades later :cite[babbage1864], and what it could not do was settled in 1936 :cite[turing1936, lovelace1843].
+
+- a key the file does not have, :cite[nope], shows as written
+
+::bibliography[References]
