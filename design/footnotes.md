@@ -53,7 +53,7 @@ A claim[^1], and a second one[^smith].
 `[^label]: text`, at the start of a line, in any container.
 
 - **One arm in `block_start`, ahead of link reference definitions,** so every container gets it with one edit. A link reference label can not start with `^`.
-- **It needs text on its line.** `[^a]:` alone is literal text, as `- [ ]` alone is not a task item.
+- **It needs text on its line.** `[^a]:` alone is literal text, as `- [ ]` alone is not a task item. Loosened later for #1183: the text may start on the next line, indented by four spaces, as Prettier writes a long definition, and `[^a]:` with no such line is an empty definition that a compile rejects (`footnote_empty`).
 - **It ends a paragraph,** as a heading or a fence does. Without that, the second of two definitions on adjacent lines would be a continuation line of the first.
 - **In any container,** by the containers principle of `PFM.md`: a definition is a block, and a block is the same block in a blockquote, a list item, an element, a Svelte block and a directive. `> [^a]: x` is a definition in a blockquote. Where it sits does not change the output, every definition is collected into the one section (§4).
 - **The first PR: one paragraph.** It continues over the following lines, indented or not, and ends at a blank line or a line that starts a block, like any paragraph.

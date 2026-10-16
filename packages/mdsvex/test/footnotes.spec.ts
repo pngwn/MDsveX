@@ -287,6 +287,28 @@ describe('footnote errors', () => {
 		]);
 	});
 
+	test('a definition with no text is a FootnoteError at the definition', () => {
+		for (const raw of ['a[^1]\n\n[^1]:\n', 'a[^1]\n\n[^1]:\nnot indented\n']) {
+			const e = caught(raw, { filename: 'doc.svx' });
+			expect(e.code).toBe('footnote_empty');
+			expect([e.line, e.column]).toEqual([3, 1]);
+			expect(e.message).toBe(
+				'the footnote [^1] has no text, write it after `[^1]:` or on the lines below indented by four spaces (doc.svx:3)'
+			);
+		}
+	});
+
+	test('strict false renders a definition with no text, with a warning', () => {
+		const out = compile('a[^1]\n\n[^1]:\nnot indented\n', {
+			footnotes: { strict: false },
+		});
+		expect(out.code).toBe(
+			`<p>a${ref(1, '1')}</p><p>not indented</p>` +
+				section(`<li id="fn-1"> ${back(1).trim()}</li>`)
+		);
+		expect(codes(out.warnings)).toEqual([['footnote_empty', 3, 0]]);
+	});
+
 	test('an option of the wrong type throws before any document', () => {
 		expect(() => compile('a', { footnotes: 'x' as never })).toThrow(
 			/footnotes must be an object/
@@ -319,6 +341,23 @@ describe('a footnote that holds blocks', () => {
 					`<li id="fn-1"><p>one</p><pre><code class="language-js">let b;</code></pre>${back(1)}</li>`
 				)
 		);
+	});
+});
+
+describe('a footnote with its text on the next line, as prettier writes it', () => {
+	test.each([
+		[
+			'lines that go on',
+			'a[^1]\n\n[^1]:\n    To add line breaks.\n    This is a second line.\n',
+			'a[^1]\n\n[^1]: To add line breaks.\n    This is a second line.\n',
+		],
+		[
+			'blocks',
+			'a[^1]\n\n[^1]:\n    one\n\n    - two\n\n    ```js\n    let b;\n    ```\n\nafter\n',
+			'a[^1]\n\n[^1]: one\n\n    - two\n\n    ```js\n    let b;\n    ```\n\nafter\n',
+		],
+	])('renders as written on one line, %s', (_, prettier, typed) => {
+		expect(compile_all(prettier)).toBe(compile_all(typed));
 	});
 });
 

@@ -3182,7 +3182,7 @@ The reference renders as a number that links to the note, and the notes are coll
 ```
 
 - **A label** is any run of characters without whitespace, brackets or `^`. Labels match exactly, case included. The number a reader sees comes from the order of the references, not from the label, so `[^smith]` is as good a label as `[^2]`.
-- **A definition** is a line that starts with `[^label]:` and has text after it. It may hold links, emphasis, code and references to other notes. It can be written anywhere: under the paragraph that cites it, at the end of the document, inside a block quote or a list item. Wherever it is, it renders in the section at the end.
+- **A definition** is a line that starts with `[^label]:` and has text after it, or text on the lines below indented by four spaces, which is how Prettier writes a long one. It may hold links, emphasis, code and references to other notes. It can be written anywhere: under the paragraph that cites it, at the end of the document, inside a block quote or a list item. Wherever it is, it renders in the section at the end.
 - **A longer note** continues as a list item does. After a blank line, a block indented by four spaces belongs to the note, and the first line that is not blank and not indented ends it:
 
   ```md
@@ -3207,7 +3207,7 @@ The class \[^abc] matches, and so does `[^abc]`.
 
 ### Footnote errors
 
-A reference with no definition and a label defined twice fail the build with a `FootnoteError`. It has the `code` (`footnote_undefined` or `footnote_duplicate`), the `label`, and the `line` and `column` of the reference or of the second definition, and `problems` lists every one in the document:
+A reference with no definition, a label defined twice and a definition with no text fail the build with a `FootnoteError`. It has the `code` (`footnote_undefined`, `footnote_duplicate` or `footnote_empty`), the `label`, and the `line` and `column` of the reference or of the definition, and `problems` lists every one in the document:
 
 ```
 the footnote reference [^nope] has no definition, add `[^nope]: text`, or escape the bracket as `\[^nope]` if it is not a footnote (src/routes/post.svx:12)
