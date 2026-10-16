@@ -1,5 +1,5 @@
 import { defineConfig } from "vite";
-import { resolve } from "path";
+import { isAbsolute, resolve } from "path";
 
 export default defineConfig({
 	build: {
@@ -14,7 +14,7 @@ export default defineConfig({
 		rollupOptions: {
 			// dependencies stay imports, only this package is built
 			external: (id) =>
-				!id.startsWith(".") && !id.startsWith("/") && !id.startsWith("\0"),
+				!id.startsWith(".") && !isAbsolute(id) && !id.startsWith("\0"),
 			output: {
 				entryFileNames: "[name].js",
 			},
