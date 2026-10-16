@@ -249,6 +249,7 @@ const { code, data } = session.render(parsed, inputs);
 
 - **`parse`** runs the parser and the plugins. The `Parsed` it returns holds the document, its `metadata`, the `data` its plugins wrote so far and `needs`.
 - **`settle`** waits for deferred work and applies it, and returns `undefined` when there was none, so a document without any stays synchronous. A document whose plugins deferred work throws if it renders before.
+- **Read `needs` after `settle`.** Deferred work and a `document` hook can add an image or a fence with `src=`, or change one, and `settle` makes `needs`, `snippets` and `math` again from the settled tree. Only what the inputs of the `parse` turned on is looked for.
 - **`render`** gives what `compile` gives. A `Parsed` renders once.
 - **The session compiles other documents while one waits.** Each `Parsed` holds its own document.
 - **`parsed.dependencies`**, and `dependencies` on the result, are the absolute paths its plugins read or named, for the host to watch. When one changes, call `session.invalidate([path])` before compiling the documents that depend on it again, so what `ctx.cached` kept from it goes.
@@ -806,7 +807,8 @@ const titles = {
 
 - **The task gets a node and a `ctx` of its own** and changes the document through them. Its changes apply once it has finished and the parser is sure of the node. If the parser takes the node back, they are dropped.
 - **A task changes its own node** and what is inside it, and writes data for it. Anything else throws a `TypeError`. So the result does not depend on which task finishes first.
-- **The Vite plugin waits** for deferred work before it renders the document, and so does a `?data` import. With `compile`, use [`compile_async`](docs#compile_async). In dev it warns when a document has waited five seconds, naming the plugin.
+- **The Vite plugin waits** for deferred work before it renders the document, and so does a `?data` import. With `compile`, use [`compile_async`](docs#compile_async). In dev it warns when a document has waited five seconds, naming the plugin and the document.
+- **What a task adds compiles as if it were written.** An image whose `src` a task set is imported, and a fence it adds with `src=` shows its file, and the same goes for a `document` hook.
 
 Work that needs the whole document goes in a `document` hook. It runs once, after the parse and after every deferred task, and gets the root of the tree. It may be async:
 

@@ -28,6 +28,14 @@ type Context = Rollup.PluginContext & {
 	environment?: { name: string; config?: { consumer?: string } };
 };
 
+/** resolves an import of importer as the bundler would, null when nothing matches, a plugin context is one */
+export interface ResolveImport {
+	resolve(
+		spec: string,
+		importer: string
+	): Promise<{ id: string; external?: boolean | string } | null>;
+}
+
 /** what load takes from a dev server */
 export interface MetadataDev {
 	config: ResolvedConfig;
@@ -49,11 +57,13 @@ export function metadata_query(
 export interface QueryModule {
 	/**
 	 * file is the path of the document, a promise when its plugins deferred
-	 * work, ctx is that of the load, none when an edit is compared
+	 * work, resolve is that of the load, or of the dev environment when an
+	 * edit is compared, ctx is that of the load, none when an edit is compared
 	 */
 	module(
 		raw: string,
 		file: string,
+		resolve: ResolveImport,
 		ctx?: Rollup.PluginContext
 	): string | Promise<string>;
 	/** awaited before module in a load */
@@ -150,7 +160,7 @@ function document_query(
 			await build.ready?.(ctx);
 			let code: string;
 			try {
-				code = await build.module(raw, file, ctx as Rollup.PluginContext);
+				code = await build.module(raw, file, ctx, ctx as Rollup.PluginContext);
 			} catch (e: any) {
 				loaded.delete(key);
 				// vite adds these to what a transform throws, a load has no file of its own
@@ -167,7 +177,16 @@ function document_query(
 
 		/** the module of an edited document, invalidated, when the edit changed it */
 		async hot(
-			environment: { name: string; moduleGraph: EnvironmentModuleGraph },
+			environment: {
+				name: string;
+				moduleGraph: EnvironmentModuleGraph;
+				pluginContainer: {
+					resolveId(
+						id: string,
+						importer?: string
+					): Promise<{ id: string; external?: boolean | string } | null>;
+				};
+			},
 			update: {
 				file: string;
 				timestamp: number;
@@ -183,7 +202,10 @@ function document_query(
 			if (before !== undefined && build.settled?.() !== false) {
 				let now: string | undefined;
 				try {
-					now = await build.module(await update.read(), update.file);
+					now = await build.module(await update.read(), update.file, {
+						resolve: (spec, importer) =>
+							environment.pluginContainer.resolveId(spec, importer),
+					});
 				} catch {
 					// the load reports it
 				}
