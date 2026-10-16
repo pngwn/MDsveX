@@ -1,6 +1,6 @@
 import type { Parser, Plugin, SupportLanguage, SupportOptions } from 'prettier';
 
-import { parse } from './ast';
+import { parse, sort_root } from './ast';
 import { formats_frontmatter } from './config';
 import type { FrontmatterMode } from './config';
 import type { SvxNode } from './ast';
@@ -20,6 +20,10 @@ export const parsers: Record<string, Parser<SvxNode>> = {
 	mdsvex: {
 		async parse(text, options) {
 			const root = parse(text);
+			sort_root(
+				root,
+				(options as { svelteSortOrder?: string }).svelteSortOrder
+			);
 			root.yaml = await formats_frontmatter(
 				(options as { mdsvexFrontmatter?: FrontmatterMode }).mdsvexFrontmatter,
 				options.filepath
@@ -36,7 +40,38 @@ export const parsers: Record<string, Parser<SvxNode>> = {
 
 export const printers = { mdsvex: printer };
 
+/** every order of the four sections, as prettier-plugin-svelte offers them */
+function sort_orders(): string[] {
+	const out: string[] = [];
+	const permute = (done: string[], rest: string[]) => {
+		if (rest.length === 0) out.push(done.join('-'));
+		for (const part of rest) {
+			permute(
+				[...done, part],
+				rest.filter((other) => other !== part)
+			);
+		}
+	};
+	permute([], ['options', 'scripts', 'markup', 'styles']);
+	return [...out, 'none'];
+}
+
 export const options: SupportOptions = {
+	// declared as prettier-plugin-svelte declares them, so they work with or without it
+	svelteSortOrder: {
+		type: 'choice',
+		category: 'Svelte',
+		default: 'options-scripts-markup-styles',
+		description: 'Sort order for scripts, markup, and styles',
+		choices: sort_orders().map((value) => ({ value, description: value })),
+	},
+	svelteIndentScriptAndStyle: {
+		type: 'boolean',
+		category: 'Svelte',
+		default: true,
+		description:
+			'Whether or not to indent the code inside <script> and <style> tags in Svelte files',
+	},
 	mdsvexFrontmatter: {
 		type: 'choice',
 		category: 'mdsvex',

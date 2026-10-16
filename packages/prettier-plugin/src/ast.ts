@@ -112,6 +112,57 @@ function push_raw(text: string, from: number, to: number, out: SvxNode[]) {
 	});
 }
 
+type Section = 'options' | 'scripts' | 'markup' | 'styles';
+
+/** the top level blocks in svelteSortOrder, frontmatter and imports stay first as pfm reads them only there */
+export function sort_root(root: SvxRoot, order: string | undefined): void {
+	if (order === 'none') return;
+	const sections = (order ?? 'options-scripts-markup-styles').split(
+		'-'
+	) as Section[];
+	const text = root.text;
+	// a prettier-ignore comment keeps what follows it, moving blocks would move it off
+	if (
+		root.children.some(
+			(child) =>
+				child.type === 'html_comment' &&
+				text
+					.slice(child.value_start, child.value_end)
+					.trim()
+					.startsWith('prettier-ignore')
+		)
+	) {
+		return;
+	}
+	const first: SvxNode[] = [];
+	const grouped: Record<Section, SvxNode[]> = {
+		options: [],
+		scripts: [],
+		markup: [],
+		styles: [],
+	};
+	for (const child of root.children) {
+		if (child.type === 'frontmatter' || child.type === 'import_statement') {
+			first.push(child);
+			continue;
+		}
+		grouped[section_of(child)].push(child);
+	}
+	root.children = [
+		...first,
+		...sections.flatMap((section) => grouped[section] ?? []),
+	];
+}
+
+function section_of(node: SvxNode): Section {
+	if (node.type !== 'html') return 'markup';
+	const tag = node.meta?.tag;
+	if (tag === 'svelte:options') return 'options';
+	if (tag === 'script') return 'scripts';
+	if (tag === 'style') return 'styles';
+	return 'markup';
+}
+
 export function attribute(meta: SvxNode['meta'], name: string): unknown {
 	const attributes = meta?.attributes as Record<string, unknown> | undefined;
 	return attributes?.[name];
