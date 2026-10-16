@@ -3,6 +3,7 @@
 	import type { NodeBuffer } from '@mdsvex/parse/utils';
 	import {
 		buf_children,
+		buf_code,
 		buf_text,
 		buf_text_content,
 	} from '@mdsvex/parse/buf-utils';
@@ -320,7 +321,7 @@
 			? source.slice(meta.info_start as number, meta.info_end as number)
 			: undefined)}
 	<pre><code class={info ? 'language-' + info : undefined} {...get_attrs(meta)}
-			>{buf_text(buf, idx, source)}</code
+			>{buf_code(buf, idx, source)}</code
 		></pre>
 {:else if kind === K_BLOCK_QUOTE}
 	<blockquote {...get_attrs(meta)}>{@render child_nodes(idx)}</blockquote>

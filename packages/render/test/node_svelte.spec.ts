@@ -121,4 +121,42 @@ describe('Node.svelte in a stream', () => {
 		}).body.replace(/<!--[^]*?-->/g, '');
 		expect(html).toBe('<p>inside</p>');
 	});
+
+	test('a fence a plugin makes shows the code it put in it, after each chunk', async () => {
+		const quotes: ParsePlugin = {
+			name: 'quotes',
+			block_quote: {
+				parse: (node) => () =>
+					void node
+						.append('code_fence', { info: 'ts' })
+						.append('text', 'let a = 1;'),
+			},
+		};
+		const html_of = (stream: PluginStream) =>
+			render(Node, {
+				props: { buf: stream.buffer, idx: 0, source: '' },
+			}).body.replace(/<!--[^]*?-->/g, '');
+		const typed = new PluginStream();
+		for (const batch of batches_of(
+			'> hi\n>\n> ```ts\n> let a = 1;\n> ```\n',
+			100
+		))
+			typed.apply(batch);
+		const want = html_of(typed);
+		expect(want).toContain('let a = 1;</code>');
+		for (const chunk of [1, 3, 100]) {
+			const stream = new PluginStream({ plugins: [quotes] });
+			const seen: string[] = [];
+			for (const batch of batches_of('> hi\n', chunk)) {
+				stream.apply(batch);
+				seen.push(html_of(stream));
+			}
+			await stream.end();
+			expect(
+				seen.filter((html) => html.includes('<pre>')),
+				String(chunk)
+			).toEqual([want]);
+			expect(html_of(stream), String(chunk)).toBe(want);
+		}
+	});
 });

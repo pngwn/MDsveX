@@ -575,6 +575,22 @@ code_fence: {
 - **While the document streams**, the handlers run once the line of the opening fence is complete. Over the wire a fence with an empty info string is sent none, and its handlers run when its first text or its close arrives.
 - **Any other node has no `info`**, it reads `undefined`.
 
+### The code of a fence a plugin makes
+
+A fence keeps its code on itself, not in a text child. A fence a plugin makes has none, so the text of the nodes put in it is its code, in order, a break in them a line end:
+
+```js
+const fence = node.append('code_fence', { info: 'ts' });
+fence.append('text', 'let a = 1;\n');
+fence.append('text', 'let b = 2;');
+// renders as the fence typed with those two lines, fence.text_content is the code
+```
+
+- **Any way the fence was made**, `append`, `prepend` or `wrap_inner`, from a handler, a task or a document hook. A fence that `wrap_inner` puts around a paragraph has the paragraph's text as its code.
+- **Text put in a typed fence follows its code.**
+- **Everywhere the code is read**: the html, a highlighter, the `code` prop of a `pre` replacement, a block that runs. A fence with `src=` has no code of its own, so text in it is an error, as code typed in it is.
+- `buf_code(buf, index, source)` from `@mdsvex/parse/buf-utils` reads it from a buffer.
+
 ### Where a Node Is Placed
 
 A parent can have an open wrapper that takes its later children, from `wrap_inner` or `wrap_from`. A node whose type has a handler is placed in three steps:
