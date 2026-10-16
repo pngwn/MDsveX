@@ -206,6 +206,18 @@ describe("document options from a manifest", () => {
 		).toBe(true);
 	});
 
+	it("passes import_images on only when the manifest has it", () => {
+		expect("import_images" in document_options(m, "/app/a.svx").compile!).toBe(false);
+		expect(
+			"import_images" in
+				document_options({ ...m, import_images: false }, "/app/a.svx").compile!,
+		).toBe(false);
+		expect(
+			document_options({ ...m, import_images: true }, "/app/a.svx").compile!
+				.import_images,
+		).toBe(true);
+	});
+
 	it("passes smart_punctuation on as the manifest has it", () => {
 		expect("smart_punctuation" in document_options(m, "/app/a.svx").compile!).toBe(false);
 		expect(
@@ -445,6 +457,13 @@ describe("mdsvex.config.json", () => {
 		expect(from_json({ unwrap_images: true }, root, ts).unwrap_images).toBe(true);
 		expect("unwrap_images" in from_json({ unwrap_images: false }, root, ts)).toBe(false);
 		expect("unwrap_images" in from_json({}, root, ts)).toBe(false);
+	});
+
+	it("takes import_images, on unless it is false as the plugin has it", () => {
+		const root = tree({ "doc.svx": "![a](./a.png)" });
+		expect(from_json({}, root, ts).import_images).toBe(true);
+		expect(from_json({ import_images: true }, root, ts).import_images).toBe(true);
+		expect("import_images" in from_json({ import_images: false }, root, ts)).toBe(false);
 	});
 
 	it("takes math, a manifest without the field for the default", () => {

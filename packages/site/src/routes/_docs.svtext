@@ -1030,7 +1030,7 @@ Set `import_images: false` to leave every url as written:
 mdsvex({ import_images: false });
 ```
 
-`compile()` takes the option too. It is off there by default, because the import only means something to a bundler that takes image files. The editor compiles without it, so a replaced `img` always sees a string `src` there.
+`compile()` takes the option too. It is off there by default, because the import only means something to a bundler that takes image files. The editor reads the option from the manifest the plugin writes, or from `import_images` in an `mdsvex.config.json`, where it is on unless it is `false`. A replaced `img` then gets the type of the import as its `src`, as TypeScript resolves it: `vite/client` declares the common image types and `?url`, `?raw` and `?inline`, and `@sveltejs/enhanced-img` declares `?enhanced`. An import TypeScript can't resolve reports nothing, and its `src` is `any`.
 
 ### `links`
 

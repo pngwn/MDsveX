@@ -416,6 +416,41 @@ describe('unwrap_images option', () => {
 	});
 });
 
+describe('import_images option', () => {
+	const manifest_of = (root: string): MdsvexManifest =>
+		JSON.parse(readFileSync(join(root, MANIFEST_PATH), 'utf8'));
+
+	test('on by default, the editor is told so it types a src as the import', async () => {
+		const root = write_app();
+		const server = await serve(root, mdsvex());
+		try {
+			await ssr(server, '/src/doc.svx');
+			await vi.waitFor(() => {
+				expect(manifest_of(root).import_images).toBe(true);
+				expect(manifest_of(root).version).toBe(1);
+			});
+		} finally {
+			await server.close();
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	test('off, the manifest has no field', async () => {
+		const root = write_app();
+		const server = await serve(root, mdsvex({ import_images: false }));
+		try {
+			await ssr(server, '/src/doc.svx');
+			await vi.waitFor(() => {
+				expect(manifest_of(root).version).toBe(1);
+				expect('import_images' in manifest_of(root)).toBe(false);
+			});
+		} finally {
+			await server.close();
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+});
+
 describe('heading_ids option', () => {
 	const manifest_of = (root: string): MdsvexManifest =>
 		JSON.parse(readFileSync(join(root, MANIFEST_PATH), 'utf8'));

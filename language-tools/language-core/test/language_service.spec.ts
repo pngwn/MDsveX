@@ -390,3 +390,96 @@ describe("the plugin_data export", () => {
 		}
 	});
 });
+
+describe("an image the build imports", () => {
+	const FILES: Record<string, string> = {
+		// a replacement that takes what an enhanced import gives, not a string
+		"src/lib/Picture.svelte": svelte("src: { img: { src: string } }; alt: string"),
+		"src/lib/pictures.ts": "export { default as img } from './Picture.svelte';\n",
+		"src/enhanced.d.ts": [
+			"declare module '*?enhanced' {",
+			"\tconst picture: { img: { src: string } };",
+			"\texport default picture;",
+			"}",
+			"",
+		].join("\n"),
+		"src/doc.svx": "![A chart](./chart.png?enhanced)\n\n![Gone](./gone.png)\n",
+	};
+
+	function with_manifest(import_images: boolean | undefined) {
+		const p = project(FILES);
+		const lib = p.root + "/src/lib/";
+		p.write(
+			"node_modules/.mdsvex/manifest.json",
+			JSON.stringify({
+				version: 1,
+				root: p.root,
+				extensions: [".svx"],
+				component_mode: "markdown",
+				frontmatter_parse: false,
+				directive_plugins: false,
+				select_template: false,
+				templates: {},
+				components: [
+					{ id: "mdsvex:components", file: lib + "pictures.ts", names: ["img"] },
+				],
+				directives: [],
+				documents: {},
+				...(import_images === undefined ? {} : { import_images }),
+			}),
+		);
+		return p;
+	}
+
+	/** what typescript finds wrong with a src in the generated code of the document */
+	function src_errors(p: Project): string[] {
+		const program = p.program();
+		const doc = program
+			.getSourceFiles()
+			.find((f) => f.fileName.endsWith("doc.svx"))!;
+		return program
+			.getSemanticDiagnostics(doc)
+			.filter((d) => d.code === 2322)
+			.map((d) => doc.text.slice(d.start!, d.start! + d.length!));
+	}
+
+	it("is typed as the import when the manifest says the plugin imports it", () => {
+		const p = with_manifest(true);
+		try {
+			expect(src_errors(p)).toEqual([]);
+			// ./gone.png resolves to no module, its import line maps to nothing and reports nothing
+			expect(p.diagnostics("src/doc.svx")).toEqual([]);
+		} finally {
+			p.dispose();
+		}
+	});
+
+	it("is a string without the field, as the plugin had it off", () => {
+		const p = with_manifest(undefined);
+		try {
+			expect(src_errors(p)).toEqual(['"src"', '"src"']);
+		} finally {
+			p.dispose();
+		}
+	});
+
+	it("is imported with a mdsvex.config.json unless it says false", () => {
+		const config = (json: object) =>
+			project({
+				...FILES,
+				"mdsvex.config.json": JSON.stringify({
+					components: "./src/lib/pictures.ts",
+					...json,
+				}),
+			});
+		const on = config({});
+		const off = config({ import_images: false });
+		try {
+			expect(src_errors(on)).toEqual([]);
+			expect(src_errors(off)).toEqual(['"src"', '"src"']);
+		} finally {
+			on.dispose();
+			off.dispose();
+		}
+	});
+});
