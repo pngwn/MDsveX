@@ -5,10 +5,7 @@ import { describe, expect, test } from 'vitest';
 
 import plugin from '../src/index';
 
-/**
- * markup with no markdown in it formats in a document as prettier-plugin-svelte
- * formats it in a component
- */
+/** markup without markdown formats as prettier-plugin-svelte formats a component */
 async function same(source: string, options: Options = {}) {
 	const as_svelte = await format(source, {
 		parser: 'svelte',

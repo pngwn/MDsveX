@@ -161,7 +161,6 @@ export function in_flow(path: AstPath<SvxNode>): boolean {
 	return true;
 }
 
-/** how many block quotes hold the node */
 export function quote_depth(path: AstPath<SvxNode>): number {
 	let depth = 0;
 	for (const value of path.stack) {
@@ -177,10 +176,7 @@ export function quote_depth(path: AstPath<SvxNode>): number {
 	return path.node.type === 'block_quote' ? depth - 1 : depth;
 }
 
-/**
- * the children of a node between from and to as blocks, each block on its
- * own lines, prose between blocks printed as one run, blank lines fold to one
- */
+/** children as blocks on their own lines, the prose between blocks as one run */
 interface ItemLayout {
 	/** the list is loose, its blocks have blank lines between them */
 	loose: boolean;
@@ -268,10 +264,7 @@ interface Unit {
 	block: boolean;
 }
 
-/**
- * a blank line between blocks as in markdown, one line end between markup on
- * consecutive lines as in svelte, and between definitions and imports
- */
+/** a blank line between blocks as in markdown, one line end between lines of markup as in svelte */
 function unit_separator(
 	text: string,
 	children: SvxNode[],
@@ -377,10 +370,7 @@ function edges(
 	return first && last ? [first, last] : undefined;
 }
 
-/**
- * an element, its children indented on their own lines when they start on a
- * line of their own, in prose it stays inline
- */
+/** an element with its children indented on their own lines, inline in prose */
 export function print_html(
 	path: AstPath<SvxNode>,
 	options: Options,
@@ -444,10 +434,7 @@ export function head_end(node: SvxNode, text: string): number {
 	return text.indexOf('}', from) + 1;
 }
 
-/**
- * a branch of a block, its head then its children indented, the line ends
- * after them lead to the next branch or the close of the block
- */
+/** a branch head then its children indented, the line ends after them lead to what follows */
 export function print_branch(
 	path: AstPath<SvxNode>,
 	options: Options,
@@ -475,7 +462,7 @@ export function print_branch(
 	if (lead === 0 || !block_in_flow) {
 		return [head_doc, print_leaf(path, options, print, end)];
 	}
-	// the trailing line ends were trimmed off the branch, they run to the next branch or the close
+	// the adapter trims the line ends after a branch, count them up to what follows
 	const next = path.next as SvxNode | null;
 	const limit =
 		next?.type === 'svelte_branch' ? next.start : text.indexOf('{', node.end);
@@ -504,7 +491,7 @@ function print_list(
 	const items = node.children.filter((child) => child.type === 'list_item');
 	const numbers = items.map((item) => item_number(text, item, depth));
 	const start = typeof node.meta?.start === 'number' ? node.meta.start : 1;
-	// 1. 1. 1. stays that way, so does 0. 1. 1.
+	// a list numbered with ones keeps its ones
 	const repeats =
 		ordered &&
 		numbers.length > 1 &&
@@ -565,7 +552,7 @@ function print_item(
 	const checked = node.meta?.checked;
 	const marker_end = start + written[0].length;
 	const first = edges(node, marker_end, node.end)?.[0];
-	// what sits between the marker and the content, the escape of `\[x]`
+	// what sits between the marker and the content, such as an escaped task box
 	const between = first ? text.slice(marker_end, first.start).trim() : '';
 	const task = checked === true ? '[x] ' : checked === false ? '[ ] ' : between;
 	const width = marker.length + 1;
@@ -584,7 +571,7 @@ function print_item(
 	];
 }
 
-/** `#` as deep as the heading, one space and its text */
+/** hashes as deep as the heading, one space and its text */
 function print_heading(
 	path: AstPath<SvxNode>,
 	options: Options,
@@ -603,7 +590,7 @@ function print_heading(
 	];
 }
 
-/** `---`, `***` first in a document where `---` opens frontmatter and in lists it alternates with */
+/** three dashes, three stars first in a document where dashes open frontmatter, alternating in lists */
 function print_thematic_break(path: AstPath<SvxNode>): Doc {
 	let list: SvxNode | undefined;
 	let list_parent: SvxNode | null = null;
@@ -637,11 +624,7 @@ function print_thematic_break(path: AstPath<SvxNode>): Doc {
 	return nth_sibling_list(list, list_parent) % 2 === 0 ? '***' : '---';
 }
 
-/**
- * a table with its columns padded to their widest cell and aligned as its
- * delimiter row says, compact when it is wider than the line and prose is
- * never wrapped, as written when it merges cells or a row holds text no cell does
- */
+/** a table padded and aligned, as written when it merges cells or a row holds text outside its cells */
 function print_table(
 	path: AstPath<SvxNode>,
 	options: Options,
@@ -743,10 +726,7 @@ const NO_BREAK_BEFORE_NODE = new Set([
 	'html_comment',
 ]);
 
-/**
- * a paragraph whose words fill the line, with proseWrap always, or one line,
- * with never, nodes such as links and code stay whole
- */
+/** a paragraph that fills the line with proseWrap always or takes one line with never */
 function print_prose(
 	path: AstPath<SvxNode>,
 	options: Options,
@@ -838,12 +818,7 @@ function print_prose(
 	return lead ? [' ', fill(parts)] : fill(parts);
 }
 
-/**
- * the line ends of a paragraph may become spaces without the paragraph
- * reading as something else, a line end can be what keeps text from being a
- * link, a list or the arguments of a directive, so the paragraph is parsed
- * joined and as it is and the two must match
- */
+/** joining the lines keeps the meaning, a line end can keep text from reading as a link or a list */
 function may_reflow(
 	path: AstPath<SvxNode>,
 	text: string,
@@ -883,7 +858,7 @@ function may_reflow(
 		node.type === 'paragraph' ? node.end : children[children.length - 1].end;
 	const prefix = depth > 0 ? /\n[ \t]*(?:>[ \t]?[ \t]*)*/g : /\n[ \t]*/g;
 	const lines = text.slice(from, to).replace(prefix, '\n');
-	// what an item holds reads as the content of an item, `[ ]` there is a task box
+	// what an item holds is parsed as item content, where a box is a task
 	const context = node.type === 'list_item' ? '- ' : '';
 	const joined = lines.replace(/\n/g, ' ').replace(/[ \t]{2,}/g, ' ');
 	return (
@@ -1088,11 +1063,7 @@ function print_run_as_written(
 	return parts;
 }
 
-/**
- * the source of a node with its children printed in place, starting at
- * from, the indent and quote markers that start its lines are left for the
- * blocks around it to print
- */
+/** the source of a node with its children printed in place, its line prefixes left to the blocks around it */
 export function print_leaf(
 	path: AstPath<SvxNode>,
 	options: Options,
@@ -1193,11 +1164,7 @@ function own_kept(node: SvxNode): [number, number][] {
 	return [];
 }
 
-/**
- * source text as a doc, a line end trims the spaces before it unless they
- * are content or follow a backslash, and the indent and quote markers after
- * it are left out
- */
+/** source text as a doc, a line end trims spaces that are not content and drops the line prefix after it */
 function source(
 	text: string,
 	from: number,

@@ -15,7 +15,7 @@ export interface OpenTag {
 }
 
 type Attribute =
-	/** {name}, {...spread}, {@attach fn} */
+	/** @example {...spread} */
 	| { kind: 'braced'; source: string }
 	| { kind: 'bare'; name: string }
 	| { kind: 'expression'; name: string; source: string }
@@ -28,11 +28,7 @@ export interface TagOptions extends HeadContext {
 	single_attribute_per_line: boolean;
 }
 
-/**
- * an open tag as prettier-plugin-svelte prints one, its attributes on one line
- * or one to a line with the bracket on its own line, values in double quotes
- * and a value that is a lone expression unquoted and short when it can be
- */
+/** an open tag as prettier-plugin-svelte prints one */
 export async function print_open_tag(
 	tag: OpenTag,
 	options: TagOptions | undefined
@@ -148,7 +144,7 @@ function lines(text: string): Doc {
 	return text.includes('\n') ? replaceEndOfLine(text, literalline) : text;
 }
 
-/** `name={name}` is `{name}`, `bind:value={value}` is `bind:value` */
+/** the short form of an attribute whose value is its own name */
 function shorthand(name: string, source: string): Doc | undefined {
 	const value = source.trim();
 	if (!/^[\p{L}_$][\p{L}\p{N}_$]*$/u.test(value)) return undefined;
@@ -218,10 +214,7 @@ async function code_doc(
 	}
 }
 
-/**
- * an open tag in parts, undefined for a tag this does not read, which is
- * then printed as written
- */
+/** an open tag in parts, undefined for a tag this does not read */
 export function parse_open_tag(source: string): OpenTag | undefined {
 	const name = /^<([^\s/>{]+)/.exec(source);
 	if (name === null || !source.endsWith('>')) return undefined;
