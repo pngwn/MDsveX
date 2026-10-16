@@ -1403,6 +1403,89 @@ function content_record(
 	);
 }
 
+/**
+ * a content record per line of fence code the parser built, false for other code
+ * each such line is the end of its source line once indent and quote markers go
+ */
+function fence_lines(
+	c: Cursor,
+	sink: MapSink,
+	at: number,
+	text: string,
+	trace: boolean
+): boolean {
+	const code = c.prebuilt;
+	if (code === undefined || (fs !== null && fs.has(c.index))) return false;
+	const src = c.source;
+	const ve = c.value_end;
+	let line = c.value_start;
+	let g = 0;
+	let r = 0;
+	for (;;) {
+		// escaping keeps the linefeeds, so the text and the code have the same lines
+		let g_end = string_index_of.call(text, '\n', g);
+		let r_end = string_index_of.call(code, '\n', r);
+		let s_end = string_index_of.call(src, '\n', line);
+		if (s_end === -1 || s_end > ve) s_end = ve;
+		const last = g_end === -1;
+		if (last) {
+			g_end = text.length;
+			r_end = code.length;
+		} else {
+			g_end++;
+			r_end++;
+		}
+		const s_to = last ? s_end : s_end + 1;
+		let s_from = s_to - (r_end - r);
+		// a tab the indent cut leaves spaces the source line has no room for
+		if (s_from < line) s_from = line;
+		if (g_end > g) {
+			if (trace) tr_run(sink, at + g, at + g_end, s_from, s_to);
+			else
+				put_record(
+					sink,
+					at + g,
+					at + g_end,
+					s_from,
+					s_to,
+					c.index,
+					Code.CODE_CONTENT
+				);
+		}
+		if (last) return true;
+		g = g_end;
+		r = r_end;
+		line = s_end + 1;
+	}
+}
+
+/** the escaped code of a fence and its content records, after flushing the register */
+function fence_content(
+	c: Cursor,
+	sink: MapSink,
+	p: number,
+	text: string,
+	trace: boolean
+): number {
+	if (p !== 0) mo += FOLD_STR[p];
+	const at = mo.length;
+	if (!fence_lines(c, sink, at, text, trace)) {
+		if (trace) tr_run(sink, at, at + text.length, c.value_start, c.value_end);
+		else
+			put_record(
+				sink,
+				at,
+				at + text.length,
+				c.value_start,
+				c.value_end,
+				c.index,
+				Code.CODE_CONTENT
+			);
+	}
+	mo += text;
+	return 0;
+}
+
 /** render a single node at the current cursor position. */
 function render_node(c: Cursor, sink?: MapSink): void {
 	// as number, or the case labels narrow c.kind for the reads inside a case
@@ -1504,7 +1587,8 @@ function render_node(c: Cursor, sink?: MapSink): void {
 			}
 			const ao = mo.length;
 			const text = escape_fence_text(c);
-			if (sink) content_record(sink, c, text, Code.CODE_CONTENT);
+			if (sink && !fence_lines(c, sink, mo.length, text, false))
+				content_record(sink, c, text, Code.CODE_CONTENT);
 			mo += text;
 			const bc = mo.length;
 			mo += '</code></pre>';
@@ -3227,7 +3311,7 @@ function tr_code_fence(c: Cursor, sink: MapSink, p: number): number {
 	} else {
 		p = tr_open(c, p, S_PRE_CODE, S_PRE_CODE_OPEN, S_GT);
 	}
-	tr_text(c, sink, p, escape_fence_text(c));
+	fence_content(c, sink, p, escape_fence_text(c), true);
 	tr_point(sink, pre, c.start);
 	return S_PRE_CODE_CLOSE;
 }
@@ -3785,7 +3869,7 @@ function mp_code_fence(c: Cursor, sink: MapSink, p: number): number {
 		p = tr_open(c, p, S_PRE_CODE, S_PRE_CODE_OPEN, S_GT);
 	}
 	const ao = mo.length + FOLD_LEN[p];
-	tr_content(c, sink, p, escape_fence_text(c), Code.CODE_CONTENT);
+	fence_content(c, sink, p, escape_fence_text(c), false);
 	const bc = mo.length;
 	_spans(sink, pre, ao, bc, bc + FOLD_LEN[S_PRE_CODE_CLOSE], c, Preset.CODE);
 	return S_PRE_CODE_CLOSE;
@@ -4671,7 +4755,11 @@ function comp_node(
 			if (fs !== null) open += fence_props(c);
 			p = cm_put(p, open + js_prop('code', fence_text(c)) + '><pre>' + inner);
 			const ao = mo.length;
-			p = cm_text(c, sink, p, escape_fence_text(c));
+			const text = escape_fence_text(c);
+			p =
+				comp_mode === CM.FOLD
+					? push_dyn(p, text)
+					: fence_content(c, sink!, p, text, comp_mode === CM.TRACE);
 			const bc = mo.length;
 			p = cm_put(p, '</code></pre>' + close);
 			cm_spans(c, sink, pre, ao, bc, mo.length, Preset.CODE);
