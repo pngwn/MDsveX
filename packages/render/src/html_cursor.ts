@@ -14,6 +14,7 @@
 import { Cursor } from '@mdsvex/parse/cursor';
 import { is_raw_text_tag } from '@mdsvex/parse/utils';
 import {
+	buf_code,
 	footnote_id,
 	footnote_index,
 	footnote_ref_id,
@@ -382,12 +383,19 @@ function escape_node_text(c: Cursor): string {
 
 function fence_text(c: Cursor): string {
 	if (fs !== null) return fence_text_from(c);
+	if (holds(c)) return buf_code(c.buffer, c.index, c.source);
 	return c.text();
+}
+
+/** true for a fence a plugin put nodes in, their text is code too */
+function holds(c: Cursor): boolean {
+	return c.words[c.index * W.stride + W.first_child] !== Slot.NONE;
 }
 
 /** equals escape_code of fence_text */
 function escape_fence_text(c: Cursor): string {
 	if (fs !== null) return escape_code(fence_text_from(c));
+	if (holds(c)) return escape_code(buf_code(c.buffer, c.index, c.source));
 	// a fence in a block quote or a list item holds its code as a string, without what they put before its lines
 	const text = c.prebuilt;
 	return text === undefined ? escape_code_text(c) : escape_code(text);
@@ -1418,7 +1426,8 @@ function fence_lines(
 	trace: boolean
 ): boolean {
 	const code = c.prebuilt;
-	if (code === undefined || (fs !== null && fs.has(c.index))) return false;
+	if (code === undefined || (fs !== null && fs.has(c.index)) || holds(c))
+		return false;
 	const src = c.source;
 	const ve = c.value_end;
 	let line = c.value_start;
@@ -6116,6 +6125,7 @@ let fs: FenceSources | null = null;
 function fence_text_from(c: Cursor): string {
 	const from = fs!.get(c.index);
 	if (from !== undefined) return from.text;
+	if (holds(c)) return buf_code(c.buffer, c.index, c.source);
 	return c.text();
 }
 

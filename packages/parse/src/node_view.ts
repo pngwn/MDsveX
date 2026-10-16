@@ -7,6 +7,7 @@ import {
 	note_footnote,
 	string_to_kind,
 } from './utils';
+import { buf_code } from './buf_utils';
 import { type UndoLog, ATTR_DID_NOT_EXIST } from './undo_log';
 import type { HeadingIds } from './heading_ids';
 
@@ -569,11 +570,9 @@ export class NodeView {
 		// content-leaf nodes: text stored as value range or string on the node itself.
 		// a heading is none, its value range is the source as written, markup
 		// included, and its text is in its children
-		if (
-			kind === NodeKind.code_fence ||
-			kind === NodeKind.code_span ||
-			kind === NodeKind.html_comment
-		) {
+		if (kind === NodeKind.code_fence)
+			return buf_code(buf, idx, this._text_source);
+		if (kind === NodeKind.code_span || kind === NodeKind.html_comment) {
 			// read from the buffer, a source tree stores a string too when the text is not a source range
 			const s = buf._strings[idx];
 			if (s !== undefined) return s;

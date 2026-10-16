@@ -1,6 +1,7 @@
 // code from a file and code that runs, a walk over the finished tree, only
 // for a document the parser saw src= or the run flag in an info string of
 
+import { buf_code } from '@mdsvex/parse/buf-utils';
 import type { NodeBuffer } from '@mdsvex/parse/utils';
 import { K_CODE_FENCE } from '@mdsvex/render/html-cursor';
 import type { FenceSource } from '@mdsvex/render/html-cursor';
@@ -391,7 +392,11 @@ export function source_fences(
 						if (at !== -1) {
 							written = unquoted(parts[at].slice(4));
 							({ spec, from, to } = sliced(written, filename, source, start));
-							if (ve > vs && CODE.test(source.slice(vs, ve)))
+							if (
+								(ve > vs && CODE.test(source.slice(vs, ve))) ||
+								(buf.first_child_at(node) !== NONE &&
+									CODE.test(buf_code(buf, node, source)))
+							)
 								throw error(
 									'src_body',
 									`A fence with src= shows ${spec}, so it can have no code of its own`,
@@ -402,11 +407,7 @@ export function source_fences(
 								);
 						} else
 							// a fence in a block quote or a list item holds its code as a string
-							text =
-								buf._strings[node] ??
-								(vs === NONE || ve === NONE || ve <= vs
-									? ''
-									: source.slice(vs, ve));
+							text = buf_code(buf, node, source);
 						let snippet: Snippet | null = null;
 						if (run_at === -1 || !runs) flag = 0;
 						else {
