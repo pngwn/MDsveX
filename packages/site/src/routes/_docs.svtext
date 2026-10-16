@@ -600,6 +600,7 @@ Each handler gets the node and a context:
 - `ctx.directive` is the directive it is bound to.
 - `ctx.index` counts the calls of this handler in this directive, from 0.
 - `ctx.state` is an empty object, new for each directive in the document. Keep what a handler needs between calls there, such as the step it opened last.
+- `ctx.scratch` is the plugin's, one for the whole document and shared with its other handlers and its document hook, see [plugin handlers](docs#plugin-handlers).
 
 A handler can return a function, which runs when the node closes. The directive's own `parse` can read its args when it opens and write them when it closes:
 
@@ -706,11 +707,12 @@ A new `html` node takes its element name as `tag`. This wraps each `##` heading 
 
 ```js
 const sections = {
+	name: 'sections',
 	heading: {
 		parse(node, ctx) {
 			if (node.depth !== 2 || node.parent?.type !== 'root') return;
-			ctx.section?.close();
-			ctx.section = node.wrap_from('html', { tag: 'section' });
+			ctx.scratch.section?.close();
+			ctx.scratch.section = node.wrap_from('html', { tag: 'section' });
 		}
 	}
 };
@@ -733,7 +735,13 @@ Second.
 <section><h2>Two</h2><p>Second.</p></section>
 ```
 
-The context is new for each document, and any key you set on it is yours, as `ctx.section` is above. It also has:
+The context is new for each document. What a plugin keeps between its handlers goes in `ctx.scratch`, as the open section does above:
+
+- **One object for each plugin name and document.** Every handler, close callback, deferred task and document hook of the plugin gets the same one, so the bound handlers of a plugin can leave something for its document hook. It needs a `name`.
+- **It is the plugin's own.** Anything can go in it, and it never reaches the page or `plugin_data`.
+- **The parser does not take it back.** When the parser takes a node back, what its handlers put in the scratch stays. Keep there what that can't make wrong, such as directives and headings, and write what must follow it with `ctx.set` and `ctx.add`.
+
+The context also has:
 
 | member | what it is |
 | --- | --- |

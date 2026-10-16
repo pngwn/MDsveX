@@ -44,16 +44,17 @@ const made = (tag: string, name: string) => ({
  */
 export function steps(): ParsePlugin {
 	return {
+		name: "steps",
 		heading: {
-			parse(node, ctx: { steps?: Map<number, Wrapper> }) {
+			parse(node, ctx) {
 				const parent = node.parent;
 				if (
 					parent?.type !== "directive_container" ||
 					parent.attrs.name !== "steps"
 				)
 					return;
-				// ctx is new for each document, the plugin is not
-				const open = (ctx.steps ??= new Map());
+				// the scratch is new for each document, the plugin is not
+				const open: Map<number, Wrapper> = (ctx.scratch.steps ??= new Map());
 				open.get(parent._index)?.close();
 				open.set(parent._index, node.wrap_from("html", made("section", "step")));
 				node.wrap_from("html", made("header", "label")).close();
@@ -87,11 +88,13 @@ export function bound_steps(): DirectiveHandlers {
 /** each top level heading and what follows it in a section */
 export function sectionize(): ParsePlugin {
 	return {
+		name: "sectionize",
 		heading: {
-			parse(node, ctx: { section?: Wrapper }) {
+			parse(node, ctx) {
 				if (node.parent?.type !== "root") return;
-				ctx.section?.close();
-				ctx.section = node.wrap_from("html", made("section", "section"));
+				const scratch: { section?: Wrapper } = ctx.scratch;
+				scratch.section?.close();
+				scratch.section = node.wrap_from("html", made("section", "section"));
 			},
 		},
 	};

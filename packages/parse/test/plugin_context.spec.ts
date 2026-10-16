@@ -642,13 +642,15 @@ describe('plugin context: data', () => {
 });
 
 describe('plugin context: one per plugin', () => {
-	it('what a plugin keeps on its context no other plugin sees', () => {
+	it('what a plugin keeps in its scratch no other plugin sees', () => {
 		const { log } = expect_parity_logged('# a\n\n# b\n', (log) => {
 			const counter = (tag: string): ParsePlugin => ({
+				name: tag,
 				heading: {
 					parse(_node, ctx) {
-						ctx.count = (ctx.count ?? 0) + 1;
-						log.push(tag + ctx.count + ' ' + Object.keys(ctx).join());
+						const scratch = ctx.scratch;
+						scratch.count = (scratch.count ?? 0) + 1;
+						log.push(tag + scratch.count + ' ' + Object.keys(scratch).join());
 					},
 				},
 			});

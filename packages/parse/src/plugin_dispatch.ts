@@ -602,6 +602,10 @@ class Context implements PluginContext {
 		return this[HOST]._data(this[PLUGIN]);
 	}
 
+	get scratch(): Record<string, any> {
+		return this[HOST]._scratch(this[PLUGIN]);
+	}
+
 	set data(_value: unknown) {
 		throw new TypeError(
 			'ctx.data is read-only, write with ctx.set(key, value) or add to a list with ctx.add(key, value)'
@@ -672,6 +676,11 @@ class TaskContext {
 	/** the data as it stands, what this task wrote is there once it applies */
 	get data(): Readonly<Record<string, Json>> {
 		return this[HOST]._data(this[TASK].plugin);
+	}
+
+	/** live, a write lands at once and stays when the other changes of the task are dropped */
+	get scratch(): Record<string, any> {
+		return this[HOST]._scratch(this[TASK].plugin);
 	}
 
 	set data(_value: unknown) {
@@ -973,6 +982,8 @@ export class PluginDispatcher
 	private warned: PluginWarning[] | null = null;
 	/** the data of each plugin name, made at its first read or write */
 	private bags: Map<string, Bag> | null = null;
+	/** the ctx.scratch of each plugin name, made at its first read */
+	private scratches: Map<string, Record<string, any>> | null = null;
 	/** what follows changes to the data, kept from one document to the next */
 	private data_listeners: ((change: DataChange) => void)[] | null = null;
 	/** the deferred tasks of the document that have not applied, in the order they started */
@@ -1687,6 +1698,23 @@ export class PluginDispatcher
 	/** @internal a read-only view of the data of a plugin name */
 	_data(plugin: string | undefined): Readonly<Record<string, Json>> {
 		return this.bag(plugin).read();
+	}
+
+	/** @internal what a plugin keeps for itself through the document, never logged */
+	_scratch(plugin: string | undefined): Record<string, any> {
+		if (plugin === undefined) {
+			throw new Error(
+				'ctx.scratch is kept by plugin name, give the plugin a name to use it'
+			);
+		}
+		let scratches = this.scratches;
+		if (scratches === null) scratches = this.scratches = new Map();
+		let scratch = scratches.get(plugin);
+		if (scratch === undefined) {
+			scratch = {};
+			scratches.set(plugin, scratch);
+		}
+		return scratch;
 	}
 
 	/**
@@ -3100,6 +3128,7 @@ export class PluginDispatcher
 		this.doc = null;
 		this.warned = null;
 		this.bags = null;
+		this.scratches = null;
 		// a task of the last document goes on unheard
 		const tasks = this.tasks;
 		if (tasks !== null) {
