@@ -192,12 +192,8 @@ function set_cites(node: NodeView, cites: Cited[], style: CitationStyle) {
 	};
 }
 
-/** the citations and lists of a document, in the order they are written */
-function find(
-	parent: NodeView,
-	citations: NodeView[],
-	lists: NodeView[]
-): void {
+/** the citations of a document, in the order they are written */
+function find(parent: NodeView, citations: NodeView[]): void {
 	for (let child = parent.first_child; child !== null; child = child.next) {
 		const type = child.type;
 		if (type === 'text') continue;
@@ -205,26 +201,8 @@ function find(
 			citations.push(child);
 			continue;
 		}
-		if (type === 'directive_leaf' && child.attrs.name === 'bibliography')
-			lists.push(child);
-		find(child, citations, lists);
+		find(child, citations);
 	}
-}
-
-function holds_list(node: NodeView): boolean {
-	if (node.type === 'directive_leaf' && node.attrs.name === 'bibliography')
-		return true;
-	for (let child = node.first_child; child !== null; child = child.next)
-		if (child.type !== 'text' && holds_list(child)) return true;
-	return false;
-}
-
-/** a list is written before this one, as far as the tree has arrived, so this one lists nothing */
-function after_another(node: NodeView): boolean {
-	for (let at: NodeView | null = node; at !== null; at = at.parent)
-		for (let before = at.prev; before !== null; before = before.prev)
-			if (holds_list(before)) return true;
-	return false;
 }
 
 /**
@@ -312,10 +290,14 @@ export function citations(options: CitationsOptions = {}): Bundle {
 						);
 						return;
 					}
-					// no data until the document hook, the component reads the context meanwhile
-					node.attrs.args = after_another(node)
-						? { ...node.attrs.args, data: '{}', style }
-						: { ...node.attrs.args, style };
+					// in the order they are written, no block directive is revoked
+					const lists: NodeView[] = (ctx.scratch.lists ??= []);
+					// a second list reads nothing, the first reads the context until the document hook
+					node.attrs.args =
+						lists.length > 0
+							? { ...node.attrs.args, data: '{}', style }
+							: { ...node.attrs.args, style };
+					lists.push(node);
 				},
 			},
 		},
@@ -326,8 +308,8 @@ export function citations(options: CitationsOptions = {}): Bundle {
 				const cited = data.cited;
 				if (cited === undefined || cited.length === 0) return;
 				const citations: NodeView[] = [];
-				const lists: NodeView[] = [];
-				find(root, citations, lists);
+				find(root, citations);
+				const lists: NodeView[] = ctx.scratch.lists ?? [];
 				const entry = (key: string) => data[`entry:${key}`];
 				let n = 0;
 				for (const node of citations) {

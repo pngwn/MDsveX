@@ -141,7 +141,7 @@ This is kept small. A full CSL processor such as [citeproc-js](https://github.co
 
 The list has every entry the document cites, the citations after it too. The component reads the data of the document from the context, `getContext(Symbol.for('mdsvex.plugin_data')).current.citations`, and once the document is whole it is also handed that data as JSON in its `data` arg. A `data` prop, an object or JSON, wins over the context, so a template that passes one renders what it passes.
 
-A `bibliography` export from your own directives module replaces the component. It gets the `label` snippet, `style`, the args, and `data` once the document is whole, and reads the context for the list while the document streams.
+A `bibliography` export from your own directives module replaces the component. It gets the `label` snippet, `style`, the args, and `data` once the document is whole, and reads the context for the list while the document streams. Type what it reads as `PluginDataContext` from `mdsvex/compile`, and `current.citations` is the data below.
 
 ## The data
 
