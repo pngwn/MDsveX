@@ -36,6 +36,8 @@ export async function head(
 				return await snippet(source, context);
 			case 'const':
 				return await declaration(source, context);
+			case 'debug':
+				return debug(source);
 		}
 	} catch {
 		// a part that does not parse keeps the head as written
@@ -89,6 +91,11 @@ async function await_head(
 	const binding = source.slice(at + word.length).trim();
 	if (binding === '') return `${promise} ${word}`;
 	return `${promise} ${word} ${await pattern(binding, context)}`;
+}
+
+/** @example a, b */
+function debug(source: string): string {
+	return source.split(',').map(index).join(', ');
 }
 
 /** @example total = a + b */
