@@ -21,13 +21,13 @@ The plugin formats the Svelte in a document as [prettier-plugin-svelte](https://
 
 - a tag that does not fit on a line puts its attributes one to a line, values go in double quotes, a lone expression is unquoted and `name={name}` becomes `{name}`
 - the children of an element, a component and a block such as `{#if}` or `{#each}` are indented, markdown included
-- markdown as Prettier formats it: `-` bullets, ordered lists counted from their start, `#` headings, `---` breaks, backtick fences, a blank line between blocks and one space between words
+- markdown as Prettier formats it: `-` bullets, ordered lists counted from their start, `#` headings, `---` breaks, backtick fences, tables padded and aligned, a blank line between blocks and one space between words
 - a list item lines up with its content, a nested list sits at the content column of its item, and every line of a quote starts with `> `
 - frontmatter is formatted as yaml, imports, `<script>` and `<style>` as code
 - expressions, `{@html}`, `{@render}` and `{@const}` tags and the heads of blocks are formatted, an expression or a tag in prose stays on its line
 - blank lines between blocks fold to one and lines lose the spaces at their ends
 
-The formatting follows your Prettier options, `useTabs`, `singleQuote`, `bracketSameLine`, `singleAttributePerLine` and the rest. Emphasis stays as PFM writes it, `_` for emphasis and `*` for strong, and so does table spacing. A part that does not parse is left as it is, so is the content of a `<pre>` and a `{@debug}` tag.
+The formatting follows your Prettier options, `useTabs`, `singleQuote`, `bracketSameLine`, `singleAttributePerLine` and the rest. Emphasis stays as PFM writes it, `_` for emphasis and `*` for strong. A table that merges cells with `||`, `|>` or `|^` is kept as written. A part that does not parse is left as it is, so is the content of a `<pre>` and a `{@debug}` tag.
 
 ## Frontmatter
 

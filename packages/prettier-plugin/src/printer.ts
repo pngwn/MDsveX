@@ -1,4 +1,4 @@
-import { doc } from 'prettier';
+import { doc, util } from 'prettier';
 import type { AstPath, Doc, ParserOptions, Printer } from 'prettier';
 
 import type { SvxNode, SvxRoot } from './ast';
@@ -6,7 +6,18 @@ import { embed } from './embed';
 import { insert_pragma } from './pragma';
 import { parse_open_tag, plain_open_tag } from './tag';
 
-const { align, hardline, indent, literalline } = doc.builders;
+const {
+	align,
+	breakParent,
+	group,
+	hardline,
+	hardlineWithoutBreakParent,
+	ifBreak,
+	indent,
+	join,
+	literalline,
+} = doc.builders;
+const { printDocToString } = doc.printer;
 const { replaceEndOfLine } = doc.utils;
 
 export type Print = (path: AstPath<SvxNode>) => Doc;
@@ -37,6 +48,8 @@ export const printer: Printer<SvxNode> = {
 				return print_heading(path, options, print);
 			case 'thematic_break':
 				return print_thematic_break(path);
+			case 'table':
+				return print_table(path, options, print);
 		}
 		return print_leaf(path, options, print);
 	},
@@ -616,6 +629,100 @@ function print_thematic_break(path: AstPath<SvxNode>): Doc {
 	return nth_sibling_list(list, list_parent) % 2 === 0 ? '***' : '---';
 }
 
+/**
+ * a table with its columns padded to their widest cell and aligned as its
+ * delimiter row says, compact when it is wider than the line and prose is
+ * never wrapped, as written when it merges cells or a row holds text no cell does
+ */
+function print_table(
+	path: AstPath<SvxNode>,
+	options: Options,
+	print: Print
+): Doc {
+	const node = path.node;
+	const text = options.originalText;
+	const as_written = () => print_leaf(path, options, print);
+	if (
+		node.meta?.header_columns !== undefined ||
+		node.meta?.spans !== undefined
+	) {
+		return as_written();
+	}
+	const rows = node.children.filter(
+		(row) => row.type === 'table_header' || row.type === 'table_row'
+	);
+	if (rows[0]?.type !== 'table_header') return as_written();
+	const depth = quote_depth(path);
+	for (const row of rows) {
+		let pos = skip_prefix(text, row.start, row.end, depth);
+		for (const cell of row.children) {
+			if (!/^[|\s]*$/.test(text.slice(pos, cell.start))) return as_written();
+			pos = Math.max(pos, cell.end);
+		}
+		if (!/^[|\s]*$/.test(text.slice(pos, row.end))) return as_written();
+	}
+
+	const cells: { text: string; width: number }[][] = [];
+	const widths: number[] = [];
+	let broken = false;
+	path.each((row) => {
+		if (row.node.type !== 'table_header' && row.node.type !== 'table_row')
+			return;
+		const line: { text: string; width: number }[] = [];
+		path.each((cell, column) => {
+			const printed = printDocToString(print(cell), {
+				...options,
+				printWidth: Number.POSITIVE_INFINITY,
+			}).formatted.trim();
+			if (printed.includes('\n')) broken = true;
+			const width = util.getStringWidth(printed);
+			widths[column] = Math.max(widths[column] ?? 3, width);
+			line.push({ text: printed, width });
+		}, 'children');
+		cells.push(line);
+	}, 'children');
+	if (broken) return as_written();
+
+	const alignments = (node.meta?.alignments ?? []) as string[];
+	const lines = (compact: boolean) => {
+		const row = (line: { text: string; width: number }[]) =>
+			'| ' +
+			line
+				.map(({ text, width }, column) => {
+					if (compact) return text;
+					const spaces = widths[column] - width;
+					const before =
+						alignments[column] === 'right'
+							? spaces
+							: alignments[column] === 'center'
+								? Math.floor(spaces / 2)
+								: 0;
+					return ' '.repeat(before) + text + ' '.repeat(spaces - before);
+				})
+				.join(' | ') +
+			' |';
+		const delimiter =
+			'| ' +
+			cells[0]
+				.map((_, column) => {
+					const align = alignments[column];
+					const first = align === 'left' || align === 'center' ? ':' : '-';
+					const last = align === 'right' || align === 'center' ? ':' : '-';
+					const middle = '-'.repeat(compact ? 1 : widths[column] - 2);
+					return first + middle + last;
+				})
+				.join(' | ') +
+			' |';
+		return join(hardlineWithoutBreakParent, [
+			row(cells[0]),
+			delimiter,
+			...cells.slice(1).map(row),
+		]);
+	};
+	if (options.proseWrap !== 'never') return [breakParent, lines(false)];
+	return [breakParent, group(ifBreak(lines(true), lines(false)))];
+}
+
 /** a footnote definition, the blocks after its first line indented by four */
 function print_footnote(
 	path: AstPath<SvxNode>,
@@ -922,7 +1029,7 @@ function source(
 const PROTECT = '    ';
 
 const BLOCK_START =
-	/^(?:([-*_])(?:[ \t]*\1){2,}[ \t]*$|#{1,6}(?:[ \t]|$)|>|[-*+](?:[ \t]|$)|\d{1,9}[.)](?:[ \t]|$)|`{3,}|:{2,}|\||=+[ \t]*$|\[\^)/;
+	/^(?:([-*_])(?:[ \t]*\1){2,}[ \t]*$|#{1,6}(?:[ \t]|$)|>|[-*+](?:[ \t]|$)|\d{1,9}[.)](?:[ \t]|$)|`{3,}|:{2,}|=+[ \t]*$|\[\^)/;
 
 /** the line from pos, which may run past the source being printed, would start a block */
 function starts_block(text: string, pos: number): boolean {

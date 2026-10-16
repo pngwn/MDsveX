@@ -198,3 +198,45 @@ describe('indented blocks', () => {
 		);
 	});
 });
+
+describe('tables', () => {
+	test('columns are padded to their widest cell and aligned', async () => {
+		expect(
+			await svx(
+				'| Prop | Type | Default |\n|:-|:-:|--:|\n| count | number | 0 |\n| type | string | info |\n'
+			)
+		).toBe(
+			'| Prop  |  Type  | Default |\n| :---- | :----: | ------: |\n| count | number |       0 |\n| type  | string |    info |\n'
+		);
+	});
+
+	test('a cell keeps its escapes, code and expressions', async () => {
+		expect(
+			await svx('| a | b |\n|---|---|\n| `x\\|y` | *bold* {x+1} |\n')
+		).toBe(
+			'| a      | b              |\n| ------ | -------------- |\n| `x\\|y` | *bold* {x + 1} |\n'
+		);
+	});
+
+	test('a table in a list lines up with the item', async () => {
+		expect(await svx('- item\n\n  | a | b |\n  |-|-|\n  | 1 | 2 |\n')).toBe(
+			'- item\n\n  | a   | b   |\n  | --- | --- |\n  | 1   | 2   |\n'
+		);
+	});
+
+	test('compact when prose never wraps and it is wider than the line', async () => {
+		expect(
+			await svx(
+				'| a long header cell here | another long header cell here | third |\n|-|-|-|\n| x | y | z |\n',
+				{ proseWrap: 'never', printWidth: 40 }
+			)
+		).toBe(
+			'| a long header cell here | another long header cell here | third |\n| --- | --- | --- |\n| x | y | z |\n'
+		);
+	});
+
+	test('a table that merges cells is kept as written', async () => {
+		const source = '| a || b |\n|---||---|\n| h || c |\n';
+		expect(await svx(source)).toBe(source);
+	});
+});
