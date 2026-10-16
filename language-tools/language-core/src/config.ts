@@ -11,29 +11,25 @@ import type * as TS from 'typescript';
 import temml from 'temml';
 import type {
 	CompileOptions,
-	ComponentMode,
 	HighlightConfig,
 	MathRenderer,
 	SmartPunctuation,
 	TemplateEntry,
 } from 'mdsvex/compile';
 import {
-	COMPONENTS_ID,
+	CONFIG_FILE,
 	DIRECTIVES_EXPORT,
-	DIRECTIVES_ID,
 	MANIFEST_PATH,
 	MANIFEST_VERSION,
-	PLUGIN_ID,
-	TEMPLATE_DIRECTIVES_ID,
-	TEMPLATE_ID,
 	manifest_resolver,
 	read_exports,
+	read_json_config,
 } from 'mdsvex/host';
 import type {
+	ConfigExports,
+	JsonConfig,
 	ScannedExports,
-	ManifestMath,
 	ManifestModule,
-	ManifestTemplate,
 	MdsvexManifest,
 } from 'mdsvex/host';
 import { create_highlight } from 'mdsvex/highlight';
@@ -41,37 +37,8 @@ import { default_languages } from 'mdsvex/highlight/languages';
 import { source_math, temml_math } from 'mdsvex/math';
 import type { PfmToSvelteOptions } from '@mdsvex/source-map/pfm-to-svelte';
 
-export const CONFIG_FILE = 'mdsvex.config.json';
-
-/** the shape of mdsvex.config.json, the vite plugin options that are data */
-export interface JsonConfig {
-	extensions?: string[];
-	templates?: Record<
-		string,
-		string | { component: string; components?: string }
-	>;
-	components?: string | string[];
-	component_mode?: ComponentMode;
-	/** false renders code plain, as the highlight option of the plugin does */
-	highlight?: boolean;
-	/** a paragraph of only images gets no <p>, as the option of the plugin does */
-	unwrap_images?: boolean;
-	/** false leaves the url of a relative image as written, as the option of the plugin does */
-	import_images?: boolean;
-	/**
-	 * the directives of each entry of the plugins option, json can not hold
-	 * its handlers, so only the names and the module that exports them
-	 */
-	plugins?: { name?: string; module: string; directives: string[] }[];
-	/** every heading gets an id, as the option of the plugin does with true */
-	heading_ids?: boolean;
-	/** curly quotes, dashes and ellipses, as the option of the plugin takes it */
-	smart_punctuation?: SmartPunctuation;
-	/** false leaves a math fence a code block, else the renderer and its options as the plugin takes them */
-	math?:
-		| false
-		| { renderer?: 'temml' | 'katex'; options?: Record<string, unknown> };
-}
+export { CONFIG_FILE };
+export type { JsonConfig };
 
 export interface LoadedConfig {
 	/** the file read, the manifest or the json config */
@@ -273,23 +240,6 @@ function math_of(manifest: MdsvexManifest): MathRenderer | undefined {
 		: temml_math(temml, options);
 }
 
-/** the math of a json config as a manifest holds it, undefined for the default */
-function math_from_json(
-	math: JsonConfig['math']
-): ManifestMath | false | undefined {
-	if (math === false) return false;
-	if (typeof math !== 'object' || math === null) return undefined;
-	const renderer = math.renderer === 'katex' ? 'katex' : 'temml';
-	const options = math.options;
-	if (
-		typeof options !== 'object' ||
-		options === null ||
-		Object.keys(options).length === 0
-	)
-		return renderer === 'temml' ? undefined : { renderer };
-	return { renderer, options };
-}
-
 /** the smart_punctuation of a json config or a manifest, undefined when it is off or not the option */
 function smart_from_json(smart: unknown): SmartPunctuation | undefined {
 	if (smart === true) return true;
@@ -320,134 +270,22 @@ export function from_json(
 	dir: string,
 	ts: typeof TS | undefined
 ): MdsvexManifest {
-	const extensions = (config.extensions ?? ['.svx']).map((e) =>
-		e.startsWith('.') ? e : '.' + e
-	);
-	const manifest: MdsvexManifest = {
-		version: MANIFEST_VERSION,
-		root: posix(dir),
-		extensions,
-		component_mode: config.component_mode ?? 'markdown',
-		frontmatter_parse: false,
-		directive_plugins: false,
-		select_template: false,
-		templates: {},
-		components: [],
-		directives: [],
-		documents: {},
-		highlight: config.highlight === false ? false : 'twinkleplop',
-	};
-	if (config.unwrap_images === true) manifest.unwrap_images = true;
-	if (config.import_images !== false) manifest.import_images = true;
-	if (config.heading_ids === true) manifest.heading_ids = true;
-	const smart = smart_from_json(config.smart_punctuation);
-	if (smart !== undefined) manifest.smart_punctuation = smart;
-	if (config.plugins !== undefined && config.plugins.length !== 0)
-		manifest.plugin_data = true;
-	const math = math_from_json(config.math);
-	if (math !== undefined) manifest.math = math;
-	const from = path.join(dir, 'vite.config');
-	const scan = (file: string) => scan_exports(file, ts);
-
-	const written =
-		config.components === undefined
-			? []
-			: Array.isArray(config.components)
-				? config.components
-				: [config.components];
-	const many = written.length !== 1;
-	written.forEach((spec, i) => {
-		const file = resolve_specifier(spec, from);
-		if (file === null) return;
-		const own = scan(file);
-		const suffix = many ? '/' + i : '';
-		manifest.components.push({
-			id: COMPONENTS_ID + suffix,
-			file,
-			names: own.names,
-		});
-		const d = directives_of(own, file, DIRECTIVES_ID + suffix, scan);
-		if (d !== null) manifest.directives.push(d);
-	});
-
-	(config.plugins ?? []).forEach((plugin, i) => {
-		if (
-			typeof plugin?.module !== 'string' ||
-			!Array.isArray(plugin.directives) ||
-			plugin.directives.length === 0
-		)
-			return;
-		const file = resolve_specifier(plugin.module, from);
-		if (file === null) return;
-		(manifest.plugins ??= []).push({
-			name: plugin.name ?? plugin.module,
-			directives: { id: PLUGIN_ID + i, file, names: plugin.directives },
-			components: null,
-		});
-	});
-
-	for (const [name, entry] of Object.entries(config.templates ?? {})) {
-		const pair = typeof entry === 'object';
-		const file = resolve_specifier(pair ? entry.component : entry, from);
-		if (file === null) continue;
-		const own = scan(file);
-		const template: ManifestTemplate = {
-			id: TEMPLATE_ID + name,
-			file,
-			components: own.names.filter((n) => n !== 'default'),
-			extra: null,
-			directives: [],
-		};
-		const base = TEMPLATE_DIRECTIVES_ID + name;
-		const mine = directives_of(own, file, base, scan);
-		if (mine !== null) template.directives.push(mine);
-		const extra_spec = pair ? entry.components : undefined;
-		const extra_file =
-			extra_spec === undefined ? null : resolve_specifier(extra_spec, from);
-		if (extra_file !== null) {
-			const more = scan(extra_file);
-			template.extra = {
-				id: TEMPLATE_ID + name,
-				file: extra_file,
-				names: more.names.filter((n) => n !== 'default'),
-			};
-			const theirs = directives_of(
-				more,
-				extra_file,
-				base + '/components',
-				scan
-			);
-			if (theirs !== null) template.directives.push(theirs);
-		}
-		manifest.templates[name] = template;
-	}
-	return manifest;
-}
-
-interface Scanned {
-	names: string[];
-	/** the specifier of export * as directives from, null for none */
-	directives: string | null;
-}
-
-function directives_of(
-	own: Scanned,
-	owner: string,
-	id: string,
-	scan: (file: string) => Scanned
-): ManifestModule | null {
-	if (own.directives === null) return null;
-	const file = resolve_specifier(own.directives, owner);
-	if (file === null) return null;
-	return { id, file, names: scan(file).names };
+	// the editor shows what it can of a config, so what is wrong with it is left out quietly
+	return read_json_config(config, path.join(dir, CONFIG_FILE), posix(dir), {
+		resolve: resolve_specifier,
+		scan: (file) => scan_exports(file, ts),
+	}).manifest;
 }
 
 /**
  * the names a module exports without running it, of a svelte file its module
  * script, types stripped by typescript so it needs no vite
  */
-export function scan_exports(file: string, ts: typeof TS | undefined): Scanned {
-	const none: Scanned = { names: [], directives: null };
+export function scan_exports(
+	file: string,
+	ts: typeof TS | undefined
+): ConfigExports {
+	const none: ConfigExports = { names: [], directives: null };
 	if (ts === undefined) return none;
 	let code: string;
 	try {

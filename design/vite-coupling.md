@@ -143,3 +143,8 @@ None of it is reachable from bare `compile()`.
 | `language-server/src/index.ts:187`                | watches each config file it read                                                                  | for the server's lifetime                        |
 
 Nothing in the parser, the renderer, the plugin packages, the playground source or the migrator touches the file system.
+
+## 8. Since the audit
+
+- **Export scanning:** one scanner, `read_exports` in `mdsvex/host`, takes the type stripper from its caller (#1170, #1180).
+- **Config readers:** one. `read_json_config` in `mdsvex/host` reads `mdsvex.config.json` into the manifest the plugin writes, with the virtual ids the plugin gives. A host passes how it resolves a specifier and scans a module: the language tools resolve on disk and scan with TypeScript, the playground resolves in its workspace. The language tools ignore what is wrong with a config, the playground reports the first thing.
