@@ -25,8 +25,6 @@ export const printer: Printer<SvxNode> = {
 				return print_branch(path, options, print, undefined);
 			case 'list':
 				return print_list(path, options, print);
-			case 'list_item':
-				return print_item(path, options, print);
 			case 'block_quote':
 				return print_quote(path, options, print);
 			case 'directive_container':
@@ -35,6 +33,10 @@ export const printer: Printer<SvxNode> = {
 				return print_fence(path, options);
 			case 'footnote_definition':
 				return print_footnote(path, options, print);
+			case 'heading':
+				return print_heading(path, options, print);
+			case 'thematic_break':
+				return print_thematic_break(path);
 		}
 		return print_leaf(path, options, print);
 	},
@@ -88,18 +90,7 @@ function print_root(
 	const node = path.node;
 	if (node.children.length === 0) return '';
 	const text = options.originalText;
-	const parts: Doc[] = [];
-	// a thematic break on the first line would open frontmatter
-	const first = node.children[0];
-	if (
-		first.start > 0 &&
-		first.type !== 'frontmatter' &&
-		text.startsWith('---', skip_prefix(text, first.start, node.end, 0))
-	) {
-		parts.push(hardline);
-	}
-	parts.push(print_children(path, options, print, 0, node.end, true), hardline);
-	return parts;
+	return [print_children(path, options, print, 0, node.end, true), hardline];
 }
 
 /** the kinds that hold a flow of blocks */
@@ -169,13 +160,21 @@ export function quote_depth(path: AstPath<SvxNode>): number {
  * the children of a node between from and to as blocks, each block on its
  * own lines, prose between blocks printed as one run, blank lines fold to one
  */
+interface ItemLayout {
+	/** the list is loose, its blocks have blank lines between them */
+	loose: boolean;
+	/** the columns a block after the first is indented past the content */
+	extra: number;
+}
+
 function print_children(
 	path: AstPath<SvxNode>,
 	options: Options,
 	print: Print,
 	from: number,
 	to: number,
-	root = false
+	root = false,
+	item?: ItemLayout
 ): Doc {
 	const node = path.node;
 	const text = options.originalText;
@@ -207,7 +206,7 @@ function print_children(
 		const unit = units[u];
 		const first = children[unit.first];
 		if (u > 0) {
-			parts.push(separator(text, children[units[u - 1].last].end, first.start));
+			parts.push(unit_separator(text, children, units[u - 1], unit, item));
 		}
 		// a prettier-ignore-start keeps what follows as written up to its end
 		if (
@@ -230,13 +229,94 @@ function print_children(
 				continue;
 			}
 		}
-		if (unit.block) {
-			parts.push(path.call(print, 'children', unit.first));
+		const printed = unit.block
+			? path.call(print, 'children', unit.first)
+			: print_run(path, options, print, unit.first, unit.last);
+		if (u > 0 && item !== undefined && item.extra > 0) {
+			parts.push(' '.repeat(item.extra), align(item.extra, printed));
 		} else {
-			parts.push(print_run(path, options, print, unit.first, unit.last));
+			parts.push(printed);
 		}
 	}
 	return parts;
+}
+
+interface Unit {
+	first: number;
+	last: number;
+	block: boolean;
+}
+
+/**
+ * a blank line between blocks as in markdown, one line end between markup on
+ * consecutive lines as in svelte, and between definitions and imports
+ */
+function unit_separator(
+	text: string,
+	children: SvxNode[],
+	prev_unit: Unit,
+	unit: Unit,
+	item: ItemLayout | undefined
+): Doc {
+	const prev = children[prev_unit.last];
+	const next = children[unit.first];
+	const lines = newlines(text, prev.end, next.start);
+	if (lines === 0)
+		return text.slice(prev.end, next.start).replace(/[ \t]+/g, ' ');
+	const blank = [hardline, hardline];
+	if (item !== undefined) {
+		// a nested list keeps the blank line before it or its absence
+		if (next.type === 'list') return line_ends(lines);
+		return item.loose ? blank : hardline;
+	}
+	if (
+		prev.type === next.type &&
+		(prev.type === 'definition' || prev.type === 'import_statement')
+	) {
+		return hardline;
+	}
+	if (comment(prev, text) === 'prettier-ignore') return hardline;
+	if (
+		lines === 1 &&
+		is_markup(children, unit, text) &&
+		(is_markup(children, prev_unit, text) ||
+			prev.type === 'paragraph' ||
+			!prev_unit.block)
+	) {
+		return hardline;
+	}
+	return blank;
+}
+
+/** svelte markup, an element, a block, a comment or a lone expression */
+function is_markup(children: SvxNode[], unit: Unit, text: string): boolean {
+	for (let i = unit.first; i <= unit.last; i++) {
+		const node = children[i];
+		switch (node.type) {
+			case 'html':
+			case 'svelte_block':
+			case 'html_comment':
+			case 'svelte_tag':
+			case 'mustache':
+			case 'line_break':
+				continue;
+			case 'paragraph':
+				if (
+					node.children.length === 1 &&
+					(node.children[0].type === 'mustache' ||
+						node.children[0].type === 'svelte_tag')
+				) {
+					continue;
+				}
+				return false;
+			case 'text':
+				if (text.slice(node.start, node.end).trim() === '') continue;
+				return false;
+			default:
+				return false;
+		}
+	}
+	return true;
 }
 
 function starts_line(text: string, pos: number, floor: number): boolean {
@@ -246,13 +326,6 @@ function starts_line(text: string, pos: number, floor: number): boolean {
 		if (c !== 32 && c !== 9 && c !== 62) return false;
 	}
 	return true;
-}
-
-/** what goes between two blocks, blank lines fold to one */
-function separator(text: string, from: number, to: number): Doc {
-	const lines = newlines(text, from, to);
-	if (lines === 0) return text.slice(from, to).replace(/[ \t]+/g, ' ');
-	return lines === 1 ? hardline : [hardline, hardline];
 }
 
 function newlines(text: string, from: number, to: number): number {
@@ -400,18 +473,98 @@ function print_list(
 	options: Options,
 	print: Print
 ): Doc {
-	const tight = path.node.meta?.tight !== false;
-	const items: Doc[] = [];
-	path.each((item, i) => {
+	const node = path.node;
+	const text = options.originalText;
+	const ordered = node.meta?.ordered === true;
+	const loose = node.meta?.tight === false;
+	// lists side by side alternate their markers, so they stay two lists
+	const nth = nth_sibling_list(node, path.parent as SvxNode | null);
+	const depth = quote_depth(path);
+	const items = node.children.filter((child) => child.type === 'list_item');
+	const numbers = items.map((item) => item_number(text, item, depth));
+	const start = typeof node.meta?.start === 'number' ? node.meta.start : 1;
+	// 1. 1. 1. stays that way, so does 0. 1. 1.
+	const repeats =
+		ordered &&
+		numbers.length > 1 &&
+		numbers[1] === 1 &&
+		(numbers[0] !== 0 || (numbers.length > 2 && numbers[2] === 1));
+	const parts: Doc[] = [];
+	let index = 0;
+	path.each((item) => {
 		if (item.node.type !== 'list_item') return;
-		if (items.length > 0) items.push(tight ? hardline : [hardline, hardline]);
-		items.push(print(item));
+		const marker = ordered
+			? `${index === 0 ? start : repeats ? 1 : Math.min(start + index, 999_999_999)}${nth % 2 === 0 ? '.' : ')'}`
+			: nth % 2 === 0
+				? '-'
+				: '*';
+		if (index > 0) parts.push(loose ? [hardline, hardline] : hardline);
+		parts.push(print_item(item, options, print, marker, loose));
+		index++;
 	}, 'children');
-	return items;
+	return parts;
+}
+
+/** how many lists of its kind come straight before a list in what holds it */
+function nth_sibling_list(node: SvxNode, parent: SvxNode | null): number {
+	if (parent === null) return 0;
+	const ordered = node.meta?.ordered === true;
+	let index = -1;
+	for (const child of parent.children) {
+		if (child.type === 'line_break') continue;
+		if (child.type === 'list' && (child.meta?.ordered === true) === ordered)
+			index++;
+		else index = -1;
+		if (child === node) return index;
+	}
+	return 0;
+}
+
+const MARKER = /^([-*+]|\d{1,9}[.)])/;
+
+function item_number(text: string, item: SvxNode, depth: number): number {
+	const start = skip_prefix(text, item.start, item.end, depth);
+	const marker = MARKER.exec(text.slice(start, item.end));
+	return marker === null ? NaN : Number.parseInt(marker[0], 10);
 }
 
 /** a marker, one space, and the content aligned one past the marker */
 function print_item(
+	path: AstPath<SvxNode>,
+	options: Options,
+	print: Print,
+	marker: string,
+	loose: boolean
+): Doc {
+	const node = path.node;
+	const text = options.originalText;
+	const start = skip_prefix(text, node.start, node.end, quote_depth(path));
+	const written = MARKER.exec(text.slice(start, node.end));
+	if (written === null) return print_leaf(path, options, print);
+	const checked = node.meta?.checked;
+	const marker_end = start + written[0].length;
+	const first = edges(node, marker_end, node.end)?.[0];
+	// what sits between the marker and the content, the escape of `\[x]`
+	const between = first ? text.slice(marker_end, first.start).trim() : '';
+	const task = checked === true ? '[x] ' : checked === false ? '[ ] ' : between;
+	const width = marker.length + 1;
+	// a block after the first lines up with the tab width as in markdown
+	const extra = Math.max(0, Math.min(options.tabWidth - width, 3));
+	return [
+		marker,
+		' ',
+		align(width, [
+			task,
+			print_children(path, options, print, marker_end, node.end, false, {
+				loose,
+				extra,
+			}),
+		]),
+	];
+}
+
+/** `#` as deep as the heading, one space and its text */
+function print_heading(
 	path: AstPath<SvxNode>,
 	options: Options,
 	print: Print
@@ -419,23 +572,48 @@ function print_item(
 	const node = path.node;
 	const text = options.originalText;
 	const start = skip_prefix(text, node.start, node.end, quote_depth(path));
-	const marker = /^([-*+]|\d{1,9}[.)])/.exec(text.slice(start, node.end));
-	if (marker === null) return print_leaf(path, options, print);
-	const checked = node.meta?.checked;
-	const marker_end = start + marker[0].length;
-	const first = edges(node, marker_end, node.end)?.[0];
-	// what sits between the marker and the content, the escape of `\[x]`
-	const between = first ? text.slice(marker_end, first.start).trim() : '';
-	const task = checked === true ? '[x] ' : checked === false ? '[ ] ' : between;
-	const width = marker[0].length + 1;
+	const hashes = /^#{1,6}/.exec(text.slice(start, node.end));
+	if (hashes === null) return print_leaf(path, options, print);
+	if (node.children.length === 0) return hashes[0];
 	return [
-		marker[0],
+		hashes[0],
 		' ',
-		align(width, [
-			task,
-			print_children(path, options, print, marker_end, node.end),
-		]),
+		print_leaf(path, options, print, node.children[0].start),
 	];
+}
+
+/** `---`, `***` first in a document where `---` opens frontmatter and in lists it alternates with */
+function print_thematic_break(path: AstPath<SvxNode>): Doc {
+	let list: SvxNode | undefined;
+	let list_parent: SvxNode | null = null;
+	for (let i = path.stack.length - 1; i >= 0; i--) {
+		const value = path.stack[i] as SvxNode;
+		if (typeof value !== 'object' || value === null || Array.isArray(value))
+			continue;
+		if (value.type === 'list') {
+			list = value;
+			for (let j = i - 1; j >= 0; j--) {
+				const parent = path.stack[j] as SvxNode;
+				if (
+					typeof parent === 'object' &&
+					parent !== null &&
+					!Array.isArray(parent) &&
+					'type' in parent
+				) {
+					list_parent = parent;
+					break;
+				}
+			}
+			break;
+		}
+	}
+	if (list === undefined) {
+		const parent = path.parent as SvxNode | null;
+		return parent?.type === 'root' && parent.children[0] === path.node
+			? '***'
+			: '---';
+	}
+	return nth_sibling_list(list, list_parent) % 2 === 0 ? '***' : '---';
 }
 
 /** a footnote definition, the blocks after its first line indented by four */
@@ -533,12 +711,40 @@ function print_fence(path: AstPath<SvxNode>, options: Options): Doc {
 	let code = node.content ?? text.slice(node.value_start, node.value_end);
 	// an unclosed fence runs to the end of the document, whose line end is printed after it
 	if (!closed && code.endsWith('\n')) code = code.slice(0, -1);
-	const parts: Doc[] = [open];
+	const info = info_string(node, text);
+	// a backtick in the info would run into the fence
+	if (info.includes('`')) return print_whole(node, text);
+	const fence = '`'.repeat(Math.max(3, longest_run(code, '`') + 1));
+	const parts: Doc[] = [fence, info];
 	if (node.value_end > node.value_start || node.content !== undefined) {
 		for (const line of code.split('\n')) parts.push(hardline, line);
 	}
-	if (closed) parts.push(hardline, close);
+	parts.push(hardline, fence);
 	return parts;
+}
+
+/** the language and the meta of a fence, one space between them */
+function info_string(node: SvxNode, text: string): string {
+	const { info_start, info_end } = node.meta as {
+		info_start?: number;
+		info_end?: number;
+	};
+	if (typeof info_start !== 'number' || typeof info_end !== 'number') return '';
+	const info = text.slice(info_start, info_end).trim();
+	const space = info.search(/\s/);
+	return space === -1
+		? info
+		: info.slice(0, space) + ' ' + info.slice(space).trim();
+}
+
+function longest_run(text: string, char: string): number {
+	let longest = 0;
+	let run = 0;
+	for (const c of text) {
+		run = c === char ? run + 1 : 0;
+		if (run > longest) longest = run;
+	}
+	return longest;
 }
 
 /** a run of prose between blocks, from the first child to the last */
@@ -611,11 +817,23 @@ export function print_leaf(
 			)
 		);
 	}
+	// spaces in prose fold to one as markdown renders them
+	if (node.type === 'text') return fold_spaces(parts);
 	return parts;
 }
 
 /** the lines of a table are its rows, a row is not a block that interrupts it */
 const TABLE = new Set(['table', 'table_header', 'table_row', 'table_cell']);
+
+function fold_spaces(parts: Doc[]): Doc[] {
+	return parts.map((part) =>
+		typeof part === 'string'
+			? part.replace(/(\S)[ \t]{2,}(?=\S)/g, '$1 ')
+			: Array.isArray(part)
+				? fold_spaces(part)
+				: part
+	);
+}
 
 /** nodes whose whole source is content */
 function is_whole(node: SvxNode): boolean {

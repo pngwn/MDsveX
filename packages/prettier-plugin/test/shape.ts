@@ -68,6 +68,8 @@ export function shape(source: string): string {
 			) {
 				value = value.replace(/[ \t]+$/, '');
 			}
+			// spaces in prose render as one
+			value = value.replace(/[ \t]+/g, ' ');
 			if (value === '') continue;
 			lines.push('  '.repeat(depth + 1) + 'text ' + JSON.stringify(value));
 		}
@@ -113,7 +115,11 @@ function meaning(node: SvxNode, source: string): string | undefined {
 			const info =
 				info_start === undefined ? '' : source.slice(info_start, info_end);
 			// the code as a renderer sees it, a fence in a container holds it as a string
-			return 'fence ' + JSON.stringify([info.trim(), node.content ?? value()]);
+			// an unclosed fence keeps the line end of the document, a closed one does not
+			const code = (node.content ?? value()).replace(/\n$/, '');
+			return (
+				'fence ' + JSON.stringify([info.trim().replace(/\s+/g, ' '), code])
+			);
 		}
 		case 'code_span':
 			return 'code ' + JSON.stringify(node.content ?? value());

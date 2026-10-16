@@ -37,9 +37,9 @@ describe('prettier-ignore', () => {
 		);
 	});
 
-	test('across a blank line', async () => {
+	test('the comment sits right above what it keeps', async () => {
 		expect(await svx('<!-- prettier-ignore -->\n\n\n{a+b}\n')).toBe(
-			'<!-- prettier-ignore -->\n\n{a+b}\n'
+			'<!-- prettier-ignore -->\n{a+b}\n'
 		);
 	});
 

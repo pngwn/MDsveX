@@ -16,7 +16,7 @@ async function svx(source: string, options: Options = {}): Promise<string> {
 describe('lists', () => {
 	test('the spaces after a marker fold to one', async () => {
 		expect(await svx('-   foo\n-   bar\n')).toBe('- foo\n- bar\n');
-		expect(await svx('1.   a\n2)  b\n')).toBe('1. a\n2) b\n');
+		expect(await svx('1.   a\n2.  b\n')).toBe('1. a\n2. b\n');
 	});
 
 	test('the lines of an item line up with its content', async () => {
@@ -70,6 +70,76 @@ describe('lists', () => {
 	test('a line of prose that would start a block stays prose', async () => {
 		expect(await svx('Foo\n    ***\n')).toBe('Foo\n    ***\n');
 		expect(await svx('- foo\n-\n- bar\n')).toBe('- foo\n      -\n- bar\n');
+	});
+});
+
+describe('list markers and numbers', () => {
+	test('bullets are -, a list beside another alternates with *', async () => {
+		expect(await svx('* a\n* b\n\n+ c\n')).toBe('- a\n- b\n\n* c\n');
+	});
+
+	test('ordered lists count up from their start', async () => {
+		expect(await svx('3. a\n7. b\n9. c\n')).toBe('3. a\n4. b\n5. c\n');
+		expect(await svx('1) a\n2) b\n')).toBe('1. a\n2. b\n');
+	});
+
+	test('a list of ones stays ones', async () => {
+		expect(await svx('1. a\n1. b\n1. c\n')).toBe('1. a\n1. b\n1. c\n');
+		expect(await svx('0. a\n1. b\n1. c\n')).toBe('0. a\n1. b\n1. c\n');
+	});
+
+	test('two ordered lists side by side keep apart', async () => {
+		expect(await svx('1.   a\n2)  b\n')).toBe('1. a\n\n2) b\n');
+	});
+
+	test('a loose list has blank lines between its items and their blocks', async () => {
+		expect(await svx('- a\n\n- b\n  more\n\n  para\n')).toBe(
+			'- a\n\n- b\n  more\n\n  para\n'
+		);
+	});
+
+	test('with a tab width of 4 the blocks after the first line up with it', async () => {
+		expect(await svx('- a\n\n  para\n', { tabWidth: 4 })).toBe(
+			'- a\n\n    para\n'
+		);
+	});
+});
+
+describe('blocks', () => {
+	test('a heading is # and one space', async () => {
+		expect(await svx('#   Title   \n')).toBe('# Title\n');
+	});
+
+	test('a thematic break is ---', async () => {
+		expect(await svx('text\n\n___\n\n* * *\n')).toBe('text\n\n---\n\n---\n');
+		expect(await svx('- a\n\n  * * *\n')).toBe('- a\n\n  ***\n');
+	});
+
+	test('a fence is backticks, longer than any in its code', async () => {
+		expect(await svx('````js   title="x"\nlet a\n````\n')).toBe(
+			'```js title="x"\nlet a\n```\n'
+		);
+		expect(await svx('`````\na ``` b\n`````\n')).toBe('````\na ``` b\n````\n');
+	});
+
+	test('an unclosed fence is closed', async () => {
+		expect(await svx('```js\nlet a\n')).toBe('```js\nlet a\n```\n');
+	});
+
+	test('spaces in prose fold to one', async () => {
+		expect(await svx('a   lot    of   spaces\n')).toBe('a lot of spaces\n');
+	});
+
+	test('definitions and imports stay together, markup stays on its lines', async () => {
+		expect(await svx('[a]: /a\n[b]: /b\n\n[c]: /c\n')).toBe(
+			'[a]: /a\n[b]: /b\n[c]: /c\n'
+		);
+		expect(await svx('import A from "a"\nimport B from "b"\n# x\n')).toBe(
+			'import A from "a";\nimport B from "b";\n\n# x\n'
+		);
+		expect(await svx('text\n<Foo/>\n<Bar/>\n')).toBe(
+			'text\n<Foo />\n<Bar />\n'
+		);
 	});
 });
 

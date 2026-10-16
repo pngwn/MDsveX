@@ -12,8 +12,8 @@ describe('blank lines', () => {
 		expect(await svx('# a\n\n\n\nb\n')).toBe('# a\n\nb\n');
 	});
 
-	test('a block on the next line stays on the next line', async () => {
-		expect(await svx('# a\nb\n')).toBe('# a\nb\n');
+	test('a block gets a blank line before it, as in markdown', async () => {
+		expect(await svx('# a\nb\n')).toBe('# a\n\nb\n');
 	});
 
 	test('blank lines at the start and the end go', async () => {
@@ -29,8 +29,8 @@ describe('blank lines', () => {
 		expect(await svx('\n\n')).toBe('');
 	});
 
-	test('a thematic break is not moved to the first line, where it opens frontmatter', async () => {
-		expect(await svx('\n\n---\na: b\n---\n')).toBe('\n---\na: b\n---\n');
+	test('a thematic break first in a document is *** so it opens no frontmatter', async () => {
+		expect(await svx('\n\n---\na: b\n---\n')).toBe('***\n\na: b\n\n---\n');
 	});
 });
 
