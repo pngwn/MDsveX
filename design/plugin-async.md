@@ -231,3 +231,24 @@ Stacked PRs. None changes output for a document whose plugins neither defer nor 
 6. **Users:** `plugin-toc` incremental, last modified in `plugin-page-data`, and a citations plugin as the proof for deferred tasks.
 
 Checks: `parity.mjs` identical and `quick` level for documents without such plugins, `--suite plugins` for the rest, and the invariance harness with a plugin that defers on generated documents, compared whole, fed and over the wire.
+
+## 13. A scratch per document, and typed data in components
+
+Decided 2026-10-16, from what the citations plugin hit in #1199.
+
+**`ctx.scratch`, one object per plugin name per document.**
+
+- **Where.** The same object from a node handler, a close callback, a bound directive handler, a sequential pass, a deferred task and the document hook. It is keyed by plugin name as `data` is, so a bundle's `parse` plugin and its `directives` share it. Reading it throws for a plugin with no name, as `data` does.
+- **What.** A plain object, made at the first read. Any value: nodes, maps, counters. It is never serialised and never reaches `plugin_data`, the compile result or a data event. It is dropped when the dispatcher takes the next document. A node kept in it stays a valid view until then, so the document hook can use it.
+- **Revocation.** The scratch is not owned and not logged. A write stays when the node whose handler made it is revoked. A deferred task writes to it at once, and the write stays when the task's other changes are dropped. So a plugin keeps there only what a revoke cannot make wrong:
+  - facts about nodes the parser never revokes, and those nodes themselves: a block directive, a heading at its close, anything in a sequential pass or the hook;
+  - not a node that may be revoked. A revoked node leaves the tree, and its view reads differently by construct: a given up emphasis reads as text, a tight list paragraph still reads as a paragraph. There is no check to make on it;
+  - anything that must follow revocation exactly goes through `ctx.set` and `ctx.add`. A component or the hook reads it from there.
+- **No revoke hook.** Neither user needs one. A hook would be a second, shallow way to track revocation beside owned data. It would also put a call on the revoke path of every plugin that registers one. If a plugin turns up that needs one, it can be added as a callback owned by a node, like a close callback.
+- **Keys on the context itself go.** `PluginContext` loses its index signature, so a key put on `ctx` is a type error. The scratch replaces it. Before, such a key reached the fused handlers and the hook, and a bound handler's key was lost after the call. The runtime does not stop one, because that would cost a check on every context.
+
+**`PluginDataContext` from `mdsvex/compile`, a type only.**
+
+- `{ readonly current: Readonly<PluginData> | undefined }`. `PluginData` is the interface plugins already augment, so `current.citations` has the plugin's own type with no cast.
+- A component reads it with `getContext(Symbol.for('mdsvex.plugin_data'))` and this type. The key stays written out.
+- No helper that reads the context. A value import from `mdsvex/compile` in a component would put the compiler in the client bundle. The helper would also need the svelte runtime in the compile entry. A type import is erased.
