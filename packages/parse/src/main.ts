@@ -6272,7 +6272,12 @@ export class PFMParser {
 				const ch = char_code_at.call(source, p - base);
 				if (ch === CLOSE_ANGLE_BRACKET) break;
 				if (ch === LINEFEED || ch === OPEN_ANGLE_BRACKET) return -1;
-				if (ch === BACKSLASH && p + 1 < length) {
+				// a backslash escapes no line end, the destination may not cross one
+				if (
+					ch === BACKSLASH &&
+					p + 1 < length &&
+					char_code_at.call(source, p + 1 - base) !== LINEFEED
+				) {
 					p += 2;
 					continue;
 				}
@@ -6296,7 +6301,12 @@ export class PFMParser {
 					paren_depth--;
 				}
 				if (ch === OPEN_PAREN) paren_depth++;
-				if (ch === BACKSLASH && p + 1 < length) {
+				// a backslash before whitespace is literal and ends the destination
+				if (
+					ch === BACKSLASH &&
+					p + 1 < length &&
+					char_code_at.call(source, p + 1 - base) > 0x20
+				) {
 					p += 2;
 					continue;
 				}
@@ -9903,7 +9913,12 @@ export class PFMParser {
 							paren_depth--;
 						}
 						if (ch === OPEN_PAREN) paren_depth++;
-						if (ch === BACKSLASH && p + 1 < length) {
+						// a backslash before whitespace is literal and ends the destination
+						if (
+							ch === BACKSLASH &&
+							p + 1 < length &&
+							char_code_at.call(source, p + 1 - base) > 0x20
+						) {
 							p += 2;
 							continue;
 						}
