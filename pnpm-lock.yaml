@@ -522,9 +522,15 @@ importers:
       prettier:
         specifier: ^3.8.1
         version: 3.8.1
+      prettier-plugin-svelte:
+        specifier: ^3.5.1
+        version: 3.5.1(prettier@3.8.1)(svelte@5.57.1(@typescript-eslint/types@8.57.2))
       shx:
         specifier: ^0.3.4
         version: 0.3.4
+      svelte:
+        specifier: ^5.55.0
+        version: 5.57.1(@typescript-eslint/types@8.57.2)
 
   packages/render:
     dependencies:
@@ -8600,6 +8606,11 @@ snapshots:
     dependencies:
       prettier: 3.8.1
       svelte: 5.55.0
+
+  prettier-plugin-svelte@3.5.1(prettier@3.8.1)(svelte@5.57.1(@typescript-eslint/types@8.57.2)):
+    dependencies:
+      prettier: 3.8.1
+      svelte: 5.57.1(@typescript-eslint/types@8.57.2)
 
   prettier@2.8.8: {}
 

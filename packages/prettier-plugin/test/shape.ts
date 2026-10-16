@@ -37,12 +37,15 @@ export function shape(source: string): string {
 		const children = node.children;
 		for (let i = 0; i < children.length; i++) {
 			const child = children[i];
+			// blank lines fold, a paragraph that ends shows as a new node
+			if (child.type === 'line_break') continue;
 			if (child.type !== 'text') {
 				walk(child, depth + 1);
 				continue;
 			}
 			// texts split and merge as offsets move
 			let value = '';
+			const first_text = i;
 			while (i < children.length && children[i].type === 'text') {
 				value +=
 					children[i].content ??
@@ -52,6 +55,11 @@ export function shape(source: string): string {
 			i--;
 			// the text of a revoked tag holds its line ends
 			value = value.replace(/[ \t]+\n/g, '\n');
+			// the indent of a line in prose renders as nothing
+			const before = children[first_text - 1]?.type;
+			if (before === undefined || before === 'soft_break') {
+				value = value.replace(/^[ \t]+/, '');
+			}
 			const next = children[i + 1]?.type;
 			if (
 				next === undefined ||
@@ -124,6 +132,13 @@ function attributes(value: unknown): unknown {
 		const key = name.replace(/\s+/g, '');
 		if (typeof v === 'object' && v !== null && 'value' in v) {
 			out[key] = expression(String((v as { value: unknown }).value));
+		} else if (
+			typeof v === 'string' &&
+			/^\{[\s\S]*\}$/.test(v.trim()) &&
+			!expression(v.trim().slice(1, -1)).startsWith('"')
+		) {
+			// a quoted lone expression is the expression
+			out[key] = expression(v.trim().slice(1, -1));
 		} else if (typeof v === 'string' && v.includes('{')) {
 			out[key] = head(v);
 		} else {

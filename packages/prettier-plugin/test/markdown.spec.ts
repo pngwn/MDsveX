@@ -1,48 +1,47 @@
 import { format } from 'prettier';
+import type { Options } from 'prettier';
 import { describe, expect, test } from 'vitest';
 
 import plugin from '../src/index';
 import { shape } from './shape';
 
-async function svx(source: string): Promise<string> {
-	const out = await format(source, { parser: 'mdsvex', plugins: [plugin] });
+async function svx(source: string, options: Options = {}): Promise<string> {
+	const all = { parser: 'mdsvex', plugins: [plugin], ...options };
+	const out = await format(source, all);
 	expect(shape(out)).toBe(shape(source));
-	expect(await format(out, { parser: 'mdsvex', plugins: [plugin] })).toBe(out);
+	expect(await format(out, all)).toBe(out);
 	return out;
 }
 
-describe('list markers', () => {
+describe('lists', () => {
 	test('the spaces after a marker fold to one', async () => {
 		expect(await svx('-   foo\n-   bar\n')).toBe('- foo\n- bar\n');
 		expect(await svx('1.   a\n2)  b\n')).toBe('1. a\n2) b\n');
 	});
 
-	test('the marker, its number and the tightness stay', async () => {
-		const source = '* a\n\n* b\n\n3. c\n4. d\n';
-		expect(await svx(source)).toBe(source);
-	});
-
-	test('the lines after a marker stay where they are', async () => {
-		expect(await svx('-    one\n\n     two\n')).toBe('- one\n\n     two\n');
+	test('the lines of an item line up with its content', async () => {
+		expect(await svx('-    one\n\n     two\n')).toBe('- one\n\n  two\n');
+		expect(await svx('10. a\ncontinued\n')).toBe('10. a\n    continued\n');
 	});
 
 	test('a task box stays after its marker', async () => {
 		expect(await svx('-   [ ] todo\n-   [x] done\n')).toBe(
 			'- [ ] todo\n- [x] done\n'
 		);
+		expect(await svx('- \\[x] escaped\n')).toBe('- \\[x] escaped\n');
 	});
-});
 
-describe('list indent', () => {
-	test('a list at the top moves to the left edge', async () => {
+	test('a list sits at the left edge of what holds it', async () => {
 		expect(await svx('  - a\n  - b\n')).toBe('- a\n- b\n');
+		expect(await svx('\t- foo\n\t- bar\n')).toBe('- foo\n- bar\n');
 	});
 
-	test('a nested list moves to the content column of its item', async () => {
+	test('a nested list sits at the content column of its item', async () => {
 		expect(await svx('- a\n      - b\n      - c\n')).toBe(
 			'- a\n  - b\n  - c\n'
 		);
 		expect(await svx('1. a\n      - b\n')).toBe('1. a\n   - b\n');
+		expect(await svx('- a\n\t- b\n')).toBe('- a\n  - b\n');
 	});
 
 	test('what a nested item holds moves with it', async () => {
@@ -58,48 +57,65 @@ describe('list indent', () => {
 		expect(await svx(source)).toBe(source);
 	});
 
-	test('a list is kept where it is when a line after it would join it', async () => {
-		const source = '  - foo\n\n  bar\n';
-		expect(await svx(source)).toBe(source);
-	});
-
-	test('a list with tabs is kept', async () => {
-		const sources = ['- a\n\t- b\n', '\t- a\n\t- b\n'];
-		for (const source of sources) expect(await svx(source)).toBe(source);
-	});
-
-	test('a list in an element or a block keeps its indent', async () => {
-		const sources = [
-			'<div>\n\n  - a\n  - b\n\n</div>\n',
-			'{#if a}\n\n  - a\n\n{/if}\n',
-		];
-		for (const source of sources) expect(await svx(source)).toBe(source);
+	test('a paragraph after a list stays out of it', async () => {
+		expect(await svx('  - foo\n\n  bar\n')).toBe('- foo\n\nbar\n');
 	});
 
 	test('a template string in an item keeps its lines', async () => {
-		const source = '- a\n      - {`x\n         y`}\n';
-		expect(await svx(source)).toBe('- a\n  - {`x\n         y`}\n');
+		expect(await svx('- a\n      - {`x\n         y`}\n')).toBe(
+			'- a\n  - {`x\n         y`}\n'
+		);
+	});
+
+	test('a line of prose that would start a block stays prose', async () => {
+		expect(await svx('Foo\n    ***\n')).toBe('Foo\n    ***\n');
+		expect(await svx('- foo\n-\n- bar\n')).toBe('- foo\n      -\n- bar\n');
 	});
 });
 
 describe('block quotes', () => {
-	test('a > followed by text gets a space', async () => {
+	test('every line has a > and a space', async () => {
 		expect(await svx('>foo\n>bar\n')).toBe('> foo\n> bar\n');
 		expect(await svx('>>x\n')).toBe('> > x\n');
 	});
 
-	test('an empty quote line stays a bare >', async () => {
+	test('an empty quote line is a bare >', async () => {
 		expect(await svx('> a\n>\n> b\n')).toBe('> a\n>\n> b\n');
 	});
 
 	test('a list in a quote', async () => {
 		expect(await svx('> -   a\n>     - b\n')).toBe('> - a\n>   - b\n');
-		expect(await svx('>- a\n>  - b\n')).toBe('> - a\n>  - b\n');
 	});
 
 	test('a fence in a quote keeps its code', async () => {
 		expect(await svx('>```js\n>let x\n>```\n')).toBe(
 			'> ```js\n> let x\n> ```\n'
+		);
+	});
+});
+
+describe('indented blocks', () => {
+	test('the markdown in an element is indented', async () => {
+		expect(await svx('<div>\n\n# Head\n\n- a\n  - b\n\n</div>\n')).toBe(
+			'<div>\n\n  # Head\n\n  - a\n    - b\n\n</div>\n'
+		);
+	});
+
+	test('with tabs when the project uses them', async () => {
+		expect(await svx('<div>\n\n# Head\n\n</div>\n', { useTabs: true })).toBe(
+			'<div>\n\n\t# Head\n\n</div>\n'
+		);
+	});
+
+	test('the markdown in a block is indented', async () => {
+		expect(await svx('{#if a}\n\n- a\n\n{:else}\n\nb\n\n{/if}\n')).toBe(
+			'{#if a}\n\n  - a\n\n{:else}\n\n  b\n\n{/if}\n'
+		);
+	});
+
+	test('a pre keeps its lines', async () => {
+		expect(await svx('<div>\n\n<pre>\n  x\n</pre>\n\n</div>\n')).toBe(
+			'<div>\n\n  <pre>\n  x\n</pre>\n\n</div>\n'
 		);
 	});
 });

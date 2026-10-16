@@ -4,8 +4,16 @@ import type { AstPath, Doc, Options, ParserOptions } from 'prettier';
 import { attribute, is_ts } from './ast';
 import type { SvxNode } from './ast';
 import { head } from './heads';
-import { is_raw_text, print_source, root_of } from './printer';
-import { print_open_tag } from './tag';
+import {
+	head_end,
+	in_flow,
+	is_raw_text,
+	print_branch,
+	print_html,
+	quote_depth,
+	root_of,
+} from './printer';
+import { parse_open_tag, print_open_tag } from './tag';
 
 const { hardline, indent } = doc.builders;
 const { removeLines, willBreak } = doc.utils;
@@ -49,31 +57,32 @@ export function embed(
 				text_to_doc(text.slice(node.start, node.end), { parser: 'babel-ts' });
 
 		case 'html': {
-			const tag = node.meta?.tag;
-			if (tag === 'script' || tag === 'style') {
+			const name = node.meta?.tag;
+			if (name === 'script' || name === 'style') {
 				const parser = !at_root
 					? undefined
-					: tag === 'script'
+					: name === 'script'
 						? script_parser(node)
 						: style_parser(node);
 				if (parser === undefined) return;
 				return (text_to_doc) => element(text_to_doc, node, text, parser);
 			}
 			if (is_raw_text(node)) return;
-			const open = text.slice(node.start, node.value_start);
+			const tag = parse_open_tag(text.slice(node.start, node.value_start));
+			if (tag === undefined) return;
 			const ts = root_of(path).ts;
+			// a tag in prose stays on its line, a line end in a quote needs its marker
+			const multiline = in_flow(path) && quote_depth(path) === 0;
 			return async (text_to_doc, print, path, options) => {
-				const head = await print_open_tag(open, { text_to_doc, options, ts });
-				if (head === undefined) return undefined;
-				return [
-					head,
-					print_source(
-						path,
-						options as ParserOptions<SvxNode>,
-						print,
-						node.value_start
-					),
-				];
+				const open = await print_open_tag(tag, {
+					text_to_doc,
+					options,
+					ts,
+					multiline,
+					bracket_same_line: options.bracketSameLine === true,
+					single_attribute_per_line: options.singleAttributePerLine === true,
+				});
+				return print_html(path, options as ParserOptions<SvxNode>, print, open);
 			};
 		}
 
@@ -175,13 +184,12 @@ function const_tag(path: AstPath<SvxNode>, text: string): Embedded | undefined {
 	};
 }
 
-/** the only thing in a paragraph of the root */
+/** the only thing in a paragraph of the block flow, outside quotes */
 function is_block(path: AstPath<SvxNode>): boolean {
 	const parent = path.parent as SvxNode | null;
-	const grandparent = path.grandparent as SvxNode | null;
-	if (parent?.type !== 'paragraph' || grandparent?.type !== 'root')
+	if (parent?.type !== 'paragraph' || parent.children.length !== 1)
 		return false;
-	return parent.children.length === 1;
+	return quote_depth(path) === 0 && path.callParent((p) => in_flow(p));
 }
 
 /** a block branch, the expression and bindings of its head on one line */
@@ -190,19 +198,18 @@ function branch(path: AstPath<SvxNode>, text: string): Embedded | undefined {
 	const tag = node.meta?.tag;
 	if (typeof tag !== 'string') return;
 	const source = text.slice(node.value_start, node.value_end);
-	const head_end = text.indexOf('}', node.value_end) + 1;
-	if (source.trim() === '' || head_end === 0) return;
+	const end = head_end(node, text);
+	if (source.trim() === '' || end === 0) return;
 	const prefix = text.slice(node.start, node.value_start).trimEnd() + ' ';
 	const ts = root_of(path).ts;
 	return async (text_to_doc, print, path, options) => {
 		const inside = await head(tag, source, { text_to_doc, options, ts });
 		if (inside === undefined) return undefined;
-		return [
+		return print_branch(path, options as ParserOptions<SvxNode>, print, [
 			prefix,
 			inside,
 			'}',
-			print_source(path, options as ParserOptions<SvxNode>, print, head_end),
-		];
+		]);
 	};
 }
 

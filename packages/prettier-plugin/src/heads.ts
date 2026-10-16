@@ -1,7 +1,7 @@
 import { doc } from 'prettier';
 import type { Doc, Options } from 'prettier';
 
-const { removeLines } = doc.utils;
+const { removeLines, willBreak } = doc.utils;
 const { printDocToString } = doc.printer;
 
 type TextToDoc = (text: string, options: Options) => Promise<Doc>;
@@ -119,6 +119,20 @@ export function expression(
 		context.ts ? '__ts_expression' : '__js_expression',
 		context
 	);
+}
+
+/** an expression as a doc, on one line unless it may take more */
+export async function expression_doc(
+	source: string,
+	context: HeadContext,
+	multiline: boolean
+): Promise<Doc> {
+	const parser = context.ts ? '__ts_expression' : '__js_expression';
+	const code = await context.text_to_doc(source, { parser });
+	if (multiline) return code;
+	const line = removeLines(code);
+	if (willBreak(line)) throw new Error('more than one line');
+	return line;
 }
 
 /** @example { id, name } */

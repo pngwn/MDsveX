@@ -3512,7 +3512,7 @@ pnpm add --save-dev prettier @mdsvex/prettier-plugin@next
 
 Prettier picks the plugin for `.svx` and `.pfm` files from their extension. For another extension in `extensions`, add an override that sets `"parser": "mdsvex"` for it.
 
-The plugin tidies the markdown and keeps what its author chose: list markers, numbering, table spacing and emphasis stay as written. It folds blank lines between blocks to one, takes the spaces off the ends of prose lines, folds the spaces after a list marker to one, moves a nested list to the content column of its item and puts a space after a `>` that has none.
+The plugin formats the Svelte in a document as [prettier-plugin-svelte](https://github.com/sveltejs/prettier-plugin-svelte) formats a component. A tag that does not fit on a line puts its attributes one to a line, and the children of elements, components and blocks such as `{#if}` are indented, markdown included. A list item lines up with its content, every line of a quote starts with `> `, and blank lines between blocks fold to one. List markers, numbering, table spacing and emphasis stay as written.
 
 The code in a document is formatted with your Prettier options:
 

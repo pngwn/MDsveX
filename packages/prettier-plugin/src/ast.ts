@@ -1,8 +1,6 @@
 import { parse_markdown_svelte } from '@mdsvex/parse';
 import { kind_to_string } from '@mdsvex/parse/utils';
 
-import { indent_edits } from './indent';
-
 const NONE = 0xffffffff;
 
 export interface SvxNode {
@@ -24,16 +22,8 @@ export interface SvxRoot extends SvxNode {
 	ts: boolean;
 	/** the source, for the printer hooks that are given no options */
 	text: string;
-	/** changes to the indent of lines, sorted by offset */
-	edits: Edit[];
 	/** the frontmatter is yaml prettier may format, not text a project parses itself */
 	yaml: boolean;
-}
-
-export interface Edit {
-	at: number;
-	remove: number;
-	insert: string;
 }
 
 /** the parser tree as objects, offsets index the text prettier passes in with its line ends folded */
@@ -68,51 +58,23 @@ export function parse(text: string): SvxRoot {
 	root.end = text.length;
 	root.text = text;
 	root.children = blocks(text, root.children);
-	for (const child of root.children) clamp(text, child, child.end, child.start);
+	for (const child of root.children) clamp(text, child, child.end);
 	root.ts = root.children.some(
 		(child) =>
 			child.type === 'html' && child.meta?.tag === 'script' && is_ts(child.meta)
 	);
-	root.edits = indent_edits(root);
 	root.yaml = true;
 	return root;
 }
 
-/** no node ends in a line end or past its parent, a block that starts a line takes in its indent so an edit to it falls in one node */
-function clamp(text: string, node: SvxNode, limit: number, floor = 0) {
+/** no node ends in a line end or past its parent */
+function clamp(text: string, node: SvxNode, limit: number) {
 	node.start = Math.min(node.start, limit);
 	let end = Math.min(node.end, limit);
 	while (end > node.start && text.charCodeAt(end - 1) === 10) end--;
 	node.end = end;
-	if (BLOCKS.has(node.type)) {
-		let start = node.start;
-		while (start > floor && is_blank(text.charCodeAt(start - 1))) start--;
-		const before = text.charCodeAt(start - 1);
-		if (start === 0 || before === 10 || before === 62) node.start = start;
-	}
-	let prev_end = node.start;
-	for (const child of node.children) {
-		clamp(text, child, end, prev_end);
-		prev_end = child.end;
-	}
+	for (const child of node.children) clamp(text, child, end);
 }
-
-const BLOCKS = new Set([
-	'paragraph',
-	'heading',
-	'code_fence',
-	'block_quote',
-	'list',
-	'list_item',
-	'table',
-	'thematic_break',
-	'html',
-	'svelte_block',
-	'directive_leaf',
-	'directive_container',
-	'footnote_definition',
-	'definition',
-]);
 
 /** the root blocks without the line breaks between them, source between blocks that is more than whitespace becomes a raw node */
 function blocks(text: string, children: SvxNode[]): SvxNode[] {
@@ -121,10 +83,6 @@ function blocks(text: string, children: SvxNode[]): SvxNode[] {
 	for (const child of children) {
 		if (child.type === 'line_break' || child.end === NONE) continue;
 		push_raw(text, pos, child.start, out);
-		// the first line indent is relative to the lines after it
-		let start = child.start;
-		while (start > pos && is_blank(text.charCodeAt(start - 1))) start--;
-		if (start === 0 || text.charCodeAt(start - 1) === 10) child.start = start;
 		let end = child.end;
 		while (end > child.start && text.charCodeAt(end - 1) === 10) end--;
 		child.end = end;

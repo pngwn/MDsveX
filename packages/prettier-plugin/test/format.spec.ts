@@ -39,9 +39,9 @@ describe('spaces at line ends', () => {
 		expect(await svx('a  \nb \n\n- c  \n')).toBe('a\nb\n\n- c\n');
 	});
 
-	test('stay in a fence', async () => {
+	test('go from the code in a fence, as in markdown', async () => {
 		expect(await svx('```js\nlet a = 1;  \n```\n')).toBe(
-			'```js\nlet a = 1;  \n```\n'
+			'```js\nlet a = 1;\n```\n'
 		);
 	});
 
@@ -56,7 +56,7 @@ describe('spaces at line ends', () => {
 	test('stay in an expression and an attribute value', async () => {
 		expect(await svx('{`a  \nb`}\n')).toBe('{`a  \nb`}\n');
 		expect(await svx('<div title="a  \nb">\n\nc\n\n</div>\n')).toBe(
-			'<div title="a  \nb">\n\nc\n\n</div>\n'
+			'<div\n  title="a  \nb"\n>\n\n  c\n\n</div>\n'
 		);
 	});
 
@@ -70,12 +70,6 @@ describe('source no node covers', () => {
 		expect(await svx('[ref]:   https://x.com  "T"\n\n\n[a][ref]\n')).toBe(
 			'[ref]:   https://x.com  "T"\n\n[a][ref]\n'
 		);
-	});
-});
-
-describe('indentation', () => {
-	test('the indent of a first line stays with its block', async () => {
-		expect(await svx('\t- foo\n\t- bar\n')).toBe('\t- foo\n\t- bar\n');
 	});
 });
 
