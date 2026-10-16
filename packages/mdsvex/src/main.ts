@@ -57,7 +57,7 @@ import {
 	metadata_query,
 	read_metadata,
 } from './metadata_query';
-import type { MetadataDev } from './metadata_query';
+import type { MetadataDev, ResolveImport } from './metadata_query';
 import { links_of } from './link_urls';
 import type { BaseImport, Rewrite } from './link_urls';
 import { need_error } from './fence_sources';
@@ -345,23 +345,23 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	};
 	/** ctx.resolve of a plugin, as an import from the document would resolve */
 	const resolver =
-		(ctx: Rollup.PluginContext, file: string): CompileInputs['resolve'] =>
+		(resolve: ResolveImport, file: string): CompileInputs['resolve'] =>
 		(spec, from) =>
-			ctx
+			resolve
 				.resolve(spec, from ?? file)
 				.then((found) =>
 					found === null || found.external ? null : slashed(clean_id(found.id))
 				);
-	/** a build watches what plugins read, the dev server asks hotUpdate */
+	/** a build watches what plugins read, the dev server asks hotUpdate, ctx is none when an edit is compared */
 	function track_dependencies(
-		ctx: Rollup.PluginContext,
+		ctx: Rollup.PluginContext | undefined,
 		file: string,
 		deps: readonly string[] | undefined
 	): void {
 		shown.depend(file, deps);
 		if (deps === undefined) return;
 		for (const path of deps) {
-			if (command === 'build') ctx.addWatchFile(path);
+			if (command === 'build') ctx?.addWatchFile(path);
 			else dev?.watch(path);
 		}
 	}
@@ -524,10 +524,10 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		return waits.length === 0 ? undefined : Promise.all(waits);
 	}
 	/** the inputs of a parse that no render follows, it asks for nothing a render would need */
-	function parsing_inputs(file: string, ctx: Rollup.PluginContext | undefined) {
+	function parsing_inputs(file: string, resolve: ResolveImport) {
 		const parsing = Object.assign(compile_inputs(), inputs);
 		parsing.filename = file;
-		parsing.resolve = ctx === undefined ? undefined : resolver(ctx, file);
+		parsing.resolve = resolver(resolve, file);
 		if (!no_templates)
 			parsing.templates = templates_for(templates, select, file);
 		parsing.directives = registry?.directive_sources();
@@ -544,18 +544,17 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		settled: () =>
 			(registry === null || registry.ready()) &&
 			(templates === null || templates.ready()),
-		module(raw, file, ctx) {
+		module(raw, file, resolve, ctx) {
 			// no handler can run, so the frontmatter is all there is
 			if (!can_plug)
 				return data_module(
 					read_metadata(raw, options.frontmatter?.parse),
 					undefined
 				);
-			const parsed = compiler.parse(raw, parsing_inputs(file, ctx));
+			const parsed = compiler.parse(raw, parsing_inputs(file, resolve));
 			const settled = compiler.settle(parsed);
 			const done = () => {
-				if (ctx !== undefined)
-					track_dependencies(ctx, file, parsed.dependencies);
+				track_dependencies(ctx, file, parsed.dependencies);
 				return data_module(parsed.metadata, parsed.data);
 			};
 			if (settled === undefined) {
@@ -895,8 +894,13 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			parsing.snippets = true;
 			try {
 				const parsed = compiler.parse(raw, parsing);
+				try {
+					// a block a plugin added waits for what it deferred
+					await compiler.settle(parsed);
+				} finally {
+					compiler.drop(parsed);
+				}
 				const found = parsed.snippets;
-				compiler.drop(parsed);
 				if (found !== undefined) modules.add(at.doc, raw, found);
 			} catch {
 				// the compile of the document reports what is wrong with it
