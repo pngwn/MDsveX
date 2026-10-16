@@ -49,6 +49,8 @@ describe('corpus', () => {
 				shape(source)
 			);
 			expect(await svx(once), 'a second format changed the output').toBe(once);
-		}
+		},
+		// the 4mb bench document formats twice, slow on a windows runner
+		30_000
 	);
 });
