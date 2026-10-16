@@ -237,17 +237,22 @@ describe('the list in a stream', () => {
 		]);
 	});
 
-	test('in every chunk size, ending as the compiled page does', async () => {
-		const page = await page_of('growing');
-		expect(lists_of(page)).toBe(ALL);
-		for (const chunk of [1, 2, 7, 40, 1000]) {
-			const { seen, html } = await stream_lists(DOCS.growing, chunk);
-			expect(html, String(chunk)).toBe(page);
-			for (let i = 1; i < seen.length; i++)
-				for (const item of seen[i - 1].split(' | ').slice(0, -1))
-					expect(seen[i], String(chunk)).toContain(item);
+	// each chunk waits a timer, which a slow runner rounds up to its tick
+	test(
+		'in every chunk size, ending as the compiled page does',
+		{ timeout: 20_000 },
+		async () => {
+			const page = await page_of('growing');
+			expect(lists_of(page)).toBe(ALL);
+			for (const chunk of [1, 2, 7, 40, 1000]) {
+				const { seen, html } = await stream_lists(DOCS.growing, chunk);
+				expect(html, String(chunk)).toBe(page);
+				for (let i = 1; i < seen.length; i++)
+					for (const item of seen[i - 1].split(' | ').slice(0, -1))
+						expect(seen[i], String(chunk)).toContain(item);
+			}
 		}
-	});
+	);
 
 	test('an entry shows once its lookup lands, before the stream ends', async () => {
 		let open!: () => void;
@@ -294,27 +299,31 @@ describe('the list in a stream', () => {
 		expect(html).toBe(await page_of('two_lists'));
 	});
 
-	test('a citation inside a construct that is revoked', async () => {
-		const states = [
-			'-',
-			`${TURING} cite-1`,
-			`${TURING} cite-1 | ${LOVELACE} cite-2`,
-		];
-		for (const name of ['revoked', 'link', 'note', 'tight', 'element']) {
-			const page = await page_of(name);
-			expect(lists_of(page), name).toBe(states[2]);
-			for (const chunk of [1000, 3, 1]) {
-				const { seen, html } = await stream_lists(DOCS[name], chunk);
-				const order = seen.map((state) => states.indexOf(state));
-				expect(order, `${name} ${chunk}`).toEqual(
-					[...new Set(order)].filter((i) => i >= 0).sort()
-				);
-				expect(seen[seen.length - 1], `${name} ${chunk}`).toBe(states[2]);
-				expect(html, `${name} ${chunk}`).toBe(page);
+	test(
+		'a citation inside a construct that is revoked',
+		{ timeout: 20_000 },
+		async () => {
+			const states = [
+				'-',
+				`${TURING} cite-1`,
+				`${TURING} cite-1 | ${LOVELACE} cite-2`,
+			];
+			for (const name of ['revoked', 'link', 'note', 'tight', 'element']) {
+				const page = await page_of(name);
+				expect(lists_of(page), name).toBe(states[2]);
+				for (const chunk of [1000, 3, 1]) {
+					const { seen, html } = await stream_lists(DOCS[name], chunk);
+					const order = seen.map((state) => states.indexOf(state));
+					expect(order, `${name} ${chunk}`).toEqual(
+						[...new Set(order)].filter((i) => i >= 0).sort()
+					);
+					expect(seen[seen.length - 1], `${name} ${chunk}`).toBe(states[2]);
+					expect(html, `${name} ${chunk}`).toBe(page);
+				}
 			}
+			expect((await stream_lists(DOCS.revoked, 1)).seen).toEqual(states);
 		}
-		expect((await stream_lists(DOCS.revoked, 1)).seen).toEqual(states);
-	});
+	);
 
 	test('a lookup held while its emphasis is revoked lands once', async () => {
 		let open!: () => void;
