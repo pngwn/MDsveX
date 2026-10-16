@@ -211,6 +211,22 @@ function find(
 	}
 }
 
+function holds_list(node: NodeView): boolean {
+	if (node.type === 'directive_leaf' && node.attrs.name === 'bibliography')
+		return true;
+	for (let child = node.first_child; child !== null; child = child.next)
+		if (child.type !== 'text' && holds_list(child)) return true;
+	return false;
+}
+
+/** a list is written before this one, as far as the tree has arrived, so this one lists nothing */
+function after_another(node: NodeView): boolean {
+	for (let at: NodeView | null = node; at !== null; at = at.parent)
+		for (let before = at.prev; before !== null; before = before.prev)
+			if (holds_list(before)) return true;
+	return false;
+}
+
 /**
  * citations from a CSL JSON bibliography, `:cite[key]` and `:cite[a, b]` in
  * the text, and a `::bibliography` that lists every entry the document
@@ -296,8 +312,10 @@ export function citations(options: CitationsOptions = {}): Bundle {
 						);
 						return;
 					}
-					// empty until the document hook, or the live data a streaming view passes
-					node.attrs.args = { ...node.attrs.args, data: '{}', style };
+					// no data until the document hook, the component reads the context meanwhile
+					node.attrs.args = after_another(node)
+						? { ...node.attrs.args, data: '{}', style }
+						: { ...node.attrs.args, style };
 				},
 			},
 		},
@@ -325,11 +343,13 @@ export function citations(options: CitationsOptions = {}): Bundle {
 							'a document has one ::bibliography, this one lists nothing',
 							list
 						);
-						return;
 					}
+					// data ahead of style keeps the compiled args as they were
+					const { style: written, ...args } = list.attrs.args ?? {};
 					list.attrs.args = {
-						...list.attrs.args,
-						data: JSON.stringify(data),
+						...args,
+						data: i > 0 ? '{}' : JSON.stringify(data),
+						style: written ?? style,
 					};
 				});
 			},
