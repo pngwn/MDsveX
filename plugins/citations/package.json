@@ -50,6 +50,8 @@
 		"svelte": "^5.20.0"
 	},
 	"devDependencies": {
+		"@mdsvex/parse": "workspace:*",
+		"@mdsvex/render": "workspace:*",
 		"@sveltejs/package": "^3.0.0",
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
 		"mdsvex": "workspace:^",

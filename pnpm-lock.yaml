@@ -199,6 +199,9 @@ importers:
       '@mdsvex/parse':
         specifier: workspace:*
         version: link:../parse
+      '@mdsvex/plugin-citations':
+        specifier: workspace:*
+        version: link:../../plugins/citations
       '@mdsvex/plugin-toc':
         specifier: workspace:*
         version: link:../../plugins/toc
@@ -752,6 +755,12 @@ importers:
 
   plugins/citations:
     devDependencies:
+      '@mdsvex/parse':
+        specifier: workspace:*
+        version: link:../../packages/parse
+      '@mdsvex/render':
+        specifier: workspace:*
+        version: link:../../packages/render
       '@sveltejs/package':
         specifier: ^3.0.0
         version: 3.0.0(svelte@5.57.1(@typescript-eslint/types@8.57.2))(typescript@6.0.2)

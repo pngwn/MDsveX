@@ -86,3 +86,82 @@ export const DEFINITIONS: Record<string, string> = {
 	revoke: 'the opcode that undoes a speculative node',
 	block: 'a child of the root, the unit the renderer caches'
 };
+
+/** a document that cites as it goes, its bibliography written first so it grows in place */
+export const CITE_DOC = `# A short history of computing machines
+
+::bibliography[Works cited]
+
+The list above starts empty and fills in as each citation arrives and its entry loads. Each citation shows its key until the bibliography file has loaded, then its number.
+
+## Engines
+
+Charles Babbage designed a machine that could follow a program of operations :cite[babbage1864]. Ada Lovelace saw that it could act on more than numbers :cite[lovelace1843], and wrote what is often called the first program for it :cite[lovelace1843, babbage1864].
+
+## Computable numbers
+
+Alan Turing described a machine that reads and writes symbols on a tape :cite[turing1936], and asked whether machines can think :cite[turing1950].
+
+## Information
+
+Claude Shannon measured information in bits :cite[shannon1948], and John von Neumann described a computer that keeps its program in memory :cite[vonneumann1945].
+
+A key the file does not have shows as written :cite[nobody2000].
+`;
+
+/** the bibliography the citations demo reads, as CSL JSON */
+export const REFS = JSON.stringify([
+	{
+		id: 'babbage1864',
+		type: 'book',
+		title: 'Passages from the Life of a Philosopher',
+		author: [{ family: 'Babbage', given: 'Charles' }],
+		issued: { 'date-parts': [[1864]] },
+		publisher: 'Longman'
+	},
+	{
+		id: 'lovelace1843',
+		type: 'article-journal',
+		title: 'Notes on the Analytical Engine',
+		author: [{ family: 'Lovelace', given: 'Ada' }],
+		issued: { 'date-parts': [[1843]] },
+		'container-title': 'Scientific Memoirs',
+		volume: 3,
+		page: '666-731'
+	},
+	{
+		id: 'turing1936',
+		type: 'article-journal',
+		title: 'On Computable Numbers, with an Application to the Entscheidungsproblem',
+		author: [{ family: 'Turing', given: 'Alan' }],
+		issued: { 'date-parts': [[1936]] },
+		DOI: '10.1112/plms/s2-42.1.230'
+	},
+	{
+		id: 'turing1950',
+		type: 'article-journal',
+		title: 'Computing Machinery and Intelligence',
+		author: [{ family: 'Turing', given: 'Alan' }],
+		issued: { 'date-parts': [[1950]] },
+		'container-title': 'Mind',
+		volume: 59,
+		page: '433-460'
+	},
+	{
+		id: 'shannon1948',
+		type: 'article-journal',
+		title: 'A Mathematical Theory of Communication',
+		author: [{ family: 'Shannon', given: 'Claude' }],
+		issued: { 'date-parts': [[1948]] },
+		'container-title': 'Bell System Technical Journal',
+		volume: 27,
+		page: '379-423'
+	},
+	{
+		id: 'vonneumann1945',
+		type: 'report',
+		title: 'First Draft of a Report on the EDVAC',
+		author: [{ family: 'Neumann', given: 'John', 'non-dropping-particle': 'von' }],
+		issued: { 'date-parts': [[1945]] }
+	}
+]);
