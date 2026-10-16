@@ -9,18 +9,20 @@
 	"description": "PFM Volar LanguagePlugin — teaches Volar how to handle .pfm files",
 	"type": "module",
 	"files": [
-		"src"
+		"dist"
 	],
 	"scripts": {
 		"test": "vitest --disableConsoleIntercept",
-		"test:run": "vitest run --silent"
+		"test:run": "vitest run --silent",
+		"build": "vite build --config vite.config.build.ts && tsc -p tsconfig.build.json"
 	},
 	"exports": {
 		".": {
-			"import": "./src/index.ts",
-			"types": "./src/index.ts"
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
 		}
 	},
+	"types": "./dist/index.d.ts",
 	"dependencies": {
 		"@mdsvex/render": "workspace:*",
 		"@mdsvex/source-map": "workspace:*",

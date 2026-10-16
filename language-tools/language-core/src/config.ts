@@ -16,7 +16,7 @@ import type {
 	MathRenderer,
 	SmartPunctuation,
 	TemplateEntry,
-} from 'mdsvex';
+} from 'mdsvex/compile';
 import {
 	COMPONENTS_ID,
 	DIRECTIVES_EXPORT,

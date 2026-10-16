@@ -53,7 +53,7 @@ export function v3ToVolarMappings(
 
 		for (const seg of segments) {
 			// segments with source info have >= 4 fields: [genCol, srcIdx, srcLine, srcCol]
-			if (seg.length < 4) continue;
+			if (seg.length === 1) continue;
 
 			const genCol = seg[0];
 			const srcLine = seg[2];

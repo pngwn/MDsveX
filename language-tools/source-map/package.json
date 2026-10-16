@@ -9,30 +9,32 @@
 	"description": "PFM to Svelte source map pipeline for language tooling",
 	"type": "module",
 	"files": [
-		"src"
+		"dist"
 	],
 	"scripts": {
 		"test": "vitest --disableConsoleIntercept",
-		"test:run": "vitest run --silent"
+		"test:run": "vitest run --silent",
+		"build": "vite build --config vite.config.build.ts && tsc -p tsconfig.build.json"
 	},
 	"exports": {
 		".": {
-			"import": "./src/index.ts",
-			"types": "./src/index.ts"
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
 		},
 		"./pfm-to-svelte": {
-			"import": "./src/pfm_to_svelte.ts",
-			"types": "./src/pfm_to_svelte.ts"
+			"types": "./dist/pfm_to_svelte.d.ts",
+			"import": "./dist/pfm_to_svelte.js"
 		},
 		"./v3-to-volar": {
-			"import": "./src/v3_to_volar.ts",
-			"types": "./src/v3_to_volar.ts"
+			"types": "./dist/v3_to_volar.d.ts",
+			"import": "./dist/v3_to_volar.js"
 		},
 		"./compose-mappings": {
-			"import": "./src/compose_mappings.ts",
-			"types": "./src/compose_mappings.ts"
+			"types": "./dist/compose_mappings.d.ts",
+			"import": "./dist/compose_mappings.js"
 		}
 	},
+	"types": "./dist/index.d.ts",
 	"dependencies": {
 		"@jridgewell/trace-mapping": "^0.3.31",
 		"@mdsvex/parse": "workspace:*",
