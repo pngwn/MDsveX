@@ -1238,6 +1238,9 @@ export class PFMParser {
 			this.trim_before_indent();
 		}
 		if (this.trim_point - 1 > this.source_base) {
+			// a tag paragraph reads its text gap at its next child, read what the cut drops now
+			if (this.spec_gap !== -1 && this.spec_gap < this.trim_point - 1)
+				this.spec_gap_cut(this.trim_point - 1);
 			if (
 				this.pending_count !== this.pending_para_count &&
 				this.cold.pending_html !== 0
@@ -5048,6 +5051,26 @@ export class PFMParser {
 			ch = char_code_at.call(source, ++p - base);
 		}
 		if (p < to && ch !== LINEFEED) this.spec_text = true;
+	}
+
+	/**
+	 * a feed trims the window to cut inside the text child that started at spec_gap,
+	 * spaces and tabs up to cut leave the gap open from cut, as spec_gap_end reads it
+	 */
+	private spec_gap_cut(cut: number): void {
+		const source = this.source;
+		const base = this.source_base;
+		let p = this.spec_gap;
+		let ch = char_code_at.call(source, p - base);
+		while (p < cut && (ch === SPACE || ch === TAB)) {
+			ch = char_code_at.call(source, ++p - base);
+		}
+		if (p === cut) {
+			this.spec_gap = cut;
+			return;
+		}
+		this.spec_gap = -1;
+		if (ch !== LINEFEED) this.spec_text = true;
 	}
 
 	/**
