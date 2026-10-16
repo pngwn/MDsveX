@@ -20,7 +20,7 @@ export const printer: Printer<SvxNode> = {
 	getVisitorKeys() {
 		return ['children'];
 	},
-	/** the node after a prettier-ignore comment, at any depth, is printed as written */
+	/** the node after a prettier-ignore comment, at any depth */
 	hasPrettierIgnore(path) {
 		const siblings = path.siblings as SvxNode[] | null;
 		const index = path.index;
@@ -47,10 +47,7 @@ function comment(node: SvxNode, text: string): string | undefined {
 	return text.slice(node.value_start, node.value_end).trim();
 }
 
-/**
- * a block that is a comment, or a paragraph that opens (0) or closes (-1)
- * with one, a comment on the line before text shares its paragraph
- */
+/** a comment block, or a paragraph that opens or closes with one, a comment above text shares its paragraph */
 function edge_comment(
 	node: SvxNode,
 	text: string,
@@ -71,7 +68,7 @@ function print_root(
 	if (children.length === 0) return '';
 
 	const parts: Doc[] = [];
-	// a --- on the first line opens frontmatter, keep the line that held it off
+	// a thematic break on the first line would open frontmatter
 	const first = children[0];
 	if (
 		first.start > 0 &&
@@ -84,7 +81,6 @@ function print_root(
 	path.each((child, i) => {
 		if (i <= ignored_to) return;
 		if (i > 0) parts.push(separator(text, children[i - 1], child.node));
-		// a prettier-ignore-start keeps what follows as written up to its end
 		if (edge_comment(child.node, text, 0) === 'prettier-ignore-start') {
 			const end = children.findIndex(
 				(node, j) =>
@@ -113,10 +109,7 @@ function separator(text: string, prev: SvxNode, next: SvxNode): Doc {
 	return lines === 1 ? hardline : [hardline, hardline];
 }
 
-/**
- * the source of a node with each child printed in its place, from `from`
- * when an embed printed the start of the node itself
- */
+/** the source of a node with its children printed in place, starting at from */
 export function print_source(
 	path: AstPath<SvxNode>,
 	options: ParserOptions<SvxNode>,
@@ -179,11 +172,7 @@ function own_kept(node: SvxNode): [number, number][] {
 	return [];
 }
 
-/**
- * source text as a doc, a line end takes the spaces before it off, as a
- * hardline trims what was printed, unless they are content or follow a
- * backslash, where taking them off would make a hard break
- */
+/** source text as a doc, a line end trims the spaces before it unless they are content or follow a backslash */
 function source(
 	text: string,
 	from: number,

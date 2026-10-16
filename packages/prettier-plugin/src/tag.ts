@@ -10,11 +10,7 @@ type Part =
 	| { kind: 'text'; text: string; quoted: boolean }
 	| { kind: 'expression'; source: string; quote: string };
 
-/**
- * an open tag with each expression in its braces formatted on one line and
- * the spaces between its attributes folded to one, its line breaks, quotes
- * and the order of its attributes stay as written
- */
+/** formats the braces of an open tag on one line and folds the spaces between attributes, line breaks, quotes and attribute order stay */
 export async function print_open_tag(
 	tag: string,
 	context: HeadContext
@@ -23,7 +19,7 @@ export async function print_open_tag(
 	if (parts === undefined) return undefined;
 
 	const out: Doc[] = [];
-	// nothing but indent is on the line so far, a tag that starts a line holds its indent
+	// a tag that starts a line holds its indent
 	let line_start = true;
 	for (let i = 0; i < parts.length; i++) {
 		const part = parts[i];
@@ -54,7 +50,7 @@ async function braced(
 ): Promise<string> {
 	const trimmed = source.trim();
 	if (trimmed === '' || source.includes('\n')) return source;
-	// a spread, `{...props}`, and an attachment, `{@attach fn}`
+	// a spread or an attachment
 	const prefix = /^(\.\.\.|@attach\s+)/.exec(trimmed)?.[0] ?? '';
 	try {
 		const code = await expression(trimmed.slice(prefix.length), context);
@@ -66,10 +62,7 @@ async function braced(
 	}
 }
 
-/**
- * the spaces between attributes fold to one, the spaces that start a line
- * stay as its indent and none are kept before the closing >
- */
+/** spaces between attributes fold to one, a line keeps its indent and the closing bracket loses the spaces before it */
 function squash(text: string, line_start: boolean, last: boolean): string {
 	let out = text.replace(/[ \t]+(?=\n)/g, '');
 	out = out.replace(
@@ -131,7 +124,7 @@ function split(tag: string): Part[] | undefined {
 	return parts;
 }
 
-/** the } that closes the { at open, past strings and nested brackets */
+/** the brace that closes the one at open, past strings and nested brackets */
 function matching_brace(source: string, open: number): number {
 	const stack: string[] = ['}'];
 	let quote = '';
@@ -152,7 +145,7 @@ function matching_brace(source: string, open: number): number {
 		else if (c === '[') stack.push(']');
 		else if (c === '}' || c === ')' || c === ']') {
 			const expected = stack.pop();
-			// a stray closer, the source is broken, keep it as written
+			// a stray closer means broken source
 			if (expected !== c && !(expected === '`}' && c === '}')) return -1;
 			if (expected === '`}') quote = '`';
 			if (stack.length === 0) return i;

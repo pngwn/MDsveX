@@ -6,14 +6,14 @@ import { indent_edits } from './indent';
 const NONE = 0xffffffff;
 
 export interface SvxNode {
-	/** a parser kind name, or `raw` for source no node covers */
+	/** a parser kind name, or raw for source no node covers */
 	type: string;
 	start: number;
 	end: number;
 	value_start: number;
 	value_end: number;
 	meta: Record<string, unknown> | undefined;
-	/** what the node holds when the source does not show it as one slice, the code of a fence in a list item without the indent of its lines */
+	/** what a node holds without the prefixes of its lines, the code of a fence in a list item */
 	content: string | undefined;
 	children: SvxNode[];
 }
@@ -31,20 +31,14 @@ export interface SvxRoot extends SvxNode {
 }
 
 export interface Edit {
-	/** the offset in the source */
 	at: number;
-	/** how many chars from there are left out */
 	remove: number;
-	/** what is put there */
 	insert: string;
 }
 
-/**
- * the parser tree as objects, offsets index the text prettier passes in,
- * prettier has already folded every line ending to \n
- */
+/** the parser tree as objects, offsets index the text prettier passes in with its line ends folded */
 export function parse(text: string): SvxRoot {
-	// no plugins: a plugin node has no span, and only the syntax matters here
+	// no plugins, a plugin node has no span
 	const { nodes } = parse_markdown_svelte(text);
 
 	function build(i: number): SvxNode {
@@ -84,12 +78,7 @@ export function parse(text: string): SvxRoot {
 	return root;
 }
 
-/**
- * no node ends in a line end and none reaches past its parent, some spans
- * take in the line end after them and an unclosed child can run on, and a
- * block that starts a line takes in its indent, so a change to the indent
- * of a line falls in one node
- */
+/** no node ends in a line end or past its parent, a block that starts a line takes in its indent so an edit to it falls in one node */
 function clamp(text: string, node: SvxNode, limit: number, floor = 0) {
 	node.start = Math.min(node.start, limit);
 	let end = Math.min(node.end, limit);
@@ -125,18 +114,14 @@ const BLOCKS = new Set([
 	'definition',
 ]);
 
-/**
- * the blocks of the root without the line breaks between them, each ending
- * at its last character that is not a newline, and the source between two
- * blocks that is more than whitespace kept as a raw node
- */
+/** the root blocks without the line breaks between them, source between blocks that is more than whitespace becomes a raw node */
 function blocks(text: string, children: SvxNode[]): SvxNode[] {
 	const out: SvxNode[] = [];
 	let pos = 0;
 	for (const child of children) {
 		if (child.type === 'line_break' || child.end === NONE) continue;
 		push_raw(text, pos, child.start, out);
-		// the indent of the first line goes with the block, it is relative to the lines after it
+		// the first line indent is relative to the lines after it
 		let start = child.start;
 		while (start > pos && is_blank(text.charCodeAt(start - 1))) start--;
 		if (start === 0 || text.charCodeAt(start - 1) === 10) child.start = start;
@@ -156,7 +141,6 @@ function push_raw(text: string, from: number, to: number, out: SvxNode[]) {
 	if (start === to) return;
 	let end = to;
 	while (end > start && is_space(text.charCodeAt(end - 1))) end--;
-	// keep the indent of the first line
 	while (start > from && text.charCodeAt(start - 1) !== 10) start--;
 	out.push({
 		type: 'raw',

@@ -1,4 +1,4 @@
-// the manifest the mdsvex vite plugin writes for editor tooling, as mdsvex/host names it
+// the manifest the vite plugin writes, as mdsvex/host names it
 const MANIFEST_PATH = 'node_modules/.mdsvex/manifest.json';
 const MANIFEST_VERSION = 1;
 // a json config holds no functions, so never a frontmatter parser
@@ -8,11 +8,7 @@ export type FrontmatterMode = 'auto' | 'yaml' | 'keep';
 
 const read = new Map<string, { mtime: number; custom: boolean | undefined }>();
 
-/**
- * whether the frontmatter of a document is formatted as yaml, in auto mode
- * not when the project parses frontmatter itself, the config found walking up
- * from the document says so as it does for the language server
- */
+/** in auto mode frontmatter is kept when the nearest mdsvex config says the project parses it */
 export async function formats_frontmatter(
 	mode: FrontmatterMode | undefined,
 	filepath: string | undefined

@@ -143,11 +143,7 @@ async function element(
 	return [open, indent([hardline, code]), hardline, close];
 }
 
-/**
- * an expression in braces, kept on one line unless it is a block of its own
- * that already took more than one, a line end in a paragraph inside a list or
- * a quote would need the prefix of the lines around it
- */
+/** one line unless it is a multiline block of its own, a line end in a list or quote would need their prefix */
 function expression(
 	path: AstPath<SvxNode>,
 	text: string,
@@ -168,7 +164,6 @@ function expression(
 	};
 }
 
-/** a const tag, its declaration on one line */
 function const_tag(path: AstPath<SvxNode>, text: string): Embedded | undefined {
 	const node = path.node;
 	const source = text.slice(node.value_start, node.value_end);
@@ -211,14 +206,10 @@ function branch(path: AstPath<SvxNode>, text: string): Embedded | undefined {
 	};
 }
 
-// parsers whose output would not be pfm or would format pfm as another markdown
+// these would format pfm as another markdown
 const FENCE_SKIP = new Set(['markdown', 'mdx', 'remark', 'mdsvex']);
 
-/**
- * a fence of code in a language prettier knows, only when its info string
- * is the language alone, meta like line ranges counts the lines of the code
- * and annotations are comments a formatter could move
- */
+/** only a fence whose info string is a language alone, line range meta counts the lines of the code */
 function fence(
 	node: SvxNode,
 	text: string,

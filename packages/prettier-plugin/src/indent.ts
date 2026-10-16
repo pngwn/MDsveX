@@ -1,18 +1,6 @@
 import type { Edit, SvxNode, SvxRoot } from './ast';
 
-/**
- * the changes that tidy the indent of lists and the markers of block quotes:
- *
- * - the spaces after a list marker fold to one, the content column of an
- *   item is one space past its marker whatever follows, so nothing else moves
- * - a list sits at the content column of the item that holds it, at the
- *   left edge of the root or of a quote otherwise, its lines move with it so
- *   what they hold keeps its shape, unless a line after it would join it
- * - a > followed straight by text gets a space, the space a > may take
- *
- * a line whose spaces are content, in a template string or a <pre>, is left
- * alone, so is anything indented with tabs
- */
+/** tidies list indent and quote markers, lines whose spaces are content and lines indented with tabs are left alone */
 export function indent_edits(root: SvxRoot): Edit[] {
 	return new Indenter(root.text).run(root);
 }
@@ -30,7 +18,7 @@ const KEPT = new Set([
 
 class Indenter {
 	text: string;
-	/** the offset each line starts at */
+	/** the offset of each line start */
 	lines: number[] = [0];
 	/** how far each line moves, by its index, and the quotes in front of it */
 	shift = new Map<number, { by: number; quotes: number }>();
@@ -39,7 +27,7 @@ class Indenter {
 	/** the column of the content of each item after it moved */
 	content_column = new Map<SvxNode, number>();
 	edits = new Map<number, Edit>();
-	/** the offsets after a > that already have a space added */
+	/** the offsets after a quote marker that already have a space added */
 	spaced = new Set<number>();
 
 	constructor(text: string) {
@@ -101,7 +89,7 @@ class Indenter {
 		const first = this.line_of(list.start);
 		const line = this.line_text(first, quotes);
 		if (line === undefined || /^[ \t]*\t/.test(line.rest)) return;
-		// a list on the line of the marker of its item, `- - foo`, sits where it is
+		// a list on the marker line of its item stays put
 		if (this.text.slice(line.start, list.start).trim() !== '') return;
 		const column = line.rest.length - line.rest.trimStart().length;
 		const by = target - (column + this.shift_of(first));
@@ -111,8 +99,7 @@ class Indenter {
 			if (l !== first && this.is_kept(this.lines[l])) continue;
 			if (/^[ \t]*\t/.test(this.line_text(l, quotes)?.rest ?? '')) return;
 		}
-		// the content column of an item is two columns past the list at least,
-		// a line after the list indented that far would become part of it
+		// an item content column is two past its list at least, a line after the list indented that far would join it
 		const next = this.next_line(last + 1, quotes);
 		if (next !== undefined && columns(next) >= target + 2) return;
 		this.shift_lines(first, list.end, by, quotes);
@@ -128,7 +115,7 @@ class Indenter {
 		return undefined;
 	}
 
-	/** one space after the marker, the rest of the item moves with its content */
+	/** one space after the marker, the content column is one past the marker whatever follows so nothing else moves */
 	tidy_item(item: SvxNode, quotes: number) {
 		const first = this.line_of(item.start);
 		const line = this.line_text(first, quotes);
@@ -143,7 +130,7 @@ class Indenter {
 		this.edit(line.start + indent.length + marker.length + 1, extra, '');
 	}
 
-	/** a space after each > that has none and text after it */
+	/** the optional space after each quote marker followed by text */
 	space_markers(quote: SvxNode, depth: number) {
 		const text = this.text;
 		const last = this.line_of(quote.end);
@@ -180,7 +167,7 @@ class Indenter {
 		}
 	}
 
-	/** the indent of a line after its quote markers moved by `by` columns */
+	/** moves the indent of a line after its quote markers */
 	move(l: number, by: number, quotes: number) {
 		if (by === 0) return;
 		const line = this.line_text(l, quotes);
@@ -206,7 +193,7 @@ class Indenter {
 		return this.shift.get(l)?.by ?? 0;
 	}
 
-	/** a line after `quotes` quote markers, each with the space it may take */
+	/** the rest of a line after its quote markers and the space each may take */
 	line_text(
 		l: number,
 		quotes: number
@@ -259,11 +246,7 @@ function is_quote_or_root(node: SvxNode): boolean {
 	return node.type === 'root' || node.type === 'block_quote';
 }
 
-/**
- * the quote markers in front of the lines of a node whose ancestors are
- * quotes, lists and items, a quote only outside every list, -1 for a node
- * somewhere else, in an element or a block of svelte its indent is the author's
- */
+/** the quote markers before the lines of a node inside only quotes, lists and items, otherwise -1 */
 function placed(ancestors: SvxNode[]): number {
 	let quotes = 0;
 	let in_list = false;

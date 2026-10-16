@@ -9,14 +9,11 @@ type TextToDoc = (text: string, options: Options) => Promise<Doc>;
 export interface HeadContext {
 	text_to_doc: TextToDoc;
 	options: Options;
-	/** the document's script is typescript */
+	/** the script of the document is typescript */
 	ts: boolean;
 }
 
-/**
- * what follows the keyword in the head of a block branch or a const tag,
- * formatted on one line, undefined to keep it as it is written
- */
+/** what follows the keyword of a block head or const tag on one line, undefined to keep it as written */
 export async function head(
 	tag: string,
 	source: string,
@@ -46,12 +43,12 @@ export async function head(
 	return undefined;
 }
 
-/** `items as item, i (item.id)`, the binding, index and key are optional */
+/** @example items as item, i (item.id) */
 async function each(source: string, context: HeadContext): Promise<string> {
 	const top = top_level(source);
 	const as = keyword(source, 'as', top);
 	if (as === -1) {
-		// `{#each { length: 3 }, i}`
+		// an index without a binding
 		const comma = last_top(source, ',', top);
 		if (comma === -1) return expression(source, context);
 		return `${await expression(source.slice(0, comma), context)}, ${index(source.slice(comma + 1))}`;
@@ -76,7 +73,7 @@ async function each(source: string, context: HeadContext): Promise<string> {
 	return out;
 }
 
-/** `promise`, `promise then value` or `promise catch error` */
+/** @example promise then value */
 async function await_head(
 	source: string,
 	context: HeadContext
@@ -94,7 +91,7 @@ async function await_head(
 	return `${promise} ${word} ${await pattern(binding, context)}`;
 }
 
-/** the declaration of a const tag, `total = a + b`, typed in a typescript document */
+/** @example total = a + b */
 async function declaration(
 	source: string,
 	context: HeadContext
@@ -105,7 +102,7 @@ async function declaration(
 	);
 }
 
-/** `name(params)`, typed in a typescript document */
+/** @example name(params) */
 async function snippet(source: string, context: HeadContext): Promise<string> {
 	return unwrap(
 		await one_line(`function ${source} {}`, js(context), context),
@@ -113,7 +110,6 @@ async function snippet(source: string, context: HeadContext): Promise<string> {
 	);
 }
 
-/** an expression on one line */
 export function expression(
 	source: string,
 	context: HeadContext
@@ -125,7 +121,7 @@ export function expression(
 	);
 }
 
-/** a binding pattern, `item` or `{ id, name }` */
+/** @example { id, name } */
 async function pattern(source: string, context: HeadContext): Promise<string> {
 	return unwrap(
 		await one_line(`let ${source} = 0;`, js(context), context),
@@ -144,7 +140,7 @@ function js(context: HeadContext): string {
 	return context.ts ? 'babel-ts' : 'babel';
 }
 
-/** code printed on one line, a head of a block has no line ends */
+/** a block head has no line ends */
 async function one_line(
 	code: string,
 	parser: string,
@@ -166,13 +162,10 @@ function unwrap(code: string, wrapper: RegExp): string {
 	return match[1];
 }
 
-/**
- * for each char of source, whether it sits outside brackets and strings,
- * an opening bracket counts as outside, its closing one too
- */
+/** whether each char sits outside brackets and strings, a bracket counts as outside */
 function top_level(source: string): boolean[] {
 	const top: boolean[] = new Array(source.length).fill(false);
-	// the closers expected, '`}' closes an expression in a template string
+	// the closers expected, a backtick brace closes an expression in a template string
 	const stack: string[] = [];
 	let quote = '';
 	for (let i = 0; i < source.length; i++) {
@@ -218,7 +211,7 @@ function last_top(source: string, char: string, top: boolean[]): number {
 	return -1;
 }
 
-/** the ( of a key that ends an each head, `item (item.id)` */
+/** the open paren of the key that ends an each head */
 function key_open(source: string): number {
 	if (!source.endsWith(')')) return -1;
 	const top = top_level(source);

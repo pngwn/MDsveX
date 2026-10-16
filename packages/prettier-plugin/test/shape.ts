@@ -17,11 +17,7 @@ const JS_OPTIONS = {
 // offsets into the source, which formatting moves
 const OFFSET_META = new Set(['info_start', 'info_end']);
 
-/**
- * the tree as lines of text without offsets, two documents whose shapes match
- * mean the same: code compares by its syntax tree, yaml by its value and css
- * by its rules, and the spaces that end a line are left out as they mean nothing
- */
+/** the tree without offsets, code compares by syntax tree, yaml by value, css by rules, and line end spaces are left out */
 export function shape(source: string): string {
 	const lines: string[] = [];
 	const walk = (node: SvxNode, depth: number) => {
