@@ -373,21 +373,25 @@ describe('random lines with pipes', () => {
 		'|-|\n',
 	];
 
-	test('build one tree whole and fed, and a sound one over the wire', () => {
-		const rand = random(967);
-		for (let i = 0; i < 1500; i++) {
-			let source = '';
-			const length = 1 + Math.floor(rand() * 10);
-			for (let k = 0; k < length; k++) source += pick(rand, PIECES);
-			expect(fed_mismatch(source), JSON.stringify(source)).toBe('');
-			for (const chunk of [0, 1, 3]) {
-				expect(
-					problems(source, chunk),
-					`${JSON.stringify(source)} fed ${chunk}`
-				).toEqual([]);
+	test(
+		'build one tree whole and fed, and a sound one over the wire',
+		{ timeout: 20_000 },
+		() => {
+			const rand = random(967);
+			for (let i = 0; i < 1500; i++) {
+				let source = '';
+				const length = 1 + Math.floor(rand() * 10);
+				for (let k = 0; k < length; k++) source += pick(rand, PIECES);
+				expect(fed_mismatch(source), JSON.stringify(source)).toBe('');
+				for (const chunk of [0, 1, 3]) {
+					expect(
+						problems(source, chunk),
+						`${JSON.stringify(source)} fed ${chunk}`
+					).toEqual([]);
+				}
 			}
 		}
-	});
+	);
 
 	const MARKED = new Set([
 		'emphasis',

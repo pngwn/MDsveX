@@ -40,7 +40,7 @@ function toggle(slug: string, is_fixture: boolean) {
 			<div class="nav-list">
 				<div class="section">
 					<div class="section-label">Streaming with plugins</div>
-					{#each [["toc", "Growing table of contents"], ["deferred", "Lookup that lands later"]] as [slug, name] (slug)}
+					{#each [["toc", "Growing table of contents"], ["deferred", "Lookup that lands later"], ["citations", "Growing bibliography"]] as [slug, name] (slug)}
 						<a
 							class="nav-link"
 							class:active={page.url.pathname === `/stream/${slug}`}

@@ -139,7 +139,9 @@ This is kept small. A full CSL processor such as [citeproc-js](https://github.co
 
 `::bibliography` renders the list where it is written, and nothing when the document cites nothing. Its brackets are the label of the list, and without them the list is named `References` for screen readers. A second `::bibliography` in a document is the warning `more_than_one` and lists nothing. As a container or inline it is the warning `not_a_leaf`.
 
-The list has every entry the document cites, the citations after it too.
+The list has every entry the document cites, the citations after it too. The component reads the data of the document from the context, `getContext(Symbol.for('mdsvex.plugin_data')).current.citations`, and once the document is whole it is also handed that data as JSON in its `data` arg. A `data` prop, an object or JSON, wins over the context, so a template that passes one renders what it passes.
+
+A `bibliography` export from your own directives module replaces the component. It gets the `label` snippet, `style`, the args, and `data` once the document is whole, and reads the context for the list while the document streams.
 
 ## The data
 
@@ -188,4 +190,19 @@ Pass the same `plugins` array to each call, and the file is read once for all of
 
 ## While a document streams
 
-Each citation is written as it closes, and its entry is looked up as soon as the file has loaded, so a view that streams the document can show citations filling in. The numbers and ids of every citation and the list are settled once the document is whole.
+Each citation is written as it closes, and its entry is looked up as soon as the file has loaded, so a view that streams the document can show citations filling in. The list grows with them: each entry is added as its lookup lands, in a view that gives `Node.svelte` the live data (`PluginStream` in `@mdsvex/render/stream`). The numbers and ids of every citation and the list are settled once the document is whole, and a stream ends with the page a compile renders.
+
+```js
+import { citations } from '@mdsvex/plugin-citations';
+import { PluginStream } from '@mdsvex/render/stream';
+
+const bundle = citations({ bibliography: '/refs.json' });
+const stream = new PluginStream({
+	plugins: [{ name: bundle.name, ...bundle.parse }],
+	directive_handlers: [{ name: bundle.name, directives: bundle.directives }],
+	document: {
+		filename: '/post.svx',
+		read: (path) => fetch(path).then((r) => r.text()),
+	},
+});
+```
