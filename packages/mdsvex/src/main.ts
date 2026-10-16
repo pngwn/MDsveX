@@ -612,6 +612,8 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			};
 			// left out when off, as a manifest from before the option has it
 			if (options.unwrap_images === true) out.unwrap_images = true;
+			// on by default, so the editor types a src as the import it is
+			if (inputs.import_images === true) out.import_images = true;
 			if (plugins !== null) {
 				const described = plugins.describe();
 				if (described.length !== 0) out.plugins = described;

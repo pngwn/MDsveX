@@ -73,6 +73,11 @@ export interface MdsvexManifest {
 	/** the unwrap_images option, a manifest without it means false */
 	unwrap_images?: boolean;
 	/**
+	 * true when a relative markdown image is imported, so a replaced img gets
+	 * what the import gives as its src, a manifest without it means off
+	 */
+	import_images?: boolean;
+	/**
 	 * the plugins that bring components, lowest precedence first, their
 	 * directives sit below directives and their components below components,
 	 * a manifest without it has none

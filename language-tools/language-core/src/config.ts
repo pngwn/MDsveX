@@ -56,6 +56,8 @@ export interface JsonConfig {
 	highlight?: boolean;
 	/** a paragraph of only images gets no <p>, as the option of the plugin does */
 	unwrap_images?: boolean;
+	/** false leaves the url of a relative image as written, as the option of the plugin does */
+	import_images?: boolean;
 	/**
 	 * the directives of each entry of the plugins option, json can not hold
 	 * its handlers, so only the names and the module that exports them
@@ -211,6 +213,8 @@ export function document_options(
 	};
 	if (Object.keys(templates).length !== 0) compile.templates = templates;
 	if (manifest.unwrap_images === true) compile.unwrap_images = true;
+	// a replaced img gets the import as its src, typed as typescript resolves it
+	if (manifest.import_images === true) compile.import_images = true;
 	// the id is a prop of a replaced heading, the default slug stands in for a function
 	if (manifest.heading_ids === true) compile.heading_ids = true;
 	// the text an editor maps is the text the build renders
@@ -334,6 +338,7 @@ export function from_json(
 		highlight: config.highlight === false ? false : 'twinkleplop',
 	};
 	if (config.unwrap_images === true) manifest.unwrap_images = true;
+	if (config.import_images !== false) manifest.import_images = true;
 	if (config.heading_ids === true) manifest.heading_ids = true;
 	const smart = smart_from_json(config.smart_punctuation);
 	if (smart !== undefined) manifest.smart_punctuation = smart;
