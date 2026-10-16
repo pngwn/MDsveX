@@ -384,3 +384,46 @@ describe('open tags', () => {
 		);
 	});
 });
+
+describe('script and style order', () => {
+	test('scripts come first and styles last, frontmatter and imports stay on top', async () => {
+		expect(
+			await svx(
+				'---\nt: 1\n---\n\nimport A from "a";\n\n<style>\na{color:red}\n</style>\n\n# hi\n\n<script>\nlet a=1\n</script>\n'
+			)
+		).toBe(
+			'---\nt: 1\n---\n\nimport A from "a";\n\n<script>\n  let a = 1;\n</script>\n\n# hi\n\n<style>\n  a {\n    color: red;\n  }\n</style>\n'
+		);
+	});
+
+	test('svelteSortOrder none keeps them where they are', async () => {
+		const source = '<style>\n  a {\n  }\n</style>\n\n# hi\n';
+		expect(await svx(source, { svelteSortOrder: 'none' } as Options)).toBe(
+			source
+		);
+	});
+
+	test('a prettier-ignore comment keeps the order', async () => {
+		const source =
+			'<!-- prettier-ignore -->\n<style>\na{}\n</style>\n\n# hi\n\n<script>\n  let a = 1;\n</script>\n';
+		expect(await svx(source)).toBe(source);
+	});
+});
+
+describe('element content', () => {
+	test('a paragraph element too long for its line puts its content on lines of its own', async () => {
+		expect(
+			await svx(
+				'<p>This paragraph of markup is long enough that it has to break over several lines.</p>\n'
+			)
+		).toBe(
+			'<p>\n  This paragraph of markup is long enough that it has to break over several\n  lines.\n</p>\n'
+		);
+	});
+
+	test('a div keeps its content on its line, on lines of its own markdown makes it a paragraph', async () => {
+		const source =
+			'<div>This div of markup is long enough that it would have to break over several lines.</div>\n';
+		expect(await svx(source)).toBe(source);
+	});
+});

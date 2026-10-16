@@ -77,7 +77,23 @@ export function shape(source: string): string {
 			lines.push('  '.repeat(depth + 1) + 'text ' + JSON.stringify(value));
 		}
 	};
-	walk(parse(source), 0);
+	// top level scripts and styles may move, as prettier-plugin-svelte moves them
+	const root = parse(source);
+	root.children = root.children.filter(
+		(child) =>
+			child.type !== 'text' ||
+			source.slice(child.start, child.end).trim() !== ''
+	);
+	const moved = (node: SvxNode) =>
+		node.type === 'html' &&
+		['script', 'style', 'svelte:options'].includes(String(node.meta?.tag));
+	root.children = [
+		...root.children.filter((child) => !moved(child)),
+		...root.children
+			.filter(moved)
+			.sort((a, b) => String(a.meta?.tag).localeCompare(String(b.meta?.tag))),
+	];
+	walk(root, 0);
 	return lines.join('\n');
 }
 

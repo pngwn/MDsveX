@@ -59,13 +59,13 @@ export function embed(
 		case 'html': {
 			const name = node.meta?.tag;
 			if (name === 'script' || name === 'style') {
-				const parser = !at_root
-					? undefined
-					: name === 'script'
-						? script_parser(node)
-						: style_parser(node);
+				// one inside an element, as in svelte:head, formats too, one in prose stays as written
+				if (!at_root && (!in_flow(path) || quote_depth(path) > 0)) return;
+				const parser =
+					name === 'script' ? script_parser(node) : style_parser(node);
 				if (parser === undefined) return;
-				return (text_to_doc) => element(text_to_doc, node, text, parser);
+				return (text_to_doc, _print, _path, options) =>
+					element(text_to_doc, node, text, parser, options);
 			}
 			if (is_raw_text(node)) return;
 			const tag = parse_open_tag(text.slice(node.start, node.value_start));
@@ -91,7 +91,7 @@ export function embed(
 
 		case 'svelte_tag': {
 			const tag = node.meta?.tag;
-			if (tag === 'const') return const_tag(path, text);
+			if (tag === 'const' || tag === 'debug') return head_tag(path, text, tag);
 			if (tag !== 'html' && tag !== 'render') return;
 			return expression(path, text, `{@${tag} `, '}');
 		}
@@ -142,14 +142,32 @@ async function element(
 	text_to_doc: TextToDoc,
 	node: SvxNode,
 	text: string,
-	parser: string
+	parser: string,
+	options: Options
 ): Promise<Doc> {
-	const open = text.slice(node.start, node.value_start);
-	const close = text.slice(node.value_end, node.end);
+	const written = text.slice(node.start, node.value_start);
+	const tag = parse_open_tag(written);
+	const open =
+		tag === undefined
+			? written
+			: await print_open_tag(tag, {
+					text_to_doc,
+					options,
+					ts: false,
+					multiline: true,
+					bracket_same_line: options.bracketSameLine === true,
+					single_attribute_per_line: options.singleAttributePerLine === true,
+				});
+	const close = text.slice(node.value_end, node.end).trim();
 	const content = text.slice(node.value_start, node.value_end);
 	if (content.trim() === '') return [open, close];
 	const code = await text_to_doc(content, { parser });
-	return [open, indent([hardline, code]), hardline, close];
+	const indented =
+		(options as { svelteIndentScriptAndStyle?: boolean })
+			.svelteIndentScriptAndStyle !== false;
+	return indented
+		? [open, indent([hardline, code]), hardline, close]
+		: [open, hardline, code, hardline, close];
 }
 
 /** one line unless it is a multiline block of its own, a line end in a list or quote would need their prefix */
@@ -173,14 +191,19 @@ function expression(
 	};
 }
 
-function const_tag(path: AstPath<SvxNode>, text: string): Embedded | undefined {
+/** a const or debug tag, what follows its keyword on one line */
+function head_tag(
+	path: AstPath<SvxNode>,
+	text: string,
+	tag: string
+): Embedded | undefined {
 	const node = path.node;
 	const source = text.slice(node.value_start, node.value_end);
 	if (source.trim() === '') return;
 	const ts = root_of(path).ts;
 	return async (text_to_doc, _print, _path, options) => {
-		const inside = await head('const', source, { text_to_doc, options, ts });
-		return inside === undefined ? undefined : `{@const ${inside}}`;
+		const inside = await head(tag, source, { text_to_doc, options, ts });
+		return inside === undefined ? undefined : `{@${tag} ${inside}}`;
 	};
 }
 

@@ -12,9 +12,10 @@ async function same(source: string, options: Options = {}) {
 		plugins: [svelte],
 		...options,
 	});
+	// with both plugins loaded, as a project that formats both has them
 	const as_svx = await format(source, {
 		parser: 'mdsvex',
-		plugins: [plugin],
+		plugins: [plugin, svelte],
 		...options,
 	});
 	expect(as_svx).toBe(as_svelte);
@@ -32,6 +33,11 @@ const MARKUP = [
 	'<div {...props} {@attach tip(x)}></div>',
 	'<Foo a={() => {\n  go();\n}} />',
 	'<section>\n<div>\n<Foo bar={baz}/>\n</div>\n</section>',
+	'<p>This paragraph of markup is long enough that prettier-plugin-svelte would break it over several lines for sure.</p>',
+	"<script lang='ts' context=module>\nlet a=1\n</script>",
+	'<style>\na{color:red}\n</style>\n\n<script>\nlet a=1\n</script>\n\n<p>hi</p>',
+	'<svelte:head>\n<title>{title}</title>\n<script>\nlet a=1\n</script>\n</svelte:head>',
+	'{@debug  a,b}',
 ];
 
 describe('markup formats as in a svelte component', () => {
@@ -44,6 +50,19 @@ describe('markup formats as in a svelte component', () => {
 	test('with tabs and single quotes', async () => {
 		for (const source of MARKUP)
 			await same(source, { useTabs: true, singleQuote: true });
+	});
+
+	test('with svelteSortOrder and svelteIndentScriptAndStyle', async () => {
+		for (const source of MARKUP) {
+			// svelte prints nothing for a lone module script with none, a bug of its own
+			if (!source.includes('context=module')) {
+				await same(source, { svelteSortOrder: 'none' } as Options);
+			}
+			await same(source, {
+				svelteSortOrder: 'markup-styles-scripts-options',
+			} as Options);
+			await same(source, { svelteIndentScriptAndStyle: false } as Options);
+		}
 	});
 
 	test('with bracketSameLine and singleAttributePerLine', async () => {

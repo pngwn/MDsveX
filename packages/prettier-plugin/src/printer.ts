@@ -19,6 +19,7 @@ const {
 	join,
 	line,
 	literalline,
+	softline,
 } = doc.builders;
 const { printDocToString } = doc.printer;
 const { replaceEndOfLine } = doc.utils;
@@ -274,6 +275,8 @@ function unit_separator(
 ): Doc {
 	const prev = children[prev_unit.last];
 	const next = children[unit.first];
+	// blocks moved into a new order stand apart
+	if (next.start < prev.end) return [hardline, hardline];
 	const lines = newlines(text, prev.end, next.start);
 	if (lines === 0)
 		return text.slice(prev.end, next.start).replace(/[ \t]+/g, ' ');
@@ -391,6 +394,18 @@ export function print_html(
 	const [first, last] = inside;
 	const lead = newlines(text, node.value_start, first.start);
 	if (lead === 0) {
+		if (may_break_content(path, text)) {
+			// as svelte prints a block element whose content does not fit on its line
+			const index = node.children.indexOf(first);
+			const content = print_prose(
+				path,
+				options,
+				print,
+				[index, node.children.indexOf(last)],
+				true
+			);
+			return group([open_tag, indent([softline, content]), softline, close]);
+		}
 		return [open_tag, print_leaf(path, options, print, node.value_start)];
 	}
 	return [
@@ -402,6 +417,72 @@ export function print_html(
 		line_ends(newlines(text, last.end, node.value_end)),
 		close,
 	];
+}
+
+/** the elements whose content is inline as markup, a line end around it would add space */
+const INLINE_ELEMENTS = new Set([
+	'a',
+	'abbr',
+	'acronym',
+	'audio',
+	'b',
+	'bdo',
+	'big',
+	'br',
+	'button',
+	'cite',
+	'code',
+	'dfn',
+	'em',
+	'font',
+	'i',
+	'img',
+	'input',
+	'kbd',
+	'label',
+	'map',
+	'object',
+	'output',
+	'q',
+	'samp',
+	'select',
+	'small',
+	'span',
+	'strike',
+	'strong',
+	'sub',
+	'sup',
+	'textarea',
+	'tt',
+	'u',
+	'var',
+	'video',
+]);
+
+/** inline content may move to lines of its own unless markdown would then read it as a paragraph */
+function may_break_content(path: AstPath<SvxNode>, text: string): boolean {
+	const node = path.node;
+	const tag = node.meta?.tag;
+	if (
+		typeof tag !== 'string' ||
+		INLINE_ELEMENTS.has(tag) ||
+		quote_depth(path) > 0
+	) {
+		return false;
+	}
+	for (const child of node.children) {
+		if (child.type === 'line_break' || BLOCKS.has(child.type)) return false;
+		if (child.type === 'html' && newlines(text, child.start, child.end) > 0)
+			return false;
+	}
+	const open = text.slice(node.start, node.value_start);
+	const content = text.slice(node.value_start, node.value_end).trim();
+	const close = text.slice(node.value_end, node.end);
+	if (content.includes('\n')) return false;
+	return (
+		structure(parse(`${open}\n${content}\n${close}`)) ===
+		structure(parse(`${open}${content}${close}`))
+	);
 }
 
 function written_open_tag(node: SvxNode, text: string): Doc {
@@ -731,17 +812,19 @@ function print_prose(
 	path: AstPath<SvxNode>,
 	options: Options,
 	print: Print,
-	range?: [number, number]
+	range?: [number, number],
+	markup = false
 ): Doc {
 	const node = path.node;
 	const text = options.originalText;
 	const [first, last] = range ?? [0, node.children.length - 1];
-	if (!may_reflow(path, text, first, last)) {
+	// the text of markup fills its lines as svelte fills it, whatever proseWrap says
+	if (!markup && !may_reflow(path, text, first, last)) {
 		return range === undefined
 			? print_leaf(path, options, print)
 			: print_run_as_written(path, options, print, first, last);
 	}
-	const wrap = options.proseWrap === 'always';
+	const wrap = markup || options.proseWrap === 'always';
 	const parts: Doc[] = [];
 	let chunk: Doc[] = [];
 	// where the separator before the chunk being built sits in parts, -1 for none yet
@@ -811,6 +894,7 @@ function print_prose(
 	else if (parts.length > 0) parts.pop();
 	// a run that follows something on its line keeps the space between them
 	const lead =
+		!markup &&
 		range !== undefined &&
 		/^[ \t]/.test(
 			text.slice(node.children[first].start, node.children[first].end)

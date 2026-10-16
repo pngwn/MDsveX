@@ -24,10 +24,12 @@ The plugin formats the Svelte in a document as [prettier-plugin-svelte](https://
 - markdown as Prettier formats it: `-` bullets, ordered lists counted from their start, `#` headings, `---` breaks, backtick fences, tables padded and aligned, a blank line between blocks and one space between words
 - a list item lines up with its content, a nested list sits at the content column of its item, and every line of a quote starts with `> `
 - frontmatter is formatted as yaml, imports, `<script>` and `<style>` as code
-- expressions, `{@html}`, `{@render}` and `{@const}` tags and the heads of blocks are formatted, an expression or a tag in prose stays on its line
+- expressions, `{@html}`, `{@render}`, `{@const}` and `{@debug}` tags and the heads of blocks are formatted, an expression or a tag in prose stays on its line
+- the content of an element such as `<p>` that does not fit on its line moves to lines of its own, as svelte breaks it, unless markdown would then read it as a paragraph, as it does in a `<div>`
+- scripts move to the top and styles to the end as `svelteSortOrder` says, frontmatter and imports stay first, and `<script>` and `<style>` inside an element such as `<svelte:head>` are formatted too
 - blank lines between blocks fold to one and lines lose the spaces at their ends
 
-The formatting follows your Prettier options, `useTabs`, `singleQuote`, `bracketSameLine`, `singleAttributePerLine`, `proseWrap` and the rest. With `proseWrap` set to `always` a paragraph fills the line and with `never` it takes one line, a line end that keeps text from reading as a link, a list or a directive stays. Emphasis stays as PFM writes it, `_` for emphasis and `*` for strong. A table that merges cells with `||`, `|>` or `|^` is kept as written. A part that does not parse is left as it is, so is the content of a `<pre>` and a `{@debug}` tag.
+The formatting follows your Prettier options, `useTabs`, `singleQuote`, `bracketSameLine`, `singleAttributePerLine`, `proseWrap` and the rest, and the `svelteSortOrder` and `svelteIndentScriptAndStyle` options of prettier-plugin-svelte, which this plugin also declares so they work without it. With `proseWrap` set to `always` a paragraph fills the line and with `never` it takes one line, a line end that keeps text from reading as a link, a list or a directive stays. Emphasis stays as PFM writes it, `_` for emphasis and `*` for strong. A table that merges cells with `||`, `|>` or `|^` is kept as written. A part that does not parse is left as it is, so is the content of a `<pre>`.
 
 ## Frontmatter
 
