@@ -39,32 +39,35 @@ export function shape(source: string): string {
 			const child = children[i];
 			// blank lines fold, a paragraph that ends shows as a new node
 			if (child.type === 'line_break') continue;
-			if (child.type !== 'text') {
+			if (child.type !== 'text' && child.type !== 'soft_break') {
 				walk(child, depth + 1);
 				continue;
 			}
 			// texts split and merge as offsets move
 			let value = '';
 			const first_text = i;
-			while (i < children.length && children[i].type === 'text') {
+			// a line end in prose is a space, wrapping moves them
+			while (
+				i < children.length &&
+				(children[i].type === 'text' || children[i].type === 'soft_break')
+			) {
 				value +=
-					children[i].content ??
-					source.slice(children[i].value_start, children[i].value_end);
+					children[i].type === 'soft_break'
+						? ' '
+						: (children[i].content ??
+							source.slice(children[i].value_start, children[i].value_end));
 				i++;
 			}
 			i--;
-			// the text of a revoked tag holds its line ends
-			value = value.replace(/[ \t]+\n/g, '\n');
-			// the indent of a line in prose renders as nothing
-			const before = children[first_text - 1]?.type;
-			if (before === undefined || before === 'soft_break') {
-				value = value.replace(/^[ \t]+/, '');
-			}
+			// the text of a revoked tag holds its line ends, wrapping moves them
+			value = value.replace(/[ \t]*\n[ \t]*/g, ' ');
+			// the indent of the first line of prose renders as nothing
+			if (first_text === 0) value = value.replace(/^[ \t]+/, '');
 			const next = children[i + 1]?.type;
 			if (
 				next === undefined ||
-				next === 'soft_break' ||
-				next === 'line_break'
+				next === 'line_break' ||
+				next === 'hard_break'
 			) {
 				value = value.replace(/[ \t]+$/, '');
 			}

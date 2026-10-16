@@ -1,6 +1,7 @@
 import { doc, util } from 'prettier';
 import type { AstPath, Doc, ParserOptions, Printer } from 'prettier';
 
+import { parse } from './ast';
 import type { SvxNode, SvxRoot } from './ast';
 import { embed } from './embed';
 import { insert_pragma } from './pragma';
@@ -9,12 +10,14 @@ import { parse_open_tag, plain_open_tag } from './tag';
 const {
 	align,
 	breakParent,
+	fill,
 	group,
 	hardline,
 	hardlineWithoutBreakParent,
 	ifBreak,
 	indent,
 	join,
+	line,
 	literalline,
 } = doc.builders;
 const { printDocToString } = doc.printer;
@@ -50,6 +53,11 @@ export const printer: Printer<SvxNode> = {
 				return print_thematic_break(path);
 			case 'table':
 				return print_table(path, options, print);
+			case 'paragraph':
+				return options.proseWrap === 'preserve' ||
+					options.proseWrap === undefined
+					? print_leaf(path, options, print)
+					: print_prose(path, options, print);
 		}
 		return print_leaf(path, options, print);
 	},
@@ -723,6 +731,183 @@ function print_table(
 	return [breakParent, group(ifBreak(lines(true), lines(false)))];
 }
 
+/** a word that would start a block at the start of a line */
+const NO_BREAK_BEFORE =
+	/^(?:[-*+]|#{1,6}|\d{1,9}[.)]|>.*|:{2,}.*|\[\^.*|`{3,}.*|=+|-+|[*_]{3,}|<.*)$/;
+
+/** inline nodes a line may not start with, a tag at the start of a line can be a block */
+const NO_BREAK_BEFORE_NODE = new Set([
+	'html',
+	'svelte_tag',
+	'svelte_block',
+	'html_comment',
+]);
+
+/**
+ * a paragraph whose words fill the line, with proseWrap always, or one line,
+ * with never, nodes such as links and code stay whole
+ */
+function print_prose(
+	path: AstPath<SvxNode>,
+	options: Options,
+	print: Print,
+	range?: [number, number]
+): Doc {
+	const node = path.node;
+	const text = options.originalText;
+	const [first, last] = range ?? [0, node.children.length - 1];
+	if (!may_reflow(path, text, first, last)) {
+		return range === undefined
+			? print_leaf(path, options, print)
+			: print_run_as_written(path, options, print, first, last);
+	}
+	const wrap = options.proseWrap === 'always';
+	const parts: Doc[] = [];
+	let chunk: Doc[] = [];
+	// where the separator before the chunk being built sits in parts, -1 for none yet
+	let separator = -1;
+	const space = (forced = false) => {
+		if (chunk.length === 0) {
+			if (forced && separator !== -1) parts[separator] = hardline;
+			return;
+		}
+		parts.push(chunk);
+		chunk = [];
+		separator = parts.length;
+		parts.push(forced ? hardline : wrap ? line : ' ');
+	};
+	const keep_on_line = () => {
+		if (chunk.length === 0 && separator !== -1 && parts[separator] === line) {
+			parts[separator] = ' ';
+		}
+	};
+	// markdown breaks only at ascii space, a no break space is part of its word
+	const words = (source: string) => {
+		for (const piece of source.split(/([ \t\n]+)/)) {
+			if (piece === '') continue;
+			if (/^[ \t\n]+$/.test(piece)) {
+				space();
+				continue;
+			}
+			if (NO_BREAK_BEFORE.test(piece)) keep_on_line();
+			chunk.push(piece);
+		}
+	};
+
+	const depth = quote_depth(path) + (node.type === 'block_quote' ? 1 : 0);
+	// a gap after a line end starts with the indent and quote markers of the line
+	const gap = (from: number, to: number) => {
+		const start =
+			from === 0 || text.charCodeAt(from - 1) === 10
+				? skip_prefix(text, from, to, depth)
+				: from;
+		if (to > start) words(text.slice(start, to).replace(/\n[ \t>]*/g, ' '));
+	};
+	let pos =
+		range === undefined
+			? skip_prefix(text, node.start, node.end, depth)
+			: node.children[first].start;
+	path.each((child, index) => {
+		if (index < first || index > last) return;
+		const c = child.node;
+		if (c.start > pos) gap(pos, c.start);
+		pos = Math.max(pos, c.end);
+		switch (c.type) {
+			case 'text':
+				words(text.slice(c.start, c.end));
+				return;
+			case 'soft_break':
+				space();
+				return;
+			case 'hard_break':
+				chunk.push('\\');
+				space(true);
+				return;
+		}
+		if (NO_BREAK_BEFORE_NODE.has(c.type)) keep_on_line();
+		chunk.push(print(child));
+	}, 'children');
+	if (chunk.length > 0) parts.push(chunk);
+	else if (parts.length > 0) parts.pop();
+	// a run that follows something on its line keeps the space between them
+	const lead =
+		range !== undefined &&
+		/^[ \t]/.test(
+			text.slice(node.children[first].start, node.children[first].end)
+		);
+	return lead ? [' ', fill(parts)] : fill(parts);
+}
+
+/**
+ * the line ends of a paragraph may become spaces without the paragraph
+ * reading as something else, a line end can be what keeps text from being a
+ * link, a list or the arguments of a directive, so the paragraph is parsed
+ * joined and as it is and the two must match
+ */
+function may_reflow(
+	path: AstPath<SvxNode>,
+	text: string,
+	first: number,
+	last: number
+): boolean {
+	const node = path.node;
+	const parent = path.parent as SvxNode | null;
+	const children = node.children.slice(first, last + 1);
+	if (children.length === 0) return false;
+	// content on the line of its open tag is read differently from content on lines of its own
+	if (
+		node.type === 'paragraph' &&
+		parent !== null &&
+		(parent.type === 'html' || parent.type === 'svelte_branch') &&
+		newlines(
+			text,
+			parent.type === 'html' ? parent.value_start : parent.start,
+			node.start
+		) === 0
+	) {
+		return false;
+	}
+	const changes = children.some(
+		(child) =>
+			child.type === 'soft_break' ||
+			(child.type === 'text' &&
+				/\n|[ \t]{2}/.test(text.slice(child.start, child.end)))
+	);
+	if (!changes) return true;
+	const depth = quote_depth(path) + (node.type === 'block_quote' ? 1 : 0);
+	const from =
+		node.type === 'paragraph'
+			? skip_prefix(text, node.start, node.end, depth)
+			: children[0].start;
+	const to =
+		node.type === 'paragraph' ? node.end : children[children.length - 1].end;
+	const prefix = depth > 0 ? /\n[ \t]*(?:>[ \t]?[ \t]*)*/g : /\n[ \t]*/g;
+	const lines = text.slice(from, to).replace(prefix, '\n');
+	// what an item holds reads as the content of an item, `[ ]` there is a task box
+	const context = node.type === 'list_item' ? '- ' : '';
+	const joined = lines.replace(/\n/g, ' ').replace(/[ \t]{2,}/g, ' ');
+	return (
+		structure(parse(context + joined)) === structure(parse(context + lines))
+	);
+}
+
+/** the kinds and attributes of a tree without its text and line ends */
+function structure(node: SvxNode): string {
+	if (
+		node.type === 'text' ||
+		node.type === 'soft_break' ||
+		node.type === 'line_break'
+	) {
+		return '';
+	}
+	const meta = node.meta
+		? Object.entries(node.meta).filter(
+				([key]) => key !== 'info_start' && key !== 'info_end'
+			)
+		: [];
+	return `${node.type}${JSON.stringify(meta)}(${node.children.map(structure).join('')})`;
+}
+
 /** a footnote definition, the blocks after its first line indented by four */
 function print_footnote(
 	path: AstPath<SvxNode>,
@@ -856,6 +1041,32 @@ function longest_run(text: string, char: string): number {
 
 /** a run of prose between blocks, from the first child to the last */
 function print_run(
+	path: AstPath<SvxNode>,
+	options: Options,
+	print: Print,
+	first: number,
+	last: number
+): Doc {
+	const text = options.originalText;
+	const children = path.node.children;
+	const words = children
+		.slice(first, last + 1)
+		.some(
+			(child) =>
+				child.type === 'text' &&
+				text.slice(child.start, child.end).trim() !== ''
+		);
+	// prose in a tight list item wraps as a paragraph does, a run of markup keeps its lines
+	if (
+		words &&
+		(options.proseWrap === 'always' || options.proseWrap === 'never')
+	) {
+		return print_prose(path, options, print, [first, last]);
+	}
+	return print_run_as_written(path, options, print, first, last);
+}
+
+function print_run_as_written(
 	path: AstPath<SvxNode>,
 	options: Options,
 	print: Print,

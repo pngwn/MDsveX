@@ -240,3 +240,52 @@ describe('tables', () => {
 		expect(await svx(source)).toBe(source);
 	});
 });
+
+describe('proseWrap', () => {
+	const prose =
+		'This is a long paragraph with a [link to somewhere](https://example.com) and some `inline code`.\nAnd a second line - with a dash.\n';
+
+	test('always fills the line, links and code stay whole', async () => {
+		expect(await svx(prose, { proseWrap: 'always', printWidth: 40 })).toBe(
+			'This is a long paragraph with a\n[link to somewhere](https://example.com)\nand some `inline code`. And a second\nline - with a dash.\n'
+		);
+	});
+
+	test('never puts a paragraph on one line', async () => {
+		expect(await svx(prose, { proseWrap: 'never' })).toBe(
+			'This is a long paragraph with a [link to somewhere](https://example.com) and some `inline code`. And a second line - with a dash.\n'
+		);
+	});
+
+	test('a word that would start a block stays off the start of a line', async () => {
+		expect(
+			await svx('aaaa bbbb cccc - dddd 1. eeee # ffff\n', {
+				proseWrap: 'always',
+				printWidth: 10,
+			})
+		).toBe('aaaa bbbb\ncccc -\ndddd 1.\neeee #\nffff\n');
+	});
+
+	test('prose in a quote and a tight list wraps with its prefix', async () => {
+		expect(
+			await svx('> one two three four five\n\n- one two three four five\n', {
+				proseWrap: 'always',
+				printWidth: 12,
+			})
+		).toBe(
+			'> one two\n> three four\n> five\n\n- one two\n  three four\n  five\n'
+		);
+	});
+
+	test('a line end that keeps text from being syntax is kept', async () => {
+		const sources = [
+			'[link](<foo\nbar>)\n',
+			':d[x](a=1,\nb=2)\n',
+			'-\nfoo\n',
+			'- [  ] two spaces\n',
+		];
+		for (const source of sources) {
+			expect(await svx(source, { proseWrap: 'never' })).toBe(source);
+		}
+	});
+});

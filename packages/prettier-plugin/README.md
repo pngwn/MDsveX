@@ -27,7 +27,7 @@ The plugin formats the Svelte in a document as [prettier-plugin-svelte](https://
 - expressions, `{@html}`, `{@render}` and `{@const}` tags and the heads of blocks are formatted, an expression or a tag in prose stays on its line
 - blank lines between blocks fold to one and lines lose the spaces at their ends
 
-The formatting follows your Prettier options, `useTabs`, `singleQuote`, `bracketSameLine`, `singleAttributePerLine` and the rest. Emphasis stays as PFM writes it, `_` for emphasis and `*` for strong. A table that merges cells with `||`, `|>` or `|^` is kept as written. A part that does not parse is left as it is, so is the content of a `<pre>` and a `{@debug}` tag.
+The formatting follows your Prettier options, `useTabs`, `singleQuote`, `bracketSameLine`, `singleAttributePerLine`, `proseWrap` and the rest. With `proseWrap` set to `always` a paragraph fills the line and with `never` it takes one line, a line end that keeps text from reading as a link, a list or a directive stays. Emphasis stays as PFM writes it, `_` for emphasis and `*` for strong. A table that merges cells with `||`, `|>` or `|^` is kept as written. A part that does not parse is left as it is, so is the content of a `<pre>` and a `{@debug}` tag.
 
 ## Frontmatter
 
