@@ -864,6 +864,8 @@ interface ColdState {
 	// the stalled block quote fence scan, fence cursor or -1 and the first line it has not passed
 	// the code of a fence in a block quote or a list item so far, without what they put before its lines
 	fence_text: string;
+	// the columns the open fence stands indented in its container, taken off the start of each of its lines
+	fence_indent: number;
 	// the cut, window base and kept html openers of the last trim_keeping_html, an equal trim keeps the window
 	kept_cut: number;
 	kept_base: number;
@@ -947,6 +949,7 @@ export class PFMParser {
 		wait_needle: '',
 		wait_cursor: -1,
 		fence_text: '',
+		fence_indent: 0,
 		kept_cut: -1,
 		kept_base: 0,
 		kept_count: 0,
@@ -1180,6 +1183,7 @@ export class PFMParser {
 		} else this._init(ID_MIN_CAPACITY);
 		this.cold.kept_cut = -1;
 		this.cold.fence_text = '';
+		this.cold.fence_indent = 0;
 		this.finished = false;
 		this.one_shot = false;
 	}
@@ -1362,12 +1366,14 @@ export class PFMParser {
 	/**
 	 * trim at the fence scan line for a fence in html or svelte containers, where can_trim declines
 	 * no fence wait, its window skip would drop kept html lines
+	 * an indented fence keeps its lines, its close takes the indent off them
 	 */
 	private trim_fence(): void {
 		const states = this.states;
 		if (
 			states[states.length - 1] !== StateKind.code_fence_content ||
-			this.wait_kind !== WAIT_NONE
+			this.wait_kind !== WAIT_NONE ||
+			(this.cold.fence_indent !== 0 && this.frames.length === 0)
 		)
 			return;
 		const line = this.fence_scan;
@@ -6272,7 +6278,12 @@ export class PFMParser {
 				const ch = char_code_at.call(source, p - base);
 				if (ch === CLOSE_ANGLE_BRACKET) break;
 				if (ch === LINEFEED || ch === OPEN_ANGLE_BRACKET) return -1;
-				if (ch === BACKSLASH && p + 1 < length) {
+				// a backslash escapes no line end, the destination may not cross one
+				if (
+					ch === BACKSLASH &&
+					p + 1 < length &&
+					char_code_at.call(source, p + 1 - base) !== LINEFEED
+				) {
 					p += 2;
 					continue;
 				}
@@ -6296,7 +6307,12 @@ export class PFMParser {
 					paren_depth--;
 				}
 				if (ch === OPEN_PAREN) paren_depth++;
-				if (ch === BACKSLASH && p + 1 < length) {
+				// a backslash before whitespace is literal and ends the destination
+				if (
+					ch === BACKSLASH &&
+					p + 1 < length &&
+					char_code_at.call(source, p + 1 - base) > 0x20
+				) {
 					p += 2;
 					continue;
 				}
@@ -8968,6 +8984,12 @@ export class PFMParser {
 	 * else the code fence states run
 	 */
 	private start_fence(parent: number): void {
+		const before = char_code_at.call(
+			this.source,
+			this.cursor - 1 - this.source_base
+		);
+		this.cold.fence_indent =
+			before === SPACE || before === TAB ? this.fence_indent() : 0;
 		if (
 			!this.finished
 				? !this.fence_open(parent)
@@ -8977,6 +8999,66 @@ export class PFMParser {
 			this.states.push(StateKind.code_fence_start);
 			this.extra = 0;
 		}
+	}
+
+	/** the columns of whitespace before the fence at the cursor past where the content of its container starts */
+	private fence_indent(): number {
+		const source = this.source;
+		const base = this.source_base;
+		// a fence after a tag or a label on its line has no indent of its own, quote markers may stand before it
+		let p = this.cursor - 1;
+		let ch = char_code_at.call(source, p - base);
+		while (ch === SPACE || ch === TAB || ch === CLOSE_ANGLE_BRACKET)
+			ch = char_code_at.call(source, --p - base);
+		// nan is the window start, which a trim leaves at a line start
+		if (ch === ch && ch !== LINEFEED && this.cursor !== this.cold.task_pos)
+			return 0;
+		const lead = this.lead_columns(this.cursor);
+		const frames = this.frames;
+		// an item counts its column from the line start or its quote, a quote has none of its own
+		const column = frames.length === 0 ? 0 : frames[frames.length - 1];
+		return lead > column ? lead - column : 0;
+	}
+
+	/** the line from p to end less up to indent columns of leading whitespace, a tab past the indent leaves spaces */
+	private dedent_line(p: number, end: number, indent: number): string {
+		const source = this.source;
+		const base = this.source_base;
+		let columns = 0;
+		while (columns < indent && p < end) {
+			const ch = char_code_at.call(source, p - base);
+			if (ch === SPACE) columns++;
+			else if (ch === TAB) {
+				columns += this.tab_size;
+				if (columns > indent)
+					return (
+						' '.repeat(columns - indent) +
+						string_slice.call(source, p + 1 - base, end - base)
+					);
+			} else break;
+			p++;
+		}
+		return string_slice.call(source, p - base, end - base);
+	}
+
+	/** sets the code from from to to without the fence indent as its text, when a line had some to take off */
+	private fence_code(id: number, from: number, to: number): void {
+		const indent = this.cold.fence_indent;
+		if (indent === 0 || to <= from) return;
+		const source = this.source;
+		const base = this.source_base;
+		let text = '';
+		let changed = false;
+		let p = from;
+		while (p < to) {
+			const ch = char_code_at.call(source, p - base);
+			if (ch === SPACE || ch === TAB) changed = true;
+			const lf = string_index_of.call(source, '\n', p - base);
+			const end = lf === -1 || lf + base >= to ? to : lf + base + 1;
+			text += this.dedent_line(p, end, indent);
+			p = end;
+		}
+		if (changed) this.out.attr(id, 'text', text);
 	}
 
 	/** finished parse, one or two backticks starting a block open a paragraph and take the inline code span step */
@@ -9052,6 +9134,7 @@ export class PFMParser {
 						lp < length &&
 						char_code_at.call(source, lp - base) === LINEFEED
 					) {
+						this.fence_code(cf_id, info_end + 1, line - 1);
 						out.set_value_end(cf_id, line - 1);
 						this.emit_close(cf_id, lp);
 						this.node_stack.pop();
@@ -9144,12 +9227,14 @@ export class PFMParser {
 		this.class_floor = -1;
 		// the cursor stays at eof so an enclosing container runs its own eof close
 		if (found_index === -1) {
+			this.fence_code(cf_id, info_end + 1, length);
 			out.set_value_end(cf_id, length);
 			this.emit_close(cf_id, length);
 			this.node_stack.pop();
 			this.cursor = length;
 			return true;
 		}
+		this.fence_code(cf_id, info_end + 1, line - 1);
 		out.set_value_end(cf_id, line - 1);
 		let end = found_index;
 		while (end < length && char_code_at.call(source, end - base) === BACKTICK)
@@ -9219,6 +9304,7 @@ export class PFMParser {
 		const cold = this.cold;
 		const frames = this.frames.length;
 		const fence_len = this.extra;
+		const indent = cold.fence_indent;
 		const value_start = this.cursor;
 		let line = this.fence_scan;
 		// the cursor waits at the first line while the scan moves on
@@ -9258,12 +9344,13 @@ export class PFMParser {
 				next = lf === -1 ? length : lf + base;
 				break;
 			}
-			if (lf === -1) {
-				text += string_slice.call(source, content - base);
-				break;
-			}
-			text += string_slice.call(source, content - base, lf + 1);
-			line = lf + base + 1;
+			const line_end = lf === -1 ? length : lf + base + 1;
+			text +=
+				indent === 0
+					? string_slice.call(source, content - base, line_end - base)
+					: this.dedent_line(content, line_end, indent);
+			if (lf === -1) break;
+			line = line_end;
 		}
 		const out = this.out;
 		if (value_end > value_start) {
@@ -9409,12 +9496,17 @@ export class PFMParser {
 		if (found_index === -1) {
 			if (!this.finished) {
 				this.fence_scan = line;
-				if (this.can_trim(this.node_stack.length - 1)) {
+				// an indented fence keeps its lines in the window to take the indent off at its close
+				if (
+					this.cold.fence_indent === 0 &&
+					this.can_trim(this.node_stack.length - 1)
+				) {
 					this.trim_point = line;
 					this.wait_kind = WAIT_FENCE;
 				} else this.wait_for('`'); // kept html lines stay, chunks wait whole for a backtick
 				return true;
 			}
+			this.fence_code(current_node, this.cursor, length);
 			this.out.set_value_end(current_node, length);
 			this.states.pop();
 			this.states.push(StateKind.code_fence_text_end);
@@ -9433,6 +9525,7 @@ export class PFMParser {
 
 		this.states.pop();
 		this.states.push(StateKind.code_fence_text_end);
+		this.fence_code(current_node, this.cursor, found_nl);
 		this.out.set_value_end(current_node, found_nl);
 		this.chomp(bt_end, true);
 		return false;
@@ -9903,7 +9996,12 @@ export class PFMParser {
 							paren_depth--;
 						}
 						if (ch === OPEN_PAREN) paren_depth++;
-						if (ch === BACKSLASH && p + 1 < length) {
+						// a backslash before whitespace is literal and ends the destination
+						if (
+							ch === BACKSLASH &&
+							p + 1 < length &&
+							char_code_at.call(source, p + 1 - base) > 0x20
+						) {
 							p += 2;
 							continue;
 						}

@@ -72,3 +72,65 @@ describe('a backslash escape in a link destination or title', () => {
 		);
 	});
 });
+
+describe('a backslash before a space or a line end in a destination', () => {
+	const DEFINED = (title: string): string =>
+		`  definition label="a" href="/u\\\\"${title}`;
+
+	const LINK = (attrs: string): string[] => [
+		'  paragraph',
+		`    link ${attrs}`,
+		'      text "x"',
+		'  line_break',
+	];
+
+	test('is literal and ends a definition destination', () => {
+		expect(every_path('[a]: /u\\\n\n[x][a]\n')).toBe(
+			lines('root', DEFINED(''), '  line_break', ...LINK('href="/u\\\\"'))
+		);
+		expect(every_path('[a]: /u\\ "t"\n\n[x][a]\n')).toBe(
+			lines(
+				'root',
+				DEFINED(' title="t"'),
+				'  line_break',
+				...LINK('href="/u\\\\" title="t"')
+			)
+		);
+	});
+
+	test('leaves the next line to be the title', () => {
+		expect(every_path('[a]: /u\\\n"t"\n\n[x][a]\n')).toBe(
+			lines(
+				'root',
+				DEFINED(' title="t"'),
+				'  line_break',
+				...LINK('href="/u\\\\" title="t"')
+			)
+		);
+	});
+
+	test('ends a definition in a block quote', () => {
+		expect(every_path('> [a]: /u\\\n> [x][a]\n')).toBe(
+			lines(
+				'root',
+				'  block_quote',
+				'    definition label="a" href="/u\\\\"',
+				'    paragraph',
+				'      link href="/u\\\\"',
+				'        text "x"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('does not carry an angle destination over a line end', () => {
+		expect(every_path('[a]: </u\\\n>\n\n[x][a]\n')).not.toContain('link');
+	});
+
+	test('ends an inline destination, which may not go on to the next line', () => {
+		expect(every_path('[x](/u\\\n)\n')).toBe(
+			para('text "[x"', 'text "](/u"', 'hard_break', 'text ")"')
+		);
+		expect(every_path('[x](/u\\ v)\n')).not.toContain('link');
+	});
+});

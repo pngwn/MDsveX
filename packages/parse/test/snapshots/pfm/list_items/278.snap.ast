@@ -6,7 +6,7 @@ root
     soft_break
     text "-"
   line_break
-  code_fence "  bar"
+  code_fence "bar"
   paragraph
     text "-"
     soft_break

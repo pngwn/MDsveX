@@ -330,3 +330,112 @@ describe('fence sources state', () => {
 			for (const seg of line) expect(seg[2]).toBeLessThan(3);
 	});
 });
+
+describe('an indented fence', () => {
+	const CODE = 'let x = 1;\n  x++;';
+	const SOURCES: [string, string][] = [
+		['root', '  ```js\n  let x = 1;\n    x++;\n  ```\n'],
+		['element', '<div>\n  ```js\n  let x = 1;\n    x++;\n  ```\n</div>\n'],
+		['branch', '{#if a}\n  ```js\n  let x = 1;\n    x++;\n  ```\n{/if}\n'],
+		['directive', ':::note[]\n  ```js\n  let x = 1;\n    x++;\n  ```\n:::\n'],
+		['list item', '- a\n\n    ```js\n    let x = 1;\n      x++;\n    ```\n'],
+		['block quote', '>   ```js\n>   let x = 1;\n>     x++;\n>   ```\n'],
+	];
+
+	function line_starts(source: string): number[] {
+		return [source.indexOf('let x'), source.indexOf('  x++')];
+	}
+
+	for (const [site, source] of SOURCES) {
+		it(`renders its code without the indent in every walk, ${site}`, () => {
+			expect(every_walk(source, null)).toContain(
+				`<pre><code class="language-js">${CODE}</code></pre>`
+			);
+		});
+
+		it(`maps each code line to its own source line, ${site}`, () => {
+			const r = new CursorHTMLRenderer({ cache: false });
+			const { mappings } = r.update_mapped(parse(source), source);
+			const at = r.html.indexOf(CODE);
+			const content = mappings
+				.filter(
+					(m) =>
+						m.data.role === 'content' &&
+						m.generatedOffsets[0] >= at &&
+						m.generatedOffsets[0] < at + CODE.length
+				)
+				.map((m) => [
+					m.generatedOffsets[0] - at,
+					m.sourceOffsets[0],
+					source.slice(m.sourceOffsets[0], m.sourceOffsets[0] + m.lengths[0]),
+					r.html.slice(
+						m.generatedOffsets[0],
+						m.generatedOffsets[0] + (m.generatedLengths?.[0] ?? m.lengths[0])
+					),
+				]);
+			const [first, second] = line_starts(source);
+			expect(content).toEqual([
+				[0, first, 'let x = 1;\n', 'let x = 1;\n'],
+				[11, second, '  x++;', '  x++;'],
+			]);
+		});
+
+		it(`a source map points each code line at its source column, ${site}`, () => {
+			const r = new CursorHTMLRenderer({ cache: false });
+			const map = r.update_v3(parse(source), source, source, 'a.md');
+			const html = r.html;
+			const lines = decode(map.mappings);
+			for (const [k, start] of line_starts(source).entries()) {
+				const code_at = html.indexOf(k === 0 ? 'let x' : '  x++');
+				const gen_line = html.slice(0, code_at).split('\n').length - 1;
+				const gen_col = code_at - (html.lastIndexOf('\n', code_at - 1) + 1);
+				const seg = lines[gen_line].find((s) => s[0] === gen_col);
+				const src_line = source.slice(0, start).split('\n').length - 1;
+				const src_col = start - (source.lastIndexOf('\n', start - 1) + 1);
+				expect(seg?.slice(2, 4), `line ${k}`).toEqual([src_line, src_col]);
+			}
+		});
+	}
+
+	it('a pre replacement takes the code without the indent and maps its lines', () => {
+		const source = SOURCES[1][1];
+		const html = every_walk(source, null, replaced);
+		expect(html).toContain('code={"let x = 1;\\n  x++;"}');
+		expect(html).toContain(`<code class="language-js">${CODE}</code>`);
+		const r = new CursorHTMLRenderer({ cache: false });
+		r.scope = scope;
+		const { mappings } = r.update_mapped(parse(source), source);
+		const at = r.html.indexOf('<code class="language-js">') + 26;
+		const lines = mappings
+			.filter((m) => m.data.role === 'content' && m.generatedOffsets[0] >= at)
+			.map((m) => [m.generatedOffsets[0] - at, m.sourceOffsets[0]]);
+		expect(lines.slice(0, 2)).toEqual([
+			[0, source.indexOf('let x')],
+			[11, source.indexOf('  x++')],
+		]);
+	});
+
+	it('gives the highlighter the code without the indent', () => {
+		const h = stub();
+		every_walk(
+			'<div>\n  ```js {1}\n  let x = 1;\n    x++;\n  ```\n</div>\n',
+			null,
+			(r) => (r.highlight = h)
+		);
+		expect(new Set(h.calls)).toEqual(new Set([`js|{1}|8|${CODE}`]));
+	});
+
+	it('maps a live expression to its place in the indented source', () => {
+		const source = '<div>\n  ```live\n  a\n    b {c.d} e\n  ```\n</div>\n';
+		const r = new CursorHTMLRenderer({ cache: false });
+		r.highlight = stub();
+		const { mappings } = r.update_mapped(parse(source), source);
+		expect(r.html).toContain('<code>a\n  b {c.d} e</code>');
+		const live = mappings.filter(
+			(m) => m.data.role === 'content' && m.data.verification === true
+		);
+		expect(live.map((m) => m.sourceOffsets[0])).toEqual([
+			source.indexOf('{c.d}'),
+		]);
+	});
+});

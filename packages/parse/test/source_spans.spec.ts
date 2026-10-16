@@ -99,6 +99,7 @@ function spans(nodes: NodeBuffer, index = 0, out: string[] = []): string[] {
 const DOCS = [
 	'[ref]: https://x.com "T"\n\nsee [a][ref]',
 	'[a]:\n  /u\n  "t\nu"  \n\n[x][a]\n',
+	'[a]: /u\\\n"t"\n> [b]: /v\\\n',
 	'> [q]: /q\n> after\n',
 	'- [l]: /l\n\n  item\n',
 	'<div class="a"\n  id={b}>text</div>\n',
