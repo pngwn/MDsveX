@@ -17,6 +17,7 @@ export {
 } from './virtual_ids';
 export { data_module, metadata_module, read_metadata } from './query_modules';
 export { CONFIG_FILE, read_json_config } from './json_config';
+export { template_module } from './template_module';
 export type {
 	ConfigExports,
 	ConfigHost,
