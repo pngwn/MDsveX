@@ -148,28 +148,32 @@ describe('expressions', () => {
 			await svx(
 				'{#each items as item}\n\n{@const  name=item.name}\n\n{/each}\n'
 			)
-		).toBe('{#each items as item}\n\n{@const name = item.name}\n\n{/each}\n');
+		).toBe('{#each items as item}\n\n  {@const name = item.name}\n\n{/each}\n');
 	});
 
 	test('a const tag that does not parse is kept', async () => {
 		const sources = ['{@const  = 1}\n', '{@const  a = 1, b = 2;; }\n'];
-		for (const source of sources) expect(await svx(source)).toBe(source);
+		for (const source of sources) {
+			expect(await svx(source)).toBe(
+				source.replace('\n\nx\n\n', '\n\n  x\n\n')
+			);
+		}
 	});
 });
 
 describe('blocks', () => {
 	test('the head of an if, else if and key holds a formatted expression', async () => {
 		expect(await svx('{#if a&&b}\n\nx\n\n{:else if  c}\n\ny\n\n{/if}\n')).toBe(
-			'{#if a && b}\n\nx\n\n{:else if c}\n\ny\n\n{/if}\n'
+			'{#if a && b}\n\n  x\n\n{:else if c}\n\n  y\n\n{/if}\n'
 		);
 		expect(await svx('{#key  id}\n\nx\n\n{/key}\n')).toBe(
-			'{#key id}\n\nx\n\n{/key}\n'
+			'{#key id}\n\n  x\n\n{/key}\n'
 		);
 	});
 
 	test('the content of a branch is printed too', async () => {
 		expect(await svx('{#if a}\n\n{b+c}\n\n{/if}\n')).toBe(
-			'{#if a}\n\n{b + c}\n\n{/if}\n'
+			'{#if a}\n\n  {b + c}\n\n{/if}\n'
 		);
 	});
 
@@ -188,7 +192,7 @@ describe('blocks', () => {
 		];
 		for (const [head, out] of cases) {
 			expect(await svx(`${head}\n\nx\n\n{/each}\n`)).toBe(
-				`${out}\n\nx\n\n{/each}\n`
+				`${out}\n\n  x\n\n{/each}\n`
 			);
 		}
 	});
@@ -196,7 +200,7 @@ describe('blocks', () => {
 	test('an each head with a string that holds the keywords', async () => {
 		expect(
 			await svx("{#each fn(' as ', 'x, y') as item}\n\nx\n\n{/each}\n")
-		).toBe('{#each fn(" as ", "x, y") as item}\n\nx\n\n{/each}\n');
+		).toBe('{#each fn(" as ", "x, y") as item}\n\n  x\n\n{/each}\n');
 	});
 
 	test('an await head and its then and catch branches', async () => {
@@ -205,29 +209,29 @@ describe('blocks', () => {
 				'{#await  load(id)}\n\na\n\n{:then  {data}}\n\nb\n\n{:catch  e}\n\nc\n\n{/await}\n'
 			)
 		).toBe(
-			'{#await load(id)}\n\na\n\n{:then { data }}\n\nb\n\n{:catch e}\n\nc\n\n{/await}\n'
+			'{#await load(id)}\n\n  a\n\n{:then { data }}\n\n  b\n\n{:catch e}\n\n  c\n\n{/await}\n'
 		);
 		expect(await svx('{#await p  then  [a,b]}\n\nx\n\n{/await}\n')).toBe(
-			'{#await p then [a, b]}\n\nx\n\n{/await}\n'
+			'{#await p then [a, b]}\n\n  x\n\n{/await}\n'
 		);
 		expect(await svx('{#await p.then(f)  catch err}\n\nx\n\n{/await}\n')).toBe(
-			'{#await p.then(f) catch err}\n\nx\n\n{/await}\n'
+			'{#await p.then(f) catch err}\n\n  x\n\n{/await}\n'
 		);
 		expect(await svx('{#await p then}\n\nx\n\n{/await}\n')).toBe(
-			'{#await p then}\n\nx\n\n{/await}\n'
+			'{#await p then}\n\n  x\n\n{/await}\n'
 		);
 	});
 
 	test('a snippet head', async () => {
 		expect(await svx('{#snippet  row(item,i=0)}\n\nx\n\n{/snippet}\n')).toBe(
-			'{#snippet row(item, i = 0)}\n\nx\n\n{/snippet}\n'
+			'{#snippet row(item, i = 0)}\n\n  x\n\n{/snippet}\n'
 		);
 		expect(
 			await svx(
 				'<script lang="ts">\n</script>\n\n{#snippet row<T>(item:T, {a}:{a:string})}\n\nx\n\n{/snippet}\n'
 			)
 		).toBe(
-			'<script lang="ts"></script>\n\n{#snippet row<T>(item: T, { a }: { a: string })}\n\nx\n\n{/snippet}\n'
+			'<script lang="ts"></script>\n\n{#snippet row<T>(item: T, { a }: { a: string })}\n\n  x\n\n{/snippet}\n'
 		);
 	});
 
@@ -237,7 +241,11 @@ describe('blocks', () => {
 			'{#each items as item, 1 }\n\nx\n\n{/each}\n',
 			'{#snippet row(item: T)}\n\nx\n\n{/snippet}\n',
 		];
-		for (const source of sources) expect(await svx(source)).toBe(source);
+		for (const source of sources) {
+			expect(await svx(source)).toBe(
+				source.replace('\n\nx\n\n', '\n\n  x\n\n')
+			);
+		}
 	});
 });
 
@@ -283,52 +291,78 @@ describe('fences', () => {
 });
 
 describe('open tags', () => {
-	test('the spaces between attributes fold to one', async () => {
+	test('attributes on one line when the tag fits', async () => {
 		expect(await svx('<Test value={count}    label="a"  />\n')).toBe(
 			'<Test value={count} label="a" />\n'
 		);
-		expect(await svx('<div class="a"   >\n\nx\n\n</div>\n')).toBe(
-			'<div class="a">\n\nx\n\n</div>\n'
+		expect(await svx('<Foo\n    a={x+1}\n    b="c"\n>\n\nx\n\n</Foo>\n')).toBe(
+			'<Foo a={x + 1} b="c">\n\n  x\n\n</Foo>\n'
 		);
 	});
 
-	test('attribute expressions are formatted on one line', async () => {
+	test('one attribute to a line when it does not', async () => {
 		expect(
-			await svx('<button onclick={()=>count++} disabled={ !ok }>go</button>\n')
-		).toBe('<button onclick={() => count++} disabled={!ok}>go</button>\n');
+			await svx(
+				'<Component alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo />\n'
+			)
+		).toBe(
+			'<Component\n  alpha\n  bravo\n  charlie\n  delta\n  echo\n  foxtrot\n  golf\n  hotel\n  india\n  juliet\n  kilo\n/>\n'
+		);
+	});
+
+	test('bracketSameLine keeps the bracket on the last attribute', async () => {
+		expect(
+			await svx(
+				'<Component alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima>\n\nx\n\n</Component>\n',
+				{ bracketSameLine: true }
+			)
+		).toBe(
+			'<Component\n  alpha\n  bravo\n  charlie\n  delta\n  echo\n  foxtrot\n  golf\n  hotel\n  india\n  juliet\n  kilo\n  lima>\n\n  x\n\n</Component>\n'
+		);
+	});
+
+	test('singleAttributePerLine', async () => {
+		expect(
+			await svx('<Foo a="1" b="2" />\n', { singleAttributePerLine: true })
+		).toBe('<Foo\n  a="1"\n  b="2"\n/>\n');
+	});
+
+	test('values in double quotes, a lone expression unquoted', async () => {
+		expect(await svx('<a href=\'/x\' title=hi data-x="{y}">t</a>\n')).toBe(
+			'<a href="/x" title="hi" data-x={y}>t</a>\n'
+		);
 	});
 
 	test('shorthand, spread and attach', async () => {
-		expect(await svx('<Foo { a } {...  props} {@attach  tip( x )}/>\n')).toBe(
-			'<Foo {a} {...props} {@attach tip(x)}/>\n'
-		);
+		expect(
+			await svx(
+				'<Foo { a } b={b} bind:value={value} {...  props} {@attach  tip( x )}/>\n'
+			)
+		).toBe('<Foo {a} {b} bind:value {...props} {@attach tip(x)} />\n');
 	});
 
 	test('an expression in a quoted value, kept when its quotes would clash', async () => {
 		expect(await svx("<a href='/x/{id+1}'>a</a>\n")).toBe(
-			"<a href='/x/{id + 1}'>a</a>\n"
+			'<a href="/x/{id + 1}">a</a>\n'
 		);
-		const clash = '<a title="Hi {first+\' \'+last}">a</a>\n';
-		expect(await svx(clash)).toBe(clash);
+		expect(await svx('<a title="Hi {first+\' \'+last}">a</a>\n')).toBe(
+			'<a title="Hi {first+\' \'+last}">a</a>\n'
+		);
 	});
 
 	test('the spaces in a quoted value are kept', async () => {
-		const source = '<div title="a   b">\n\nx\n\n</div>\n';
-		expect(await svx(source)).toBe(source);
-	});
-
-	test('an open tag over lines keeps its lines and indent', async () => {
-		expect(await svx('<Foo\n    a={x+1}\n    b="c"\n>\n\nx\n\n</Foo>\n')).toBe(
-			'<Foo\n    a={x + 1}\n    b="c"\n>\n\nx\n\n</Foo>\n'
+		expect(await svx('<div title="a   b">\n\nx\n\n</div>\n')).toBe(
+			'<div title="a   b">\n\n  x\n\n</div>\n'
 		);
 	});
 
-	test('an expression over lines in an attribute is kept', async () => {
-		const source = '<Foo a={() => {\n  go();\n}} />\n';
-		expect(await svx(source)).toBe(source);
+	test('an expression over lines is formatted in its tag', async () => {
+		expect(await svx('<Foo a={() => {\n  go();\n}} />\n')).toBe(
+			'<Foo\n  a={() => {\n    go();\n  }}\n/>\n'
+		);
 	});
 
-	test('in a paragraph, a list and a quote', async () => {
+	test('in a paragraph, a list and a quote a tag stays on its line', async () => {
 		expect(
 			await svx(
 				'see <a href={url+"/x"}>it</a>\n\n- <b x={ 1 }>b</b>\n\n> <i y={ 2 }>i</i>\n'
@@ -338,14 +372,15 @@ describe('open tags', () => {
 		);
 	});
 
-	test('the children are formatted too', async () => {
+	test('the children are formatted and indented', async () => {
 		expect(await svx('<div a={ x }>\n\n{b+c}\n\n</div>\n')).toBe(
-			'<div a={x}>\n\n{b + c}\n\n</div>\n'
+			'<div a={x}>\n\n  {b + c}\n\n</div>\n'
 		);
 	});
 
 	test('a tag with a brace that does not close is kept', async () => {
-		const source = '<Counter prop="{[1, 2]]}"/>\n';
-		expect(await svx(source)).toBe(source);
+		expect(await svx('<Counter prop="{[1, 2]]}"/>\n')).toBe(
+			'<Counter prop="{[1, 2]]}" />\n'
+		);
 	});
 });

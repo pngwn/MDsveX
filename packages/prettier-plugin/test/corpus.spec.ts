@@ -3,6 +3,7 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { format } from 'prettier';
+import type { Options } from 'prettier';
 import { describe, expect, test } from 'vitest';
 
 import plugin from '../src/index';
@@ -31,8 +32,8 @@ const CORPUS = [
 	]),
 ];
 
-function svx(source: string): Promise<string> {
-	return format(source, { parser: 'mdsvex', plugins: [plugin] });
+function svx(source: string, options: Options = {}): Promise<string> {
+	return format(source, { parser: 'mdsvex', plugins: [plugin], ...options });
 }
 
 describe('corpus', () => {
@@ -40,17 +41,26 @@ describe('corpus', () => {
 		expect(CORPUS.length).toBeGreaterThan(900);
 	});
 
-	test.each(CORPUS.map((path) => [relative(REPO, path), path]))(
-		'%s',
-		async (_, path) => {
-			const source = readFileSync(path, 'utf8').replace(/\r\n?/g, '\n');
-			const once = await svx(source);
-			expect(shape(once), 'formatting changed what the document means').toBe(
-				shape(source)
+	for (const prose_wrap of ['preserve', 'always', 'never'] as const) {
+		describe(`proseWrap ${prose_wrap}`, () => {
+			test.each(CORPUS.map((path) => [relative(REPO, path), path]))(
+				'%s',
+				async (_, path) => {
+					const options = { proseWrap: prose_wrap };
+					const source = readFileSync(path, 'utf8').replace(/\r\n?/g, '\n');
+					const once = await svx(source, options);
+					expect(
+						shape(once),
+						'formatting changed what the document means'
+					).toBe(shape(source));
+					expect(
+						await svx(once, options),
+						'a second format changed the output'
+					).toBe(once);
+				},
+				// the 4mb bench document formats twice, slow on a windows runner
+				30_000
 			);
-			expect(await svx(once), 'a second format changed the output').toBe(once);
-		},
-		// the 4mb bench document formats twice, slow on a windows runner
-		30_000
-	);
+		});
+	}
 });

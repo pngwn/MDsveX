@@ -37,29 +37,42 @@ export function shape(source: string): string {
 		const children = node.children;
 		for (let i = 0; i < children.length; i++) {
 			const child = children[i];
-			if (child.type !== 'text') {
+			// blank lines fold, a paragraph that ends shows as a new node
+			if (child.type === 'line_break') continue;
+			if (child.type !== 'text' && child.type !== 'soft_break') {
 				walk(child, depth + 1);
 				continue;
 			}
 			// texts split and merge as offsets move
 			let value = '';
-			while (i < children.length && children[i].type === 'text') {
+			const first_text = i;
+			// a line end in prose is a space, wrapping moves them
+			while (
+				i < children.length &&
+				(children[i].type === 'text' || children[i].type === 'soft_break')
+			) {
 				value +=
-					children[i].content ??
-					source.slice(children[i].value_start, children[i].value_end);
+					children[i].type === 'soft_break'
+						? ' '
+						: (children[i].content ??
+							source.slice(children[i].value_start, children[i].value_end));
 				i++;
 			}
 			i--;
-			// the text of a revoked tag holds its line ends
-			value = value.replace(/[ \t]+\n/g, '\n');
+			// the text of a revoked tag holds its line ends, wrapping moves them
+			value = value.replace(/[ \t]*\n[ \t]*/g, ' ');
+			// the indent of the first line of prose renders as nothing
+			if (first_text === 0) value = value.replace(/^[ \t]+/, '');
 			const next = children[i + 1]?.type;
 			if (
 				next === undefined ||
-				next === 'soft_break' ||
-				next === 'line_break'
+				next === 'line_break' ||
+				next === 'hard_break'
 			) {
 				value = value.replace(/[ \t]+$/, '');
 			}
+			// spaces in prose render as one
+			value = value.replace(/[ \t]+/g, ' ');
 			if (value === '') continue;
 			lines.push('  '.repeat(depth + 1) + 'text ' + JSON.stringify(value));
 		}
@@ -105,7 +118,11 @@ function meaning(node: SvxNode, source: string): string | undefined {
 			const info =
 				info_start === undefined ? '' : source.slice(info_start, info_end);
 			// the code as a renderer sees it, a fence in a container holds it as a string
-			return 'fence ' + JSON.stringify([info.trim(), node.content ?? value()]);
+			// an unclosed fence keeps the line end of the document, a closed one does not
+			const code = (node.content ?? value()).replace(/\n$/, '');
+			return (
+				'fence ' + JSON.stringify([info.trim().replace(/\s+/g, ' '), code])
+			);
 		}
 		case 'code_span':
 			return 'code ' + JSON.stringify(node.content ?? value());
@@ -124,6 +141,13 @@ function attributes(value: unknown): unknown {
 		const key = name.replace(/\s+/g, '');
 		if (typeof v === 'object' && v !== null && 'value' in v) {
 			out[key] = expression(String((v as { value: unknown }).value));
+		} else if (
+			typeof v === 'string' &&
+			/^\{[\s\S]*\}$/.test(v.trim()) &&
+			!expression(v.trim().slice(1, -1)).startsWith('"')
+		) {
+			// a quoted lone expression is the expression
+			out[key] = expression(v.trim().slice(1, -1));
 		} else if (typeof v === 'string' && v.includes('{')) {
 			out[key] = head(v);
 		} else {

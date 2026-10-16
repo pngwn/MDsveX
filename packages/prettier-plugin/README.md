@@ -17,21 +17,17 @@ Prettier picks the plugin for `.svx` and `.pfm` files from their extension, no `
 
 ## What it formats
 
-The plugin tidies a document and keeps the choices its author made: list markers, numbering, table spacing and emphasis stay as they are written.
+The plugin formats the Svelte in a document as [prettier-plugin-svelte](https://github.com/sveltejs/prettier-plugin-svelte) formats a component, and the markdown around it:
 
-Today it:
+- a tag that does not fit on a line puts its attributes one to a line, values go in double quotes, a lone expression is unquoted and `name={name}` becomes `{name}`
+- the children of an element, a component and a block such as `{#if}` or `{#each}` are indented, markdown included
+- markdown as Prettier formats it: `-` bullets, ordered lists counted from their start, `#` headings, `---` breaks, backtick fences, tables padded and aligned, a blank line between blocks and one space between words
+- a list item lines up with its content, a nested list sits at the content column of its item, and every line of a quote starts with `> `
+- frontmatter is formatted as yaml, imports, `<script>` and `<style>` as code
+- expressions, `{@html}`, `{@render}` and `{@const}` tags and the heads of blocks are formatted, an expression or a tag in prose stays on its line
+- blank lines between blocks fold to one and lines lose the spaces at their ends
 
-- folds a run of blank lines between blocks to one
-- takes the spaces off the end of a line of prose
-- ends the document with one line end
-- folds the spaces after a list marker to one, moves a nested list to the content column of its item and a list at the top to the left edge, what an item holds moves with it
-- puts a space after a `>` that has text straight after it
-- formats the yaml frontmatter, the imports at the top, `<script>` (TypeScript with `lang="ts"`) and `<style>` (css, scss or less)
-- formats `{expressions}`, `{@html}` and `{@render}` tags, an expression in prose stays on one line, and the declaration of a `{@const}` tag on one line
-- tidies open tags: the spaces between attributes fold to one and each `{expression}`, spread and `{@attach}` is formatted on one line, the tag keeps its line breaks, quotes and the order of its attributes
-- formats the heads of blocks on one line: `{#if}`, `{:else if}`, `{#key}`, `{#each}` with its binding, index and key, `{#await}`, `{:then}`, `{:catch}` and `{#snippet}` with its parameters
-
-The formatting of the code follows your Prettier options, `singleQuote`, `semi`, `useTabs` and the rest. A part that does not parse is left as it is, so is `<pre>`, an expression over several lines in an attribute and a `{@debug}` tag.
+The formatting follows your Prettier options, `useTabs`, `singleQuote`, `bracketSameLine`, `singleAttributePerLine`, `proseWrap` and the rest. With `proseWrap` set to `always` a paragraph fills the line and with `never` it takes one line, a line end that keeps text from reading as a link, a list or a directive stays. Emphasis stays as PFM writes it, `_` for emphasis and `*` for strong. A table that merges cells with `||`, `|>` or `|^` is kept as written. A part that does not parse is left as it is, so is the content of a `<pre>` and a `{@debug}` tag.
 
 ## Frontmatter
 
