@@ -14,7 +14,11 @@ import {
 	SourceError,
 } from 'mdsvex/compile';
 import { source_math } from 'mdsvex/math';
-import type { CompileOptions, CompileResult, TemplateEntry } from 'mdsvex/compile';
+import type {
+	CompileOptions,
+	CompileResult,
+	TemplateEntry,
+} from 'mdsvex/compile';
 import { PFMParser } from '@mdsvex/parse';
 import type { SyntaxOptions } from '@mdsvex/parse';
 import { TreeBuilder } from '@mdsvex/parse/tree-builder';
@@ -134,6 +138,14 @@ const PROP: CodeInformation = {
 	navigation: true,
 };
 const NONE: CodeInformation = {};
+// the codes for a prop the component does not declare, which markdown passes as html would
+const UNKNOWN_PROP = new Set([2353, 2561]);
+/** a prop markdown gives a replacement, its type is checked and not its name */
+const MARKDOWN_PROP: CodeInformation = {
+	verification: {
+		shouldReport: (_source, code) => !UNKNOWN_PROP.has(Number(code)),
+	},
+};
 
 function editor_data(caps: CodeInformation): EditorMappingData {
 	return { ...caps, nodeIndex: -1, role: 'content', editor: true };
@@ -735,6 +747,142 @@ function directive_args(source: string, start: number, end: number): Arg[] {
 	return args;
 }
 
+/** the end of the tag that opens at from, past quoted and braced values */
+function tag_end(code: string, from: number): number {
+	let depth = 0;
+	for (let i = from; i < code.length; i++) {
+		const c = code[i];
+		if (c === '"' || c === "'" || c === '`') {
+			const close = code.indexOf(c, i + 1);
+			if (close < 0) return code.length;
+			i = close;
+		} else if (c === '{') depth++;
+		else if (c === '}') depth--;
+		else if (c === '>' && depth === 0) return i;
+	}
+	return code.length;
+}
+
+/** the end of the bracketed text whose opener is at start, -1 without one before end */
+function closing(
+	source: string,
+	start: number,
+	end: number,
+	open: string,
+	close: string
+): number {
+	let depth = 0;
+	for (let i = start; i < end; i++) {
+		const c = source[i];
+		if (c === '\\') i++;
+		else if (c === open) depth++;
+		else if (c === close && --depth === 0) return i;
+	}
+	return -1;
+}
+
+interface InlineLink {
+	label: KeyRange;
+	destination: KeyRange | null;
+	title: KeyRange | null;
+}
+
+/** the parts of an inline link or image from start, null for a reference */
+function inline_link(
+	source: string,
+	start: number,
+	end: number
+): InlineLink | null {
+	let i = source[start] === '!' ? start + 1 : start;
+	if (source[i] !== '[') return null;
+	const label_end = closing(source, i, end, '[', ']');
+	if (label_end < 0 || source[label_end + 1] !== '(') return null;
+	const link: InlineLink = {
+		label: { start: i + 1, end: label_end },
+		destination: null,
+		title: null,
+	};
+	const close = closing(source, label_end + 1, end, '(', ')');
+	if (close < 0) return link;
+	i = label_end + 2;
+	while (i < close && /\s/.test(source[i])) i++;
+	if (source[i] === '<') {
+		const d = source.indexOf('>', i);
+		if (d < 0 || d > close) return link;
+		link.destination = { start: i + 1, end: d };
+		i = d + 1;
+	} else {
+		const d = i;
+		let depth = 0;
+		for (; i < close; i++) {
+			const c = source[i];
+			if (c === '\\') i++;
+			else if (/\s/.test(c)) break;
+			else if (c === '(') depth++;
+			else if (c === ')' && --depth < 0) break;
+		}
+		if (i > d) link.destination = { start: d, end: i };
+	}
+	while (i < close && /\s/.test(source[i])) i++;
+	const q = source[i];
+	const title_end =
+		q === '('
+			? closing(source, i, close + 1, '(', ')')
+			: source.indexOf(q, i + 1);
+	if (
+		(q === '"' || q === "'" || q === '(') &&
+		title_end > i &&
+		title_end <= close
+	)
+		link.title = { start: i + 1, end: title_end };
+	return link;
+}
+
+/**
+ * the props markdown wrote on a replaced element, each name mapped to the
+ * markdown that makes it so a value the component does not take is reported
+ */
+function markdown_props(
+	source: string,
+	code: string,
+	nodes: NodeMappings,
+	local_length: number,
+	anchor: KeyRange | null
+): Mapping<MappingData>[] {
+	const node = nodes.node!;
+	const ns = node.sourceOffsets[0];
+	const whole = trimmed(source, ns, ns + node.lengths[0]);
+	const [g] = generated_range(node);
+	const from = g + 1 + local_length;
+	const attributes = code.slice(from, tag_end(code, from));
+	// an image or a link, a reference has its destination elsewhere so the whole of it stands in
+	const linked = source[ns] === '!' || source[ns] === '[';
+	const link = linked ? inline_link(source, ns, ns + node.lengths[0]) : null;
+	const out: Mapping<MappingData>[] = [];
+	for (const part of attribute_parts(attributes)) {
+		if (!part.name) continue;
+		const name = attributes.slice(part.start, part.end);
+		let at: KeyRange | null = linked ? whole : anchor;
+		if (link !== null) {
+			if (name === 'src' || name === 'href') at = link.destination ?? at;
+			else if (name === 'alt') at = link.label;
+			else if (name === 'title') at = link.title ?? at;
+		}
+		if (at === null || at.end <= at.start) at = whole;
+		if (at === null) continue;
+		out.push(
+			mapping(
+				at.start,
+				at.end - at.start,
+				from + part.start,
+				name.length,
+				MARKDOWN_PROP
+			)
+		);
+	}
+	return out;
+}
+
 const ATTRIBUTE_NAME: CodeInformation = {
 	completion: true,
 	semantic: true,
@@ -897,7 +1045,15 @@ export function pfmToSvelte(
 					)
 				);
 			}
-			if (!local!.includes('_MDSVEX_D_') || nodes.open === undefined) continue;
+			if (!local!.includes('_MDSVEX_D_')) {
+				// markdown wrote its attributes, html the author wrote maps them itself
+				if (!typed.has(nodes.node.data.nodeIndex))
+					mappings.push(
+						...markdown_props(source, original, nodes, local!.length, anchor)
+					);
+				continue;
+			}
+			if (nodes.open === undefined) continue;
 			// directive args are props the author wrote, so they are checked
 			const [open_start, open_end] = generated_range(nodes.open);
 			const tag_end = original.indexOf('>', open_start);

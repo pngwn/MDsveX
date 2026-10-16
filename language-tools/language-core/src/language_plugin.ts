@@ -139,7 +139,10 @@ function merge_capabilities(
 ): CodeInformation & { editor?: true } {
 	if (!a.editor) return { ...b, format: false };
 	const out: CodeInformation & { editor?: true } = { editor: true };
-	if (a.verification && b.verification) out.verification = b.verification;
+	// a check the converter narrowed keeps its own filter
+	if (a.verification && b.verification)
+		out.verification =
+			typeof a.verification === 'object' ? a.verification : b.verification;
 	if (a.completion && b.completion) out.completion = b.completion;
 	if (a.semantic && b.semantic) out.semantic = b.semantic;
 	if (a.navigation && b.navigation) out.navigation = b.navigation;
@@ -200,8 +203,15 @@ function create_virtual_code_from_source(
 		navigation: true,
 		structure: true,
 	};
+	const markdown_props: typeof svelte.mappings = [];
 	const filtered_mappings = svelte.mappings
 		.filter((m) => (m.data as any).role !== 'node' && m.lengths[0] > 0)
+		.filter((m) => {
+			// svelte2tsx splits the key of a prop markdown makes, so it is not composed piece by piece
+			if (typeof m.data.verification !== 'object') return true;
+			markdown_props.push(m);
+			return false;
+		})
 		// mappings read through accessors, so a spread would drop the arrays
 		.map((m) => ({
 			sourceOffsets: m.sourceOffsets,
@@ -221,6 +231,19 @@ function create_virtual_code_from_source(
 		svelte_to_ts_mappings,
 		merge_capabilities
 	).filter((m) => !is_empty(m.data));
+	for (const m of markdown_props) {
+		const g = m.generatedOffsets[0];
+		const length = m.generatedLengths ? m.generatedLengths[0] : m.lengths[0];
+		const range = generated_span(svelte_to_ts_mappings, g, g + length);
+		if (range === null) continue;
+		pfm_to_ts.push({
+			sourceOffsets: [m.sourceOffsets[0]],
+			generatedOffsets: [range[0]],
+			lengths: [m.lengths[0]],
+			generatedLengths: [range[1] - range[0]],
+			data: editor_caps(m.data as EditorMappingData),
+		});
+	}
 
 	// Step 5b: Merge single-char non-identity mappings into adjacent
 	// neighbors.  svelte2tsx splits attribute names at the first character
@@ -311,6 +334,11 @@ function create_virtual_code_from_source(
 		let write = 0;
 		for (let read = 0; read < pfm_to_ts.length; read++) {
 			const m = pfm_to_ts[read];
+			// a prop markdown makes shares its markdown with the others of the element
+			if (typeof m.data.verification === 'object') {
+				pfm_to_ts[write++] = m;
+				continue;
+			}
 			// a frontmatter key maps once to hover and once to check
 			const key =
 				m.sourceOffsets[0] + ':' + m.lengths[0] + ':' + caps_key(m.data);
@@ -417,11 +445,31 @@ function create_virtual_code_from_source(
 	};
 }
 
+/** the generated span of the mappings that overlap start to end, null for none */
+function generated_span(
+	mappings: ReturnType<typeof v3ToVolarMappings>,
+	start: number,
+	end: number
+): [number, number] | null {
+	let from = Infinity;
+	let to = -Infinity;
+	for (const m of mappings) {
+		const s = m.sourceOffsets[0];
+		const e = s + m.lengths[0];
+		if (s >= end || e <= start) continue;
+		const g = m.generatedOffsets[0];
+		const length = m.generatedLengths ? m.generatedLengths[0] : m.lengths[0];
+		from = Math.min(from, g + Math.min(Math.max(start - s, 0), length));
+		to = Math.max(to, g + Math.min(Math.min(end, e) - s, length));
+	}
+	return to > from ? [from, to] : null;
+}
+
 function editor_caps(
 	data: EditorMappingData
 ): CodeInformation & { editor: true } {
 	const out: CodeInformation & { editor: true } = { editor: true };
-	if (data.verification) out.verification = true;
+	if (data.verification) out.verification = data.verification;
 	if (data.completion) out.completion = true;
 	if (data.semantic) out.semantic = true;
 	if (data.navigation) out.navigation = true;

@@ -483,3 +483,104 @@ describe("an image the build imports", () => {
 		}
 	});
 });
+
+describe("the props markdown gives a replacement", () => {
+	const MODULE = [
+		"export { default as img } from './Picture.svelte';",
+		"export { default as h2 } from './H.svelte';",
+		"export { default as a } from './A.svelte';",
+		"",
+	].join("\n");
+
+	function check(props: { img: string; h2: string; a: string }, doc: string) {
+		const p = project({
+			"src/lib/Picture.svelte": svelte(props.img),
+			"src/lib/H.svelte": svelte(props.h2),
+			"src/lib/A.svelte": svelte(props.a),
+			"src/lib/m.ts": MODULE,
+			"src/enhanced.d.ts": [
+				"declare module '*?enhanced' {",
+				"\tconst picture: { img: { src: string } };",
+				"\texport default picture;",
+				"}",
+				"",
+			].join("\n"),
+			"mdsvex.config.json": JSON.stringify({ components: "./src/lib/m.ts" }),
+			"src/doc.svx": doc,
+		});
+		try {
+			return p.diagnostics("src/doc.svx").map((d) => [d.code, d.text]);
+		} finally {
+			p.dispose();
+		}
+	}
+
+	const FIT = {
+		img: "src: string; alt: string; title?: string",
+		h2: "level: number; id?: string; children: Snippet",
+		a: "href: string; title?: string; children: Snippet",
+	};
+
+	it("reports none when the props fit", () => {
+		expect(
+			check(FIT, '![A chart](/chart.png "Big")\n\n## Two\n\n[l](/x "t")\n'),
+		).toEqual([]);
+	});
+
+	it("reports a prop that does not fit at the markdown that makes it", () => {
+		const props = {
+			img: "src: number; alt: string",
+			h2: "level: string; children: Snippet",
+			a: "href: number; children: Snippet",
+		};
+		expect(check(props, "![A chart](/chart.png)\n\n## Two\n\n[l](/x)\n")).toEqual([
+			[2322, "/chart.png"],
+			[2322, "##"],
+			[2322, "/x"],
+		]);
+	});
+
+	it("reports the alt and title of an image and the title of a link at their text", () => {
+		const props = {
+			...FIT,
+			img: "src: string; alt: number; title?: number",
+			a: "href: string; title?: number; children: Snippet",
+		};
+		expect(
+			check(props, '![A chart](/chart.png "Big")\n\n[l](</a b> (t))\n'),
+		).toEqual([
+			[2322, "A chart"],
+			[2322, "Big"],
+			[2322, "t"],
+		]);
+	});
+
+	it("reports a reference link or image as a whole, its destination is in the definition", () => {
+		const props = {
+			...FIT,
+			img: "src: number; alt: string",
+			a: "href: number; children: Snippet",
+		};
+		expect(check(props, "[ref]: /x\n\n[l][ref] and ![A][ref]\n")).toEqual([
+			[2322, "[l][ref]"],
+			[2322, "![A][ref]"],
+		]);
+	});
+
+	it("reports no prop the replacement does not declare, as for html it replaces", () => {
+		const props = {
+			img: "src: string",
+			h2: "children: Snippet",
+			a: "href: string; children: Snippet",
+		};
+		expect(
+			check(props, '![A chart](/chart.png "Big")\n\n## Two\n\n[l](/x "t")\n'),
+		).toEqual([]);
+	});
+
+	it("reports an imported image whose module the replacement does not take", () => {
+		expect(
+			check(FIT, "![A chart](./chart.png?enhanced)\n\n![Kept](/kept.png)\n"),
+		).toEqual([[2322, "./chart.png?enhanced"]]);
+	});
+});
