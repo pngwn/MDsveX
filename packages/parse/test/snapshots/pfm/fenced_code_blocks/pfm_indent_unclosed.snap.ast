@@ -1,0 +1,2 @@
+root
+  code_fence info="js" "let x = 1;\n  x++;\n"

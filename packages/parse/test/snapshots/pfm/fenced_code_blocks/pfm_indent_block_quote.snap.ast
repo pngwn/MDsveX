@@ -1,0 +1,4 @@
+root
+  block_quote
+    code_fence info="js" "let x = 1;\n  x++;"
+  line_break

@@ -1196,6 +1196,46 @@ describe('feeds skipped while a fence or raw text block waits for its close', ()
 	});
 });
 
+describe('an indented fence matches batch however it is fed', () => {
+	const body = (n: number, f: (i: number) => string) =>
+		Array.from({ length: n }, (_, i) => f(i)).join('\n') + '\n';
+	fed_cases([
+		['at the root', '  ```js\n  let x\n    y\n z\n\t\tw\n  ```\nafter\n'],
+		['in an element', '<div>\n  ```js\n  let x\n    y\n  ```\n</div>\n'],
+		['in a branch', '{#if a}\n    ```\n    x\n      y\n    ```\n{/if}\n'],
+		['in a directive', ':::note[]\n  ```\n  x\n    y\n  ```\n:::\n'],
+		['in a list item', '- a\n\n    ```\n    x\n      y\n    ```\n'],
+		['in a block quote', '>   ```\n>   x\n>     y\n>   ```\n'],
+		['unclosed', '  ```\n  x\n    y\n'],
+	]);
+	// longer than a trim gap, so a feed would trim lines the indent comes off
+	const long: [string, string][] = [
+		[
+			'root',
+			'  ```js\n' + body(200, (i) => `    const x${i} = ${i};`) + '  ```\n',
+		],
+		[
+			'element',
+			'<div>\n  ```\n' + body(200, (i) => `  c ${i}`) + '  ```\n</div>\n',
+		],
+		[
+			'list item',
+			'- a\n\n    ```\n' + body(200, (i) => `      c ${i}`) + '    ```\n',
+		],
+		['unclosed', '  ```\n' + body(200, (i) => `    c ${i}`)],
+	];
+	for (const [name, source] of long) {
+		const batch = parse_batch(source);
+		for (const size of [1, 7, 64, 333]) {
+			it(`long ${name} chunk ${size}`, () => {
+				const incr = parse_incremental(source, size);
+				expect(tree_diff(batch, incr, source)).toEqual([]);
+				expect(print_ast(incr, source)).toBe(print_ast(batch, source));
+			});
+		}
+	}
+});
+
 describe('a tag at the start of a line matches batch however it is fed', () => {
 	fed_cases([
 		['backtick in an element before a block', '<b>`</b>\n---\n'],

@@ -32,6 +32,8 @@ let x;
 
 -> one fence with the info `md` whose code is the lines ` ```js ` and `let x;`.
 
+The indent of an opening fence, past where its container's content starts, is not code. As in CommonMark, each line of its code loses up to as many columns of leading whitespace, a tab counting as the tab size, so a fence indented as a whole, at the top of a document or inside an HTML element, a Svelte block or a directive, holds the same code as it does unindented. A line indented less loses what it has.
+
 **Link references**, Shorthand references must be explicit. `[ref]` alone is ambiguous (is it a link or plain text?). Required form:
 
 ```markdown

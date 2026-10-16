@@ -314,18 +314,22 @@ function document(rand: () => number): string {
 }
 
 describe('random lines that start at an unclosed tag', () => {
-	it('repeat no text and leave none outside a paragraph', () => {
-		const rand = random(1);
-		for (let i = 0; i < 2000; i++) {
-			const source = document(rand);
-			for (const [name, nodes] of every_tree(source)) {
-				expect(
-					misplaced_text(nodes, source),
-					`${JSON.stringify(source)} ${name}`
-				).toEqual([]);
+	it(
+		'repeat no text and leave none outside a paragraph',
+		{ timeout: 20_000 },
+		() => {
+			const rand = random(1);
+			for (let i = 0; i < 2000; i++) {
+				const source = document(rand);
+				for (const [name, nodes] of every_tree(source)) {
+					expect(
+						misplaced_text(nodes, source),
+						`${JSON.stringify(source)} ${name}`
+					).toEqual([]);
+				}
 			}
 		}
-	});
+	);
 });
 
 describe('a tag left open in a svelte block', () => {

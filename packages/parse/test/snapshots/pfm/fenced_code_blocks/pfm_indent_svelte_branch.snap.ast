@@ -1,0 +1,9 @@
+root
+  svelte_block tag="if"
+    svelte_branch tag="if" "open"
+      line_break
+      code_fence info="js" "let x = 1;\n  x++;"
+    svelte_branch tag="else"
+      line_break
+      code_fence "closed"
+  line_break
