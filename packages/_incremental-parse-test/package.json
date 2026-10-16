@@ -17,6 +17,7 @@
 	},
 	"dependencies": {
 		"@mdsvex/parse": "workspace:*",
+		"@mdsvex/plugin-citations": "workspace:*",
 		"@mdsvex/plugin-toc": "workspace:*",
 		"@mdsvex/render": "workspace:*",
 		"lucide-svelte": "^1.0.1",

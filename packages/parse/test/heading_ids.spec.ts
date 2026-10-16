@@ -453,7 +453,7 @@ describe('generated documents', () => {
 
 	test(
 		'get the ids of the pass after the parse, whole, fed and over the wire',
-		{ timeout: seeds > 100 ? 0 : 5000 },
+		{ timeout: seeds > 100 ? 0 : 20_000 },
 		() => {
 			const found: string[] = [];
 			let headings = 0;

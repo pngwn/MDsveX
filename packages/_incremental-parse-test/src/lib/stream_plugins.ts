@@ -1,12 +1,14 @@
-import type { DirectiveTable, ParsePlugin } from '@mdsvex/parse';
+import type { DirectiveTable, ParsePlugin, PluginDocument } from '@mdsvex/parse';
+import { citations } from '@mdsvex/plugin-citations';
 import { toc } from '@mdsvex/plugin-toc';
-import { DEFINITIONS } from './stream_docs';
+import { DEFINITIONS, REFS } from './stream_docs';
 
-export type StreamDemo = 'toc' | 'deferred';
+export type StreamDemo = 'toc' | 'deferred' | 'citations';
 
 export interface StreamPlugins {
 	plugins: ParsePlugin[];
 	directive_handlers: DirectiveTable[];
+	document?: PluginDocument;
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -50,8 +52,28 @@ function lookup_plugins(): StreamPlugins {
 	};
 }
 
+/**
+ * the citations plugin, its bibliography file arrives after a delay, as a
+ * fetch would, every citation shows its key until then
+ */
+function citations_plugins(): StreamPlugins {
+	const bundle = citations({ bibliography: '/refs.json' });
+	return {
+		plugins: [{ name: bundle.name, ...bundle.parse! }],
+		directive_handlers: [{ name: bundle.name, directives: bundle.directives! }],
+		document: {
+			filename: '/citations.svx',
+			read: async () => {
+				await sleep(1200);
+				return REFS;
+			}
+		}
+	};
+}
+
 export function stream_plugins(demo: StreamDemo): StreamPlugins {
 	if (demo === 'toc') return toc_plugins();
+	if (demo === 'citations') return citations_plugins();
 	const { plugins, directive_handlers } = lookup_plugins();
 	const contents = toc_plugins();
 	return {

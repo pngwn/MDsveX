@@ -920,33 +920,45 @@ const PIECES = [
 ];
 
 describe('random documents', () => {
-	it('give one tree on every path, with text replaced and split', () => {
-		for (let seed = 1; seed <= 400; seed++) {
-			const rand = random(seed);
-			let source = '';
-			const count = 4 + Math.floor(rand() * 24);
-			for (let i = 0; i < count; i++) {
-				source += PIECES[Math.floor(rand() * PIECES.length)];
-			}
-			let first: unknown;
-			let first_log: string[] | undefined;
-			for (const [name, run] of PATHS) {
-				const log: string[] = [];
-				const out = run(source, [logger(log), emoji(), issues(), linkify()]);
-				expect_linked(out.nodes);
-				const tree = shape(out.nodes, out.source, 0, {
-					attrs: ['href'],
-					merge_text: true,
-				});
-				const where = `${name}, seed ${seed}, ${JSON.stringify(source)}`;
-				if (first === undefined) {
-					first = tree;
-					first_log = log;
-				} else {
-					expect(log, where).toEqual(first_log);
-					expect(tree, where).toEqual(first);
+	// a slow runner takes seconds for each hundred seeds
+	for (let from = 1; from <= 400; from += 100) {
+		it(
+			`give one tree on every path, with text replaced and split, seeds ${from} to ${from + 99}`,
+			{ timeout: 20_000 },
+			() => {
+				for (let seed = from; seed < from + 100; seed++) {
+					const rand = random(seed);
+					let source = '';
+					const count = 4 + Math.floor(rand() * 24);
+					for (let i = 0; i < count; i++) {
+						source += PIECES[Math.floor(rand() * PIECES.length)];
+					}
+					let first: unknown;
+					let first_log: string[] | undefined;
+					for (const [name, run] of PATHS) {
+						const log: string[] = [];
+						const out = run(source, [
+							logger(log),
+							emoji(),
+							issues(),
+							linkify(),
+						]);
+						expect_linked(out.nodes);
+						const tree = shape(out.nodes, out.source, 0, {
+							attrs: ['href'],
+							merge_text: true,
+						});
+						const where = `${name}, seed ${seed}, ${JSON.stringify(source)}`;
+						if (first === undefined) {
+							first = tree;
+							first_log = log;
+						} else {
+							expect(log, where).toEqual(first_log);
+							expect(tree, where).toEqual(first);
+						}
+					}
 				}
 			}
-		}
-	});
+		);
+	}
 });

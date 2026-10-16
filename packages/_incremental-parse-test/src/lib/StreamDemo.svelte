@@ -7,13 +7,15 @@
 	import { PluginStream } from "@mdsvex/render/stream";
 	import Node from "@mdsvex/render/Node.svelte";
 	import Toc from "@mdsvex/plugin-toc/Toc.svelte";
+	import { bibliography, cite } from "@mdsvex/plugin-citations/directives";
+	import Bibliography from "@mdsvex/plugin-citations/Bibliography.svelte";
 	import Lookup from "$lib/components/Lookup.svelte";
 	import { stream_plugins } from "$lib/stream_plugins";
 	import type { StreamDemo } from "$lib/stream_plugins";
 
 	let { markdown, demo }: { markdown: string; demo: StreamDemo } = $props();
 
-	const directives = { toc: Toc, lookup: Lookup };
+	const directives = { toc: Toc, lookup: Lookup, cite, bibliography };
 
 	// raw, a proxy would hide the private fields of the stream
 	let stream = $state.raw<PluginStream | null>(null);
@@ -113,6 +115,15 @@
 	const entries = $derived(
 		(data.current?.toc?.headings as unknown[] | undefined)?.length ?? 0
 	);
+
+	const cited = $derived(
+		(data.current?.citations?.cited as unknown[] | undefined)?.length ?? 0
+	);
+
+	const loaded = $derived(
+		Object.keys(data.current?.citations ?? {}).filter((key) => key.startsWith("entry:"))
+			.length
+	);
 </script>
 
 <div class="stream">
@@ -146,7 +157,12 @@
 			</select>
 		</label>
 		<span class="badge" data-testid="fed">{fed}/{markdown.length}</span>
-		<span class="badge" data-testid="entries">{entries} entries</span>
+		{#if demo === "citations"}
+			<span class="badge" data-testid="cited">{cited} cited</span>
+			<span class="badge" data-testid="loaded">{loaded} entries</span>
+		{:else}
+			<span class="badge" data-testid="entries">{entries} entries</span>
+		{/if}
 		{#if demo === "deferred"}
 			<span class="badge" data-testid="looked-up">{looked_up} looked up</span>
 		{/if}
@@ -170,8 +186,13 @@
 			{/if}
 		</article>
 		<aside class="side" data-testid="side">
-			<div class="panel-header">Table of contents, live</div>
-			<Toc aria-label="Live table of contents" />
+			{#if demo === "citations"}
+				<div class="panel-header">Bibliography, live</div>
+				<Bibliography aria-label="Live bibliography" />
+			{:else}
+				<div class="panel-header">Table of contents, live</div>
+				<Toc aria-label="Live table of contents" />
+			{/if}
 		</aside>
 	</div>
 </div>
@@ -233,7 +254,8 @@
 		color: var(--text-tertiary);
 		border-bottom: 1px solid var(--border);
 	}
-	.side :global(nav) {
+	.side :global(nav),
+	.side :global(.bibliography) {
 		padding: 0.5rem 0.75rem;
 	}
 </style>

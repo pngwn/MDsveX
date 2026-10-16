@@ -487,11 +487,10 @@ describe('the ::bibliography directive', () => {
 		);
 	});
 
-	test('with nothing cited it gets no data', async () => {
-		const { code } = await run(HEAD + '::bibliography\n');
-		expect(code).toContain(
-			'<Bibliography_MDSVEX_D_G data={"{}"} style="numeric" />'
-		);
+	test('with nothing cited it gets no data, and the document none to read', async () => {
+		const { code, data } = await run(HEAD + '::bibliography\n');
+		expect(data).toBeUndefined();
+		expect(code).toContain('<Bibliography_MDSVEX_D_G style="numeric" />');
 	});
 
 	test('a second one is reported and lists nothing', async () => {
@@ -813,6 +812,52 @@ describe('every parser path', () => {
 				'lovelace1843',
 			]);
 			expect(labels_of(found.args), source).toEqual(['cite-1:1', 'cite-2:2']);
+		}
+	});
+
+	test('a list reads the context until the document hook, a later one lists nothing at once', async () => {
+		const source =
+			':cite[turing1936]\n\n::bibliography(class=a)\n\n:::note\n::bibliography\n:::\n';
+		const bundle = citations();
+		for (const [name, path] of PATHS) {
+			const { dispatcher, nodes } = path(source, {
+				plugins: [{ name: bundle.name, ...bundle.parse! }],
+				directive_handlers: [
+					{ name: bundle.name, directives: bundle.directives! },
+				],
+				document: {
+					filename: '/site/doc.svx',
+					frontmatter: () => ({ bibliography: './refs.json' }),
+					read,
+				},
+			});
+			const lists = () => {
+				const found: unknown[] = [];
+				const walk = (at: number) => {
+					for (
+						let c = nodes.first_child_at(at);
+						c !== NONE;
+						c = nodes.next_at(c)
+					) {
+						const meta = nodes.metadata_at(c) as
+							| { name?: string; args?: Record<string, string> }
+							| undefined;
+						if (meta?.name === 'bibliography') found.push(meta.args);
+						walk(c);
+					}
+				};
+				walk(0);
+				return found;
+			};
+			expect(lists(), name).toEqual([
+				{ class: 'a', style: 'numeric' },
+				{ data: '{}', style: 'numeric' },
+			]);
+			await dispatcher!.finish(nodes);
+			const [first, second] = lists() as Record<string, string>[];
+			expect(Object.keys(first), name).toEqual(['class', 'data', 'style']);
+			expect(JSON.parse(first.data).cited, name).toEqual(['turing1936']);
+			expect(second, name).toEqual({ data: '{}', style: 'numeric' });
 		}
 	});
 
