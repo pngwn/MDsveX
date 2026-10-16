@@ -405,10 +405,15 @@ function escape_fence_text(c: Cursor): string {
 	return text === undefined ? escape_code_text(c) : escape_code(text);
 }
 
-/** equals escape_code of held_text, reading source slices through the escape index */
+/** equals escape_code of c.text, reading source slices through the escape index */
 function escape_code_text(c: Cursor): string {
-	if (holds(c)) return escape_code(buf_code(c.buffer, c.index, c.source));
 	return escape_text_at(c, c.index, c.value_start, c.value_end, true);
+}
+
+/** equals escape_code of the held_text of a code span */
+function escape_span_text(c: Cursor): string {
+	if (holds(c)) return escape_code(buf_code(c.buffer, c.index, c.source));
+	return escape_code_text(c);
 }
 
 /** m is the first of & < > " at or after vs */
@@ -1575,7 +1580,7 @@ function render_node(c: Cursor, sink?: MapSink): void {
 			const pre = mo.length;
 			_open(c, '<code', '<code>', '>');
 			const ao = mo.length;
-			let code = escape_code_text(c);
+			let code = escape_span_text(c);
 			if (string_index_of.call(code, '\n') !== -1)
 				code = code.replace(/\n/g, ' ');
 			if (sink) content_record(sink, c, code, Code.CODE_CONTENT);
@@ -2526,7 +2531,7 @@ function fold_node(c: Cursor, p: number): number {
 					return fold_hl(p, hl_span_head(c, h), h.body, hl_span_tail(h));
 			}
 			p = fold_open(c, p, S_CODE, S_CODE_OPEN, S_GT);
-			const code = escape_code_text(c);
+			const code = escape_span_text(c);
 			p = push_dyn(
 				p,
 				code.indexOf('\n') === -1 ? code : code.replace(/\n/g, ' ')
@@ -3144,7 +3149,7 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			}
 			const pre = mo.length + FOLD_LEN[p];
 			p = tr_open(c, p, S_CODE, S_CODE_OPEN, S_GT);
-			let code = escape_code_text(c);
+			let code = escape_span_text(c);
 			if (string_index_of.call(code, '\n') !== -1)
 				code = code.replace(/\n/g, ' ');
 			tr_text(c, sink, p, code);
@@ -3653,7 +3658,7 @@ function mp_node(c: Cursor, sink: MapSink, p: number): number {
 			const pre = mo.length + FOLD_LEN[p];
 			p = tr_open(c, p, S_CODE, S_CODE_OPEN, S_GT);
 			const ao = mo.length + FOLD_LEN[p];
-			let code = escape_code_text(c);
+			let code = escape_span_text(c);
 			if (string_index_of.call(code, '\n') !== -1)
 				code = code.replace(/\n/g, ' ');
 			tr_content(c, sink, p, code, Code.CODE_CONTENT);
@@ -4740,7 +4745,7 @@ function comp_node(
 			}
 			p = cm_put(p, open + _attrs(c) + '>');
 			const ao = mo.length;
-			let code = escape_code_text(c);
+			let code = escape_span_text(c);
 			if (string_index_of.call(code, '\n') !== -1)
 				code = code.replace(/\n/g, ' ');
 			p = cm_text(c, sink, p, code);
