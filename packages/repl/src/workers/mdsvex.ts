@@ -19,19 +19,22 @@ import {
 } from 'mdsvex/highlight';
 import { load_math, source_math, type MathRenderer } from 'mdsvex/math';
 import {
+	CONFIG_FILE,
 	COMPONENTS_ID,
 	DIRECTIVES_EXPORT,
-	DIRECTIVES_ID,
-	PLUGIN_ID,
-	TEMPLATE_DIRECTIVES_ID,
 	TEMPLATE_ID,
 	read_exports,
+	read_json_config,
+	type ConfigHost,
+	type JsonConfig,
+	type ManifestModule,
+	type MdsvexManifest,
 	type ScannedExports,
 } from 'mdsvex/host';
 import { mappings_to_v3, type SourceMapV3 } from '@mdsvex/render/sourcemap';
 import { strip_types } from './typescript_strip_types';
 
-export const CONFIG_FILE = 'mdsvex.config.json';
+export { CONFIG_FILE };
 
 const DEFAULT_EXTENSIONS = ['.svx', '.md'];
 
@@ -64,28 +67,10 @@ export interface ReplHighlight {
 	render?: RenderOptions;
 }
 
-/** the shape of mdsvex.config.json, mirroring the vite plugin options */
-export interface ReplConfig {
-	extensions?: string[];
-	templates?: Record<
-		string,
-		string | { component: string; components?: string }
-	>;
-	components?: string;
-	component_mode?: ComponentMode;
+/** the shape of mdsvex.config.json, its highlight takes the options json can hold */
+export type ReplConfig = Omit<JsonConfig, 'highlight'> & {
 	highlight?: ReplHighlight | false;
-	unwrap_images?: boolean;
-	/**
-	 * the directives of each entry of the plugins option, json can not hold
-	 * its handlers, so only the names and the module that exports them
-	 */
-	plugins?: { name?: string; module: string; directives: string[] }[];
-	/** json holds no slug function, so only the default slug */
-	heading_ids?: boolean;
-	/** as the vite plugin takes it, true, false or the kinds and the four quote strings */
-	smart_punctuation?: SmartPunctuation;
-	math?: ReplMath | false;
-}
+};
 
 /** the vite plugin math options json can hold, only temml is bundled, katex math shows its latex */
 export interface ReplMath {
@@ -94,6 +79,8 @@ export interface ReplMath {
 }
 
 interface TemplateTarget {
+	/** the virtual id documents import it by */
+	id: string;
 	/** the workspace file, or null when the specifier points outside it */
 	file: string | null;
 	specifier: string;
@@ -166,12 +153,89 @@ function empty_config(): ResolvedConfig {
 	};
 }
 
+/** the workspace as the shared config reader sees it, a specifier outside it is left to the bundler */
+function workspace_host(files: FileMap): ConfigHost {
+	return {
+		resolve(spec, importer) {
+			const file =
+				importer === CONFIG_FILE || !spec.startsWith('.')
+					? normalise(spec)
+					: relative_to(importer, spec);
+			if (files.has(file)) return file;
+			if (spec.startsWith('.') || spec.startsWith('/')) return null;
+			// a package specifier, the bundler resolves it and it gets no replacements
+			return spec;
+		},
+		scan(file) {
+			if (!files.has(file)) return { names: [], directives: null };
+			return {
+				names: scan_exports(file, files),
+				directives:
+					exports_of(file, files)?.namespaces.find(
+						(n) => n.name === DIRECTIVES_EXPORT
+					)?.specifier ?? null,
+			};
+		},
+	};
+}
+
+/** a module of the manifest as the bundler finds it */
+function target(m: ManifestModule, files: FileMap): TemplateTarget {
+	return {
+		id: m.id,
+		file: files.has(m.file) ? m.file : null,
+		specifier: m.file,
+		components: m.names,
+		directives: [],
+	};
+}
+
+/** the config the manifest describes, for the bundler and the compile options */
+function from_manifest(
+	config: ResolvedConfig,
+	manifest: MdsvexManifest,
+	files: FileMap
+) {
+	config.extensions = manifest.extensions;
+	config.component_mode = manifest.component_mode;
+	config.unwrap_images = manifest.unwrap_images === true;
+	config.heading_ids = manifest.heading_ids === true;
+	config.smart_punctuation = manifest.smart_punctuation ?? false;
+	const math = manifest.math;
+	config.math =
+		math === false
+			? false
+			: math === undefined
+				? {}
+				: {
+						renderer: math.renderer as ReplMath['renderer'],
+						...(math.options ? { options: math.options } : {}),
+					};
+	for (const [name, t] of Object.entries(manifest.templates)) {
+		const template = target(
+			{ id: t.id, file: t.file, names: t.components },
+			files
+		);
+		if (t.extra !== null)
+			for (const n of t.extra.names)
+				if (!template.components.includes(n)) template.components.push(n);
+		template.directives = t.directives.map((d) => target(d, files));
+		config.templates.set(name, template);
+	}
+	const [components] = manifest.components;
+	if (components !== undefined) {
+		config.components = target(components, files);
+		config.components.directives = manifest.directives.map((d) =>
+			target(d, files)
+		);
+	}
+}
+
 /** does the vite plugin job, reads the config, scans templates for replacement names, builds the compile options */
 export function prepare(files: FileMap): Prepared {
 	const config = empty_config();
 	const raw = files.get(CONFIG_FILE);
 	if (raw === undefined) return { config, options: {}, error: null, files };
-	const plugins: { id: string; target: TemplateTarget }[] = [];
 
 	let parsed: ReplConfig;
 	try {
@@ -185,75 +249,24 @@ export function prepare(files: FileMap): Prepared {
 		};
 	}
 
+	let manifest: MdsvexManifest;
 	try {
-		if (parsed.extensions) {
-			config.extensions = parsed.extensions.map((ext) =>
-				ext.startsWith('.') ? ext : '.' + ext
-			);
-		}
-
-		if (parsed.component_mode) config.component_mode = parsed.component_mode;
-		if (parsed.unwrap_images !== undefined) {
-			if (typeof parsed.unwrap_images !== 'boolean')
-				throw new Error(`${CONFIG_FILE}: unwrap_images must be true or false`);
-			config.unwrap_images = parsed.unwrap_images;
-		}
-		if (parsed.heading_ids !== undefined) {
-			if (typeof parsed.heading_ids !== 'boolean')
-				throw new Error(`${CONFIG_FILE}: heading_ids must be true or false`);
-			config.heading_ids = parsed.heading_ids;
-		}
-		if (parsed.smart_punctuation !== undefined)
-			config.smart_punctuation = check_smart(parsed.smart_punctuation);
-		if (parsed.highlight !== undefined)
-			config.highlight = check_highlight(parsed.highlight);
-		if (parsed.math !== undefined) config.math = check_math(parsed.math);
-
-		for (const [name, entry] of Object.entries(parsed.templates ?? {})) {
-			const { component, components } =
-				typeof entry === 'string'
-					? { component: entry, components: undefined }
-					: entry;
-			const target = target_of(component, files, `templates.${name}`);
-			if (components) {
-				const extra = target_of(
-					components,
-					files,
-					`templates.${name}.components`
-				);
-				for (const n of extra.components) {
-					if (!target.components.includes(n)) target.components.push(n);
-				}
-				target.directives.push(...extra.directives);
+		if (Array.isArray(parsed?.components))
+			throw new Error(`${CONFIG_FILE}: components must name one module`);
+		const read = read_json_config(
+			parsed,
+			CONFIG_FILE,
+			'',
+			workspace_host(files),
+			{
+				extensions: DEFAULT_EXTENSIONS,
 			}
-			config.templates.set(name, target);
-		}
-
-		if (parsed.components) {
-			config.components = target_of(parsed.components, files, 'components');
-		}
-
-		if (parsed.plugins !== undefined) {
-			if (!Array.isArray(parsed.plugins))
-				throw new Error(`${CONFIG_FILE}: plugins must be a list`);
-			parsed.plugins.forEach((plugin, i) => {
-				const key = `plugins[${i}]`;
-				if (
-					typeof plugin?.module !== 'string' ||
-					!Array.isArray(plugin.directives) ||
-					plugin.directives.some((name) => typeof name !== 'string')
-				)
-					throw new Error(
-						`${CONFIG_FILE}: ${key} needs a module and a list of directive names`
-					);
-				const target = target_of(plugin.module, files, `${key}.module`);
-				// the plugin names its directives, the exports of the module are not scanned for them
-				plugins.push({
-					id: PLUGIN_ID + i,
-					target: { ...target, components: plugin.directives, directives: [] },
-				});
-			});
-		}
+		);
+		manifest = read.manifest;
+		from_manifest(config, manifest, files);
+		if (read.errors.length !== 0) throw new Error(read.errors[0]);
+		if (parsed?.highlight !== undefined)
+			config.highlight = check_highlight(parsed.highlight);
 	} catch (e) {
 		return { config, options: {}, error: e as Error, files };
 	}
@@ -274,10 +287,9 @@ export function prepare(files: FileMap): Prepared {
 				components: target.components,
 			};
 			if (target.directives.length === 0) continue;
-			options.templates[name].directives = target.directives.map((d, i) => {
-				const id = `${TEMPLATE_DIRECTIVES_ID}${name}/${i}`;
-				config.directives.set(id, d);
-				return { specifier: id, names: d.components };
+			options.templates[name].directives = target.directives.map((d) => {
+				config.directives.set(d.id, d);
+				return { specifier: d.id, names: d.components };
 			});
 		}
 		if (config.templates.has('default')) options.default_template = 'default';
@@ -289,19 +301,21 @@ export function prepare(files: FileMap): Prepared {
 		];
 		const [directives] = config.components.directives;
 		if (directives) {
-			config.directives.set(DIRECTIVES_ID, directives);
+			config.directives.set(directives.id, directives);
 			options.directives = [
-				{ specifier: DIRECTIVES_ID, names: directives.components },
+				{ specifier: directives.id, names: directives.components },
 			];
 		}
 	}
 
+	const plugins = manifest.plugins ?? [];
 	if (plugins.length !== 0) {
 		// below the directives of the components module, which come later and win a name
 		options.directives = [
-			...plugins.map(({ id, target }) => {
-				config.directives.set(id, target);
-				return { specifier: id, names: target.components };
+			...plugins.map(({ directives }) => {
+				const t = target(directives!, files);
+				config.directives.set(t.id, t);
+				return { specifier: t.id, names: t.components };
 			}),
 			...(options.directives ?? []),
 		];
@@ -337,53 +351,6 @@ function check_highlight(highlight: unknown): ReplHighlight | false {
 		for (const name of annotations) annotation_plugin(name);
 	}
 	return highlight as ReplHighlight;
-}
-
-function check_smart(smart: unknown): SmartPunctuation {
-	if (typeof smart === 'boolean') return smart;
-	if (typeof smart !== 'object' || smart === null || Array.isArray(smart))
-		throw new Error(
-			`${CONFIG_FILE}: smart_punctuation must be true, false or an object`
-		);
-	const { quotes, dashes, ellipses } = smart as Record<string, unknown>;
-	for (const [key, value] of [
-		['dashes', dashes],
-		['ellipses', ellipses],
-	] as const)
-		if (value !== undefined && typeof value !== 'boolean')
-			throw new Error(
-				`${CONFIG_FILE}: smart_punctuation.${key} must be true or false`
-			);
-	if (
-		quotes !== undefined &&
-		typeof quotes !== 'boolean' &&
-		!(
-			Array.isArray(quotes) &&
-			quotes.length === 4 &&
-			quotes.every((q) => typeof q === 'string')
-		)
-	)
-		throw new Error(
-			`${CONFIG_FILE}: smart_punctuation.quotes must be true, false or four strings`
-		);
-	return smart as SmartPunctuation;
-}
-
-function check_math(math: unknown): ReplMath | false {
-	if (math === false) return false;
-	if (typeof math !== 'object' || math === null)
-		throw new Error(`${CONFIG_FILE}: math must be an object or false`);
-	const { renderer, options } = math as ReplMath;
-	if (renderer !== undefined && renderer !== 'temml' && renderer !== 'katex')
-		throw new Error(
-			`${CONFIG_FILE}: math.renderer must be 'temml' or 'katex', it is ${JSON.stringify(renderer)}`
-		);
-	if (
-		options !== undefined &&
-		(typeof options !== 'object' || options === null)
-	)
-		throw new Error(`${CONFIG_FILE}: math.options must be an object`);
-	return math as ReplMath;
 }
 
 /** the built-in annotations by their verb */
@@ -525,35 +492,6 @@ export async function math_for(
 	return math_current.render;
 }
 
-function target_of(
-	specifier: string,
-	files: FileMap,
-	key: string
-): TemplateTarget {
-	const file = normalise(specifier);
-	if (!files.has(file)) {
-		if (specifier.startsWith('.') || specifier.startsWith('/')) {
-			throw new Error(
-				`${CONFIG_FILE}: ${key} points at '${specifier}', which does not exist`
-			);
-		}
-		// a package specifier, the bundler resolves it and it gets no replacements
-		return { file: null, specifier, components: [], directives: [] };
-	}
-	const components = scan_exports(file, files);
-	const at = components.indexOf(DIRECTIVES_EXPORT);
-	if (at < 0) return { file, specifier, components, directives: [] };
-	components.splice(at, 1);
-	const from = directives_source(file, files);
-	if (from === null) {
-		throw new Error(
-			`${file} exports ${DIRECTIVES_EXPORT}, which must be a namespace re-export: export * as ${DIRECTIVES_EXPORT} from './directives.js'`
-		);
-	}
-	const directives = target_of(from, files, `the directives of ${file}`);
-	return { file, specifier, components, directives: [directives] };
-}
-
 /** maps a virtual id from compiled output to a workspace file or a bare specifier */
 export function resolve_virtual(id: string, config: ResolvedConfig) {
 	let target: TemplateTarget | null | undefined;
@@ -589,15 +527,6 @@ function exports_of(name: string, files: FileMap): ScannedExports | null {
 /** the workspace path of from, which is relative to the module name */
 function relative_to(name: string, from: string) {
 	return new URL(from, `file:///${name}`).pathname.slice(1);
-}
-
-/** the module export * as directives from names, as a workspace path, null for none */
-function directives_source(name: string, files: FileMap): string | null {
-	const from = exports_of(name, files)?.namespaces.find(
-		(n) => n.name === DIRECTIVES_EXPORT
-	)?.specifier;
-	if (from === undefined) return null;
-	return from.startsWith('.') ? relative_to(name, from) : from;
 }
 
 /** export names of a module, following star exports through the workspace, without evaluating it */

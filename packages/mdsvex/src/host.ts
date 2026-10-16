@@ -16,6 +16,14 @@ export {
 	TEMPLATE_ID,
 } from './virtual_ids';
 export { data_module, metadata_module, read_metadata } from './query_modules';
+export { CONFIG_FILE, read_json_config } from './json_config';
+export type {
+	ConfigExports,
+	ConfigHost,
+	JsonConfig,
+	JsonConfigOptions,
+	ReadConfig,
+} from './json_config';
 export {
 	MANIFEST_PATH,
 	MANIFEST_VERSION,

@@ -156,7 +156,7 @@ describe('prepare', () => {
 			})
 		);
 		expect(error).toBeNull();
-		expect(resolve_virtual(TEMPLATE_ID + 'default', config)).toEqual({
+		expect(resolve_virtual(TEMPLATE_ID + 'default', config)).toMatchObject({
 			file: null,
 			specifier: '@acme/theme/Layout.svelte',
 			components: [],
@@ -202,7 +202,8 @@ export * as directives from './directives.js';`,
 		expect(options.directives).toEqual([
 			{ specifier: DIRECTIVES_ID, names: ['Callout'] },
 		]);
-		const docs = TEMPLATE_DIRECTIVES_ID + 'default/0';
+		// the id the vite plugin gives the directives of a template
+		const docs = TEMPLATE_DIRECTIVES_ID + 'default';
 		expect(options.templates?.default).toEqual({
 			specifier: TEMPLATE_ID + 'default',
 			components: ['p'],
