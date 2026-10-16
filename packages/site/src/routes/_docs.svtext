@@ -249,6 +249,7 @@ const { code, data } = session.render(parsed, inputs);
 
 - **`parse`** runs the parser and the plugins. The `Parsed` it returns holds the document, its `metadata`, the `data` its plugins wrote so far and `needs`.
 - **`settle`** waits for deferred work and applies it, and returns `undefined` when there was none, so a document without any stays synchronous. A document whose plugins deferred work throws if it renders before.
+- **Read `needs` after `settle`.** Deferred work and a `document` hook can add an image or a fence with `src=`, or change one, and `settle` makes `needs`, `snippets` and `math` again from the settled tree. Only what the inputs of the `parse` turned on is looked for.
 - **`render`** gives what `compile` gives. A `Parsed` renders once.
 - **The session compiles other documents while one waits.** Each `Parsed` holds its own document.
 - **`parsed.dependencies`**, and `dependencies` on the result, are the absolute paths its plugins read or named, for the host to watch. When one changes, call `session.invalidate([path])` before compiling the documents that depend on it again, so what `ctx.cached` kept from it goes.
@@ -814,7 +815,8 @@ const titles = {
 
 - **The task gets a node and a `ctx` of its own** and changes the document through them. Its changes apply once it has finished and the parser is sure of the node. If the parser takes the node back, they are dropped.
 - **A task changes its own node** and what is inside it, and writes data for it. Anything else throws a `TypeError`. So the result does not depend on which task finishes first.
-- **The Vite plugin waits** for deferred work before it renders the document, and so does a `?data` import. With `compile`, use [`compile_async`](docs#compile_async). In dev it warns when a document has waited five seconds, naming the plugin.
+- **The Vite plugin waits** for deferred work before it renders the document, and so does a `?data` import. With `compile`, use [`compile_async`](docs#compile_async). In dev it warns when a document has waited five seconds, naming the plugin and the document.
+- **What a task adds compiles as if it were written.** An image whose `src` a task set is imported, and a fence it adds with `src=` shows its file, and the same goes for a `document` hook.
 
 Work that needs the whole document goes in a `document` hook. It runs once, after the parse and after every deferred task, and gets the root of the tree. It may be async:
 
@@ -1038,7 +1040,7 @@ Set `import_images: false` to leave every url as written:
 mdsvex({ import_images: false });
 ```
 
-`compile()` takes the option too. It is off there by default, because the import only means something to a bundler that takes image files. The editor compiles without it, so a replaced `img` always sees a string `src` there.
+`compile()` takes the option too. It is off there by default, because the import only means something to a bundler that takes image files. The editor reads the option from the manifest the plugin writes, or from `import_images` in an `mdsvex.config.json`, where it is on unless it is `false`. A replaced `img` then gets the type of the import as its `src`, as TypeScript resolves it: `vite/client` declares the common image types and `?url`, `?raw` and `?inline`, and `@sveltejs/enhanced-img` declares `?enhanced`. An import TypeScript can't resolve reports nothing, and its `src` is `any`.
 
 ### `links`
 
@@ -3503,6 +3505,59 @@ const { code, snippets } = compile(source, {
 A `RunError` has a `code` (`run_module`, `run_pre`, `run_lang`, `run_eval` or `run_value`) and a `line` and `column`. A block with `src=` imports its file, so it needs no `snippets`.
 
 The editor shows a block that runs as code, and reports one the build would reject at its fence. It doesn't check the code as a module yet.
+
+## Formatting with Prettier
+
+`@mdsvex/prettier-plugin` formats documents with [Prettier](https://prettier.io):
+
+```bash
+pnpm add --save-dev prettier @mdsvex/prettier-plugin@next
+```
+
+```json
+{
+	"plugins": ["@mdsvex/prettier-plugin"]
+}
+```
+
+Prettier picks the plugin for `.svx` and `.pfm` files from their extension. For another extension in `extensions`, add an override that sets `"parser": "mdsvex"` for it.
+
+The plugin formats the Svelte in a document as [prettier-plugin-svelte](https://github.com/sveltejs/prettier-plugin-svelte) formats a component. A tag that does not fit on a line puts its attributes one to a line, and the children of elements, components and blocks such as `{#if}` are indented, markdown included. The markdown is formatted as Prettier formats markdown: `-` bullets, ordered lists counted from their start, padded and aligned tables, a blank line between blocks, list items lined up with their content and `> ` on every line of a quote. Emphasis stays as PFM writes it, `_` for emphasis and `*` for strong. `proseWrap` works as it does for markdown, `always` fills the line and `never` puts a paragraph on one line.
+
+The code in a document is formatted with your Prettier options:
+
+| part | formatted |
+| --- | --- |
+| frontmatter | as yaml, unless the project parses it with [`frontmatter.parse`](docs#custom-frontmatter-parsers) |
+| imports, `<script>`, `<style>` | as code, TypeScript with `lang="ts"`, scss or less with `lang` |
+| `{expression}`, `{@html}`, `{@render}`, `{@const}` | on one line |
+| the heads of `{#if}`, `{#each}`, `{#await}`, `{#key}`, `{#snippet}` | on one line |
+| attribute expressions | on one line, the tag keeps its line breaks and the order of its attributes |
+| code fences | kept as written, see `mdsvexFormatFences` below |
+
+A part that does not parse is kept as written.
+
+### Plugin options
+
+| option | default | what it does |
+| --- | --- | --- |
+| `mdsvexFormatFences` | `false` | formats a fence whose info string is only a language Prettier knows. A fence with meta, such as a line range, or with an annotation is still kept, as its line numbers count the lines of the code |
+| `mdsvexFrontmatter` | `"auto"` | `"auto"` formats frontmatter as yaml unless the manifest the Vite plugin writes says the project parses it itself, `"yaml"` always formats it and `"keep"` never does |
+
+### Leaving parts alone
+
+```svx
+<!-- prettier-ignore -->
+{items.map((item)=>item.name)}
+
+<!-- prettier-ignore-start -->
+| kept | as  |
+| ---- | --- |
+| it   | is  |
+<!-- prettier-ignore-end -->
+```
+
+`<!-- prettier-ignore -->` keeps the block after it, or the next node when it sits in a paragraph. Everything between `<!-- prettier-ignore-start -->` and `<!-- prettier-ignore-end -->` at the top of a document is kept. `<!-- @format -->` at the top, or after the frontmatter, works with `--require-pragma` and `--insert-pragma`.
 
 ## Without Vite
 

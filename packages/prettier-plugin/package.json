@@ -1,0 +1,58 @@
+{
+	"name": "@mdsvex/prettier-plugin",
+	"version": "0.0.1",
+	"description": "Prettier plugin that formats mdsvex documents",
+	"type": "module",
+	"scripts": {
+		"build": "run-s build:tsc build:vite build:copy-dts",
+		"build:tsc": "tsc",
+		"build:vite": "vite build --config vite.config.build.ts",
+		"build:copy-dts": "shx cp tsc/*.d.ts dist/",
+		"test": "vitest --disableConsoleIntercept",
+		"test:run": "vitest run"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		},
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"dist"
+	],
+	"sideEffects": false,
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pngwn/MDsveX.git",
+		"directory": "packages/prettier-plugin"
+	},
+	"keywords": [
+		"mdsvex",
+		"prettier",
+		"prettier-plugin",
+		"svx",
+		"markdown",
+		"svelte"
+	],
+	"author": "pngwn <hello@pngwn.io>",
+	"license": "MIT",
+	"dependencies": {
+		"@mdsvex/parse": "workspace:^"
+	},
+	"peerDependencies": {
+		"prettier": "^3.0.0"
+	},
+	"devDependencies": {
+		"@sveltejs/acorn-typescript": "^1.0.13",
+		"@types/node": "^22.15.2",
+		"acorn": "^8.18.0",
+		"js-yaml": "^4.1.1",
+		"npm-run-all2": "^7.0.2",
+		"postcss": "^8.5.6",
+		"prettier": "^3.8.1",
+		"prettier-plugin-svelte": "^3.5.1",
+		"shx": "^0.3.4",
+		"svelte": "^5.55.0"
+	}
+}

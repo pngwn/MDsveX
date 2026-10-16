@@ -1239,10 +1239,12 @@ class PluginHost {
 	}
 
 	/** a document that waits for its render, the dispatcher holds what they left until then */
-	wait(parsed: Parsed): void {
+	wait(parsed: Parsed, inputs: CompileInputs): void {
 		parsed._host = this;
 		parsed.data = this.dispatcher.data();
 		parsed.dependencies = this.dispatcher.dependencies();
+		// what settle applies can add images and fences, they are looked for again
+		if (this.pending !== null) parsed._scan = scan_of(inputs);
 	}
 
 	/**
@@ -1278,6 +1280,23 @@ class PluginHost {
 		result.warnings =
 			rendered === undefined ? warnings : warnings.concat(rendered);
 	}
+}
+
+function need_images(parsed: Parsed, images: ImageImports | null): void {
+	if (images === null) return;
+	parsed._images = images;
+	parsed.needs = images.needs;
+}
+
+function need_sources(parsed: Parsed, shown: SourceFences | null): void {
+	if (shown === null) return;
+	parsed._sources = shown;
+	if (shown.math) parsed.math = true;
+	if (shown.snippets !== null) parsed.snippets = shown.snippets;
+	// a document that only runs blocks asks for nothing
+	if (shown.needs.length === 0) return;
+	const needs = parsed.needs;
+	parsed.needs = needs === undefined ? shown.needs : [...needs, ...shown.needs];
 }
 
 /** a Parsed whose plugins deferred work renders once it settled */
@@ -1823,9 +1842,12 @@ export class Parsed {
 	/**
 	 * what the document asks for before it renders, images and then sources,
 	 * each in document order, undefined for nothing, only what the inputs of
-	 * the parse turned on is looked for
+	 * the parse turned on is looked for, complete once settle resolved, as
+	 * what the plugins deferred can add an image or a src=
 	 */
 	needs: readonly Need[] | undefined = undefined;
+	/** @internal what settle looks for again once it applied, null when nothing waits */
+	_scan: Scan | null = null;
 	/** @internal the imports the needs of type image render with */
 	_images: ImageImports | null = null;
 	/** @internal the fences the needs of type source are for, and those that run */
@@ -2126,30 +2148,12 @@ export class CompilerSession {
 		const parsed = new Parsed(raw, source, metadata, nodes);
 		parsed.math = parsed._spans = this.spans;
 		parsed._notes = this.notes;
-		if (plugged) this.plugin_arena!.host.wait(parsed);
+		if (plugged) this.plugin_arena!.host.wait(parsed, inputs);
 		if (inputs.import_images === true)
-			this.need_images(parsed, image_imports(nodes, source));
+			need_images(parsed, image_imports(nodes, source));
 		if (inputs.sources !== false || inputs.snippets !== false)
-			this.need_sources(parsed, fences_of(nodes, source, inputs));
+			need_sources(parsed, fences_of(nodes, source, inputs));
 		return this.lend(parsed, plugged);
-	}
-
-	private need_images(parsed: Parsed, images: ImageImports | null): void {
-		if (images === null) return;
-		parsed._images = images;
-		parsed.needs = images.needs;
-	}
-
-	private need_sources(parsed: Parsed, shown: SourceFences | null): void {
-		if (shown === null) return;
-		parsed._sources = shown;
-		if (shown.math) parsed.math = true;
-		if (shown.snippets !== null) parsed.snippets = shown.snippets;
-		// a document that only runs blocks asks for nothing
-		if (shown.needs.length === 0) return;
-		const needs = parsed.needs;
-		parsed.needs =
-			needs === undefined ? shown.needs : [...needs, ...shown.needs];
 	}
 
 	/** the arena that holds the document goes to its Parsed, the next parse builds one or gets one back */
@@ -2460,9 +2464,9 @@ export class CompilerSession {
 				const waiting = new Parsed(raw, source, metadata, nodes);
 				waiting.math = waiting._spans = spans;
 				waiting._notes = notes;
-				if (host !== null) host.wait(waiting);
-				this.need_images(waiting, images);
-				this.need_sources(waiting, shown);
+				if (host !== null) host.wait(waiting, inputs);
+				need_images(waiting, images);
+				need_sources(waiting, shown);
 				// parse_once made its own nodes, no arena of the session holds them
 				if (renderer === this.renderer) this.lend(waiting, plugged);
 				if (kind === Kind.PARSE) return waiting;
@@ -2739,6 +2743,48 @@ async function settle_plugins(
 	host.pending = null;
 	parsed.data = host.dispatcher.data();
 	parsed.dependencies = host.dispatcher.dependencies();
+	rescan(parsed);
+}
+
+/** the inputs of a waiting parse, copied as a caller may change them before it settles */
+interface Scan {
+	images: boolean;
+	shows: boolean;
+	runs: boolean;
+	filename: string | undefined;
+}
+
+/** null when the parse looked for nothing settle could add */
+function scan_of(inputs: CompileInputs): Scan | null {
+	const images = inputs.import_images === true;
+	const shows = inputs.sources !== false;
+	const runs = inputs.snippets !== false;
+	if (!images && !shows && !runs) return null;
+	return { images, shows, runs, filename: inputs.filename };
+}
+
+/**
+ * the images and fences of a settled document, a task or a document hook
+ * may have added, changed or removed one, so its needs are made again whole
+ */
+function rescan(parsed: Parsed): void {
+	const scan = parsed._scan;
+	const nodes = parsed._nodes;
+	parsed._scan = null;
+	// dropped while it waited
+	if (scan === null || nodes === null) return;
+	const source = parsed.source;
+	parsed.needs = undefined;
+	parsed.snippets = undefined;
+	parsed.math = parsed._spans;
+	parsed._images = null;
+	parsed._sources = null;
+	if (scan.images) need_images(parsed, image_imports(nodes, source));
+	if (scan.shows || scan.runs)
+		need_sources(
+			parsed,
+			source_fences(nodes, source, scan.filename, scan.shows, scan.runs)
+		);
 }
 
 /**

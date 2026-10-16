@@ -712,7 +712,8 @@ function emit_record(
 
 /**
  * offsets in html characters, every span the render records covers at least
- * one chunk, so none is dropped for its width
+ * one chunk, so none is dropped for its width, a span with no end is a node
+ * a parse plugin added and gets no record
  */
 function put_record(
 	sink: MapSink,
@@ -723,7 +724,7 @@ function put_record(
 	node_index: number,
 	code: number
 ): void {
-	if (src_start !== Slot.NONE) {
+	if (src_start !== Slot.NONE && src_end !== Slot.NONE) {
 		let rec = sink.rec;
 		const p = sink.n;
 		if (p + Rec.SIZE > rec.length) rec = sink.grow();
@@ -798,6 +799,8 @@ function _spans_some(
 	const idx = c.index;
 	const s = c.start,
 		e = c.end;
+	// a node a parse plugin added has no end and no place in the source
+	if (e === Slot.NONE) return;
 	put_record(sink, pre, post, s, e, idx, preset << 2);
 	if (!sink.syntax) return;
 	const vs = c.value_start,
@@ -1675,7 +1678,7 @@ function render_node(c: Cursor, sink?: MapSink): void {
 			const pre = mo.length;
 			mo += '<hr />';
 			// node and open syntax, the close syntax span is empty
-			if (sink) {
+			if (sink && c.end !== Slot.NONE) {
 				const post = mo.length;
 				put_record(
 					sink,
@@ -2921,6 +2924,11 @@ function tr_point(sink: MapSink, gen: number, src: number): void {
 	}
 }
 
+/** the point of a node, a node a parse plugin added has no end and no point */
+function tr_at(sink: MapSink, gen: number, c: Cursor): void {
+	if (c.end !== Slot.NONE) tr_point(sink, gen, c.start);
+}
+
 /** a content span, a run when it copies the source, empty spans map nothing */
 function tr_run(
 	sink: MapSink,
@@ -3089,7 +3097,7 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			p = tr_open(c, p, WRAP_HEAD[row], WRAP_FOLDED[row], WRAP_END[row]);
 			p = tr_children(c, sink, p);
 			p = tr_push(p, WRAP_CLOSE[row]);
-			tr_point(sink, pre, c.start);
+			tr_at(sink, pre, c);
 			return p;
 		}
 
@@ -3102,7 +3110,7 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 				p = tr_task(c, sink, p, meta.checked);
 			else p = tr_children(c, sink, p);
 			p = tr_push(p, S_LI_CLOSE);
-			tr_point(sink, pre, c.start);
+			tr_at(sink, pre, c);
 			return p;
 		}
 
@@ -3126,7 +3134,7 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			if (string_index_of.call(code, '\n') !== -1)
 				code = code.replace(/\n/g, ' ');
 			tr_text(c, sink, p, code);
-			tr_point(sink, pre, c.start);
+			tr_at(sink, pre, c);
 			return S_CODE_CLOSE;
 		}
 
@@ -3146,14 +3154,14 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			}
 			p = tr_children(c, sink, p);
 			p = tr_push(p, ordered ? S_OL_CLOSE : S_UL_CLOSE);
-			tr_point(sink, pre, c.start);
+			tr_at(sink, pre, c);
 			return p;
 		}
 
 		case K.THEMATIC_BREAK: {
 			const pre = mo.length + FOLD_LEN[p];
 			p = tr_push(p, S_HR);
-			tr_point(sink, pre, c.start);
+			tr_at(sink, pre, c);
 			return p;
 		}
 
@@ -3168,7 +3176,7 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			p = tr_open(c, p, S_TABLE, S_TABLE_OPEN, S_GT_LF);
 			p = tr_table_content(c, sink, p);
 			p = tr_push(p, S_TABLE_CLOSE);
-			tr_point(sink, pre, c.start);
+			tr_at(sink, pre, c);
 			return p;
 		}
 
@@ -3195,7 +3203,7 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			mo = mo + s + _attrs(c, LINK_HANDLED);
 			p = tr_children(c, sink, S_GT);
 			p = tr_push(p, S_A_CLOSE);
-			tr_point(sink, pre, c.start);
+			tr_at(sink, pre, c);
 			return p;
 		}
 
@@ -3210,7 +3218,7 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 				s += ' title="' + escape_text_html(meta.title as string) + '"';
 			mo = mo + s + _attrs(c, IMAGE_HANDLED);
 			// the syntax spans are empty, only the node is recorded
-			tr_point(sink, pre, c.start);
+			tr_at(sink, pre, c);
 			return S_SELF_CLOSE;
 		}
 
@@ -3218,7 +3226,7 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			const pre = mo.length + FOLD_LEN[p];
 			p = tr_push(p, S_COMMENT_OPEN);
 			tr_text(c, sink, p, c.text());
-			tr_point(sink, pre, c.start);
+			tr_at(sink, pre, c);
 			return S_COMMENT_CLOSE;
 		}
 
@@ -3226,7 +3234,7 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			const pre = mo.length + FOLD_LEN[p];
 			p = tr_push(p, S_BRACE_OPEN);
 			tr_text(c, sink, p, c.text());
-			tr_point(sink, pre, c.start);
+			tr_at(sink, pre, c);
 			return S_BRACE_CLOSE;
 		}
 
@@ -3238,7 +3246,7 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			const text = c.text();
 			mo = mo + '{@' + meta_str(tag);
 			if (text) tr_text(c, sink, S_SPACE, text);
-			tr_point(sink, pre, c.start);
+			tr_at(sink, pre, c);
 			return S_BRACE_CLOSE;
 		}
 
@@ -3283,7 +3291,7 @@ function tr_task(c: Cursor, sink: MapSink, p: number, on: boolean): number {
 		p = tr_push(p, box);
 		p = tr_children(c, sink, p);
 		p = tr_push(p, S_P_CLOSE);
-		tr_point(sink, pre, c.start);
+		tr_at(sink, pre, c);
 	}
 	let next = n[para * W.stride + W.next];
 	while (next !== Slot.NONE && n[next * W.stride + W.parent] === item) {
@@ -3312,7 +3320,7 @@ function tr_code_fence(c: Cursor, sink: MapSink, p: number): number {
 		p = tr_open(c, p, S_PRE_CODE, S_PRE_CODE_OPEN, S_GT);
 	}
 	fence_content(c, sink, p, escape_fence_text(c), true);
-	tr_point(sink, pre, c.start);
+	tr_at(sink, pre, c);
 	return S_PRE_CODE_CLOSE;
 }
 
@@ -3380,7 +3388,7 @@ function tr_html(c: Cursor, sink: MapSink, p: number): number {
 		if (q !== 0) mo += FOLD_STR[q];
 	}
 	mo = mo + '</' + meta_str(tag);
-	tr_point(sink, pre, c.start);
+	tr_at(sink, pre, c);
 	return S_GT;
 }
 
@@ -3425,7 +3433,7 @@ function tr_svelte_block(c: Cursor, sink: MapSink, p: number): number {
 	if (p !== 0) mo += FOLD_STR[p];
 	mo = mo + '{/' + block_tag;
 	// node span for the whole block, use the block node (goto_parent already called)
-	tr_point(sink, pre, c.start);
+	tr_at(sink, pre, c);
 	return S_BRACE_CLOSE;
 }
 
@@ -3676,7 +3684,7 @@ function mp_node(c: Cursor, sink: MapSink, p: number): number {
 				c.index,
 				Preset.STRUCTURE << 2
 			);
-			if (sink.syntax) {
+			if (sink.syntax && c.end !== Slot.NONE) {
 				const vs = c.value_start;
 				put_record(
 					sink,
@@ -4434,7 +4442,7 @@ function cm_spans(
 	post: number,
 	preset: number
 ): void {
-	if (comp_mode === CM.TRACE) tr_point(sink!, pre, c.start);
+	if (comp_mode === CM.TRACE) tr_at(sink!, pre, c);
 	else if (comp_mode === CM.MAPPED) _spans(sink!, pre, ao, bc, post, c, preset);
 }
 
@@ -4445,11 +4453,11 @@ function cm_void(
 	pre: number,
 	preset: number
 ): void {
-	if (comp_mode === CM.TRACE) tr_point(sink!, pre, c.start);
+	if (comp_mode === CM.TRACE) tr_at(sink!, pre, c);
 	else if (comp_mode === CM.MAPPED) {
 		const post = mo.length;
 		put_record(sink!, pre, post, c.start, c.end, c.index, preset << 2);
-		if (preset === Preset.STRUCTURE && sink!.syntax) {
+		if (preset === Preset.STRUCTURE && sink!.syntax && c.end !== Slot.NONE) {
 			const vs = c.value_start;
 			put_record(
 				sink!,
@@ -6252,7 +6260,7 @@ function tr_hl(
 	if (live !== null) hl_live_trace(sink, c, mo.length, body, live);
 	else if (body.length !== 0) tr_point(sink, mo.length, c.value_start);
 	mo += body + tail;
-	tr_point(sink, pre, c.start);
+	tr_at(sink, pre, c);
 	return 0;
 }
 
@@ -7172,7 +7180,7 @@ function fn_reference_mapped(
 	if (p !== 0) mo += FOLD_STR[p];
 	const pre = mo.length;
 	mo += s;
-	if (trace) tr_point(sink, pre, c.start);
+	if (trace) tr_at(sink, pre, c);
 	else put_record(sink, pre, mo.length, c.start, c.end, c.index, 0);
 	return 0;
 }

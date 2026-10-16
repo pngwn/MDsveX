@@ -430,6 +430,7 @@ directive_inline: {
 - **Applied in document order.** A host applies tasks sorted by where their nodes are in the source, and tasks of one node in the order they started. Data is owned by the node, so it sorts as any write does.
 - **A value JSON cannot hold** throws a `PluginDataError` in the task, at the write.
 - **Sharing work** between tasks and documents, such as loading a bibliography once, goes through [`ctx.cached`](#shared-loads).
+- **What it adds is the host's to see.** A host that looks through the tree for what a document needs looks again once the tasks applied. In `mdsvex`, `CompilerSession.settle` makes `Parsed.needs` again, so an image whose `src` a task set is imported and a fence it adds with `src=` shows its file, in `compile_async` and the Vite plugin alike. The same holds for an async document hook.
 - **The task's context** has `filename`, `frontmatter`, `data`, `scratch`, `set`, `add`, `warn`, `depend`, `read`, `resolve` and `cached`.
 
 A parse that cannot wait for async work throws a `PluginAsyncError` at the first `ctx.defer`. In `mdsvex` that is `compile()`, which points to `compile_async()`.
