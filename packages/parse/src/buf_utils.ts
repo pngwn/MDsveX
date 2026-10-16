@@ -122,10 +122,14 @@ const FOOTNOTE_DEFINITION = 37;
 export interface FootnoteProblem {
 	/**
 	 * footnote_undefined is a reference with no definition, footnote_duplicate
-	 * a definition of a label that has one, footnote_unused a definition no
-	 * reference reaches
+	 * a definition of a label that has one, footnote_empty a definition with
+	 * nothing in it, footnote_unused a definition no reference reaches
 	 */
-	code: 'footnote_undefined' | 'footnote_duplicate' | 'footnote_unused';
+	code:
+		| 'footnote_undefined'
+		| 'footnote_duplicate'
+		| 'footnote_empty'
+		| 'footnote_unused';
 	label: string;
 	node: number;
 }
@@ -223,7 +227,8 @@ export function footnote_index(
 				if (down !== NONE) {
 					owners.push(owner);
 					owner = node;
-				}
+				} else if (!optimistic)
+					problems.push({ code: 'footnote_empty', label, node });
 			}
 		}
 		if (down !== NONE) {

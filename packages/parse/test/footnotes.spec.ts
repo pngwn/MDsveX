@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 
 import { parse_markdown_svelte } from '../src/main';
 import { take_footnote } from '../src/utils';
-import { both, every_path, lines } from './stream_shape';
+import { both, every_path, fed_mismatch, lines } from './stream_shape';
 
 /** the inline children of the one paragraph of a line, every path agreeing */
 function inline(source: string): string[] {
@@ -25,7 +25,6 @@ describe('a footnote reference', () => {
 		['_[^1]_', ['emphasis', '  ' + REF]],
 		['<b>x[^1]</b> y', ['html tag="b"', '  text "x"', '  ' + REF, 'text " y"']],
 		['[^1](url)', [REF, 'text "(url)"']],
-		['[^1]: ', [REF, 'text ": "']],
 		['a [^1]: b', ['text "a "', REF, 'text ": b"']],
 	])('%j', (source, kids) => {
 		expect(inline(source)).toEqual(kids);
@@ -199,13 +198,86 @@ describe('a footnote definition', () => {
 	});
 
 	test.each([
-		['[^1]:', ['footnote_reference label="1"', 'text ":"']],
-		['[^1]:   ', ['footnote_reference label="1"', 'text ":   "']],
 		['[^1] : a', ['footnote_reference label="1"', 'text " : a"']],
 		['\\[^1]: a', ['text "["', 'text "^"', 'text "1"', 'text "]: a"']],
 		['[^a b]: c', ['text "["', 'text "^"', 'text "a b"', 'text "]: c"']],
 	])('%j is no definition', (source, kids) => {
 		expect(inline(source)).toEqual(kids);
+	});
+
+	describe('with its text on the next line, as prettier writes it', () => {
+		test.each([
+			['one line', '[^1]:\n    one\n', '[^1]: one\n'],
+			[
+				'lines that go on',
+				'[^1]:\n    To add line breaks.\n    This is a second line.\n\nafter\n',
+				'[^1]: To add line breaks.\n    This is a second line.\n\nafter\n',
+			],
+			[
+				'two paragraphs',
+				'[^1]:\n    one\n\n    two\n',
+				'[^1]: one\n\n    two\n',
+			],
+			['a list', '[^1]:\n    - a\n    - b\n', '[^1]: - a\n    - b\n'],
+			['spaces after the colon', '[^1]:   \n    one\n', '[^1]: one\n'],
+			[
+				'after a paragraph it ends',
+				'text\n[^1]:\n    one\n',
+				'text\n[^1]: one\n',
+			],
+			[
+				'a block quote',
+				'> [^1]:\n>     one\n>     two\n',
+				'> [^1]: one\n>     two\n',
+			],
+			['a list item', '- [^1]:\n      one\n', '- [^1]: one\n'],
+		])('is the same tree, %s', (_, prettier, typed) => {
+			expect(every_path(prettier)).toBe(every_path(typed));
+			expect(fed_mismatch(prettier)).toBe('');
+		});
+
+		test('a blank line before the text is passed over, as between its blocks', () => {
+			expect(every_path('[^1]:\n\n    one\n')).toBe(
+				lines('root', ...DEF('1', 'text "one"'), '  line_break')
+			);
+		});
+
+		test.each([
+			['[^1]:\n', ['  line_break']],
+			['[^1]:', []],
+			[
+				'[^1]:\nnot indented\n',
+				[
+					'  line_break',
+					'  paragraph',
+					'    text "not indented"',
+					'  line_break',
+				],
+			],
+			[
+				'[^1]:\n  two spaces\n',
+				[
+					'  line_break',
+					'  paragraph',
+					'    text "two spaces"',
+					'  line_break',
+				],
+			],
+			[
+				'[^1]:\n# heading\n',
+				[
+					'  line_break',
+					'  heading depth=1 "heading"',
+					'    text "heading"',
+					'  line_break',
+				],
+			],
+		])('with no indented line after %j it is empty', (source, after) => {
+			expect(every_path(source)).toBe(
+				lines('root', '  footnote_definition label="1"', ...after)
+			);
+			expect(fed_mismatch(source)).toBe('');
+		});
 	});
 
 	test('a link reference definition can not start with a caret', () => {

@@ -285,7 +285,7 @@ export class Grammar {
 			case 25:
 				return piece(
 					'footnote_definition',
-					this.int(2),
+					this.int(3),
 					this.blocks(depth + 1)
 				);
 			case 26:
@@ -479,11 +479,15 @@ function indented(marker: string, rows: string[]): string[] {
 	);
 }
 
-/** the rows of a footnote definition, its text on the line of its label and the rest indented to it */
-function noted(marker: string, rows: string[]): string[] {
-	return rows.map((row, i) =>
-		i === 0 ? `${marker} ${row}` : row === '' ? '' : '    ' + row
+/**
+ * the rows of a footnote definition, its text on the line of its label and the rest indented to it,
+ * or with next_line all of it on the lines below, as prettier writes it
+ */
+function noted(marker: string, rows: string[], next_line = false): string[] {
+	const body = rows.map((row, i) =>
+		i === 0 && !next_line ? `${marker} ${row}` : row === '' ? '' : '    ' + row
 	);
+	return next_line ? [marker, ...body] : body;
 }
 
 function fence(p: Piece): string[] {
@@ -544,7 +548,11 @@ function block_rows(p: Piece): string[] {
 				p.form % 2 === 0 ? `[r${p.form}]: /ref` : `[r${p.form}]: /ref "t"`,
 			];
 		case 'footnote_definition':
-			return noted(p.form === 1 ? '[^note-1]:' : '[^n]:', rows_of(p.kids));
+			return noted(
+				p.form === 1 ? '[^note-1]:' : '[^n]:',
+				rows_of(p.kids),
+				p.form === 2
+			);
 		case 'svelte_tag':
 			return [`{@html ${a}}`];
 		case 'component':

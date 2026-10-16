@@ -10941,8 +10941,10 @@ export class PFMParser {
 	}
 
 	/**
-	 * where the text of the footnote definition at pos starts, a label in brackets, a colon
-	 * and text on the line, 0 when the line is no definition
+	 * where the text of the footnote definition at pos starts, a label in brackets and a
+	 * colon, 0 when the line is no definition
+	 * with nothing after the colon it is the line end, and the text starts on the next
+	 * line indented to the definition, as a formatter writes a long one
 	 */
 	private note_text_at(pos: number): number {
 		const source = this.source;
@@ -10955,7 +10957,7 @@ export class PFMParser {
 		while (ch === SPACE || ch === TAB) {
 			ch = char_code_at.call(source, ++p - base);
 		}
-		return p >= this.source_end || ch === LINEFEED ? 0 : p;
+		return p >= this.source_end && !this.finished ? 0 : p;
 	}
 
 	/**

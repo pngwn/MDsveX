@@ -2867,7 +2867,7 @@
 
 		"footnote-definition": {
 			"name": "meta.footnote.definition.pfm",
-			"match": "^\\s*(\\[\\^)([^\\s\\[\\]^]+)(\\]:)[ \\t]+(\\S.*)$",
+			"match": "^\\s*(\\[\\^)([^\\s\\[\\]^]+)(\\]:)(?:[ \\t]+(\\S.*)|[ \\t]*)$",
 			"captures": {
 				"1": { "name": "punctuation.definition.footnote.begin.pfm" },
 				"2": { "name": "entity.name.footnote.pfm" },

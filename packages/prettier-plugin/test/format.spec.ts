@@ -82,3 +82,14 @@ describe('language', () => {
 		}
 	});
 });
+
+describe('footnotes', () => {
+	test('a definition written as prettier for markdown writes it takes its text on the line of its label', async () => {
+		expect(await svx('a[^1]\n\n[^1]:\n    one\n    two\n\n    - three\n')).toBe(
+			'a[^1]\n\n[^1]: one\n    two\n\n    - three\n'
+		);
+		expect(await svx('> a[^1]\n>\n> [^1]:\n>     one\n')).toBe(
+			'> a[^1]\n>\n> [^1]: one\n'
+		);
+	});
+});
