@@ -38,7 +38,7 @@ import {
 } from './frontmatter';
 import type { FrontmatterOptions } from './frontmatter';
 import { PLUGIN_DATA_EXPORT, plugin_data_export } from './plugin_data';
-import type { PluginData } from './plugin_data';
+import type { PluginData, PluginDataContext } from './plugin_data';
 import { scope_of } from './root_scope';
 import { highlight_run, plain_run } from './highlight_run';
 export { highlight_error_at, MathError } from './highlight_run';
@@ -97,7 +97,7 @@ export { PluginDataError } from './plugin_data';
 export { PluginAsyncError, PluginTaskError } from '@mdsvex/parse';
 export { fence_meta } from './code_meta';
 export type { FenceMeta, MetaInfo } from './code_meta';
-export type { PluginData };
+export type { PluginData, PluginDataContext };
 export { DirectiveError } from '@mdsvex/render/html-cursor';
 export type {
 	CodeInfo,

@@ -171,7 +171,7 @@ On a line of its own, `::toc` renders the same component in the document:
 - **It lists the whole document**, the headings after it as well. Each heading is added to the data as it closes, with its id, and the component reads the data from the context of the document.
 - **While a document streams**, the list grows as headings arrive, in a view that gives `Node.svelte` the live data (`PluginStream` in `@mdsvex/render/stream`).
 - **With nothing to list it renders nothing**, and the build warns `no_headings`.
-- A `toc` export from your own directives module replaces the component. It gets the `label` snippet and the args, and reads the headings from the context, `getContext(Symbol.for('mdsvex.plugin_data')).current.toc.headings`.
+- A `toc` export from your own directives module replaces the component. It gets the `label` snippet and the args, and reads the headings from the context, `getContext(Symbol.for('mdsvex.plugin_data')).current.toc.headings`. Type what it reads as `PluginDataContext` from `mdsvex/compile`, and the headings are `TocHeading[]`.
 
 ## Warnings
 

@@ -232,7 +232,7 @@ A view belongs to the document it was made for. A close callback can hold the vi
 
 ## The Context
 
-The second argument of every handler is its context. Each plugin gets its own for each document, so it is also where a plugin keeps what it needs between its handlers: any key the plugin sets is its own, and no other plugin sees it.
+The second argument of every handler is its context. Each plugin gets its own for each document. What a plugin keeps between its handlers goes in [`ctx.scratch`](#ctxscratch).
 
 ```js
 const toc = {
@@ -260,6 +260,7 @@ const toc = {
 | `ctx.set(key, value)` | one value under a key of what the plugin hands back from the parse |
 | `ctx.add(key, value)` | one entry of a list under a key, in document order |
 | `ctx.data` | what the plugin has written so far, read-only |
+| `ctx.scratch` | what the plugin keeps for itself through the document, never published |
 | `ctx.defer(node, task)` | async work for the node, see [Deferred tasks](#deferred-tasks) |
 | `ctx.depend(path)` | names a file the output depends on, see [Loading](#loading-and-dependencies) |
 | `ctx.read(path)`, `ctx.resolve(specifier)` | read and resolve with what the host passes |
@@ -313,7 +314,7 @@ A write belongs to the node whose handler or close callback made it, whichever n
 - **A revoke takes back exactly the owner's writes.** When the parser revokes a node, every `set` and `add` it owned goes and each key holds what it would have held without them. A link with no destination, an emphasis that never closes and the paragraphs of a tight list all go this way, so a handler can write as soon as it knows something.
 - **`add` keeps entries in document order.** An entry sorts by its owner's place in the source, not by when it was written. The close callback of a heading runs after those of the links inside it and still comes first, and a batch parse, a parse fed in pieces and a tree built over the wire give the same list. One owner's entries keep the order it added them. Entries with no owner come after the rest, in the order they were added.
 - **`set` resolves conflicts by document order too.** Of two owners that set one key, the value of the later one in the source stays. One owner that sets a key twice leaves its last value. A `set` with no owner comes after every owner, and of two such the last one stays. So the result does not depend on the order handlers ran in.
-- **Nothing else is undone.** What a plugin keeps on its own keys of `ctx`, or in a variable, is not owned and a revoke leaves it as it was.
+- **Nothing else is undone.** What a plugin keeps in [`ctx.scratch`](#ctxscratch), or in a variable, is not owned and a revoke leaves it as it was.
 
 #### Values are json
 
@@ -368,6 +369,40 @@ link: {
 - **`ctx.id(id, { fixed: true })`** is for an id the author wrote, such as `{#install}` in a heading a plugin reads. It is kept as it is, and one a node before it was given is a `HeadingIdError`. An id set straight on a heading with `node.attrs.id` counts as fixed too.
 - **Only in a handler,** a close callback, a sequential pass or a document hook. A deferred task has none, ask in the handler that defers.
 
+### `ctx.scratch`
+
+What a plugin keeps for itself through one document: the lists it has seen, a counter, the node it will fill in at the end. Nothing in it is published.
+
+```js
+const plugin = {
+  name: 'refs',
+  parse: {
+    document(root, ctx) {
+      // no walk to find the lists, the handler kept them
+      for (const list of ctx.scratch.lists ?? []) list.attrs.count = String(ctx.data.cited?.length ?? 0);
+    },
+  },
+  directives: {
+    references: {
+      parse(node, ctx) {
+        const lists = (ctx.scratch.lists ??= []);
+        if (lists.length > 0) ctx.warn('more_than_one', 'one list is enough', node);
+        lists.push(node);
+      },
+    },
+  },
+};
+```
+
+- **One object per plugin name, per document.** Every handler, close callback, sequential pass, handler bound to a directive, deferred task and document hook of the plugin gets the same one. Plugins that share a name share it, so the `parse` plugin and the `directives` of one `mdsvex` plugin meet there. Reading it throws for a plugin with no `name`.
+- **Anything goes in it,** nodes, maps, functions. It is never checked as JSON, never part of `data()`, the compile result or a data event.
+- **It is made empty for each document** and dropped when the dispatcher takes the next one. A node kept in it stays a valid view until then, so the document hook can read the nodes the handlers kept.
+- **A revoke does not touch it.** What a handler of a revoked node put there stays. So keep there only what a revoke cannot make wrong: facts about, and nodes of, the kinds the parser never revokes (a block directive, a heading at its close), and anything from a sequential pass or the hook. A node that may be revoked does not belong there: once revoked it is out of the tree, and its view does not say so the same way for every construct. A value that must follow revocation goes through `ctx.set` and `ctx.add`.
+- **A deferred task writes to it at once,** not with the task's other changes, and the write stays if its node is revoked and those changes are dropped.
+- **It is not `ctx.state`.** The state of a [bound handler](#the-context-1) is one object per directive in the document and its writes are undone with their node. The scratch is one per plugin for the whole document and is never undone.
+
+A key put on `ctx` itself is not part of the context: TypeScript rejects one, and a bound handler's context is new for each call, so what it was given is gone after the call.
+
 ### Deferred tasks
 
 A handler cannot wait: the parser does not pause for it, and neither does a stream. `ctx.defer(node, task)` starts async work for a node and lets the parse carry on:
@@ -396,7 +431,7 @@ directive_inline: {
 - **A value JSON cannot hold** throws a `PluginDataError` in the task, at the write.
 - **Sharing work** between tasks and documents, such as loading a bibliography once, goes through [`ctx.cached`](#shared-loads).
 - **What it adds is the host's to see.** A host that looks through the tree for what a document needs looks again once the tasks applied. In `mdsvex`, `CompilerSession.settle` makes `Parsed.needs` again, so an image whose `src` a task set is imported and a fence it adds with `src=` shows its file, in `compile_async` and the Vite plugin alike. The same holds for an async document hook.
-- **The task's context** has `filename`, `frontmatter`, `data`, `set`, `add`, `warn`, `depend`, `read`, `resolve` and `cached`.
+- **The task's context** has `filename`, `frontmatter`, `data`, `scratch`, `set`, `add`, `warn`, `depend`, `read`, `resolve` and `cached`.
 
 A parse that cannot wait for async work throws a `PluginAsyncError` at the first `ctx.defer`. In `mdsvex` that is `compile()`, which points to `compile_async()`.
 
@@ -799,7 +834,7 @@ A table can come with the name of the plugin it belongs to, as `{ name: 'steps',
 
 ### The context
 
-A bound handler gets its own context in place of the plugin `ctx`. It has `filename`, `frontmatter`, `warn`, `set`, `add` and `data` as [the plugin context](#the-context) does, and three members of its own:
+A bound handler gets its own context in place of the plugin `ctx`, new for each call. It has `filename`, `frontmatter`, `warn`, `set`, `add`, `data` and `scratch` as [the plugin context](#the-context) does, and three members of its own:
 
 - **`ctx.directive`** is the view of the directive the handler is bound to.
 - **`ctx.index`** is how many times this handler has already run in this directive, 0 for the first call. `children.heading` and `descendants.heading` of one entry count apart.

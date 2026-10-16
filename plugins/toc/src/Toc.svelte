@@ -26,7 +26,7 @@
 	const id = $props.id();
 
 	// what the plugin wrote, from a compiled document or a stream, current changes as headings arrive
-	/** @type {{ readonly current: { toc?: { headings?: import('./tree.js').TocHeading[] } } | undefined } | undefined} */
+	/** @type {import('mdsvex/compile').PluginDataContext | undefined} */
 	const data = getContext(Symbol.for('mdsvex.plugin_data'));
 
 	const tree = $derived.by(() => {

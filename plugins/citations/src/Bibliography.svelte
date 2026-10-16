@@ -26,7 +26,7 @@
 	const id = $props.id();
 
 	// what the plugins wrote, from a compiled document or a stream, current changes as citations arrive
-	/** @type {{ readonly current: { citations?: import('./list.js').CitationsData } | undefined } | undefined} */
+	/** @type {import('mdsvex/compile').PluginDataContext | undefined} */
 	const plugin_data = getContext(Symbol.for('mdsvex.plugin_data'));
 
 	// the directive hands over the whole data as json once the document is complete, a template the object

@@ -135,31 +135,6 @@ function is_marked(node: NodeView): boolean {
 	return false;
 }
 
-/** every ::toc leaf, they sit at block level, a node that holds only inline content is not entered */
-function lists_in(parent: NodeView, lists: NodeView[]): void {
-	for (let child = parent.first_child; child !== null; child = child.next) {
-		switch (child.type) {
-			case 'directive_leaf':
-				if (child.attrs.name === NAME) lists.push(child);
-				break;
-			case 'text':
-			case 'line_break':
-			case 'heading':
-			case 'paragraph':
-			case 'code_fence':
-			case 'table':
-			case 'thematic_break':
-			case 'html_comment':
-			case 'frontmatter':
-			case 'import_statement':
-				break;
-			// a block quote, a list, an element, a container and the wrappers plugins make
-			default:
-				lists_in(child, lists);
-		}
-	}
-}
-
 const DEPTH = /^[1-6]$/;
 
 /** a depth written as an arg of the directive, the fallback and a warning for anything else */
@@ -184,7 +159,7 @@ function depth_arg(
 
 const HAS_WORD = /[\p{L}\p{N}]/u;
 
-/** what the plugin keeps on the context of a document between headings */
+/** what the plugin keeps in the scratch of a document between headings */
 interface Seen {
 	/** the depth of the last heading that could be listed, 0 before the first */
 	before: number;
@@ -195,7 +170,7 @@ interface Seen {
 }
 
 function seen_of(ctx: PluginContext): Seen {
-	return (ctx.toc_seen ??= { before: 0, any_id: false, sluggable: false });
+	return (ctx.scratch.seen ??= { before: 0, any_id: false, sluggable: false });
 }
 
 /** the entry of a heading as it closes, when it is one the table lists */
@@ -244,7 +219,7 @@ function close_heading(
 }
 
 /** once the document is whole, the checks that need every heading */
-function finish(root: NodeView, ctx: PluginContext): void {
+function finish(_root: NodeView, ctx: PluginContext): void {
 	const seen = seen_of(ctx);
 	// the options of the compile are not passed to a plugin, so this is read off the tree
 	if (seen.sluggable && !seen.any_id) {
@@ -254,9 +229,8 @@ function finish(root: NodeView, ctx: PluginContext): void {
 			ctx.filename
 		);
 	}
-	const lists: NodeView[] = [];
-	lists_in(root, lists);
-	if (lists.length === 0) return;
+	const lists: NodeView[] | undefined = ctx.scratch.lists;
+	if (lists === undefined) return;
 	const headings = (ctx.data.headings ?? []) as unknown as TocHeading[];
 	for (const list of lists) {
 		const min = depth_arg(list, ctx, 'min_depth', 1, false);
@@ -309,6 +283,8 @@ export function toc(options: TocOptions = {}): Bundle {
 					// a block directive has its args by now
 					depth_arg(node, ctx, 'min_depth', 1, true);
 					depth_arg(node, ctx, 'max_depth', 6, true);
+					// for the document hook, in the order they are written, no block directive is revoked
+					(ctx.scratch.lists ??= []).push(node);
 				},
 			},
 		},

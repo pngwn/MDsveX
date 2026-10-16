@@ -66,6 +66,14 @@ export interface DocumentContext {
 	 */
 	readonly data: Readonly<Record<string, Json>>;
 	/**
+	 * what the plugin keeps for itself through the document, one object per
+	 * plugin name, the same from every handler, close callback, bound handler,
+	 * deferred task and the document hook, never published, a write is not
+	 * taken back when its node is revoked, so keep only what a revoke can not
+	 * make wrong, reading it throws for a plugin without a name
+	 */
+	readonly scratch: Record<string, any>;
+	/**
 	 * one value under a key, owned by the node whose handler or close callback
 	 * writes it and taken back when that node is revoked, of two owners the
 	 * later one in the document wins, the value is copied and frozen and one
@@ -122,6 +130,8 @@ export interface TaskContext {
 	readonly filename: string | undefined;
 	readonly frontmatter: Record<string, unknown> | undefined;
 	readonly data: Readonly<Record<string, Json>>;
+	/** the scratch of the plugin, a write lands at once, not with the other changes of the task */
+	readonly scratch: Record<string, any>;
 	set(key: string, value: unknown): void;
 	add(key: string, value: unknown): void;
 	/** a node to point at is the node of the task or one reached from it */
@@ -134,11 +144,9 @@ export interface TaskContext {
 
 /**
  * context passed to plugin handlers, new for each document and each plugin,
- * a plugin keeps what it needs between its handlers on it
+ * a plugin keeps what it needs between its handlers on ctx.scratch
  */
-export interface PluginContext extends DocumentContext {
-	[key: string]: any;
-}
+export type PluginContext = DocumentContext;
 
 /** a single handler entry for a node type. */
 export interface NodeHandler {
