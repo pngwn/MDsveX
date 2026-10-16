@@ -148,3 +148,4 @@ Nothing in the parser, the renderer, the plugin packages, the playground source 
 
 - **Export scanning:** one scanner, `read_exports` in `mdsvex/host`, takes the type stripper from its caller (#1170, #1180).
 - **Config readers:** one. `read_json_config` in `mdsvex/host` reads `mdsvex.config.json` into the manifest the plugin writes, with the virtual ids the plugin gives. A host passes how it resolves a specifier and scans a module: the language tools resolve on disk and scan with TypeScript, the playground resolves in its workspace. The language tools ignore what is wrong with a config, the playground reports the first thing.
+- **Virtual id resolvers:** one, `manifest_resolver` in `mdsvex/host`. The playground looks every `mdsvex:*` id up in the manifest the shared reader gave it, and serves a template with extra replacements as the module `template_module` writes, the one the plugin serves.

@@ -155,12 +155,17 @@ async function get_bundle(
 			if (!importee.startsWith('mdsvex:')) return null;
 
 			const target = resolve_virtual(importee, config);
-			if (target.file !== null) return `${VIRTUAL}/${target.file}`;
+			if ('code' in target) return '\0' + importee;
+			if ('file' in target) return `${VIRTUAL}/${target.file}`;
 
 			// a package specifier, resolved as if the document imported it
 			return this.resolve(target.specifier, importer, { skipSelf: true });
 		},
 		load(id) {
+			if (id.startsWith('\0mdsvex:')) {
+				const target = resolve_virtual(id.slice(1), config);
+				return 'code' in target ? target.code : null;
+			}
 			return snippets.get(id) ?? null;
 		},
 		async transform(code, id) {

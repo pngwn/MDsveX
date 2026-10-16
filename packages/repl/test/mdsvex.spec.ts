@@ -7,7 +7,9 @@ import {
 	PLUGIN_ID,
 	TEMPLATE_DIRECTIVES_ID,
 	TEMPLATE_ID,
+	template_module,
 } from 'mdsvex/host';
+import { VIRTUAL } from '../src/workers/constants';
 import {
 	compile_markdown,
 	is_snippet,
@@ -156,12 +158,10 @@ describe('prepare', () => {
 			})
 		);
 		expect(error).toBeNull();
-		expect(resolve_virtual(TEMPLATE_ID + 'default', config)).toMatchObject({
-			file: null,
+		expect(resolve_virtual(TEMPLATE_ID + 'default', config)).toEqual({
 			specifier: '@acme/theme/Layout.svelte',
-			components: [],
-			directives: [],
 		});
+		expect(config.manifest.templates.default.components).toEqual([]);
 	});
 
 	test('invalid json is reported, not thrown', () => {
@@ -209,10 +209,12 @@ export * as directives from './directives.js';`,
 			components: ['p'],
 			directives: [{ specifier: docs, names: ['note'] }],
 		});
-		expect(resolve_virtual(DIRECTIVES_ID, config).file).toBe(
-			'lib/directives.js'
-		);
-		expect(resolve_virtual(docs, config).file).toBe('lib/docs-directives.js');
+		expect(resolve_virtual(DIRECTIVES_ID, config)).toEqual({
+			file: 'lib/directives.js',
+		});
+		expect(resolve_virtual(docs, config)).toEqual({
+			file: 'lib/docs-directives.js',
+		});
 	});
 
 	test('a plugin entry names its directives, below those of the components module', () => {
@@ -241,10 +243,11 @@ export * as directives from './directives.js';`,
 			{ specifier: PLUGIN_ID + 1, names: ['tabs'] },
 			{ specifier: DIRECTIVES_ID, names: ['step'] },
 		]);
-		expect(resolve_virtual(PLUGIN_ID + 0, config).file).toBe('lib/steps.js');
+		expect(resolve_virtual(PLUGIN_ID + 0, config)).toEqual({
+			file: 'lib/steps.js',
+		});
 		// a package specifier is left to the bundler
-		expect(resolve_virtual(PLUGIN_ID + 1, config)).toMatchObject({
-			file: null,
+		expect(resolve_virtual(PLUGIN_ID + 1, config)).toEqual({
 			specifier: '@acme/tabs/directives',
 		});
 		const { code } = compile_markdown(
@@ -285,12 +288,63 @@ export * as directives from './directives.js';`,
 				'lib/T.svelte': '',
 			})
 		);
-		expect(resolve_virtual(TEMPLATE_ID + 'default', config).file).toBe(
-			'lib/T.svelte'
-		);
+		expect(resolve_virtual(TEMPLATE_ID + 'default', config)).toEqual({
+			file: 'lib/T.svelte',
+		});
 		expect(() => resolve_virtual(TEMPLATE_ID + 'nope', config)).toThrow(
 			/not configured/
 		);
+	});
+
+	test('a template with extra replacements is a module that merges both, the extra names winning', () => {
+		const { config, options, error } = prepare(
+			files({
+				'mdsvex.config.json': JSON.stringify({
+					templates: {
+						docs: { component: './Docs.svelte', components: './overrides.js' },
+						theme: { component: '@acme/theme', components: './overrides.js' },
+					},
+				}),
+				'Docs.svelte': `<script module>export const p = 1;</script>`,
+				'overrides.js': `export const a = 1; export const p = 2;`,
+			})
+		);
+		expect(error).toBeNull();
+		expect(options.templates?.docs.components).toEqual(['p', 'a']);
+		expect(resolve_virtual(TEMPLATE_ID + 'docs', config)).toEqual({
+			code: template_module(
+				`${VIRTUAL}/Docs.svelte`,
+				`${VIRTUAL}/overrides.js`,
+				['a', 'p']
+			),
+		});
+		// a package is imported as the document would import it
+		expect(resolve_virtual(TEMPLATE_ID + 'theme', config)).toEqual({
+			code: template_module('@acme/theme', `${VIRTUAL}/overrides.js`, [
+				'a',
+				'p',
+			]),
+		});
+	});
+
+	test('several components modules are each a module of their own', () => {
+		const { config, options, error } = prepare(
+			files({
+				'mdsvex.config.json': JSON.stringify({
+					components: ['./a.js', './b.js'],
+				}),
+				'a.js': `export { default as h1 } from './H1.svelte';`,
+				'b.js': `export { default as h2 } from './H2.svelte';`,
+			})
+		);
+		expect(error).toBeNull();
+		expect(options.components).toEqual([
+			{ specifier: COMPONENTS_ID + '/0', names: ['h1'] },
+			{ specifier: COMPONENTS_ID + '/1', names: ['h2'] },
+		]);
+		expect(resolve_virtual(COMPONENTS_ID + '/1', config)).toEqual({
+			file: 'b.js',
+		});
 	});
 });
 

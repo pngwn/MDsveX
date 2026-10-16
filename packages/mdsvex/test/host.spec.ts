@@ -9,6 +9,7 @@ import {
 	manifest_resolver,
 	metadata_module,
 	queue_manifest,
+	template_module,
 } from '../src/host';
 import type { MdsvexManifest } from '../src/host';
 import { manifest_writer } from '../src/manifest';
@@ -154,6 +155,18 @@ describe('query modules', () => {
 		);
 		expect(data_module(undefined, undefined)).toBe(
 			'export const metadata = undefined;\nexport const plugin_data = undefined;\nexport default { metadata, plugin_data };\n'
+		);
+	});
+});
+
+describe('template_module', () => {
+	test('merges a template with extra replacements, the extra names winning', () => {
+		expect(template_module('/t.svelte', '/x.js', ['h2', 'my-el'])).toBe(
+			'export * from "/t.svelte";\nexport { default } from "/t.svelte";\n' +
+				'export { h2, "my-el" } from "/x.js";\n'
+		);
+		expect(template_module('/t.svelte', '/x.js', [])).toBe(
+			'export * from "/t.svelte";\nexport { default } from "/t.svelte";\n'
 		);
 	});
 });
