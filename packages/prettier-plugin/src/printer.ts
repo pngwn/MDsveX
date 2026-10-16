@@ -510,10 +510,7 @@ function print_directive(
 	return parts;
 }
 
-/**
- * a fence, re-indented when the parser gives its code without the indent of
- * its lines, as written inside an element or a block until it does
- */
+/** a fence and its code at the indent of what holds it */
 function print_fence(path: AstPath<SvxNode>, options: Options): Doc {
 	const node = path.node;
 	const text = options.originalText;
@@ -532,18 +529,8 @@ function print_fence(path: AstPath<SvxNode>, options: Options): Doc {
 				.trim()
 		: '';
 
-	let code = node.content;
-	if (code === undefined) {
-		if (in_container(path)) {
-			// the parser keeps the indent of the container in the code
-			return [
-				open,
-				literalline,
-				replaceEndOfLine(text.slice(open_end + 1, node.end), literalline),
-			];
-		}
-		code = text.slice(node.value_start, node.value_end);
-	}
+	// the parser takes the indent of the fence off its code
+	let code = node.content ?? text.slice(node.value_start, node.value_end);
 	// an unclosed fence runs to the end of the document, whose line end is printed after it
 	if (!closed && code.endsWith('\n')) code = code.slice(0, -1);
 	const parts: Doc[] = [open];
@@ -552,24 +539,6 @@ function print_fence(path: AstPath<SvxNode>, options: Options): Doc {
 	}
 	if (closed) parts.push(hardline, close);
 	return parts;
-}
-
-/** an ancestor indents its children in a way the parser does not take off code */
-function in_container(path: AstPath<SvxNode>): boolean {
-	for (const value of path.stack) {
-		if (typeof value !== 'object' || value === null || Array.isArray(value))
-			continue;
-		const type = (value as SvxNode).type;
-		if (
-			type === 'html' ||
-			type === 'svelte_branch' ||
-			type === 'directive_container' ||
-			type === 'footnote_definition'
-		) {
-			return true;
-		}
-	}
-	return false;
 }
 
 /** a run of prose between blocks, from the first child to the last */

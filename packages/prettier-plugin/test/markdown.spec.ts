@@ -113,6 +113,15 @@ describe('indented blocks', () => {
 		);
 	});
 
+	test('a fence in an element is indented with its code', async () => {
+		expect(
+			await svx('<div>\n\n```js\nif (a) {\n  b();\n}\n```\n\n</div>\n')
+		).toBe('<div>\n\n  ```js\n  if (a) {\n    b();\n  }\n  ```\n\n</div>\n');
+		expect(
+			await svx('{#if a}\n\n```js\nx\n```\n\n{/if}\n', { useTabs: true })
+		).toBe('{#if a}\n\n\t```js\n\tx\n\t```\n\n{/if}\n');
+	});
+
 	test('a pre keeps its lines', async () => {
 		expect(await svx('<div>\n\n<pre>\n  x\n</pre>\n\n</div>\n')).toBe(
 			'<div>\n\n  <pre>\n  x\n</pre>\n\n</div>\n'
