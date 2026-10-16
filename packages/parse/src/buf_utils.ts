@@ -54,8 +54,9 @@ export function buf_text_content(
 }
 
 /**
- * the code of a fence, its own code and then the text of the nodes a plugin
- * put in it, where a break is a line end, a comment adds nothing
+ * the code of a fence or a code span, or the text of a comment, its own text
+ * and then the text of the nodes a plugin put in it, where a break is a line
+ * end, a comment adds nothing
  *
  * @example
  * fence.append('text', 'let a = 1;'); // buf_code of the fence is 'let a = 1;'

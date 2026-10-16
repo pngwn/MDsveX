@@ -312,7 +312,7 @@
 	<strong {...get_attrs(meta)}>{@render child_nodes(idx)}</strong>
 {:else if kind === K_CODE_SPAN}
 	<code {...get_attrs(meta)}
-		>{buf_text(buf, idx, source).replace(/\n/g, ' ')}</code
+		>{buf_code(buf, idx, source).replace(/\n/g, ' ')}</code
 	>
 {:else if kind === K_CODE_FENCE}
 	{@const info =

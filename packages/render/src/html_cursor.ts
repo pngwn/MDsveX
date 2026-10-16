@@ -383,13 +383,17 @@ function escape_node_text(c: Cursor): string {
 
 function fence_text(c: Cursor): string {
 	if (fs !== null) return fence_text_from(c);
-	if (holds(c)) return buf_code(c.buffer, c.index, c.source);
-	return c.text();
+	return held_text(c);
 }
 
-/** true for a fence a plugin put nodes in, their text is code too */
+/** true for a fence, a code span or a comment a plugin put nodes in, their text is its text too */
 function holds(c: Cursor): boolean {
 	return c.words[c.index * W.stride + W.first_child] !== Slot.NONE;
+}
+
+/** c.text of a fence, a code span or a comment, and then the text of the nodes a plugin put in it */
+function held_text(c: Cursor): string {
+	return holds(c) ? buf_code(c.buffer, c.index, c.source) : c.text();
 }
 
 /** equals escape_code of fence_text */
@@ -401,8 +405,9 @@ function escape_fence_text(c: Cursor): string {
 	return text === undefined ? escape_code_text(c) : escape_code(text);
 }
 
-/** equals escape_code of c.text, reading source slices through the escape index */
+/** equals escape_code of held_text, reading source slices through the escape index */
 function escape_code_text(c: Cursor): string {
+	if (holds(c)) return escape_code(buf_code(c.buffer, c.index, c.source));
 	return escape_text_at(c, c.index, c.value_start, c.value_end, true);
 }
 
@@ -1855,7 +1860,7 @@ function render_node(c: Cursor, sink?: MapSink): void {
 			const pre = mo.length;
 			mo += '<!--';
 			const ao = mo.length;
-			const text = c.text();
+			const text = held_text(c);
 			if (sink) content_record(sink, c, text, Code.TEXT_CONTENT);
 			mo += text;
 			const bc = mo.length;
@@ -2555,7 +2560,7 @@ function fold_node(c: Cursor, p: number): number {
 
 		case K.HTML_COMMENT:
 			p = push_static(p, S_COMMENT_OPEN);
-			p = push_dyn(p, c.text());
+			p = push_dyn(p, held_text(c));
 			return push_static(p, S_COMMENT_CLOSE);
 
 		case K.MUSTACHE:
@@ -3234,7 +3239,7 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 		case K.HTML_COMMENT: {
 			const pre = mo.length + FOLD_LEN[p];
 			p = tr_push(p, S_COMMENT_OPEN);
-			tr_text(c, sink, p, c.text());
+			tr_text(c, sink, p, held_text(c));
 			tr_at(sink, pre, c);
 			return S_COMMENT_CLOSE;
 		}
@@ -3781,7 +3786,7 @@ function mp_node(c: Cursor, sink: MapSink, p: number): number {
 			const pre = mo.length + FOLD_LEN[p];
 			p = tr_push(p, S_COMMENT_OPEN);
 			const ao = mo.length + FOLD_LEN[p];
-			tr_content(c, sink, p, c.text(), Code.TEXT_CONTENT);
+			tr_content(c, sink, p, held_text(c), Code.TEXT_CONTENT);
 			const bc = mo.length;
 			_spans(sink, pre, ao, bc, bc + FOLD_LEN[S_COMMENT_CLOSE], c, Preset.TEXT);
 			return S_COMMENT_CLOSE;
@@ -6125,8 +6130,7 @@ let fs: FenceSources | null = null;
 function fence_text_from(c: Cursor): string {
 	const from = fs!.get(c.index);
 	if (from !== undefined) return from.text;
-	if (holds(c)) return buf_code(c.buffer, c.index, c.source);
-	return c.text();
+	return held_text(c);
 }
 
 /** fence_info of a render with fence sources */
@@ -6198,10 +6202,10 @@ function hl_block(
  */
 function hl_span(c: Cursor): HighlightedCode | null {
 	if (c.extra === 1)
-		return hl!.math === true ? hl!.inline_math!(c.text(), c.start) : null;
+		return hl!.math === true ? hl!.inline_math!(held_text(c), c.start) : null;
 	const lang = fence_info(c, c.meta());
 	if (!lang) return null;
-	let code = c.text();
+	let code = held_text(c);
 	if (string_index_of.call(code, '\n') !== -1) code = code.replace(/\n/g, ' ');
 	return hl!.inline(code, lang, c.start);
 }
