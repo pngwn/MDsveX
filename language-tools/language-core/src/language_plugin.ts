@@ -178,7 +178,7 @@ function create_virtual_code_from_source(
 	}
 
 	// Step 3: Convert svelte2tsx's v3 source map to Volar format + inject shims
-	const v3_map = tsx.map.toJSON ? tsx.map.toJSON() : tsx.map;
+	const v3_map = tsx.map;
 	const raw_svelte_to_ts = v3ToVolarMappings(
 		v3_map as any,
 		tsx.code,

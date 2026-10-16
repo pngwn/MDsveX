@@ -1,5 +1,5 @@
 {
-	"include": ["src/**/*", "bin/**/*", "test/**/*"],
+	"include": ["src/**/*", "test/**/*"],
 	"compilerOptions": {
 		"target": "es2020",
 		"module": "esnext",

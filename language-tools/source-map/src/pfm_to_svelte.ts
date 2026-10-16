@@ -12,9 +12,9 @@ import {
 	MathError,
 	RunError,
 	SourceError,
-} from 'mdsvex';
+} from 'mdsvex/compile';
 import { source_math } from 'mdsvex/math';
-import type { CompileOptions, CompileResult, TemplateEntry } from 'mdsvex';
+import type { CompileOptions, CompileResult, TemplateEntry } from 'mdsvex/compile';
 import { PFMParser } from '@mdsvex/parse';
 import type { SyntaxOptions } from '@mdsvex/parse';
 import { TreeBuilder } from '@mdsvex/parse/tree-builder';

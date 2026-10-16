@@ -9,24 +9,23 @@
 	"description": "PFM Language Server — LSP binary for .pfm files",
 	"type": "module",
 	"bin": {
-		"pfm-language-server": "./bin/pfm-language-server.cjs"
+		"pfm-language-server": "./dist/server.cjs"
 	},
 	"files": [
-		"bin",
-		"dist",
-		"src"
+		"dist"
 	],
 	"scripts": {
 		"test": "vitest --disableConsoleIntercept",
 		"test:run": "vitest run --silent",
-		"build": "vite build --config vite.config.build.ts"
+		"build": "vite build --config vite.config.lib.ts && vite build --config vite.config.build.ts && tsc -p tsconfig.build.json"
 	},
 	"exports": {
 		".": {
-			"import": "./src/index.ts",
-			"types": "./src/index.ts"
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
 		}
 	},
+	"types": "./dist/index.d.ts",
 	"dependencies": {
 		"@mdsvex/language-core": "workspace:*",
 		"@volar/language-core": "^2.4.28",

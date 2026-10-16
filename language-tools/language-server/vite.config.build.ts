@@ -4,11 +4,13 @@ import { resolve } from "path";
 export default defineConfig({
 	build: {
 		lib: {
-			entry: resolve(__dirname, "src/index.ts"),
+			entry: resolve(__dirname, "src/command.ts"),
 			formats: ["cjs"],
 			fileName: "server",
 		},
 		outDir: "dist",
+		// the lib build of index.js writes to dist first
+		emptyOutDir: false,
 		target: "node20",
 		ssr: true,
 		minify: false,
@@ -17,6 +19,8 @@ export default defineConfig({
 			external: ["typescript", "vite"],
 			output: {
 				entryFileNames: "server.cjs",
+				// the bin of the package
+				banner: "#!/usr/bin/env node",
 			},
 		},
 	},
