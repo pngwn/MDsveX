@@ -589,6 +589,7 @@ fence.append('text', 'let b = 2;');
 - **Any way the fence was made**, `append`, `prepend` or `wrap_inner`, from a handler, a task or a document hook. A fence that `wrap_inner` puts around a paragraph has the paragraph's text as its code.
 - **Text put in a typed fence follows its code.**
 - **Everywhere the code is read**: the html, a highlighter, the `code` prop of a `pre` replacement, a block that runs. A fence with `src=` has no code of its own, so text in it is an error, as code typed in it is.
+- **A code span and a comment are the same.** They keep their text on themselves too, so the text a plugin puts in one is its code or its text, after any it was typed with: `node.append('code_span', { info: 'ts' }).append('text', 'let a')` renders as `` `#!ts let a` `` does.
 - `buf_code(buf, index, source)` from `@mdsvex/parse/buf-utils` reads it from a buffer.
 
 ### Where a Node Is Placed

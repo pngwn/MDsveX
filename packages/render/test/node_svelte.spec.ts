@@ -159,4 +159,27 @@ describe('Node.svelte in a stream', () => {
 			expect(html_of(stream), String(chunk)).toBe(want);
 		}
 	});
+	test('a code span a plugin makes shows the text it put in it', async () => {
+		const spans: ParsePlugin = {
+			name: 'spans',
+			paragraph: {
+				parse: (node) => () =>
+					void node.append('code_span').append('text', 'a < b'),
+			},
+		};
+		const html_of = (stream: PluginStream) =>
+			render(Node, {
+				props: { buf: stream.buffer, idx: 0, source: '' },
+			}).body.replace(/<!--[^]*?-->/g, '');
+		const typed = new PluginStream();
+		for (const batch of batches_of('hi`a < b`\n', 100)) typed.apply(batch);
+		const want = html_of(typed);
+		expect(want).toContain('<code>a &lt; b</code>');
+		for (const chunk of [1, 3, 100]) {
+			const stream = new PluginStream({ plugins: [spans] });
+			for (const batch of batches_of('hi\n', chunk)) stream.apply(batch);
+			await stream.end();
+			expect(html_of(stream), String(chunk)).toBe(want);
+		}
+	});
 });
