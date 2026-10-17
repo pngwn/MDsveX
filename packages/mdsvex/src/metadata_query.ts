@@ -4,16 +4,16 @@ import type {
 	ResolvedConfig,
 	Rollup,
 } from 'vite';
-import type { FrontmatterOptions } from './frontmatter';
-import { DATA_ID, METADATA_ID, clean_id } from './ids';
-import { metadata_module } from './query_modules';
+import type { FrontmatterOptions } from './frontmatter.js';
+import { DATA_ID, METADATA_ID, clean_id } from './ids.js';
+import { metadata_module } from './query_modules.js';
 
 export {
 	data_module,
 	frontmatter_bounds,
 	metadata_module,
 	read_metadata,
-} from './query_modules';
+} from './query_modules.js';
 
 // vite-plugin-svelte compiles any id that ends in a document extension, even after
 // \0, and the dep scanner reads an id that looks like a path from disk

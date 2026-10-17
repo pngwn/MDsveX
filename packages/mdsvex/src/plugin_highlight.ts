@@ -1,6 +1,6 @@
-import type { HtmlHighlighter } from './highlight';
-import type { HighlightConfig } from './highlight_run';
-import type { PluginHighlightOptions } from './main';
+import type { HtmlHighlighter } from './highlight.js';
+import type { HighlightConfig } from './highlight_run.js';
+import type { PluginHighlightOptions } from './main.js';
 
 /** a twoslash highlighter built on its first fence, each builds a typescript environment */
 function lazy_highlighter(make: () => HtmlHighlighter): HtmlHighlighter {
@@ -28,7 +28,7 @@ export async function plugin_highlight(
 	options: PluginHighlightOptions
 ): Promise<HighlightConfig> {
 	const { create_highlight, load_default_languages } =
-		await import('./highlight');
+		await import('./highlight.js');
 	const languages = {
 		...(await load_default_languages()),
 		...options.languages,

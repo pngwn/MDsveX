@@ -3,7 +3,7 @@
 	import { bibliography_of, entry_parts } from './list.js';
 
 	/**
-	 * @type {{
+	 * @typedef {{
 	 *   data?: import('./list.js').CitationsData | string,
 	 *   style?: import('./list.js').CitationStyle,
 	 *   label?: import('svelte').Snippet,
@@ -11,8 +11,10 @@
 	 *   class?: import('svelte/elements').ClassValue,
 	 *   'aria-label'?: string,
 	 *   [attribute: string]: unknown,
-	 * }}
+	 * }} Props
 	 */
+
+	/** @type {Props} */
 	let {
 		data,
 		style = 'numeric',

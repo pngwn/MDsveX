@@ -4,14 +4,14 @@ import {
 	NodeKind,
 	kind_to_string,
 	string_to_kind,
-} from './utils';
+} from './utils.js';
 import {
 	UndoLog,
 	ATTR_DID_NOT_EXIST,
 	unlink_child,
 	type DataHost,
 	type RedirectHost,
-} from './undo_log';
+} from './undo_log.js';
 import {
 	Bag,
 	NO_OWNER,
@@ -20,7 +20,7 @@ import {
 	json_copy,
 	type DataChange,
 	type Json,
-} from './plugin_data';
+} from './plugin_data.js';
 import {
 	NodeView,
 	ViewCache,
@@ -29,7 +29,7 @@ import {
 	type TextSource,
 	SourceTextSource,
 	WireTextSource,
-} from './node_view';
+} from './node_view.js';
 import type {
 	ParsePlugin,
 	NodeHandler,
@@ -46,9 +46,9 @@ import type {
 	NamedDirectiveHandlers,
 	TextHandler,
 	TaskContext as PublicTaskContext,
-} from './plugin_types';
-import { HeadingIds } from './heading_ids';
-import { RunPieces, TextRun } from './text_run';
+} from './plugin_types.js';
+import { HeadingIds } from './heading_ids.js';
+import { RunPieces, TextRun } from './text_run.js';
 import {
 	DraftView,
 	OpKind,
@@ -59,7 +59,7 @@ import {
 	TaskView,
 	within,
 	type TaskHost,
-} from './plugin_tasks';
+} from './plugin_tasks.js';
 
 const NONE = 0xffffffff;
 

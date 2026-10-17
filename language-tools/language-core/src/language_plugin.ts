@@ -30,8 +30,8 @@ import { svelte2tsx as svelte_2_tsx } from 'svelte2tsx';
 import type { CodeInformation } from '@mdsvex/render/mappings';
 import type * as TS from 'typescript';
 
-import { create_config_loader } from './config';
-import type { ConfigLoader } from './config';
+import { create_config_loader } from './config.js';
+import type { ConfigLoader } from './config.js';
 
 const PFM_LANGUAGE_ID = 'pfm';
 /** always documents, .svx is the default extension of the vite plugin */
@@ -43,7 +43,7 @@ const DIRECTIVE_ARGS =
 /** never documents, so their language needs no config lookup */
 const NOT_DOCUMENTS = /\.(?:[cm]?[jt]sx?|svelte|json|css|d\.ts|map)$/;
 
-import { SVELTE_SHIMS } from './_svelte_shims';
+import { SVELTE_SHIMS } from './_svelte_shims.js';
 
 /** Prepend shims content to svelte2tsx output and shift mappings. */
 function inject_shims(

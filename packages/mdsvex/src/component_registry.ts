@@ -1,7 +1,7 @@
 import type { ComponentSource } from '@mdsvex/render/html-cursor';
 import type { Rollup } from 'vite';
-import { same_names } from './export_tracker';
-import type { ExportTracker, Warn } from './export_tracker';
+import { same_names } from './export_tracker.js';
+import type { ExportTracker, Warn } from './export_tracker.js';
 import {
 	COMPONENTS_ID,
 	DIRECTIVES_EXPORT,
@@ -10,9 +10,9 @@ import {
 	importer_in,
 	shown,
 	spec_of,
-} from './ids';
-import type { ManifestModule } from './manifest';
-import type { ScannedExports } from './scan_exports';
+} from './ids.js';
+import type { ManifestModule } from './manifest.js';
+import type { ScannedExports } from './scan_exports.js';
 
 interface ComponentModule {
 	/** the id documents import */

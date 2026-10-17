@@ -1,8 +1,8 @@
 import type { Rollup } from 'vite';
-import type { TemplateEntry, TemplateOptions } from './compile';
-import { split_exports } from './component_registry';
-import { same_names } from './export_tracker';
-import type { ExportTracker, Warn } from './export_tracker';
+import type { TemplateEntry, TemplateOptions } from './compile.js';
+import { split_exports } from './component_registry.js';
+import { same_names } from './export_tracker.js';
+import type { ExportTracker, Warn } from './export_tracker.js';
 import {
 	TEMPLATE_DIRECTIVES_ID,
 	TEMPLATE_ID,
@@ -10,10 +10,10 @@ import {
 	importer_in,
 	shown,
 	spec_of,
-} from './ids';
-import type { MdsvexOptions, TemplateSpec } from './main';
-import type { ManifestTemplate } from './manifest';
-import { template_module } from './template_module';
+} from './ids.js';
+import type { MdsvexOptions, TemplateSpec } from './main.js';
+import type { ManifestTemplate } from './manifest.js';
+import { template_module } from './template_module.js';
 
 const has_own = Object.prototype.hasOwnProperty;
 

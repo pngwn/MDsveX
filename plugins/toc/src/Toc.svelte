@@ -3,7 +3,7 @@
 	import { toc_tree } from './tree.js';
 
 	/**
-	 * @type {{
+	 * @typedef {{
 	 *   headings?: import('./tree.js').TocHeading[] | string,
 	 *   min_depth?: number | string,
 	 *   max_depth?: number | string,
@@ -11,8 +11,10 @@
 	 *   children?: import('svelte').Snippet,
 	 *   class?: import('svelte/elements').ClassValue,
 	 *   [attribute: string]: unknown,
-	 * }}
+	 * }} Props
 	 */
+
+	/** @type {Props} */
 	let {
 		headings,
 		min_depth = 1,

@@ -5,7 +5,7 @@ import {
 	trace_to_v3,
 } from '@mdsvex/render/sourcemap';
 import type { DecodedSourceMapV3, SourceMapV3 } from '@mdsvex/render/sourcemap';
-import type { TraceTarget } from './compile';
+import type { TraceTarget } from './compile.js';
 
 export interface StoredDocument extends TraceTarget {
 	raw: string;

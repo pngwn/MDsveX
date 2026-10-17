@@ -1,6 +1,6 @@
 import type { Bundle, TextRun } from 'mdsvex/compile';
 
-import { TABLE } from './table';
+import { TABLE } from './table.js';
 
 const PACKAGE = '@mdsvex/plugin-emoji';
 

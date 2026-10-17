@@ -1,5 +1,5 @@
-import type { Emitter } from "./opcodes";
-import { NodeKind, is_raw_text_tag } from "./utils";
+import type { Emitter } from "./opcodes.js";
+import { NodeKind, is_raw_text_tag } from "./utils.js";
 
 /**
  * wire format for PFM parser opcode streaming.

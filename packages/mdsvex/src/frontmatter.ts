@@ -1,4 +1,4 @@
-import { parse_yaml, YamlError } from './yaml';
+import { parse_yaml, YamlError } from './yaml.js';
 
 export interface FrontmatterOptions {
 	/**

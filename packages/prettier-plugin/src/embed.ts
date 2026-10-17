@@ -1,9 +1,9 @@
 import { doc, getSupportInfo } from 'prettier';
 import type { AstPath, Doc, Options, ParserOptions } from 'prettier';
 
-import { attribute, is_ts } from './ast';
-import type { SvxNode } from './ast';
-import { head } from './heads';
+import { attribute, is_ts } from './ast.js';
+import type { SvxNode } from './ast.js';
+import { head } from './heads.js';
 import {
 	head_end,
 	in_flow,
@@ -12,8 +12,8 @@ import {
 	print_html,
 	quote_depth,
 	root_of,
-} from './printer';
-import { parse_open_tag, print_open_tag } from './tag';
+} from './printer.js';
+import { parse_open_tag, print_open_tag } from './tag.js';
 
 const { hardline, indent } = doc.builders;
 const { removeLines, willBreak } = doc.utils;

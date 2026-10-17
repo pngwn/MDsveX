@@ -35,39 +35,39 @@ import {
 	key_line,
 	metadata_export,
 	parse_frontmatter,
-} from './frontmatter';
-import type { FrontmatterOptions } from './frontmatter';
-import { PLUGIN_DATA_EXPORT, plugin_data_export } from './plugin_data';
-import type { PluginData, PluginDataContext } from './plugin_data';
-import { scope_of } from './root_scope';
-import { highlight_run, plain_run } from './highlight_run';
-export { highlight_error_at, MathError } from './highlight_run';
+} from './frontmatter.js';
+import type { FrontmatterOptions } from './frontmatter.js';
+import { PLUGIN_DATA_EXPORT, plugin_data_export } from './plugin_data.js';
+import type { PluginData, PluginDataContext } from './plugin_data.js';
+import { scope_of } from './root_scope.js';
+import { highlight_run, plain_run } from './highlight_run.js';
+export { highlight_error_at, MathError } from './highlight_run.js';
 import type {
 	HighlightOption,
 	HighlightRun,
 	HighlightWarning,
 	MathOption,
 	MathRenderer,
-} from './highlight_run';
-import { make_heading_ids, slug_of } from './heading_ids';
-import { footnotes_of } from './footnotes';
-import type { FootnoteOptions, Footnotes } from './footnotes';
+} from './highlight_run.js';
+import { make_heading_ids, slug_of } from './heading_ids.js';
+import { footnotes_of } from './footnotes.js';
+import type { FootnoteOptions, Footnotes } from './footnotes.js';
 import type { HeadingIds } from '@mdsvex/parse';
-import type { HeadingOptions, HeadingSlug } from './heading_ids';
-import { smart_of } from './smart_punctuation';
-import type { SmartOptions, SmartPunctuation } from './smart_punctuation';
-import { image_imports } from './image_imports';
-import type { ImageImports, ImageNeed } from './image_imports';
-import { link_urls, links_of, with_images } from './link_urls';
-import type { LinkOptions, Links, Rewrite } from './link_urls';
+import type { HeadingOptions, HeadingSlug } from './heading_ids.js';
+import { smart_of } from './smart_punctuation.js';
+import type { SmartOptions, SmartPunctuation } from './smart_punctuation.js';
+import { image_imports } from './image_imports.js';
+import type { ImageImports, ImageNeed } from './image_imports.js';
+import { link_urls, links_of, with_images } from './link_urls.js';
+import type { LinkOptions, Links, Rewrite } from './link_urls.js';
 import {
 	fence_sources,
 	pre_error,
 	source_fences,
 	sources_met,
-} from './fence_sources';
-import type { Fenced, SourceFences, SourceNeed } from './fence_sources';
-import type { Snippet, SnippetsOption } from './run_blocks';
+} from './fence_sources.js';
+import type { Fenced, SourceFences, SourceNeed } from './fence_sources.js';
+import type { Snippet, SnippetsOption } from './run_blocks.js';
 
 export type {
 	DataChange,
@@ -92,11 +92,11 @@ export type TextRun = Parameters<NonNullable<ParsePlugin['text']>>[0];
 export type { Mapping, MappingData, SourceMapV3, MapTrace };
 export type { ComponentSource };
 export type { FrontmatterOptions };
-export { FrontmatterError } from './frontmatter';
-export { PluginDataError } from './plugin_data';
+export { FrontmatterError } from './frontmatter.js';
+export { PluginDataError } from './plugin_data.js';
 export { PluginAsyncError, PluginTaskError } from '@mdsvex/parse';
-export { fence_meta } from './code_meta';
-export type { FenceMeta, MetaInfo } from './code_meta';
+export { fence_meta } from './code_meta.js';
+export type { FenceMeta, MetaInfo } from './code_meta.js';
 export type { PluginData, PluginDataContext };
 export { DirectiveError } from '@mdsvex/render/html-cursor';
 export type {
@@ -108,37 +108,41 @@ export type {
 	MathInfo,
 	MathOption,
 	MathRenderer,
-} from './highlight_run';
-export { HeadingIdError, heading_slug, make_heading_ids } from './heading_ids';
-export type { ImageNeed } from './image_imports';
-export { SourceError } from './fence_sources';
-export { FootnoteError } from './footnotes';
+} from './highlight_run.js';
+export {
+	HeadingIdError,
+	heading_slug,
+	make_heading_ids,
+} from './heading_ids.js';
+export type { ImageNeed } from './image_imports.js';
+export { SourceError } from './fence_sources.js';
+export { FootnoteError } from './footnotes.js';
 export type {
 	FootnoteErrorCode,
 	FootnoteOptions,
 	FootnoteProblemAt,
-} from './footnotes';
-export type { SourceErrorCode, SourceNeed } from './fence_sources';
-export { RunError } from './run_blocks';
-export type { RunErrorCode, Snippet, SnippetsOption } from './run_blocks';
+} from './footnotes.js';
+export type { SourceErrorCode, SourceNeed } from './fence_sources.js';
+export { RunError } from './run_blocks.js';
+export type { RunErrorCode, Snippet, SnippetsOption } from './run_blocks.js';
 export type {
 	BaseImport,
 	LinkOptions,
 	Rewrite,
 	RewriteContext,
-} from './link_urls';
+} from './link_urls.js';
 export type {
 	HeadingIdErrorCode,
 	HeadingIdsOptions,
 	HeadingInfo,
 	HeadingOptions,
 	HeadingSlug,
-} from './heading_ids';
+} from './heading_ids.js';
 export type {
 	SmartOptions,
 	SmartPunctuation,
 	SmartPunctuationOptions,
-} from './smart_punctuation';
+} from './smart_punctuation.js';
 
 /**
  * which elements a replacement takes, markdown takes those from markdown

@@ -1,7 +1,7 @@
-import { check_args, content_of } from './node_view';
-import type { NodeView, Position } from './node_view';
-import type { Json } from './plugin_data';
-import { NodeKind, string_to_kind, type NodeBuffer } from './utils';
+import { check_args, content_of } from './node_view.js';
+import type { NodeView, Position } from './node_view.js';
+import type { Json } from './plugin_data.js';
+import { NodeKind, string_to_kind, type NodeBuffer } from './utils.js';
 
 const NONE = 0xffffffff;
 

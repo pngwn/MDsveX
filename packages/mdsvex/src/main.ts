@@ -2,33 +2,33 @@ import type { ParsePlugin, SyntaxOptions } from '@mdsvex/parse';
 import type { Plugin, PluginOption, Rollup } from 'vite';
 import remapping from '@ampproject/remapping';
 // ahead of compile, so @mdsvex/render/sourcemap stays first in the chunk they share
-import { base64_utf8, chained_base64, pfm_map } from './sourcemap_chain';
-import type { StoredDocument } from './sourcemap_chain';
+import { base64_utf8, chained_base64, pfm_map } from './sourcemap_chain.js';
+import type { StoredDocument } from './sourcemap_chain.js';
 import {
 	CompilerSession,
 	check_plugins,
 	compile,
 	compile_inputs,
 	footnotes_option,
-} from './compile';
+} from './compile.js';
 import type {
 	Bundle,
 	CompileInputs,
 	ComponentMode,
 	FootnoteOptions,
 	Parsed,
-} from './compile';
-import { slug_of } from './heading_ids';
-import type { HeadingOptions } from './heading_ids';
-import { smart_of } from './smart_punctuation';
-import type { SmartOptions } from './smart_punctuation';
-import type { FrontmatterOptions } from './frontmatter';
-import { MANIFEST_VERSION, manifest_writer } from './manifest';
-import type { MdsvexManifest } from './manifest';
-import { scope_of } from './root_scope';
-import type { Highlighter, MathRenderer } from './highlight_run';
-import type { MathOptions } from './math';
-import type { HighlightOptions } from './highlight';
+} from './compile.js';
+import { slug_of } from './heading_ids.js';
+import type { HeadingOptions } from './heading_ids.js';
+import { smart_of } from './smart_punctuation.js';
+import type { SmartOptions } from './smart_punctuation.js';
+import type { FrontmatterOptions } from './frontmatter.js';
+import { MANIFEST_VERSION, manifest_writer } from './manifest.js';
+import type { MdsvexManifest } from './manifest.js';
+import { scope_of } from './root_scope.js';
+import type { Highlighter, MathRenderer } from './highlight_run.js';
+import type { MathOptions } from './math.js';
+import type { HighlightOptions } from './highlight.js';
 import {
 	COMPONENTS_ID,
 	DIRECTIVES_ID,
@@ -39,29 +39,29 @@ import {
 	VITE_QUERY,
 	clean_id,
 	svelte_request,
-} from './ids';
-import { export_tracker } from './export_tracker';
-import type { DocumentSource } from './export_tracker';
-import { component_registry } from './component_registry';
-import { plugin_registry } from './plugin_registry';
+} from './ids.js';
+import { export_tracker } from './export_tracker.js';
+import type { DocumentSource } from './export_tracker.js';
+import { component_registry } from './component_registry.js';
+import { plugin_registry } from './plugin_registry.js';
 import {
 	check_templates,
 	template_registry,
 	templates_for,
-} from './template_registry';
-import { has_code, plugin_highlight } from './plugin_highlight';
-import { check_math, manifest_math } from './plugin_math';
+} from './template_registry.js';
+import { has_code, plugin_highlight } from './plugin_highlight.js';
+import { check_math, manifest_math } from './plugin_math.js';
 import {
 	data_module,
 	data_query,
 	metadata_query,
 	read_metadata,
-} from './metadata_query';
-import type { MetadataDev, ResolveImport } from './metadata_query';
-import { links_of } from './link_urls';
-import type { BaseImport, Rewrite } from './link_urls';
-import { need_error } from './fence_sources';
-import { slashed, source_files } from './source_files';
+} from './metadata_query.js';
+import type { MetadataDev, ResolveImport } from './metadata_query.js';
+import { links_of } from './link_urls.js';
+import type { BaseImport, Rewrite } from './link_urls.js';
+import { need_error } from './fence_sources.js';
+import { slashed, source_files } from './source_files.js';
 import {
 	SNIPPET_MARK,
 	dir_of,
@@ -71,25 +71,25 @@ import {
 	snippet_id,
 	snippet_map,
 	snippet_modules,
-} from './snippet_modules';
-import type { SnippetId, SnippetModule } from './snippet_modules';
+} from './snippet_modules.js';
+import type { SnippetId, SnippetModule } from './snippet_modules.js';
 
-export * from './compile';
+export * from './compile.js';
 export {
 	scan_exports,
 	scan_exports_detail,
 	module_script,
-} from './scan_exports';
-export type { ScanKind, ScannedExports } from './scan_exports';
-export { MANIFEST_PATH, MANIFEST_VERSION } from './manifest';
+} from './scan_exports.js';
+export type { ScanKind, ScannedExports } from './scan_exports.js';
+export { MANIFEST_PATH, MANIFEST_VERSION } from './manifest.js';
 export type {
 	ManifestMath,
 	ManifestModule,
 	ManifestPlugin,
 	ManifestTemplate,
 	MdsvexManifest,
-} from './manifest';
-export type { MathOptions } from './math';
+} from './manifest.js';
+export type { MathOptions } from './math.js';
 
 export interface MdsvexOptions
 	extends SyntaxOptions, HeadingOptions, SmartOptions {
@@ -445,7 +445,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	/** loads the renderer, then renders what met a math fence without it again */
 	function load_math(compile: () => Compiled): Promise<{ code: string }> {
 		math_needed = false;
-		return (math_loading ??= import('./math')
+		return (math_loading ??= import('./math.js')
 			.then((m) => m.load_math(written_math as MathOptions | undefined))
 			.then(
 				(renderer) => {

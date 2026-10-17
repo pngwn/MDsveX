@@ -1,9 +1,9 @@
 // the ids of a document given out as it is read, the same streamed or whole,
 // heading ids at each close, fixed ids as they arrive, footnote ids at the end
 
-import { footnote_ids, footnote_index } from './buf_utils';
-import { SourceTextSource } from './node_view';
-import { NodeBuffer, NodeKind, kind_to_string } from './utils';
+import { footnote_ids, footnote_index } from './buf_utils.js';
+import { SourceTextSource } from './node_view.js';
+import { NodeBuffer, NodeKind, kind_to_string } from './utils.js';
 
 const NONE = 0xffffffff;
 

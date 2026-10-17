@@ -1,6 +1,6 @@
-import type { MathRenderer } from './highlight_run';
-import type { MathOptions } from './math';
-import type { MdsvexManifest } from './manifest';
+import type { MathRenderer } from './highlight_run.js';
+import type { MathOptions } from './math.js';
+import type { MdsvexManifest } from './manifest.js';
 
 /** throws unless the math option of the plugin is one it takes */
 export function check_math(written: unknown): void {

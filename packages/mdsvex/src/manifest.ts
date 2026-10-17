@@ -2,8 +2,8 @@
  * what the vite plugin resolved and scanned, written for editors, which can
  * not run vite to learn the templates and replacements a document compiles with
  */
-import { MANIFEST_PATH, queue_manifest } from './manifest_core';
-import type { MdsvexManifest } from './manifest_core';
+import { MANIFEST_PATH, queue_manifest } from './manifest_core.js';
+import type { MdsvexManifest } from './manifest_core.js';
 
 export {
 	MANIFEST_PATH,
@@ -11,7 +11,7 @@ export {
 	manifest_json,
 	manifest_resolver,
 	queue_manifest,
-} from './manifest_core';
+} from './manifest_core.js';
 export type {
 	ManifestMath,
 	ManifestModule,
@@ -19,7 +19,7 @@ export type {
 	ManifestPlugin,
 	ManifestTemplate,
 	MdsvexManifest,
-} from './manifest_core';
+} from './manifest_core.js';
 
 /** the manifest queue of the plugin, a failure warns once */
 export function manifest_writer(

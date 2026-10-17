@@ -13,13 +13,15 @@
 	import TabList from './TabList.svelte';
 
 	/**
-	 * @type {{
+	 * @typedef {{
 	 *   label?: import('svelte').Snippet,
 	 *   children?: import('svelte').Snippet,
 	 *   group?: string,
 	 *   code?: string,
-	 * }}
+	 * }} Props
 	 */
+
+	/** @type {Props} */
 	let { label, children, group, code } = $props();
 
 	const id = $props.id();

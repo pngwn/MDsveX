@@ -1,4 +1,4 @@
-import type { Position } from './node_view';
+import type { Position } from './node_view.js';
 
 /** a value ctx.set and ctx.add take, what json can hold, a key that holds undefined is left out */
 export type Json =

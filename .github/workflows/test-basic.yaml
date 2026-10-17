@@ -46,3 +46,6 @@ jobs:
           cache-dependency-path: '**/pnpm-lock.yaml'
       - run: pnpm i --frozen-lockfile
       - run: pnpm test:run
+      # packs every public package and type checks its entries from outside the repo
+      - run: pnpm check:package-types
+        if: matrix.os == 'ubuntu-latest'

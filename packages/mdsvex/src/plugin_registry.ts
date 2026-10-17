@@ -1,8 +1,13 @@
 import type { ComponentSource } from '@mdsvex/render/html-cursor';
 import type { Rollup } from 'vite';
-import type { Bundle } from './compile';
-import { PLUGIN_COMPONENTS_ID, PLUGIN_ID, clean_id, importer_in } from './ids';
-import type { ManifestModule, ManifestPlugin } from './manifest';
+import type { Bundle } from './compile.js';
+import {
+	PLUGIN_COMPONENTS_ID,
+	PLUGIN_ID,
+	clean_id,
+	importer_in,
+} from './ids.js';
+import type { ManifestModule, ManifestPlugin } from './manifest.js';
 
 interface PluginModule {
 	/** the id documents import */

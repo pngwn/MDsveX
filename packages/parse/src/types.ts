@@ -1,5 +1,5 @@
-import type { NodeBuffer, ErrorCollector } from './utils';
-import type { DirectiveTable, ParsePlugin } from './plugin_types';
+import type { NodeBuffer, ErrorCollector } from './utils.js';
+import type { DirectiveTable, ParsePlugin } from './plugin_types.js';
 
 /** syntax choices the parser reads, every one off by default */
 export interface SyntaxOptions {

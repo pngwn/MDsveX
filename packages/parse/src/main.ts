@@ -30,19 +30,28 @@ import {
 	APOSTROPHE,
 	EQUALS,
 	COMMA,
-} from './constants';
+} from './constants.js';
 
-import type { ParseOptions, SyntaxOptions } from './types';
-import type { PluginData, PluginDocument, PluginWarning } from './plugin_types';
+import type { ParseOptions, SyntaxOptions } from './types.js';
+import type {
+	PluginData,
+	PluginDocument,
+	PluginWarning,
+} from './plugin_types.js';
 
-import type { Emitter } from './opcodes';
-import { NodeKind, is_raw_text_tag, note_footnote, note_math } from './utils';
-import { NodeBuffer, ErrorCollector } from './utils';
-import { TreeBuilder } from './tree_builder';
-import { PluginDispatcher, has_directive_handlers } from './plugin_dispatch';
-import { SourceTextSource } from './node_view';
-import { is_unicode_punctuation } from './unicode_punctuation';
-export type { ParseOptions, ParseResult, SyntaxOptions } from './types';
+import type { Emitter } from './opcodes.js';
+import {
+	NodeKind,
+	is_raw_text_tag,
+	note_footnote,
+	note_math,
+} from './utils.js';
+import { NodeBuffer, ErrorCollector } from './utils.js';
+import { TreeBuilder } from './tree_builder.js';
+import { PluginDispatcher, has_directive_handlers } from './plugin_dispatch.js';
+import { SourceTextSource } from './node_view.js';
+import { is_unicode_punctuation } from './unicode_punctuation.js';
+export type { ParseOptions, ParseResult, SyntaxOptions } from './types.js';
 export type {
 	ParsePlugin,
 	PluginContext,
@@ -60,22 +69,22 @@ export type {
 	PluginDocument,
 	PluginWarning,
 	TaskContext,
-} from './plugin_types';
-export { PluginCache, PluginDataError } from './plugin_data';
-export { PluginAsyncError, PluginTaskError } from './plugin_tasks';
-export type { NodeView, WrapperView, Point, Position } from './node_view';
-export { NodeKind, NodeBuffer, take_src } from './utils';
-export { HeadingIds, HeadingIdError, heading_slug } from './heading_ids';
+} from './plugin_types.js';
+export { PluginCache, PluginDataError } from './plugin_data.js';
+export { PluginAsyncError, PluginTaskError } from './plugin_tasks.js';
+export type { NodeView, WrapperView, Point, Position } from './node_view.js';
+export { NodeKind, NodeBuffer, take_src } from './utils.js';
+export { HeadingIds, HeadingIdError, heading_slug } from './heading_ids.js';
 export type {
 	HeadingIdErrorCode,
 	HeadingInfo,
 	HeadingSlug,
-} from './heading_ids';
-export { PluginDispatcher, has_directive_handlers } from './plugin_dispatch';
-export { SourceTextSource, WireTextSource } from './node_view';
+} from './heading_ids.js';
+export { PluginDispatcher, has_directive_handlers } from './plugin_dispatch.js';
+export { SourceTextSource, WireTextSource } from './node_view.js';
 
-export { WireEmitter, WireOp } from './wire_emitter';
-export type { Emitter } from './opcodes';
+export { WireEmitter, WireOp } from './wire_emitter.js';
+export type { Emitter } from './opcodes.js';
 
 // a method load on the source goes megamorphic across its string maps, a call through the builtin still inlines
 const char_code_at = String.prototype.charCodeAt;

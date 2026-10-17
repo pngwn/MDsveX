@@ -18,10 +18,10 @@ import {
 } from "@mdsvex/language-core";
 import type { ConfigLoader } from "@mdsvex/language-core";
 import { watch } from "node:fs";
-import { clean_svelte_hover } from "./clean_hover";
-import { without_self } from "./definitions";
-import { create_compile_diagnostics } from "./compile_diagnostics";
-import { create_completions } from "./completions";
+import { clean_svelte_hover } from "./clean_hover.js";
+import { without_self } from "./definitions.js";
+import { create_compile_diagnostics } from "./compile_diagnostics.js";
+import { create_completions } from "./completions.js";
 import { URI } from "vscode-uri";
 import { forEachEmbeddedCode } from "@volar/language-core";
 import type { LanguagePlugin, VirtualCode } from "@volar/language-core";

@@ -2,10 +2,10 @@
  * the modules a ?metadata and a ?data import load, made from the source of the
  * document with nothing read from disk
  */
-import { metadata_export, parse_frontmatter } from './frontmatter';
-import type { FrontmatterOptions } from './frontmatter';
-import { PLUGIN_DATA_EXPORT, plugin_data_export } from './plugin_data';
-import type { PluginData } from './plugin_data';
+import { metadata_export, parse_frontmatter } from './frontmatter.js';
+import type { FrontmatterOptions } from './frontmatter.js';
+import { PLUGIN_DATA_EXPORT, plugin_data_export } from './plugin_data.js';
+import type { PluginData } from './plugin_data.js';
 
 /** the offset after any spaces and tabs from at */
 function skip_blanks(source: string, at: number): number {

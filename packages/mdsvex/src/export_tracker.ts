@@ -1,5 +1,5 @@
-import { scan_exports_detail } from './scan_exports';
-import type { ScannedExports } from './scan_exports';
+import { scan_exports_detail } from './scan_exports.js';
+import type { ScannedExports } from './scan_exports.js';
 
 export function same_names(
 	a: readonly string[],
