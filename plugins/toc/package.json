@@ -1,6 +1,6 @@
 {
 	"name": "@mdsvex/plugin-toc",
-	"version": "0.0.1",
+	"version": "0.1.0-next.0",
 	"description": "Table of contents for mdsvex, the headings of a document as data and a component that lists them",
 	"type": "module",
 	"scripts": {

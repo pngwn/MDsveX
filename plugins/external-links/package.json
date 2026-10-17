@@ -1,6 +1,6 @@
 {
 	"name": "@mdsvex/plugin-external-links",
-	"version": "0.0.1",
+	"version": "0.1.0-next.0",
 	"description": "External link policy for mdsvex, rel and target on every link that leaves the site",
 	"type": "module",
 	"scripts": {

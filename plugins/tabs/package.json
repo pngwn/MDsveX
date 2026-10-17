@@ -1,6 +1,6 @@
 {
 	"name": "@mdsvex/plugin-tabs",
-	"version": "0.0.1",
+	"version": "0.1.0-next.0",
 	"description": "Tabs and code groups for mdsvex, each heading or code fence inside a tabs directive is a tab",
 	"type": "module",
 	"scripts": {
