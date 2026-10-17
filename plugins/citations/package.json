@@ -1,6 +1,6 @@
 {
 	"name": "@mdsvex/plugin-citations",
-	"version": "0.0.1",
+	"version": "0.1.0-next.0",
 	"description": "Citations for mdsvex, :cite[key] from a CSL JSON bibliography and a ::bibliography that lists what a document cites",
 	"type": "module",
 	"scripts": {

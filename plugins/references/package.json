@@ -1,6 +1,6 @@
 {
 	"name": "@mdsvex/plugin-references",
-	"version": "0.0.1",
+	"version": "0.1.0-next.0",
 	"description": "References for mdsvex, links for @user, #123, owner/repo#123 and commits, and for bare urls when asked",
 	"type": "module",
 	"scripts": {
