@@ -1,8 +1,8 @@
 // the modules of the fences that run, kept by the vite plugin so load can
 // serve the code of a block under the id its document imports it by
 
-import type { Snippet } from './run_blocks';
-import { slashed } from './source_files';
+import type { Snippet } from './run_blocks.js';
+import { slashed } from './source_files.js';
 
 /** every id of a snippet holds this, so an id without it is tested no further */
 export const SNIPPET_MARK = '.snippet-';

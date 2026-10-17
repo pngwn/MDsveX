@@ -23,7 +23,7 @@ import { v3ToVolarMappings } from "@mdsvex/source-map/v3-to-volar";
 
 const SVELTE_EXTENSION = ".svelte";
 
-import { SVELTE_SHIMS } from "./_svelte_shims";
+import { SVELTE_SHIMS } from "./_svelte_shims.js";
 
 /** Create a simple IScriptSnapshot from a string. */
 function createSnapshot(text: string): IScriptSnapshot {

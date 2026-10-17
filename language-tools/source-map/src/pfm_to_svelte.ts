@@ -34,13 +34,13 @@ import type {
 	MappingData,
 } from '@mdsvex/render/mappings';
 
-import { apply_edits, plain } from './edit';
-import type { Edit } from './edit';
-import { template_value_at, yaml_keys } from './keys';
-import type { KeyRange } from './keys';
+import { apply_edits, plain } from './edit.js';
+import type { Edit } from './edit.js';
+import { template_value_at, yaml_keys } from './keys.js';
+import type { KeyRange } from './keys.js';
 
 export type { Mapping, MappingData } from '@mdsvex/render/mappings';
-export { template_value_at, yaml_keys } from './keys';
+export { template_value_at, yaml_keys } from './keys.js';
 
 /** A <style> block found in the PFM source, with positions in both source and generated output. */
 export interface StyleBlock {

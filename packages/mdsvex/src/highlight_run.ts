@@ -13,8 +13,8 @@ import {
 	pre_props,
 	read_meta,
 	split_element,
-} from './code_meta';
-import { has_eval_flag, LiveCodeError } from './live_code';
+} from './code_meta.js';
+import { has_eval_flag, LiveCodeError } from './live_code.js';
 
 export type { HighlightedBlock, HighlightedCode };
 

@@ -2,8 +2,8 @@
  * the export scan of the vite plugin, types stripped by vite, which loads on
  * first use so a compile never does
  */
-import { module_script, read_exports } from './read_exports';
-import type { ScanKind, ScannedExports } from './read_exports';
+import { module_script, read_exports } from './read_exports.js';
+import type { ScanKind, ScannedExports } from './read_exports.js';
 
 export { module_script };
 export type { ScanKind, ScannedExports };

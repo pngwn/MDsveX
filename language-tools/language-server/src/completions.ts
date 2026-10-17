@@ -15,7 +15,7 @@ import {
 } from '@mdsvex/language-core';
 import type { PfmVirtualCode, Prop } from '@mdsvex/language-core';
 import { URI } from 'vscode-uri';
-import { root_code } from './root_code';
+import { root_code } from './root_code.js';
 
 const SUGGEST = { title: 'suggest', command: 'editor.action.triggerSuggest' };
 

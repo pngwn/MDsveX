@@ -4,7 +4,7 @@
  */
 import { parse } from 'es-module-lexer/js';
 import type { ExportSpecifier, ImportSpecifier } from 'es-module-lexer/js';
-import { exported_declarations } from './export_declarations';
+import { exported_declarations } from './export_declarations.js';
 
 export type ScanKind = 'js' | 'svelte';
 

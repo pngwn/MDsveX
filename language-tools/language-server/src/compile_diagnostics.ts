@@ -1,7 +1,7 @@
 /** what compile rejects or warns about, typescript reports the rest */
 
 import type { LanguageServicePlugin } from '@volar/language-server';
-import { root_code } from './root_code';
+import { root_code } from './root_code.js';
 
 const ERROR = 1;
 const WARNING = 2;

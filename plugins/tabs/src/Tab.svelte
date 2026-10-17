@@ -2,12 +2,14 @@
 	import { getContext } from 'svelte';
 
 	/**
-	 * @type {{
+	 * @typedef {{
 	 *   label?: import('svelte').Snippet,
 	 *   children?: import('svelte').Snippet,
 	 *   index?: string,
-	 * }}
+	 * }} Props
 	 */
+
+	/** @type {Props} */
 	let { label, children, index = '0' } = $props();
 
 	/**

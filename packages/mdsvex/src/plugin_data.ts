@@ -1,4 +1,4 @@
-import { script_json } from './frontmatter';
+import { script_json } from './frontmatter.js';
 
 /**
  * the export of a compiled document that holds what its plugins wrote with

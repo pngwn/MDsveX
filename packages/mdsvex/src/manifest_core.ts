@@ -3,8 +3,8 @@
  * not run vite to learn the templates and replacements a document compiles with
  */
 
-import type { ComponentMode } from './compile';
-import type { SmartPunctuation } from './smart_punctuation';
+import type { ComponentMode } from './compile.js';
+import type { SmartPunctuation } from './smart_punctuation.js';
 
 /** where the plugin writes the manifest, relative to the vite root */
 export const MANIFEST_PATH = 'node_modules/.mdsvex/manifest.json';

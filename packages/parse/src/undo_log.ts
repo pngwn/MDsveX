@@ -1,4 +1,4 @@
-import type { NodeBuffer } from './utils';
+import type { NodeBuffer } from './utils.js';
 
 const NONE = 0xffffffff;
 

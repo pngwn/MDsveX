@@ -1,11 +1,11 @@
 import type { Parser, Plugin, SupportLanguage, SupportOptions } from 'prettier';
 
-import { parse, sort_root } from './ast';
-import { formats_frontmatter } from './config';
-import type { FrontmatterMode } from './config';
-import type { SvxNode } from './ast';
-import { has_ignore_pragma, has_pragma } from './pragma';
-import { printer } from './printer';
+import { parse, sort_root } from './ast.js';
+import { formats_frontmatter } from './config.js';
+import type { FrontmatterMode } from './config.js';
+import type { SvxNode } from './ast.js';
+import { has_ignore_pragma, has_pragma } from './pragma.js';
+import { printer } from './printer.js';
 
 export const languages: SupportLanguage[] = [
 	{

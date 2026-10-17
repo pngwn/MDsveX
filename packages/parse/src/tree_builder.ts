@@ -1,13 +1,13 @@
-import type { Emitter, IdSource } from './opcodes';
+import type { Emitter, IdSource } from './opcodes.js';
 import {
 	NodeBuffer,
 	NodeField,
 	NodeKind,
 	make_meta,
 	merge_meta,
-} from './utils';
-import type { HeadingIds } from './heading_ids';
-import type { PluginDispatcher } from './plugin_dispatch';
+} from './utils.js';
+import type { HeadingIds } from './heading_ids.js';
+import type { PluginDispatcher } from './plugin_dispatch.js';
 
 const NONE = 0xffffffff;
 

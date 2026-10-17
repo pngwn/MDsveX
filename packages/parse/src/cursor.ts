@@ -23,7 +23,7 @@
  *   }
  */
 
-import { NodeField, type NodeBuffer } from './utils';
+import { NodeField, type NodeBuffer } from './utils.js';
 
 const NONE = 0xffffffff;
 

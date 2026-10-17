@@ -28,7 +28,7 @@ import * as tsx from '@twinkleplop/tsx';
 import * as typescript from '@twinkleplop/typescript';
 import * as yaml from '@twinkleplop/yaml';
 
-import type { LanguageModule } from './highlight';
+import type { LanguageModule } from './highlight.js';
 
 /** every twinkleplop language package by name */
 export const default_languages: Record<string, LanguageModule> = {

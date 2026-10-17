@@ -5,7 +5,7 @@ import { buf_code } from '@mdsvex/parse/buf-utils';
 import type { NodeBuffer } from '@mdsvex/parse/utils';
 import { K_CODE_FENCE } from '@mdsvex/render/html-cursor';
 import type { FenceSource } from '@mdsvex/render/html-cursor';
-import { meta_parts } from './code_meta';
+import { meta_parts } from './code_meta.js';
 import {
 	RUN_FLAG,
 	RunError,
@@ -15,8 +15,8 @@ import {
 	sibling_specifier,
 	snippet_hash,
 	snippet_of,
-} from './run_blocks';
-import type { RunErrorCode, Snippet, SnippetsOption } from './run_blocks';
+} from './run_blocks.js';
+import type { RunErrorCode, Snippet, SnippetsOption } from './run_blocks.js';
 
 /** a file a fence shows with src=, a render needs its text */
 export interface SourceNeed {

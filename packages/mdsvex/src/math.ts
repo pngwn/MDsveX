@@ -2,7 +2,7 @@
 // until load_math asks for it, so this entry is as small as compile
 
 import type { Options as TemmlOptions } from 'temml';
-import type { MathInfo, MathRenderer } from './highlight_run';
+import type { MathInfo, MathRenderer } from './highlight_run.js';
 
 export type { MathInfo, MathRenderer, TemmlOptions };
 

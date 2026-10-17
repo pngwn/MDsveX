@@ -41,8 +41,8 @@ import type {
 	HighlightContext,
 	HighlightedBlock,
 	HighlightedCode,
-} from './highlight_run';
-import { unsupported_eval } from './highlight_run';
+} from './highlight_run.js';
+import { unsupported_eval } from './highlight_run.js';
 import {
 	attribute_text,
 	escape_braces,
@@ -51,7 +51,7 @@ import {
 	pre_props,
 	read_meta,
 	split_element,
-} from './code_meta';
+} from './code_meta.js';
 import {
 	fence_groups,
 	group_expression,
@@ -59,9 +59,13 @@ import {
 	live_groups,
 	LiveCodeError,
 	template_text,
-} from './live_code';
+} from './live_code.js';
 
-export type { HighlightConfig, CodeInfo, Highlighter } from './highlight_run';
+export type {
+	HighlightConfig,
+	CodeInfo,
+	Highlighter,
+} from './highlight_run.js';
 export type { AnnotationPlugin, RenderOptions } from '@twinkleplop/core';
 
 /** a twinkleplop language package, mdsvex builds the language from its tokenize export */

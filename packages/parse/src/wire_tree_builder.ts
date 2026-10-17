@@ -23,11 +23,11 @@ import {
 	is_raw_text_tag,
 	make_meta,
 	merge_meta,
-} from './utils';
-import { Cursor } from './cursor';
-import type { HeadingIds } from './heading_ids';
-import type { PluginDispatcher } from './plugin_dispatch';
-import { WireTextSource } from './node_view';
+} from './utils.js';
+import { Cursor } from './cursor.js';
+import type { HeadingIds } from './heading_ids.js';
+import type { PluginDispatcher } from './plugin_dispatch.js';
+import { WireTextSource } from './node_view.js';
 
 const NONE = 0xffffffff;
 

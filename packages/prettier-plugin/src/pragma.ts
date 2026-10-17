@@ -1,4 +1,4 @@
-import { parse } from './ast';
+import { parse } from './ast.js';
 
 // the comments prettier reads in markdown, at the top or after the frontmatter
 const PRAGMA = /^\s*<!--\s*@(?:format|prettier)\s*-->/;

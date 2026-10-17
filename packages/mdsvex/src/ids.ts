@@ -8,7 +8,7 @@ export {
 	PLUGIN_COMPONENTS_ID,
 	METADATA_ID,
 	DATA_ID,
-} from './virtual_ids';
+} from './virtual_ids.js';
 
 /** a URL as a path, a string as written */
 export async function spec_of(entry: string | URL): Promise<string> {

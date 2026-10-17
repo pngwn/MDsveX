@@ -3,7 +3,7 @@
 import type { NodeBuffer } from '@mdsvex/parse/utils';
 import { K_IMAGE, K_LINK } from '@mdsvex/render/html-cursor';
 import type { UrlLookup, UrlSource } from '@mdsvex/render/html-cursor';
-import { decoded_references, js_string } from './image_imports';
+import { decoded_references, js_string } from './image_imports.js';
 
 /** what rewrite is told about a url */
 export interface RewriteContext {

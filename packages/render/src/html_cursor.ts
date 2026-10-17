@@ -26,8 +26,8 @@ import {
 	RecordMapping,
 	record_data,
 	record_mappings,
-} from './mappings';
-import type { Mapping, MappingData } from './mappings';
+} from './mappings.js';
+import type { Mapping, MappingData } from './mappings.js';
 import {
 	records_by_offset,
 	reserve_trace,
@@ -36,24 +36,24 @@ import {
 	trace_free_at,
 	trace_room,
 	trace_take,
-} from './sourcemap';
-import type { MapTrace, SourceMapV3 } from './sourcemap';
-import { ComponentScope, component_imports } from './scope';
-import type { ComponentImport, ReplaceWarning } from './scope';
-import { is_entity_name } from './entities';
-import { top_block } from './component';
+} from './sourcemap.js';
+import type { MapTrace, SourceMapV3 } from './sourcemap.js';
+import { ComponentScope, component_imports } from './scope.js';
+import type { ComponentImport, ReplaceWarning } from './scope.js';
+import { is_entity_name } from './entities.js';
+import { top_block } from './component.js';
 
-export type { Mapping, CodeInformation, MappingData } from './mappings';
-export { MapSink } from './mappings';
-export { ComponentScope, component_imports } from './scope';
+export type { Mapping, CodeInformation, MappingData } from './mappings.js';
+export { MapSink } from './mappings.js';
+export { ComponentScope, component_imports } from './scope.js';
 /** @internal a pass over the tree reads references as the renderer does */
-export { is_entity_name } from './entities';
+export { is_entity_name } from './entities.js';
 export type {
 	ComponentImport,
 	ComponentSource,
 	DefaultImport,
 	ReplaceWarning,
-} from './scope';
+} from './scope.js';
 
 /**
  * a fence the highlighter rendered, every string is markup svelte reads as

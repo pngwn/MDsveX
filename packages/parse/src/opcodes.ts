@@ -1,4 +1,4 @@
-import type { NodeKind } from './utils';
+import type { NodeKind } from './utils.js';
 
 /** the parser as an emitter that keeps ids equal to its slots sees it */
 export interface IdSource {

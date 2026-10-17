@@ -3,15 +3,15 @@
  * manifest the plugin writes, for a host that can not run vite
  */
 
-import type { ComponentMode } from './compile';
+import type { ComponentMode } from './compile.js';
 import {
 	MANIFEST_VERSION,
 	type ManifestMath,
 	type ManifestModule,
 	type ManifestTemplate,
 	type MdsvexManifest,
-} from './manifest_core';
-import type { SmartPunctuation } from './smart_punctuation';
+} from './manifest_core.js';
+import type { SmartPunctuation } from './smart_punctuation.js';
 import {
 	COMPONENTS_ID,
 	DIRECTIVES_EXPORT,
@@ -19,7 +19,7 @@ import {
 	PLUGIN_ID,
 	TEMPLATE_DIRECTIVES_ID,
 	TEMPLATE_ID,
-} from './virtual_ids';
+} from './virtual_ids.js';
 
 export const CONFIG_FILE = 'mdsvex.config.json';
 

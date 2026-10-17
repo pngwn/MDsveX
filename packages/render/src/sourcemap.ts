@@ -2,7 +2,12 @@
  * sourcemap utilities: line-starts, offset to position, vlq, v3 conversion.
  */
 
-import type { Mapping, MappingData, MapSink, RecordMapping } from './mappings';
+import type {
+	Mapping,
+	MappingData,
+	MapSink,
+	RecordMapping,
+} from './mappings.js';
 
 // mirrors mappings.ts, local const enums build to literals while imported
 // consts live in module cells that turbofan reloads on every use

@@ -1,8 +1,8 @@
 import { doc } from 'prettier';
 import type { Doc } from 'prettier';
 
-import { expression_doc } from './heads';
-import type { HeadContext } from './heads';
+import { expression_doc } from './heads.js';
+import type { HeadContext } from './heads.js';
 
 const { group, hardline, indent, line, literalline, softline } = doc.builders;
 const { replaceEndOfLine } = doc.utils;

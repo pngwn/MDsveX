@@ -5,7 +5,7 @@
  * no cursor state, no allocations beyond the returned arrays.
  */
 
-import type { NodeBuffer } from './utils';
+import type { NodeBuffer } from './utils.js';
 
 const NONE = 0xffffffff;
 

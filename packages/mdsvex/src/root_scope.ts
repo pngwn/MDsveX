@@ -1,6 +1,6 @@
 import { ComponentScope } from '@mdsvex/render/html-cursor';
 import type { ComponentSource } from '@mdsvex/render/html-cursor';
-import type { ComponentMode } from './compile';
+import type { ComponentMode } from './compile.js';
 
 // plugins keep one components array per config, so its scope is built once
 const root_scopes = new WeakMap<ComponentSource[], ComponentScope>();

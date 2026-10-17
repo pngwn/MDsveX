@@ -6,10 +6,10 @@ import {
 	merge_meta,
 	note_footnote,
 	string_to_kind,
-} from './utils';
-import { buf_code } from './buf_utils';
-import { type UndoLog, ATTR_DID_NOT_EXIST } from './undo_log';
-import type { HeadingIds } from './heading_ids';
+} from './utils.js';
+import { buf_code } from './buf_utils.js';
+import { type UndoLog, ATTR_DID_NOT_EXIST } from './undo_log.js';
+import type { HeadingIds } from './heading_ids.js';
 
 /** the kind a plugin names, a footnote it makes is noted as the parser notes one */
 function kind_named(type: string): NodeKind | undefined {

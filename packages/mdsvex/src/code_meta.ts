@@ -1,7 +1,7 @@
 // fence meta, attributes and escaping shared by the highlighters, compile
 // imports this, so it stays free of twinkleplop
 
-import { run_flag } from './run_blocks';
+import { run_flag } from './run_blocks.js';
 
 const SPACE = 32;
 const TAB = 9;

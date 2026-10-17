@@ -1,11 +1,16 @@
-import { type NodeBuffer, NodeField, NodeKind, string_to_kind } from './utils';
+import {
+	type NodeBuffer,
+	NodeField,
+	NodeKind,
+	string_to_kind,
+} from './utils.js';
 import {
 	type NodeView,
 	type TextSource,
 	type ViewCache,
 	content_of,
-} from './node_view';
-import { unlink_child } from './undo_log';
+} from './node_view.js';
+import { unlink_child } from './undo_log.js';
 
 const NONE = 0xffffffff;
 

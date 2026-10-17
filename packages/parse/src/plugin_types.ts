@@ -1,8 +1,8 @@
-import type { NodeView } from './node_view';
-import type { Json, PluginCache } from './plugin_data';
-import type { TextRun } from './text_run';
+import type { NodeView } from './node_view.js';
+import type { Json, PluginCache } from './plugin_data.js';
+import type { TextRun } from './text_run.js';
 
-export type { DataChange, Json } from './plugin_data';
+export type { DataChange, Json } from './plugin_data.js';
 
 /** a problem a plugin reported with ctx.warn */
 export interface PluginWarning {

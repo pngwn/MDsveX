@@ -1,11 +1,11 @@
 import { doc, util } from 'prettier';
 import type { AstPath, Doc, ParserOptions, Printer } from 'prettier';
 
-import { parse } from './ast';
-import type { SvxNode, SvxRoot } from './ast';
-import { embed } from './embed';
-import { insert_pragma } from './pragma';
-import { parse_open_tag, plain_open_tag } from './tag';
+import { parse } from './ast.js';
+import type { SvxNode, SvxRoot } from './ast.js';
+import { embed } from './embed.js';
+import { insert_pragma } from './pragma.js';
+import { parse_open_tag, plain_open_tag } from './tag.js';
 
 const {
 	align,

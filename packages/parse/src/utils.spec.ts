@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { NodeBuffer, NodeKind } from './utils';
+import { NodeBuffer, NodeKind } from './utils.js';
 
 describe('NodeBuffer', () => {
 	test('push should add a node to the buffer', () => {
