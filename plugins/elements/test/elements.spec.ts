@@ -1,4 +1,4 @@
-import { kit } from '@mdsvex/plugin-kit';
+import { elements } from '@mdsvex/plugin-elements';
 import { compile } from 'mdsvex';
 import { describe, expect, test } from 'vitest';
 
@@ -9,7 +9,9 @@ import {
 
 function setup() {
 	return {
-		directive_handlers: [{ name: 'kit', directives: kit().directives! }],
+		directive_handlers: [
+			{ name: 'elements', directives: elements().directives! },
+		],
 	};
 }
 
@@ -57,7 +59,7 @@ describe('accordion', () => {
 			'',
 			'## What *is* it',
 			'',
-			'A kit.',
+			'A plugin.',
 			'',
 			'### Deeper',
 			'',
@@ -77,7 +79,7 @@ describe('accordion', () => {
 				item(
 					['text:What ', ['strong_emphasis', 'text:is'], 'text: it'],
 					undefined,
-					['paragraph', 'text:A kit.'],
+					['paragraph', 'text:A plugin.'],
 					['heading', 'text:Deeper']
 				),
 				item(['text:Why'], undefined, ['list', ['list_item', 'text:one']]),
@@ -228,45 +230,15 @@ describe('details, kbd, ruby and badges', () => {
 	});
 });
 
-describe('embeds', () => {
-	test('the label is the title of the frame', () => {
-		expect(tree('::youtube[A *talk*](id=dQw4w9WgXcQ, start=30)\n')).toEqual([
-			'root',
-			[
-				'directive_leaf name="youtube" args={"id":"dQw4w9WgXcQ","start":"30","title":"A talk"}',
-				['directive_label', 'text:A ', ['strong_emphasis', 'text:talk']],
-			],
-		]);
-	});
-
-	test('a title written as an arg is kept', () => {
-		expect(tree('::vimeo[Label](id=76979871, title=Mine)\n')).toEqual([
-			'root',
-			[
-				'directive_leaf name="vimeo" args={"id":"76979871","title":"Mine"}',
-				['directive_label', 'text:Label'],
-			],
-		]);
-	});
-
-	test('a missing or malformed id and a missing title warn', () => {
-		expect(warnings('::youtube[A talk](id=dQw4w9WgXcQ)\n')).toEqual([]);
-		expect(warnings('::youtube[A talk]\n')).toEqual(['embed_id']);
-		expect(warnings('::youtube[A talk](id=short)\n')).toEqual(['embed_id']);
-		expect(warnings('::vimeo[A talk](id=abc)\n')).toEqual(['embed_id']);
-		expect(warnings('::vimeo(id=76979871)\n')).toEqual(['embed_without_title']);
-	});
-});
-
 describe('compile', () => {
-	const IMPORT = "from '@mdsvex/plugin-kit/directives';";
+	const IMPORT = "from '@mdsvex/plugin-elements/directives';";
 
 	test('imports only the components a document uses', () => {
-		const { code } = compile('Press :kbd[Ctrl].\n', { plugins: [kit()] });
+		const { code } = compile('Press :kbd[Ctrl].\n', { plugins: [elements()] });
 		expect(code).toBe(
 			[
 				'<script>',
-				"import { kbd as Kbd_MDSVEX_D_G } from '@mdsvex/plugin-kit/directives';",
+				"import { kbd as Kbd_MDSVEX_D_G } from '@mdsvex/plugin-elements/directives';",
 				'</script><p>Press <Kbd_MDSVEX_D_G>Ctrl</Kbd_MDSVEX_D_G>.</p>',
 			].join('\n')
 		);
@@ -274,14 +246,15 @@ describe('compile', () => {
 
 	test('css false imports the components without the stylesheet', () => {
 		expect(
-			compile('Press :kbd[Ctrl].\n', { plugins: [kit({ css: false })] }).code
-		).toContain("from '@mdsvex/plugin-kit/directives/unstyled';");
+			compile('Press :kbd[Ctrl].\n', { plugins: [elements({ css: false })] })
+				.code
+		).toContain("from '@mdsvex/plugin-elements/directives/unstyled';");
 	});
 
 	test('an accordion renders a details for each heading', () => {
 		const { code } = compile(
 			':::accordion[FAQ](name=faq)\n## One\n\nBody.\n\n## Two\n:::\n',
-			{ plugins: [kit()], heading_ids: true }
+			{ plugins: [elements()], heading_ids: true }
 		);
 		expect(code).toBe(
 			[
@@ -297,31 +270,16 @@ describe('compile', () => {
 		);
 	});
 
-	test('the title of an embed is the text a reader sees, an expression leaves none', () => {
-		const { code } = compile('::youtube[A {b} talk](id=dQw4w9WgXcQ)\n', {
-			plugins: [kit()],
-		});
-		expect(code).toContain(
-			'id="dQw4w9WgXcQ" title="A talk">{#snippet label()}A {b} talk{/snippet}'
-		);
-		expect(
-			compile('::youtube[A \\{b\\} talk](id=dQw4w9WgXcQ)\n', {
-				plugins: [kit()],
-			}).code
-		).toContain('title={"A {b} talk"}');
-	});
-
 	test('ruby passes its reading', () => {
 		expect(
-			compile(':ruby[漢字](rt=かんじ)\n', { plugins: [kit()] }).code
+			compile(':ruby[漢字](rt=かんじ)\n', { plugins: [elements()] }).code
 		).toContain('<Ruby_MDSVEX_D_G rt="かんじ">漢字</Ruby_MDSVEX_D_G>');
 	});
 
 	test('warnings come back with the plugin and the line', () => {
-		const { warnings: found } = compile(
-			':::accordion\n:::\n\nA :ruby[x].\n\n::youtube[](id=no)\n',
-			{ plugins: [kit()] }
-		);
+		const { warnings: found } = compile(':::accordion\n:::\n\nA :ruby[x].\n', {
+			plugins: [elements()],
+		});
 		expect(
 			found?.map((warning) => [
 				warning.code,
@@ -329,15 +287,13 @@ describe('compile', () => {
 				warning.start.line,
 			])
 		).toEqual([
-			['no_items', 'kit', 1],
-			['ruby_without_rt', 'kit', 4],
-			['embed_id', 'kit', 6],
-			['embed_without_title', 'kit', 6],
+			['no_items', 'elements', 1],
+			['ruby_without_rt', 'elements', 4],
 		]);
 	});
 
 	test('a document without the directives imports nothing', () => {
-		expect(compile('## Plain\n', { plugins: [kit()] }).code).toBe(
+		expect(compile('## Plain\n', { plugins: [elements()] }).code).toBe(
 			'<h2>Plain</h2>'
 		);
 	});

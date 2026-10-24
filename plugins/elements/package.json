@@ -1,7 +1,7 @@
 {
-	"name": "@mdsvex/plugin-kit",
+	"name": "@mdsvex/plugin-elements",
 	"version": "0.0.1",
-	"description": "Components most mdsvex sites want: details, accordions, keys, ruby, badges and video embeds",
+	"description": "Directives over html elements for mdsvex: details, accordions, keys, ruby and badges",
 	"type": "module",
 	"scripts": {
 		"build": "run-s build:check build:package",
@@ -43,15 +43,7 @@
 			"types": "./dist/Badge.svelte.d.ts",
 			"svelte": "./dist/Badge.svelte"
 		},
-		"./YouTube.svelte": {
-			"types": "./dist/YouTube.svelte.d.ts",
-			"svelte": "./dist/YouTube.svelte"
-		},
-		"./Vimeo.svelte": {
-			"types": "./dist/Vimeo.svelte.d.ts",
-			"svelte": "./dist/Vimeo.svelte"
-		},
-		"./kit.css": "./dist/kit.css",
+		"./elements.css": "./dist/elements.css",
 		"./package.json": "./package.json"
 	},
 	"files": [
@@ -64,7 +56,7 @@
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/pngwn/MDsveX.git",
-		"directory": "plugins/kit"
+		"directory": "plugins/elements"
 	},
 	"keywords": [
 		"mdsvex",
@@ -75,9 +67,7 @@
 		"accordion",
 		"kbd",
 		"ruby",
-		"badge",
-		"youtube",
-		"vimeo"
+		"badge"
 	],
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",

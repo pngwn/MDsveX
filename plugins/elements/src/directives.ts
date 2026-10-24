@@ -1,3 +1,3 @@
-import './kit.css';
+import './elements.css';
 
 export * from './unstyled.js';

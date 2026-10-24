@@ -1821,7 +1821,8 @@ import { anchors } from '@mdsvex/plugin-anchors';
 import { citations } from '@mdsvex/plugin-citations';
 import { emoji } from '@mdsvex/plugin-emoji';
 import { external_links } from '@mdsvex/plugin-external-links';
-import { kit } from '@mdsvex/plugin-kit';
+import { elements } from '@mdsvex/plugin-elements';
+import { embeds } from '@mdsvex/plugin-embeds';
 import { page_data } from '@mdsvex/plugin-page-data';
 import { references } from '@mdsvex/plugin-references';
 import { steps } from '@mdsvex/plugin-steps';
@@ -1833,7 +1834,8 @@ mdsvex({
 	plugins: [
 		steps(),
 		tabs(),
-		kit(),
+		elements(),
+		embeds(),
 		anchors(),
 		external_links(),
 		toc(),
@@ -1849,7 +1851,8 @@ mdsvex({
 | --- | --- |
 | [`@mdsvex/plugin-steps`](docs#steps) | numbered steps, one for each heading inside `:::steps` |
 | [`@mdsvex/plugin-tabs`](docs#tabs) | tabs and code groups, one tab for each heading or code fence inside `:::tabs` |
-| [`@mdsvex/plugin-kit`](docs#kit) | details, accordions, keys, ruby, badges and video embeds, each a directive |
+| [`@mdsvex/plugin-elements`](docs#elements) | details, accordions, keys, ruby and badges, each a directive over an HTML element |
+| [`@mdsvex/plugin-embeds`](docs#embeds) | YouTube and Vimeo players named by their title |
 | [`@mdsvex/plugin-anchors`](docs#anchors) | a link to itself on every heading that has an id |
 | [`@mdsvex/plugin-external-links`](docs#external-links) | `rel` and `target` on every link that leaves the site |
 | [`@mdsvex/plugin-toc`](docs#table-of-contents) | the headings of a document as data, and a `::toc` directive that lists them |
@@ -2044,19 +2047,19 @@ The stylesheet that comes with the components has selectors with no specificity,
 
 `tabs({ css: false })` leaves it out and keeps the markup. To change the markup, export your own `tabs` and `tab` from a [directives module](docs#declaring-directives). They get `label` and `children`, a `tabs` also gets `group` and `code` (`"true"` for a code group), and a `tab` gets `index`. The `label` of a tab is the content of its heading, or the name of its fence as text. The plugin's own are at `@mdsvex/plugin-tabs/Tabs.svelte` and `@mdsvex/plugin-tabs/Tab.svelte`. It needs Svelte 5.20 or later.
 
-### Kit
+### Elements
 
 ```bash
-pnpm add --save-dev @mdsvex/plugin-kit@next
+pnpm add --save-dev @mdsvex/plugin-elements@next
 ```
 
 ```js
-import { kit } from '@mdsvex/plugin-kit';
+import { elements } from '@mdsvex/plugin-elements';
 
-mdsvex({ plugins: [kit()] });
+mdsvex({ plugins: [elements()] });
 ```
 
-Components most sites want, each written as a directive. A document imports only the ones it uses, none loads a script of its own, and each works without JavaScript:
+Directives over plain HTML elements. A document imports only the ones it uses, none loads a script, and each works without JavaScript:
 
 | directive | renders |
 | --- | --- |
@@ -2065,8 +2068,6 @@ Components most sites want, each written as a directive. A document imports only
 | `:kbd[Ctrl]` | a `<kbd>` |
 | `:ruby[漢字](rt=かんじ)` | a `<ruby>` with the reading in `<rt>` and `<rp>` fallbacks |
 | `:badge[new](tone=tip)` | a `<span class="badge">`, tinted by `note`, `tip`, `warning` or `danger` |
-| `::youtube[Title](id=...)` | a lazy YouTube player from `youtube-nocookie.com`, `start` in seconds |
-| `::vimeo[Title](id=...)` | a lazy Vimeo player with `dnt=1` |
 
 An accordion splits like [tabs](docs#tabs): the first heading written directly inside sets the depth, and each heading of that depth starts an item whose summary is the text of the heading, so it gets no id and no place in a table of contents. `(name=faq)` gives every item the `name` of a `<details>`, so opening one closes the others. A `:::details` written directly inside is an item too.
 
@@ -2084,11 +2085,25 @@ Every part of it.
 :::
 ````
 
-The bracket text of an embed is the title of its frame, which is what a screen reader announces, and `(title=...)` sets it instead. A `<details>` is a disclosure the browser already makes accessible, a button in the tab order that announces whether it is expanded.
+A `<details>` is a disclosure the browser already makes accessible, a button in the tab order that announces whether it is expanded.
 
-The build warns, with the line, about an accordion with no items (`no_items`), content before its first item (`content_before_first_item`), an empty heading in one (`item_without_label`), a `:ruby` with no `rt` (`ruby_without_rt`), an embed with no id or one that is no id on its site (`embed_id`), and an embed with no title (`embed_without_title`).
+The build warns, with the line, about an accordion with no items (`no_items`), content before its first item (`content_before_first_item`), an empty heading in one (`item_without_label`) and a `:ruby` with no `rt` (`ruby_without_rt`).
 
-The stylesheet has selectors with no specificity and reads `--kit-line`, `--kit-radius` and `--kit-padding` from `.details` and `.accordion`, and `--badge-color` from `.badge`. `kit({ css: false })` leaves it out and keeps the markup. To change the markup, export a component under the name of the directive from a [directives module](docs#declaring-directives). It gets the args as string props, `label` and `children`, and an embed also gets `title`. The plugin's own are exported as `@mdsvex/plugin-kit/Details.svelte` and so on.
+The stylesheet has selectors with no specificity and reads `--elements-line`, `--elements-radius` and `--elements-padding` from `.details` and `.accordion`, `--kbd-line` from `.kbd` and `--badge-color` from `.badge`. `elements({ css: false })` leaves it out and keeps the markup. To change the markup, export a component under the name of the directive from a [directives module](docs#declaring-directives). It gets the args as string props, and `label` and `children`. The plugin's own are exported as `@mdsvex/plugin-elements/Details.svelte` and so on.
+
+### Embeds
+
+```bash
+pnpm add --save-dev @mdsvex/plugin-embeds@next
+```
+
+```js
+import { embeds } from '@mdsvex/plugin-embeds';
+
+mdsvex({ plugins: [embeds()] });
+```
+
+`::youtube[Title](id=...)` is a lazy YouTube player from `youtube-nocookie.com`, which sets no cookie until the video plays, and `::vimeo[Title](id=...)` a lazy Vimeo player with `dnt=1`. `start` is a time in seconds. The bracket text is the title of the frame, which is what a screen reader announces, and `(title=...)` sets it instead. The build warns about an embed with no id or one that is no id on its site (`embed_id`), and one with no title (`embed_without_title`). `embeds({ css: false })` leaves the stylesheet out, and a `youtube` or `vimeo` from a [directives module](docs#declaring-directives) replaces the plugin's component.
 
 ### Anchors
 
