@@ -1,6 +1,6 @@
 # @mdsvex/plugin-kit
 
-Components most [mdsvex](https://mdsvex.pngwn.io) sites want, each written as a directive: details, accordions, keys, ruby, badges and video embeds.
+Components most [mdsvex](https://mdsvex.pngwn.io) sites want: details, accordions, keys, ruby, badges and video embeds, each written as a directive, and figures for images with a title.
 
 ```bash
 pnpm add --save-dev @mdsvex/plugin-kit@next
@@ -102,6 +102,39 @@ Press :kbd[Ctrl]+:kbd[C] to copy. :ruby[漢字](rt=かんじ) is read _kanji_. :
 - **The player loads lazily** (`loading="lazy"`), from `youtube-nocookie.com`, which sets no cookie until the video plays, and from Vimeo with `dnt=1`.
 - **The frame fills the width at 16:9.** Set `aspect-ratio` on `.embed` to change it.
 
+## Figures
+
+`figures()` is a plugin of its own in the same package. It replaces `img`, so add it when you want figures:
+
+```js
+import { figures, kit } from '@mdsvex/plugin-kit';
+
+mdsvex({ unwrap_images: true, plugins: [kit(), figures()] });
+```
+
+An image with a title that stands on its own becomes a figure, with the title as its caption:
+
+```md
+Sales grew all year.
+
+![A bar chart of sales by month](./chart.png 'Sales by month, 2026')
+```
+
+```html
+<p>Sales grew all year.</p>
+<figure class="figure">
+	<img src="/assets/chart.4f2a.png" alt="A bar chart of sales by month" />
+	<figcaption class="figure-caption">Sales by month, 2026</figcaption>
+</figure>
+```
+
+- **It needs [`unwrap_images`](https://mdsvex.pngwn.io/docs#unwrap_images)** for an image on a line of its own, since a `<figure>` can't sit inside the `<p>` markdown puts around it. An image in a tight list item, which has no `<p>`, is a figure either way.
+- **An image written beside text stays an image**, and so does one in a heading or a table cell. A `<figure>` is not allowed there, and the page would not hydrate.
+- **The alt text describes the image and the title is the caption.** A reader hears both, so don't repeat one in the other. The caption is not also a `title` attribute.
+- **An image with no title stays an image**, with its other attributes kept.
+
+The component gets `src`, `alt`, `title` and the image's other attributes, and `figure="true"` when the image may be a figure. Export an `img` from a `components` module and it replaces this one and gets the same `figure` prop. Leave the stylesheet out with `figures({ css: false })`.
+
 ## What it warns about
 
 The build reports these, with the line they are on, and still renders the page:
@@ -117,7 +150,7 @@ The build reports these, with the line they are on, and still renders the page:
 
 ## Styles
 
-The components come with a small stylesheet. Every selector is inside `:where()`, so any rule of yours wins. The classes are `details`, `details-summary`, `details-body`, `accordion`, `accordion-label`, `kbd`, `ruby`, `badge`, `embed`, `embed-youtube` and `embed-vimeo`, and these custom properties are read:
+The components come with a small stylesheet. Every selector is inside `:where()`, so any rule of yours wins. The classes are `details`, `details-summary`, `details-body`, `accordion`, `accordion-label`, `kbd`, `ruby`, `badge`, `embed`, `embed-youtube`, `embed-vimeo`, and from `figures()`, `figure` and `figure-caption`, and these custom properties are read:
 
 | property         | on                       | default                                    |
 | ---------------- | ------------------------ | ------------------------------------------ |

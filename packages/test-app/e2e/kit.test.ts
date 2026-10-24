@@ -53,3 +53,13 @@ test("embeds are frames named by their label", async ({ page }) => {
 		"lazy",
 	);
 });
+
+test("an image alone with a title is a figure with a caption", async ({
+	page,
+}) => {
+	await page.goto("/kit");
+	const figure = page.getByRole("figure", { name: "The mdsvex penguin" });
+	await expect(figure.getByRole("img", { name: "A penguin" })).toBeVisible();
+	await expect(figure.locator("figcaption")).toHaveText("The mdsvex penguin");
+	await expect(page.locator("p > img[title='Inline']")).toHaveCount(1);
+});

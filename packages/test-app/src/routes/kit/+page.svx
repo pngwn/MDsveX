@@ -45,3 +45,7 @@ Press :kbd[Ctrl]+:kbd[{key}] to copy. :ruby[漢字](rt=かんじ) is read *kanji
 ::youtube[A conference talk](id=dQw4w9WgXcQ, start=30)
 
 ::vimeo[A short film](id=76979871)
+
+![A penguin](/favicon.png "The mdsvex penguin")
+
+A small ![penguin](/favicon.png "Inline") beside text stays an image.

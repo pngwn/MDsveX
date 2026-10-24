@@ -3,6 +3,7 @@ import type {
 	BundleDirective,
 	DirectiveContext,
 	NodeView,
+	ParsePlugin,
 	WrapperView,
 } from 'mdsvex/compile';
 
@@ -182,5 +183,51 @@ export function kit(options: KitOptions = {}): Bundle {
 			youtube: embed('youtube', 'YouTube', /^[\w-]{11}$/, 'dQw4w9WgXcQ'),
 			vimeo: embed('vimeo', 'Vimeo', /^\d+$/, '76979871'),
 		},
+	};
+}
+
+/** what holds only phrasing content, a figure inside one is invalid html */
+const PHRASING = new Set([
+	'paragraph',
+	'heading',
+	'table_cell',
+	'directive_label',
+]);
+
+const STANDALONE: ParsePlugin = {
+	// a paragraph of images is only unwrapped once it closes, so the tree is read when complete
+	sequential: true,
+	image: {
+		parse(node) {
+			if (node.attrs.title === undefined || node.attrs.title === '') return;
+			for (let up = node.parent; up !== null; up = up.parent) {
+				if (PHRASING.has(up.type)) return;
+			}
+			node.attrs.figure = 'true';
+		},
+	},
+};
+
+/**
+ * renders an image that has a title as a figure with the title as its
+ * caption, once `unwrap_images` has taken it out of its paragraph, an image
+ * written beside text stays an image
+ *
+ * @example
+ * import { figures } from '@mdsvex/plugin-kit';
+ *
+ * mdsvex({ unwrap_images: true, plugins: [figures()] });
+ */
+export function figures(options: KitOptions = {}): Bundle {
+	return {
+		name: 'figures',
+		components: {
+			specifier:
+				options.css === false
+					? '@mdsvex/plugin-kit/figures/unstyled'
+					: '@mdsvex/plugin-kit/figures',
+			names: ['img'],
+		},
+		parse: STANDALONE,
 	};
 }

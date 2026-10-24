@@ -974,6 +974,8 @@ export { default as img } from './Figure.svelte';
 mdsvex({ components: '#lib/markdown.js', unwrap_images: true });
 ```
 
+[`figures()`](docs#kit) from `@mdsvex/plugin-kit` is such a replacement, and leaves an image that is still inside a paragraph as an image.
+
 With `unwrap_images`, a paragraph that holds only images gets no `<p>`, so the figure stands on its own:
 
 ```svx
@@ -1849,7 +1851,7 @@ mdsvex({
 | --- | --- |
 | [`@mdsvex/plugin-steps`](docs#steps) | numbered steps, one for each heading inside `:::steps` |
 | [`@mdsvex/plugin-tabs`](docs#tabs) | tabs and code groups, one tab for each heading or code fence inside `:::tabs` |
-| [`@mdsvex/plugin-kit`](docs#kit) | details, accordions, keys, ruby, badges and video embeds, each a directive |
+| [`@mdsvex/plugin-kit`](docs#kit) | details, accordions, keys, ruby, badges and video embeds, each a directive, and figures for images with a title |
 | [`@mdsvex/plugin-anchors`](docs#anchors) | a link to itself on every heading that has an id |
 | [`@mdsvex/plugin-external-links`](docs#external-links) | `rel` and `target` on every link that leaves the site |
 | [`@mdsvex/plugin-toc`](docs#table-of-contents) | the headings of a document as data, and a `::toc` directive that lists them |
@@ -2087,6 +2089,16 @@ Every part of it.
 The bracket text of an embed is the title of its frame, which is what a screen reader announces, and `(title=...)` sets it instead. A `<details>` is a disclosure the browser already makes accessible, a button in the tab order that announces whether it is expanded.
 
 The build warns, with the line, about an accordion with no items (`no_items`), content before its first item (`content_before_first_item`), an empty heading in one (`item_without_label`), a `:ruby` with no `rt` (`ruby_without_rt`), an embed with no id or one that is no id on its site (`embed_id`), and an embed with no title (`embed_without_title`).
+
+`figures()`, from the same package, replaces `img`. An image with a title that stands on its own renders as a `<figure>` with the title as its `<figcaption>`, once [`unwrap_images`](docs#unwrap_images) has taken it out of its paragraph:
+
+```js
+import { figures, kit } from '@mdsvex/plugin-kit';
+
+mdsvex({ unwrap_images: true, plugins: [kit(), figures()] });
+```
+
+An image beside text, in a heading or in a table cell stays an image, since a `<figure>` isn't allowed there, and so does one with no title. The alt text describes the image and the title is the caption, so write each for what it is.
 
 The stylesheet has selectors with no specificity and reads `--kit-line`, `--kit-radius` and `--kit-padding` from `.details` and `.accordion`, and `--badge-color` from `.badge`. `kit({ css: false })` leaves it out and keeps the markup. To change the markup, export a component under the name of the directive from a [directives module](docs#declaring-directives). It gets the args as string props, `label` and `children`, and an embed also gets `title`. The plugin's own are exported as `@mdsvex/plugin-kit/Details.svelte` and so on.
 

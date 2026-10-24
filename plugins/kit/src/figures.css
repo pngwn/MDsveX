@@ -1,0 +1,18 @@
+/* every selector sits in :where() so any rule of a site wins */
+
+:where(.figure) {
+	margin-block: 1.5rem;
+	margin-inline: 0;
+}
+
+:where(.figure > img) {
+	display: block;
+	max-width: 100%;
+	height: auto;
+}
+
+:where(.figure-caption) {
+	margin-block-start: 0.5rem;
+	color: color-mix(in srgb, currentColor 70%, transparent);
+	font-size: 0.9em;
+}
