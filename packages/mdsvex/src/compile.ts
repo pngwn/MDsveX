@@ -1,6 +1,7 @@
 // browsers bundle this entry whole, so it never imports vite, the lexer or node builtins
 
 import {
+	DirectiveOwnerError,
 	PFMParser,
 	PluginCache,
 	PluginDispatcher,
@@ -94,7 +95,11 @@ export type { ComponentSource };
 export type { FrontmatterOptions };
 export { FrontmatterError } from './frontmatter.js';
 export { PluginDataError } from './plugin_data.js';
-export { PluginAsyncError, PluginTaskError } from '@mdsvex/parse';
+export {
+	DirectiveOwnerError,
+	PluginAsyncError,
+	PluginTaskError,
+} from '@mdsvex/parse';
 export { fence_meta } from './code_meta.js';
 export type { FenceMeta, MetaInfo } from './code_meta.js';
 export type { PluginData, PluginDataContext };
@@ -704,6 +709,8 @@ class Merge<T> {
 interface Unpacked {
 	/** the directives of each bundle with its name, undefined when none binds a handler */
 	handlers: BoundTables | undefined;
+	/** the tables even when none binds a handler, the error of an observer names owners from them */
+	owners: BoundTables | undefined;
 	/** the directive components of each bundle that has any */
 	directives: Merge<ComponentSource>;
 	components: Merge<ComponentSource>;
@@ -743,6 +750,7 @@ function unpack(bundles: Bundle[]): Unpacked {
 	const directives: ComponentSource[] = [];
 	const components: ComponentSource[] = [];
 	const parse: ParsePlugin[] = [];
+	const owners = new Map<string, string>();
 	for (let i = 0; i < bundles.length; i++) {
 		const bundle = bundles[i];
 		if (!is_record(bundle))
@@ -761,6 +769,10 @@ function unpack(bundles: Bundle[]): Unpacked {
 			for (const name of names) {
 				if (!is_record(own[name]))
 					throw bundle_error(i, bundle, `directives.${name} must be an object`);
+				const owner = owners.get(name);
+				if (owner !== undefined)
+					throw new DirectiveOwnerError(name, [owner, bundle.name]);
+				owners.set(name, bundle.name);
 			}
 			if (names.length !== 0) {
 				if (typeof bundle.module !== 'string' || bundle.module === '')
@@ -802,6 +814,7 @@ function unpack(bundles: Bundle[]): Unpacked {
 	}
 	const out: Unpacked = {
 		handlers: has_directive_handlers(tables) ? tables : undefined,
+		owners: tables.length === 0 ? undefined : tables,
 		directives: new Merge(directives),
 		components: new Merge(components),
 		parse: new Merge(parse),
@@ -824,10 +837,13 @@ function unbundled(inputs: CompileInputs): CompileInputs {
 	// assigned over a fresh one so the shape holds and a new field comes along
 	const out = Object.assign(compile_inputs(), inputs);
 	out.plugins = undefined;
-	out.directive_handlers = u.handlers;
 	out.directives = u.directives.with(inputs.directives);
 	out.components = u.components.with(inputs.components);
-	out.parse_plugins = u.parse.with(inputs.parse_plugins);
+	const parse = (out.parse_plugins = u.parse.with(inputs.parse_plugins));
+	// parse plugins build a dispatcher anyway, an observer among them names owners from these
+	out.directive_handlers =
+		u.handlers ??
+		(parse === undefined || parse.length === 0 ? undefined : u.owners);
 	return out;
 }
 

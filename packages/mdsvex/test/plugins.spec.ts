@@ -1,7 +1,13 @@
 import { compile as svelte_compile } from 'svelte/compiler';
 import { describe, expect, test } from 'vitest';
 
-import { compile, CompilerSession, DirectiveError } from '../src/main';
+import {
+	compile,
+	CompilerSession,
+	DirectiveError,
+	DirectiveOwnerError,
+} from '../src/main';
+import { check_plugins } from '../src/compile';
 import type { Bundle, ComponentSource, ParsePlugin } from '../src/main';
 
 const STEPS_MODULE = '@acme/steps/directives';
@@ -163,28 +169,26 @@ describe('precedence', () => {
 		{ specifier: 'mdsvex:directives', names },
 	];
 
-	test('a later bundle wins a name, its handlers with its component', () => {
-		const log: string[] = [];
+	test('two bundles that own one name are a DirectiveOwnerError', () => {
 		const other: Bundle = {
 			name: 'other',
 			module: '@acme/other',
-			directives: {
-				steps: {
-					children: { paragraph: () => void log.push('other paragraph') },
-				},
-			},
+			directives: { step: {} },
 		};
-		const { code } = compile(DOC, { plugins: [steps(log), other] });
-		expect(imports_of(code)).toBe(
-			"import { steps as Steps_MDSVEX_D_G } from '@acme/other';\n"
-		);
-		// the headings stay headings, the first bundle no longer owns steps
-		expect(code).not.toContain('Step_MDSVEX_D_G');
-		expect(log).toEqual([
-			'other paragraph',
-			'other paragraph',
-			'other paragraph',
-		]);
+		let error: unknown;
+		try {
+			compile(DOC, { plugins: [steps(), other] });
+		} catch (e) {
+			error = e;
+		}
+		expect(error).toBeInstanceOf(DirectiveOwnerError);
+		expect(error).toMatchObject({
+			directive: 'step',
+			plugins: ['steps', 'other'],
+			message:
+				'plugin "steps" and plugin "other" both own directive "step", a directive has one owner, another plugin can observe it',
+		});
+		expect(() => check_plugins([steps(), other])).toThrow(DirectiveOwnerError);
 	});
 
 	test('the directives option replaces a component, the handlers still run', () => {
@@ -387,6 +391,123 @@ describe('the guard', () => {
 		).toBe(
 			'<Tabs_MDSVEX_D_G sync="os" count="2">\n<h2>A</h2><h2>B</h2>\n</Tabs_MDSVEX_D_G>'
 		);
+	});
+});
+
+describe('observers', () => {
+	/** numbers each steps directive and reads the steps the owner made */
+	const counting = (log: string[]): ParsePlugin => ({
+		name: 'count',
+		observe: {
+			steps: {
+				parse(node, ctx) {
+					log.push('observer open');
+					return () => {
+						let made = 0;
+						for (let c = node.first_child; c !== null; c = c.next) {
+							if (c.type === 'directive_container') made++;
+						}
+						ctx.set('steps', made);
+					};
+				},
+				children: {
+					heading(node, ctx) {
+						log.push('observer heading in ' + node.parent!.type);
+						try {
+							node.attrs.id = 'x';
+						} catch (e) {
+							log.push((e as Error).message);
+						}
+						ctx.add('headings', ctx.index);
+					},
+				},
+			},
+		},
+	});
+
+	test('a bundle observes the directive another bundle owns', () => {
+		const log: string[] = [];
+		const watcher: Bundle = { name: 'count', parse: counting(log) };
+		const out = compile(DOC, { plugins: [steps(log), watcher] });
+		// the data is exported from a module script ahead of the body
+		expect(out.code.endsWith(STEPS_BODY)).toBe(true);
+		expect(out.data).toEqual({ count: { steps: 2, headings: [0, 1] } });
+		expect(log).toEqual([
+			'observer open',
+			'heading 0',
+			'observer heading in directive_label',
+			'node.attrs: plugin "count" observes directive "steps", which plugin "steps" owns, an observer changes no node, it writes what it finds with ctx.set or ctx.add',
+			'heading 1',
+			'observer heading in directive_label',
+			'node.attrs: plugin "count" observes directive "steps", which plugin "steps" owns, an observer changes no node, it writes what it finds with ctx.set or ctx.add',
+		]);
+	});
+
+	test('so does a parse plugin, in either order, and the guard stays', () => {
+		const log: string[] = [];
+		const out = compile(DOC, {
+			parse_plugins: [counting(log)],
+			plugins: [steps()],
+		});
+		// the data is exported from a module script ahead of the body
+		expect(out.code.endsWith(STEPS_BODY)).toBe(true);
+		expect(out.data).toEqual({ count: { steps: 2, headings: [0, 1] } });
+		const first = compile(DOC, {
+			plugins: [{ name: 'count', parse: counting([]) }, steps()],
+		});
+		expect(first.data).toEqual(out.data);
+	});
+
+	test('with a component of the directives option and no bundle', () => {
+		const out = compile(':::steps[]\n## One\n:::\n', {
+			parse_plugins: [counting([])],
+			directives: [{ specifier: 'mdsvex:directives', names: ['steps'] }],
+		});
+		expect(out.data).toEqual({ count: { steps: 0, headings: [0] } });
+	});
+
+	test('the error names an owner that binds no handler', () => {
+		const log: string[] = [];
+		const owner: Bundle = {
+			name: 'figures',
+			module: '@acme/figures',
+			directives: { figure: {} },
+		};
+		const watcher: ParsePlugin = {
+			name: 'numbering',
+			observe: {
+				figure: {
+					parse(node) {
+						try {
+							node.attrs.id = 'x';
+						} catch (e) {
+							log.push((e as Error).message);
+						}
+					},
+				},
+			},
+		};
+		compile(':::figure[]\nx\n:::\n', {
+			plugins: [owner],
+			parse_plugins: [watcher],
+		});
+		compile(':::figure[]\nx\n:::\n', {
+			plugins: [owner, { name: 'numbering', parse: watcher }],
+		});
+		const message =
+			'node.attrs: plugin "numbering" observes directive "figure", which plugin "figures" owns, an observer changes no node, it writes what it finds with ctx.set or ctx.add';
+		expect(log).toEqual([message, message]);
+	});
+
+	test('a session reuses its plugins and observes each document', () => {
+		const session = new CompilerSession();
+		const plugins = [steps(), { name: 'count', parse: counting([]) }];
+		expect(session.compile(DOC, { plugins }).data).toEqual({
+			count: { steps: 2, headings: [0, 1] },
+		});
+		expect(
+			session.compile(':::steps[]\n## A\n:::\n', { plugins }).data
+		).toEqual({ count: { steps: 1, headings: [0] } });
 	});
 });
 
