@@ -6,6 +6,7 @@ Each directory here is one npm package, `@mdsvex/plugin-<name>`, that exports a 
 | ------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------- |
 | `@mdsvex/plugin-steps`          | [`steps`](./steps)                   | numbered steps, one for each heading inside `:::steps`                              |
 | `@mdsvex/plugin-tabs`           | [`tabs`](./tabs)                     | tabs and code groups, one tab for each heading or fence inside `:::tabs`            |
+| `@mdsvex/plugin-kit`            | [`kit`](./kit)                       | directives for details, accordions, keys, ruby, badges and embeds, and figures      |
 | `@mdsvex/plugin-anchors`        | [`anchors`](./anchors)               | a link to itself on every heading that has an id                                    |
 | `@mdsvex/plugin-external-links` | [`external-links`](./external-links) | `rel` and `target` on every link that leaves the site                               |
 | `@mdsvex/plugin-toc`            | [`toc`](./toc)                       | the headings of a document as data, and a `::toc` that lists them                   |
@@ -64,14 +65,14 @@ npm login
 ```
 
 ```bash
-node scripts/setup-trusted-publishing.mjs --dry-run @mdsvex/plugin-steps @mdsvex/plugin-tabs @mdsvex/plugin-anchors @mdsvex/plugin-external-links @mdsvex/plugin-toc @mdsvex/plugin-page-data @mdsvex/plugin-emoji @mdsvex/plugin-references @mdsvex/plugin-citations
+node scripts/setup-trusted-publishing.mjs --dry-run @mdsvex/plugin-kit
 ```
 
 ```bash
-node scripts/setup-trusted-publishing.mjs @mdsvex/plugin-steps @mdsvex/plugin-tabs @mdsvex/plugin-anchors @mdsvex/plugin-external-links @mdsvex/plugin-toc @mdsvex/plugin-page-data @mdsvex/plugin-emoji @mdsvex/plugin-references @mdsvex/plugin-citations
+node scripts/setup-trusted-publishing.mjs @mdsvex/plugin-kit
 ```
 
-Those are all nine packages here, and none of them is on npm yet. Name only the new ones once these have had their first release.
+`@mdsvex/plugin-kit` is the one package here that is not on npm yet, the other nine were first released as `0.1.0-next.0`. Name only the packages that have never been published.
 
 The dry run lists what it would do. The real run publishes a `0.0.0` placeholder of each package that is not on npm, then registers `pngwn/MDsveX` with `release.yml` as its trusted publisher. Run it with `node`, not through `pnpm run`, so the 2FA prompt reaches the terminal. It finds packages with `pnpm -r ls`, which covers `plugins/*`, and skips private ones, so a new package must not be `private` and must have a version other than `0.0.0`.
 
