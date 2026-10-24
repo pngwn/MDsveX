@@ -45,12 +45,23 @@ const FILES = {
 		'',
 	].join('\n'),
 	'src/figures.svx': [
-		'![A chart](./chart.png "Sales by month")',
+		':::figure[Sales by *month*](id=fig:sales)',
+		'![A chart](./chart.png "A title")',
+		':::',
 		'',
-		'Beside ![a dot](/dot.png "A dot") text.',
+		':::figure',
+		'![No caption](/plain.png)',
+		':::',
 		'',
-		'![No title](/plain.png)',
-		'',
+	].join('\n'),
+	// as a numbering plugin would hand the figure its number
+	'src/Numbered.svelte': [
+		'<script>',
+		"  import { setContext } from 'svelte';",
+		"  import Doc from './figures.svx';",
+		"  setContext(Symbol.for('mdsvex.plugin_data'), { current: { numbering: { targets: [{ id: 'fig:sales', kind: 'fig', number: 3 }] } } });",
+		'</script>',
+		'<Doc />',
 	].join('\n'),
 	'src/chart.png': '',
 	'src/lib/markdown.js': "export * as directives from './directives.js';",
@@ -255,25 +266,23 @@ describe('figures in a vite app', () => {
 		rmSync(root, { recursive: true, force: true });
 	});
 
-	test('an unwrapped image with a title is a figure, an image beside text stays one', async () => {
-		// svelte replays load and error events of an img with spread attributes
-		const html = (await ssr(server, '/src/figures.svx')).replaceAll(
-			' onload="this.__e=event" onerror="this.__e=event"',
-			''
+	test('a figure holds its content and the label is the caption', async () => {
+		expect(await ssr(server, '/src/figures.svx')).toBe(
+			'<figure class="figure" id="fig:sales"><img src="/src/chart.png" alt="A chart" title="A title"/> ' +
+				'<figcaption class="figure-caption">Sales by <strong>month</strong></figcaption></figure>' +
+				'<figure class="figure"><img src="/plain.png" alt="No caption"/> </figure>'
 		);
-		expect(html).toBe(
-			'<figure class="figure"><img src="/src/chart.png" alt="A chart"/> ' +
-				'<figcaption class="figure-caption">Sales by month</figcaption></figure>' +
-				'<p>Beside <img src="/dot.png" alt="a dot" title="A dot"/> text.</p>' +
-				'<img src="/plain.png" alt="No title"/>'
+	});
+
+	test('a number in the plugin data of a numbering plugin goes in front of the caption', async () => {
+		expect(await ssr(server, '/src/Numbered.svelte')).toContain(
+			'<figcaption class="figure-caption"><span class="figure-number">Figure 3</span>: Sales by <strong>month</strong></figcaption>'
 		);
 	});
 
 	test('the client gets the component and its stylesheet', async () => {
 		const client = server.environments.client;
-		const found = await client.pluginContainer.resolveId(
-			'mdsvex:plugin-components/0'
-		);
+		const found = await client.pluginContainer.resolveId('mdsvex:plugin/0');
 		expect(found?.id.replace(/\?.*$/, '')).toBe(installed(root, 'figures.js'));
 		const entry = await client.transformRequest(
 			'/node_modules/@mdsvex/plugin-kit/dist/figures.js'

@@ -3,7 +3,6 @@ import type {
 	BundleDirective,
 	DirectiveContext,
 	NodeView,
-	ParsePlugin,
 	WrapperView,
 } from 'mdsvex/compile';
 
@@ -186,32 +185,31 @@ export function kit(options: KitOptions = {}): Bundle {
 	};
 }
 
-/** what holds only phrasing content, a figure inside one is invalid html */
-const PHRASING = new Set([
-	'paragraph',
-	'heading',
-	'table_cell',
-	'directive_label',
-]);
-
-const STANDALONE: ParsePlugin = {
-	// a paragraph of images is only unwrapped once it closes, so the tree is read when complete
-	sequential: true,
-	image: {
-		parse(node) {
-			if (node.attrs.title === undefined || node.attrs.title === '') return;
-			for (let up = node.parent; up !== null; up = up.parent) {
-				if (PHRASING.has(up.type)) return;
+const FIGURE: BundleDirective = {
+	parse(node, ctx) {
+		// an id the author wrote, a heading or footnote that has it already fails the build
+		const id = node.attrs.args?.id;
+		if (typeof id === 'string' && id !== '') ctx.id(id, { fixed: true });
+		return () => {
+			for (let child = node.first_child; child !== null; child = child.next) {
+				if (child.type !== 'directive_label' && child.type !== 'line_break')
+					return;
 			}
-			node.attrs.figure = 'true';
-		},
+			ctx.warn(
+				'empty_figure',
+				':::figure holds nothing, write the image, code or table it captions inside it',
+				node
+			);
+		};
 	},
 };
 
 /**
- * renders an image that has a title as a figure with the title as its
- * caption, once `unwrap_images` has taken it out of its paragraph, an image
- * written beside text stays an image
+ * a figure, `:::figure[Caption](id=fig:sales)` around an image or anything
+ * else renders a `<figure>` with the bracket text as its caption, the id is
+ * optional and stays on the element
+ *
+ * a numbering plugin numbers it through plugin data, see `Figure.svelte`
  *
  * @example
  * import { figures } from '@mdsvex/plugin-kit';
@@ -221,13 +219,10 @@ const STANDALONE: ParsePlugin = {
 export function figures(options: KitOptions = {}): Bundle {
 	return {
 		name: 'figures',
-		components: {
-			specifier:
-				options.css === false
-					? '@mdsvex/plugin-kit/figures/unstyled'
-					: '@mdsvex/plugin-kit/figures',
-			names: ['img'],
-		},
-		parse: STANDALONE,
+		module:
+			options.css === false
+				? '@mdsvex/plugin-kit/figures/unstyled'
+				: '@mdsvex/plugin-kit/figures',
+		directives: { figure: FIGURE },
 	};
 }

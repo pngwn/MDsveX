@@ -1,1 +1,2 @@
-export { default as img } from './Figure.svelte';
+// the export names are the directive names
+export { default as figure } from './Figure.svelte';
