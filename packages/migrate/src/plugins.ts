@@ -39,11 +39,11 @@ const KATEX: Replacement = {
 };
 const MERMAID: Replacement = {
 	message:
-		"Install `@mdsvex/plugin-kit` and `mermaid`, and add `mermaid()` to `plugins`. Diagrams are drawn in the browser.",
+		"Install `@mdsvex/plugin-diagram` and `pele` or `mermaid`, and add `diagram()` to `plugins`. pele draws at build time, mermaid in the browser.",
 };
 const FIGURES: Replacement = {
 	message:
-		"Install `@mdsvex/plugin-kit` and add `figures()` to `plugins`. Write a figure as `:::figure[Caption]` around the image.",
+		"Install `@mdsvex/plugin-figures` and add `figures()` to `plugins`. Write a figure as `:::figure[Caption]` around the image.",
 	option: "unwrap_images: true",
 };
 const DIRECTIVES: Replacement = {
@@ -174,11 +174,11 @@ const REPLACEMENTS: Record<string, Replacement> = {
 	"remark-figure-caption": FIGURES,
 	"remark-youtube": {
 		message:
-			"Install `@mdsvex/plugin-kit` and add `kit()` to `plugins`. Write a video as `::youtube[A talk](id=dQw4w9WgXcQ)`.",
+			"Install `@mdsvex/plugin-embeds` and add `embeds()` to `plugins`. Write a video as `::youtube[A talk](id=dQw4w9WgXcQ)`.",
 	},
 	"remark-kbd": {
 		message:
-			"Install `@mdsvex/plugin-kit` and add `kit()` to `plugins`. Write a key as `:kbd[Ctrl]`.",
+			"Install `@mdsvex/plugin-elements` and add `elements()` to `plugins`. Write a key as `:kbd[Ctrl]`.",
 	},
 	"remark-abbr": {
 		message: "An inline directive does this: `:abbr[HTML](title=HyperText)` with an `abbr` component.",
