@@ -1,0 +1,68 @@
+{
+	"name": "@mdsvex/plugin-figures",
+	"version": "0.0.1",
+	"description": "Figures for mdsvex: a figure directive around an image or anything else, with its caption",
+	"type": "module",
+	"scripts": {
+		"build": "run-s build:check build:package",
+		"build:check": "tsc",
+		"build:package": "svelte-package -i src -o dist",
+		"test": "vitest --disableConsoleIntercept",
+		"test:run": "vitest run"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		},
+		"./directives": {
+			"types": "./dist/unstyled.d.ts",
+			"svelte": "./dist/directives.js"
+		},
+		"./directives/unstyled": {
+			"types": "./dist/unstyled.d.ts",
+			"svelte": "./dist/unstyled.js"
+		},
+		"./Figure.svelte": {
+			"types": "./dist/Figure.svelte.d.ts",
+			"svelte": "./dist/Figure.svelte"
+		},
+		"./figures.css": "./dist/figures.css",
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"dist"
+	],
+	"sideEffects": [
+		"**/*.css",
+		"./dist/directives.js"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pngwn/MDsveX.git",
+		"directory": "plugins/figures"
+	},
+	"keywords": [
+		"mdsvex",
+		"mdsvex-plugin",
+		"svelte",
+		"markdown",
+		"figure",
+		"figcaption",
+		"caption"
+	],
+	"author": "pngwn <hello@pngwn.io>",
+	"license": "MIT",
+	"peerDependencies": {
+		"mdsvex": "^1.0.0-next.2",
+		"svelte": "^5.0.0"
+	},
+	"devDependencies": {
+		"@sveltejs/package": "^3.0.0",
+		"@sveltejs/vite-plugin-svelte": "^6.2.4",
+		"mdsvex": "workspace:^",
+		"npm-run-all2": "^7.0.2",
+		"svelte": "^5.55.0",
+		"vite": "^7.3.1"
+	}
+}

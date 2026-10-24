@@ -30,15 +30,20 @@
 		"@fontsource/source-code-pro": "^5.2.5",
 		"@mdsvex/plugin-anchors": "workspace:*",
 		"@mdsvex/plugin-citations": "workspace:*",
+		"@mdsvex/plugin-code-blocks": "workspace:*",
+		"@mdsvex/plugin-diagram": "workspace:*",
 		"@mdsvex/plugin-emoji": "workspace:*",
 		"@mdsvex/plugin-external-links": "workspace:*",
-		"@mdsvex/plugin-kit": "workspace:*",
+		"@mdsvex/plugin-elements": "workspace:*",
+		"@mdsvex/plugin-embeds": "workspace:*",
+		"@mdsvex/plugin-figures": "workspace:*",
 		"@mdsvex/plugin-page-data": "workspace:*",
 		"@mdsvex/plugin-references": "workspace:*",
 		"@mdsvex/plugin-steps": "workspace:*",
 		"@mdsvex/plugin-tabs": "workspace:*",
 		"@mdsvex/plugin-toc": "workspace:*",
 		"mdsvex": "workspace:*",
-		"mermaid": "12.1.0"
+		"mermaid": "12.1.0",
+		"pele": "1.9.0"
 	}
 }

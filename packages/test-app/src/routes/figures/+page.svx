@@ -1,0 +1,17 @@
+# Figures
+
+::::figure[The mdsvex *penguin*](id=fig:penguin)
+
+![A penguin](/favicon.png)
+
+::::
+
+:::figure[A code block as a figure]
+
+```js
+console.log("in a figure");
+```
+
+:::
+
+![A lone penguin](/favicon.png "Only a title")
