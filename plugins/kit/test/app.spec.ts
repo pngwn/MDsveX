@@ -63,6 +63,31 @@ const FILES = {
 		'</script>',
 		'<Doc />',
 	].join('\n'),
+	'src/bare.svx': [
+		':::figure(id=fig:bare)',
+		'![Numbered](/n.png)',
+		':::',
+		'',
+		':::figure[](id=fig:empty)',
+		'![Empty brackets](/e.png)',
+		':::',
+		'',
+		':::figure(id=fig:none)',
+		'![Not numbered](/x.png)',
+		':::',
+		'',
+	].join('\n'),
+	'src/NumberedBare.svelte': [
+		'<script>',
+		"  import { setContext } from 'svelte';",
+		"  import Doc from './bare.svx';",
+		"  setContext(Symbol.for('mdsvex.plugin_data'), { current: { numbering: {",
+		"    'target:fig:bare': { kind: 'fig', number: '2', text: 'Figure 2' },",
+		"    'target:fig:empty': { kind: 'fig', number: '3', text: 'Figure 3' },",
+		'  } } });',
+		'</script>',
+		'<Doc />',
+	].join('\n'),
 	'src/chart.png': '',
 	'src/lib/markdown.js': "export * as directives from './directives.js';",
 	'src/lib/directives.js': "export { default as kbd } from './MyKbd.svelte';",
@@ -277,6 +302,16 @@ describe('figures in a vite app', () => {
 	test('a number in the plugin data of a numbering plugin goes in front of the caption', async () => {
 		expect(await ssr(server, '/src/Numbered.svelte')).toContain(
 			'<figcaption class="figure-caption"><span class="figure-number">Figure 3</span>: Sales by <strong>month</strong></figcaption>'
+		);
+	});
+
+	test('a numbered figure with no caption has the number alone as its caption', async () => {
+		expect(await ssr(server, '/src/NumberedBare.svelte')).toBe(
+			'<figure class="figure" id="fig:bare"><img src="/n.png" alt="Numbered"/> ' +
+				'<figcaption class="figure-caption"><span class="figure-number">Figure 2</span></figcaption></figure>' +
+				'<figure class="figure" id="fig:empty"><img src="/e.png" alt="Empty brackets"/> ' +
+				'<figcaption class="figure-caption"><span class="figure-number">Figure 3</span></figcaption></figure>' +
+				'<figure class="figure" id="fig:none"><img src="/x.png" alt="Not numbered"/> </figure>'
 		);
 	});
 
