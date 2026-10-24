@@ -18,6 +18,7 @@ Each directory here is one npm package, `@mdsvex/plugin-<name>`, that exports a 
 | `@mdsvex/plugin-emoji`          | [`emoji`](./emoji)                   | emoji shortcodes, `:tada:` becomes the emoji, with an optional label                |
 | `@mdsvex/plugin-references`     | [`references`](./references)         | links for `@user`, `#123`, `owner/repo#123`, commits and bare urls                  |
 | `@mdsvex/plugin-citations`      | [`citations`](./citations)           | `:cite[key]` from a CSL JSON bibliography, and a `::bibliography` that lists them   |
+| `@mdsvex/plugin-link-check`     | [`link-check`](./link-check)         | a warning at every link to an id or a document that is not there                    |
 | `@mdsvex/plugin-numbering`      | [`numbering`](./numbering)           | numbered figures, tables, equations and sections, and `:ref[fig:x]` references      |
 
 The other files in this directory are the audit of the remark and rehype plugins these replace. [`PLUGIN_AUDIT.md`](./PLUGIN_AUDIT.md) says, for each thing those plugins did, whether mdsvex has it and where.
@@ -70,14 +71,14 @@ npm login
 ```
 
 ```bash
-node scripts/setup-trusted-publishing.mjs --dry-run @mdsvex/plugin-elements @mdsvex/plugin-embeds @mdsvex/plugin-figures @mdsvex/plugin-code-blocks @mdsvex/plugin-diagram @mdsvex/plugin-numbering
+node scripts/setup-trusted-publishing.mjs --dry-run @mdsvex/plugin-link-check @mdsvex/plugin-elements @mdsvex/plugin-embeds @mdsvex/plugin-figures @mdsvex/plugin-code-blocks @mdsvex/plugin-diagram @mdsvex/plugin-numbering
 ```
 
 ```bash
-node scripts/setup-trusted-publishing.mjs @mdsvex/plugin-elements @mdsvex/plugin-embeds @mdsvex/plugin-figures @mdsvex/plugin-code-blocks @mdsvex/plugin-diagram @mdsvex/plugin-numbering
+node scripts/setup-trusted-publishing.mjs @mdsvex/plugin-link-check @mdsvex/plugin-elements @mdsvex/plugin-embeds @mdsvex/plugin-figures @mdsvex/plugin-code-blocks @mdsvex/plugin-diagram @mdsvex/plugin-numbering
 ```
 
-`@mdsvex/plugin-elements`, `@mdsvex/plugin-embeds`, `@mdsvex/plugin-figures`, `@mdsvex/plugin-code-blocks`, `@mdsvex/plugin-diagram` and `@mdsvex/plugin-numbering` are not on npm yet, the other nine were first released as `0.1.0-next.0`. Name only the packages that have never been published.
+The other packages here are on npm since `0.1.0-next.0`, so the commands name only those that are not yet.
 
 The dry run lists what it would do. The real run publishes a `0.0.0` placeholder of each package that is not on npm, then registers `pngwn/MDsveX` with `release.yml` as its trusted publisher. Run it with `node`, not through `pnpm run`, so the 2FA prompt reaches the terminal. It finds packages with `pnpm -r ls`, which covers `plugins/*`, and skips private ones, so a new package must not be `private` and must have a version other than `0.0.0`.
 

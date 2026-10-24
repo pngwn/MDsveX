@@ -1859,6 +1859,7 @@ import { external_links } from '@mdsvex/plugin-external-links';
 import { elements } from '@mdsvex/plugin-elements';
 import { embeds } from '@mdsvex/plugin-embeds';
 import { figures } from '@mdsvex/plugin-figures';
+import { link_check } from '@mdsvex/plugin-link-check';
 import { numbering } from '@mdsvex/plugin-numbering';
 import { page_data } from '@mdsvex/plugin-page-data';
 import { references } from '@mdsvex/plugin-references';
@@ -1883,7 +1884,8 @@ mdsvex({
 		references({ repo: 'you/site' }),
 		emoji(),
 		citations(),
-		numbering()
+		numbering(),
+		link_check({ routes: 'src/routes' })
 	]
 });
 ```
@@ -1904,6 +1906,7 @@ mdsvex({
 | [`@mdsvex/plugin-emoji`](docs#emoji) | emoji shortcodes, `:tada:` becomes the emoji, with an optional label for screen readers |
 | [`@mdsvex/plugin-references`](docs#references) | links for `@user`, `#123`, `owner/repo#123` and commits, and for bare urls when asked |
 | [`@mdsvex/plugin-citations`](docs#citations) | `:cite[key]` from a CSL JSON bibliography, and a `::bibliography` that lists what a document cites |
+| [`@mdsvex/plugin-link-check`](docs#link-check) | a warning at every link to an id or a document that is not there |
 | [`@mdsvex/plugin-numbering`](docs#numbering) | numbered figures, tables, equations and sections, and `:ref[fig:x]` references that read as the number |
 
 ### Steps
@@ -2684,6 +2687,61 @@ The citations and their entries are [plugin data](docs#plugin-data), `plugin_dat
 ```
 
 The file is read while the document compiles, so the Vite plugin and [`compile_async`](docs#compile_async), with a `read` option, take a document that cites, and `compile` throws a `PluginAsyncError`. The formatting is small on purpose: names, year, title, where it was published, the publisher and a link. Citation styles such as APA or Chicago, locators like page numbers, and telling apart two works of one author in one year need a full CSL processor.
+
+### Link check
+
+```bash
+pnpm add --save-dev @mdsvex/plugin-link-check@next
+```
+
+```js
+import { link_check } from '@mdsvex/plugin-link-check';
+
+mdsvex({
+	heading_ids: true,
+	links: { routes: 'src/routes' },
+	plugins: [link_check({ routes: 'src/routes' })]
+});
+```
+
+Warns at every link that goes nowhere, with the line of the link, as the compile warns about anything else:
+
+```svx
+# Install
+
+See [the setup](#setup), [the guide](../guide/+page.md#usage) and [the api](/api#options).
+```
+
+```
+#setup links to no element of this document, none has the id "setup"
+../guide/+page.md#usage links to src/routes/guide/+page.md, which has no element with the id "usage"
+```
+
+```ts
+link_check({
+	documents: boolean = true, // check links to other documents too
+	heading_ids: boolean | { slug } = true, // how other documents' headings get ids
+	routes: string, // the directory whose documents are routes, as links.routes
+	extensions: string[] = ['.md', '.svx'],
+	base: string, // a root url written with the base has it taken off
+	ignore: (href, filename) => boolean,
+	strict: boolean = false // fail the compile with a LinkCheckError
+});
+```
+
+- **Within a page**, `#id` is checked against every id the document gives an element: the ids of headings, which need [`heading_ids`](docs#heading_ids), an `id` typed on an element, the `name` of an `<a>`, the `id` arg of a directive, the `fn-` ids of footnotes and an id a plugin gave a node. `#top` and `#` need none. An id a component makes as it renders is not known, skip it with `ignore`.
+- **Other documents** are checked by file, `./guide.md#usage`, relative to the document, and by route, `/guide#usage`, when `routes` names the directory of your routes, as [`links.routes`](docs#links) does. A route is the document `guide.md`, `guide/+page.md` or `guide/index.md`, with each extension. A route with no such document is not reported, since it may be a Svelte page, and neither is a route inside a `(group)`. A root url with no fragment is not checked.
+- **What is read.** Each linked document is read and compiled once for every document that links to it, with the `heading_ids` given to the plugin, so give it the value you give mdsvex when that is not `true`. A link to a document that does not exist is a warning too, and the file it names is watched, so creating it checks the link again.
+- **In the dev server** a document that links to another is a [dependency](docs#loading-files) of it. Change the headings of `guide.md` and every document that links to it compiles again and warns about what now goes nowhere.
+- **`strict`** fails a document that has a link that goes nowhere with a `LinkCheckError`, after the warnings, its `links` listing each one. Turn it on for a build:
+
+```js
+export default defineConfig(({ command }) => ({
+	plugins: [mdsvex({ plugins: [link_check({ strict: command === 'build' })] })]
+}));
+```
+
+Other documents are read while the document compiles, so the Vite plugin and [`compile_async`](docs#compile_async), with a `read` option, check them, and `compile` throws a `PluginAsyncError` for a document that links to another. `documents: false` checks links within a page alone, under `compile` too. Markdown links are checked, not an `<a>` typed as html, and not files that are no documents, such as images.
 
 ### Numbering
 
