@@ -138,8 +138,11 @@ function existing_trust(name) {
   return { mismatch: config };
 }
 
+// Returns "added", "configured" or "failed". When the list call above needed
+// 2FA it couldn't tell, so a config that already exists makes this call fail
+// with a 409; list again (2FA is satisfied by now) before calling it a failure.
 function add_trust(name) {
-  return (
+  const ok =
     npm([
       "trust",
       "github",
@@ -150,8 +153,17 @@ function add_trust(name) {
       WORKFLOW,
       "--allow-publish",
       "--yes",
-    ]).status === 0
-  );
+    ]).status === 0;
+  if (ok) return "added";
+  const state = existing_trust(name);
+  if (state === "configured") return "configured";
+  if (typeof state === "object") {
+    console.error(
+      `  existing config: ${JSON.stringify(state.mismatch)}\n` +
+        `  revoke it with: npm trust revoke ${name} --id ${state.mismatch.id}`,
+    );
+  }
+  return "failed";
 }
 
 const packages = workspace_packages();
@@ -233,7 +245,12 @@ for (const pkg of packages) {
   first = false;
 
   console.log(`\n── adding trust for ${pkg.name}`);
-  if (!add_trust(pkg.name)) failed.push(`${pkg.name} (trust)`);
+  const added = add_trust(pkg.name);
+  if (added === "configured") {
+    console.log(`✓ ${pkg.name} already trusts ${WORKFLOW}, the error above is npm refusing a duplicate`);
+  } else if (added === "failed") {
+    failed.push(`${pkg.name} (trust)`);
+  }
 }
 
 if (failed.length > 0) {
