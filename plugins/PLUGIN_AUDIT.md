@@ -213,7 +213,7 @@ Catching mistakes before readers do. **Shared state:** a diagnostics channel wit
 
 | Feature | Plugins | Delivery | Notes |
 | --- | --- | --- | --- |
-| **Link validation** | remark-validate-links (639k) | `plugin` (`ctx.warn` exists) + Navigation's slugs and Resolution's resolver, not built | Broken `#anchors` and file links at build time. |
+| **Link validation** | remark-validate-links (639k) | `plugin+API`, exists (`@mdsvex/plugin-link-check`) | Broken `#anchors` within a page, and links to other documents by file (`./guide.md#usage`) or by route (`/guide#usage`, with `routes` as `links.routes`), each a `ctx.warn` at the link, or a `LinkCheckError` with `strict`. Other documents are read with `ctx.read` and `ctx.cached`, so a change to one checks the documents that link to it again in the dev server. Links typed as html, files that are no documents and ids a component makes are not checked. |
 | **PFM lint** | remark-lint (1.5M), remark-message-control (1.7M), remark-normalize-headings (119k), remark-first-heading | `tooling` | One `h1`, heading order, missing alt text, empty links. Lives in language-tools, so it shows in the editor. |
 | **Prose lint** | remark-retext (652k), rehype-retext (209k) | `tooling` | Spelling, readability, inclusive language (retext-spell, retext-readability, alex). Could run retext plugins on the PFM text directly. |
 
@@ -266,7 +266,7 @@ Ranked on usefulness to mdsvex users × popularity × cost. Items tagged `core` 
 | 21 | Excerpt, inferred title, source info | Document data | plugin, exists | 64k+ |
 | 22 | Copy button and code tabs (code tabs exist, `@mdsvex/plugin-tabs`) | Code | component + plugin+API | expressive-code 5.4M |
 | 23 | Definition lists | Presentation | core / component | 818k |
-| 24 | Link validation | Quality | plugin+API | 639k |
+| 24 | Link validation | Quality | plugin+API, exists | 639k |
 | 25 | GitHub refs, mentions, linkify | Cross-references | plugin, exists | 3.2M |
 | 26 | CJK check | Typography | core, delimiters done, line joining not | 12.8M + 10.5M (inflated) |
 | 27 | Transclusion with heading shift (last) | Composition | vite + core | low downloads, structural gap |
