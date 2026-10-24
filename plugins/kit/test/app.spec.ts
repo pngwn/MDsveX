@@ -2,7 +2,7 @@ import { rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { code_blocks, figures, kit } from '@mdsvex/plugin-kit';
+import { code_blocks, figures, kit, mermaid } from '@mdsvex/plugin-kit';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { mdsvex } from 'mdsvex';
 import { createServer, createServerModuleRunner, normalizePath } from 'vite';
@@ -64,6 +64,13 @@ const FILES = {
 		'',
 		'```sh nocopy',
 		'ls',
+		'```',
+		'',
+	].join('\n'),
+	'src/mermaid.svx': [
+		'```mermaid title="Flow"',
+		'graph TD',
+		'  A{Start} --> B',
 		'```',
 		'',
 	].join('\n'),
@@ -332,5 +339,51 @@ describe('code blocks in a vite app', () => {
 		const client = server.environments.client;
 		const doc = await client.transformRequest('/src/code.svx');
 		expect(doc?.code).toMatch(/code: `pnpm add \$\{name\}`/);
+	});
+});
+
+describe('mermaid in a vite app', () => {
+	let root: string;
+	let server: ViteDevServer;
+
+	beforeAll(async () => {
+		root = write_app(HERE, FILES, [PACKAGE]);
+		server = await serve(root, mdsvex({ plugins: [mermaid()] }));
+	});
+
+	afterAll(async () => {
+		await server?.close();
+		rmSync(root, { recursive: true, force: true });
+	});
+
+	test('the server renders the code in a figure, the diagram is drawn on the client', async () => {
+		const html = await ssr(server, '/src/mermaid.svx');
+		expect(html).toMatch(
+			/^<figure class="mermaid"><figcaption class="mermaid-title">Flow<\/figcaption>\s*<figure class="twinkleplop-block" data-language="mermaid">.*graph TD.*<\/pre><\/figure>\s*<\/figure>$/s
+		);
+		expect(html).not.toContain('<svg');
+	});
+
+	test('the library is imported from the component, lazily', async () => {
+		const client = server.environments.client;
+		const component = await client.transformRequest(
+			'/node_modules/@mdsvex/plugin-kit/dist/Mermaid.svelte'
+		);
+		expect(component?.code).toMatch(/import\((["'])[^"']*mermaid[^"']*\1\)/);
+		expect(component?.code).not.toMatch(/^import [^(]*mermaid/m);
+		const entry = await client.transformRequest(
+			'/node_modules/@mdsvex/plugin-kit/dist/mermaid.js'
+		);
+		expect(entry?.code).toMatch(/import ".*\/dist\/mermaid\.css"/);
+	});
+
+	test('the other modules of the package never import the library', async () => {
+		const client = server.environments.client;
+		for (const file of ['directives.js', 'figures.js', 'code-blocks.js']) {
+			const entry = await client.transformRequest(
+				'/node_modules/@mdsvex/plugin-kit/dist/' + file
+			);
+			expect(entry?.code, file).not.toContain('Mermaid');
+		}
 	});
 });

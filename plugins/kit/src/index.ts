@@ -1,3 +1,4 @@
+import { fence_meta } from 'mdsvex/compile';
 import type {
 	Bundle,
 	BundleDirective,
@@ -251,6 +252,59 @@ export function code_blocks(options: KitOptions = {}): Bundle {
 					? '@mdsvex/plugin-kit/code-blocks/unstyled'
 					: '@mdsvex/plugin-kit/code-blocks',
 			names: ['pre'],
+		},
+	};
+}
+
+export interface MermaidOptions extends KitOptions {
+	/**
+	 * the mermaid theme of every diagram, such as `'neutral'`, by default
+	 * `'dark'` for a reader whose system is dark and `'default'` otherwise
+	 */
+	theme?: string;
+}
+
+/**
+ * renders each `mermaid` fence as a diagram in the browser, the fence is
+ * wrapped in a `mermaid` directive whose component loads the mermaid library
+ * once it mounts, before that and without javascript the fence shows as code
+ *
+ * mermaid is an optional peer dependency, install it to use this
+ *
+ * @example
+ * import { mermaid } from '@mdsvex/plugin-kit';
+ *
+ * mdsvex({ plugins: [mermaid()] });
+ */
+export function mermaid(options: MermaidOptions = {}): Bundle {
+	const theme = options.theme;
+	return {
+		name: 'mermaid',
+		module:
+			options.css === false
+				? '@mdsvex/plugin-kit/mermaid/unstyled'
+				: '@mdsvex/plugin-kit/mermaid',
+		directives: { mermaid: {} },
+		parse: {
+			code_fence: {
+				parse(node) {
+					const { lang, title, caption } = fence_meta(node.info);
+					if (lang !== 'mermaid') return;
+					const args: Record<string, string> = {};
+					if (title) args.title = title;
+					if (caption) args.caption = caption;
+					if (theme) args.theme = theme;
+					const wrapper = node.wrap_from('directive_container', {
+						name: 'mermaid',
+						args,
+					});
+					wrapper.close();
+					// the code has arrived once the fence closes
+					return () => {
+						wrapper.attrs.args = { ...args, code: node.text_content };
+					};
+				},
+			},
 		},
 	};
 }

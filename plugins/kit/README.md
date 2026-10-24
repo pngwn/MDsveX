@@ -1,6 +1,6 @@
 # @mdsvex/plugin-kit
 
-Components most [mdsvex](https://mdsvex.pngwn.io) sites want: details, accordions, keys, ruby, badges and video embeds, each written as a directive, figures for images with a title, and code blocks with a copy button.
+Components most [mdsvex](https://mdsvex.pngwn.io) sites want: details, accordions, keys, ruby, badges and video embeds, each written as a directive, figures for images with a title, code blocks with a copy button, and mermaid diagrams.
 
 ```bash
 pnpm add --save-dev @mdsvex/plugin-kit@next
@@ -16,7 +16,7 @@ export default {
 };
 ```
 
-It needs Svelte 5. No component loads a script of its own, and each one works without JavaScript.
+It needs Svelte 5.20 or later. The directives load no script of their own, and each works without JavaScript.
 
 | directive                          | renders                                            |
 | ---------------------------------- | -------------------------------------------------- |
@@ -180,6 +180,51 @@ pnpm add mdsvex
 
 It wraps whatever renders the fence, the built in highlighter or your own. An export named `pre` from a `components` module or a template replaces this one. To build your own from it, it is exported as `@mdsvex/plugin-kit/Pre.svelte`. Leave the stylesheet out with `code_blocks({ css: false })`. The custom properties `--code-block-line` and `--code-block-radius` are read from `.code-block`.
 
+## Mermaid diagrams
+
+`mermaid()` draws each `mermaid` fence as a diagram in the browser. It needs the `mermaid` package, an optional peer dependency, so install it beside the kit:
+
+```bash
+pnpm add --save-dev mermaid
+```
+
+```js
+import { mermaid } from '@mdsvex/plugin-kit';
+
+mdsvex({ plugins: [mermaid()] });
+```
+
+````md
+```mermaid title="How a page is built" caption="Each step runs once per file."
+graph LR
+  accTitle: How a page is built
+  A[Markdown] --> B{Parse} --> C[Svelte]
+```
+````
+
+```html
+<figure class="mermaid">
+	<figcaption class="mermaid-title">How a page is built</figcaption>
+	<div class="mermaid-diagram">
+		<svg role="graphics-document document" ...></svg>
+	</div>
+	<details class="mermaid-source">
+		<summary>Diagram source</summary>
+		<pre>...</pre>
+	</details>
+	<div class="mermaid-caption">Each step runs once per file.</div>
+</figure>
+```
+
+- **The server renders the code**, as it renders any fence, through the highlighter and the `pre` of your site or of `code_blocks()`. Once the page has mounted, the component imports the mermaid library and draws the diagram in place of the code, which moves into a closed "Diagram source" disclosure. Without JavaScript the reader sees the code.
+- **The library is loaded lazily**, on a page that has a diagram, and never on the server. Only `mermaid()` imports it, so a site that uses the rest of the kit without it does not need it installed.
+- **A diagram that doesn't parse shows its code**, under "The diagram could not be drawn, its source follows.", and the error is logged in the console.
+- **Name the diagram for screen readers** with mermaid's own `accTitle:` and `accDescr:` lines, which become the title and description of the SVG. The `title` of the fence is the caption of the figure.
+- **The theme follows the reader's colour scheme**, `dark` or `default`. `mermaid({ theme: 'neutral' })` sets one for every diagram. Diagrams render with mermaid's `securityLevel: 'strict'`.
+- **The fence is wrapped, not replaced.** The plugin puts each `mermaid` fence inside a `mermaid` directive, so it works with any `pre` and inside a code group of `@mdsvex/plugin-tabs`. The directive's component gets `code`, `title`, `caption` and `theme`, and is exported as `@mdsvex/plugin-kit/Mermaid.svelte` to use in a component of your own.
+
+The built in highlighter has no grammar for mermaid, so the code renders plain and the build warns once per file that there is no highlighter for the language.
+
 ## What it warns about
 
 The build reports these, with the line they are on, and still renders the page:
@@ -195,7 +240,7 @@ The build reports these, with the line they are on, and still renders the page:
 
 ## Styles
 
-The components come with a small stylesheet. Every selector is inside `:where()`, so any rule of yours wins. The classes are `details`, `details-summary`, `details-body`, `accordion`, `accordion-label`, `kbd`, `ruby`, `badge`, `embed`, `embed-youtube`, `embed-vimeo`, from `figures()`, `figure` and `figure-caption`, and from `code_blocks()`, `code-block`, `code-block-title`, `code-block-body`, `code-block-actions`, `code-block-status`, `code-block-copy` and `code-block-caption`, and these custom properties are read:
+The components come with a small stylesheet. Every selector is inside `:where()`, so any rule of yours wins. The classes are `details`, `details-summary`, `details-body`, `accordion`, `accordion-label`, `kbd`, `ruby`, `badge`, `embed`, `embed-youtube`, `embed-vimeo`, from `figures()`, `figure` and `figure-caption`, from `mermaid()`, `mermaid`, `mermaid-title`, `mermaid-diagram`, `mermaid-source`, `mermaid-error` and `mermaid-caption`, and from `code_blocks()`, `code-block`, `code-block-title`, `code-block-body`, `code-block-actions`, `code-block-status`, `code-block-copy` and `code-block-caption`, and these custom properties are read:
 
 | property         | on                       | default                                    |
 | ---------------- | ------------------------ | ------------------------------------------ |

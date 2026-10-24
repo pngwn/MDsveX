@@ -57,3 +57,16 @@ pnpm add @mdsvex/plugin-{key} # [!eval]
 ```sh nocopy
 ls
 ```
+
+```mermaid title="How a page is built" caption="Each step runs once per file."
+graph LR
+  accTitle: How a page is built
+  A[Markdown] --> B{Parse}
+  B --> C[Svelte]
+  C --> D["HTML"]
+```
+
+```mermaid
+graph TD
+  A --> B -->
+```

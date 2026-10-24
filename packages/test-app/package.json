@@ -38,6 +38,7 @@
 		"@mdsvex/plugin-steps": "workspace:*",
 		"@mdsvex/plugin-tabs": "workspace:*",
 		"@mdsvex/plugin-toc": "workspace:*",
-		"mdsvex": "workspace:*"
+		"mdsvex": "workspace:*",
+		"mermaid": "12.1.0"
 	}
 }

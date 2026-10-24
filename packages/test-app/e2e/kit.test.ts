@@ -81,3 +81,27 @@ test("a code block copies its code and says so", async ({ page, context }) => {
 		page.locator(".code-block", { hasText: "ls" }).getByRole("button"),
 	).toHaveCount(0);
 });
+
+test("a mermaid fence becomes a diagram with its source beside it", async ({
+	page,
+}) => {
+	await page.goto("/kit");
+	const figure = page.locator("figure.mermaid").first();
+	await expect(figure.locator(".mermaid-title")).toHaveText(
+		"How a page is built",
+	);
+	await expect(figure.locator(".mermaid-diagram svg")).toBeVisible();
+	await expect(figure.locator("details.mermaid-source pre")).toContainText(
+		"graph LR",
+	);
+	await expect(figure.locator(".mermaid-caption")).toHaveText(
+		"Each step runs once per file.",
+	);
+});
+
+test("a diagram that does not parse shows its source", async ({ page }) => {
+	await page.goto("/kit");
+	const broken = page.locator("figure.mermaid").nth(1);
+	await expect(broken.locator(".mermaid-error")).toBeVisible();
+	await expect(broken.locator("pre")).toContainText("graph TD");
+});
