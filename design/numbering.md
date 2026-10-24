@@ -49,7 +49,7 @@ gives the energy and :ref[sec:results] has the rest. :ref[fig:sales, tbl:plans] 
 ```
 
 - **The kind comes from the prefix of the id**, `fig:`, `tbl:`, `eq:`, `sec:`, as in pandoc-crossref. So a reference knows what it reads as ("Figure") before its target has arrived, which is what a stream needs (section 3).
-- **A figure** is the `:::figure` directive of `@mdsvex/plugin-kit`, the one way to make a figure. Without an id, or with an id that does not start with `fig:`, it is not numbered. The numbering plugin does not claim `figure`.
+- **A figure** is the `:::figure` directive of `@mdsvex/plugin-figures`, the one way to make a figure. Without an id, or with an id that does not start with `fig:`, it is not numbered. The numbering plugin does not claim `figure`.
 - **A table** is the numbering plugin's own `:::table[Caption](id=tbl:x)` around a table.
 - **A figure and a table are numbered when they have an id of their kind**, with a caption or without. The caption reads `Figure 1: Caption`, or `Figure 1` alone.
 - **An equation** is a `math` fence with `id=eq:x` in its meta. One without an id is not numbered, as LaTeX's `equation*`.
@@ -59,7 +59,7 @@ gives the energy and :ref[sec:results] has the rest. :ref[fig:sales, tbl:plans] 
 ## 2. How it is built
 
 - **A target's number is known at its close.** It is one more than the targets of its kind before it. Every target is a block (a directive label, a fence, a heading), and the parser never revokes one, so the counts live in `ctx.scratch`. The close callback writes `ctx.set('target:<id>', { kind, number, text })`, owned by the target, `number` a string so `2.1` fits later. `ctx.id(id, { fixed: true })` registers the id, so one given twice is a `HeadingIdError`, as for any id the author wrote.
-- **A figure** belongs to the kit. The numbering plugin observes it (`observe: { figure }`, #1234): it reads the args at the open, takes the number then, and writes the target at the close, changing nothing of the node. The kit's figure reads `plugin_data.numbering['target:' + id]` from Svelte context and renders `text` before the caption, or alone when there is none.
+- **A figure** belongs to `@mdsvex/plugin-figures`. The numbering plugin observes it (`observe: { figure }`, #1234): it reads the args at the open, takes the number then, and writes the target at the close, changing nothing of the node. Its component reads `plugin_data.numbering['target:' + id]` from Svelte context and renders `text` before the caption, or alone when there is none.
 - **A table** is the plugin's own directive, numbered by the same handler as its owner, its component renders `<figure class="table">` and the caption with the number.
 - **An equation** gets its number as `\tag{n}` appended to the fence's code, which Temml and KaTeX render beside the display. The fence is wrapped in a `div` with its id, since the math wrapper takes no attributes.
 - **A reference** is the inline directive `ref`. Its close callback hands its component the ids, the prefixes of their kinds and `and` as args, beside the `prefix` the author wrote, and the component reads the targets from plugin data through Svelte context. While a target is not known it renders the word and `?`, with no link.
@@ -79,7 +79,7 @@ gives the energy and :ref[sec:results] has the rest. :ref[fig:sales, tbl:plans] 
 
 Decided 2026-10-24:
 
-1. **Figures.** One way to make a figure, the kit's `:::figure[Caption](id=...)`. The kit's lone image with a title is removed. With a `fig:` id and the numbering plugin on, a figure is numbered, the kit renders the number it is given through plugin data.
+1. **Figures.** One way to make a figure, the `:::figure[Caption](id=...)` of `@mdsvex/plugin-figures`, which began in the component kit. The kit's lone image with a title is removed. With a `fig:` id and the numbering plugin on, a figure is numbered, the figures plugin renders the number it is given through plugin data.
 2. **Tables.** `:::table[Caption](id=tbl:x)` around the table, owned by the numbering plugin.
 3. **References.** `:ref[fig:sales]`, the kind from the prefix, "Figure ?" while a forward reference streams, and several ids in one reference as pandoc-crossref groups them.
 
@@ -95,6 +95,6 @@ Smaller choices, as recommended:
 
 ## 5. What the plugin API was missing for this
 
-- **A plugin could not see a directive another bundle owns.** A global handler is never called for a directive a component takes, and two bundles that bound one name ran only the later one's handlers, silently. #1234 adds observers and makes two owners of a name a `DirectiveOwnerError`, so the plugin observes the kit's figure. Before it, the figure was found from the close of its caption label, and could not be numbered without one.
+- **A plugin could not see a directive another bundle owns.** A global handler is never called for a directive a component takes, and two bundles that bound one name ran only the later one's handlers, silently. #1234 adds observers and makes two owners of a name a `DirectiveOwnerError`, so the plugin observes the figure. Before it, the figure was found from the close of its caption label, and could not be numbered without one.
 - **A plugin cannot add a class or an id to the math wrapper**, so an equation is wrapped in a `div` of its own.
 - **A plugin cannot see the options of the compile.** Section references need `heading_ids`, and the plugin can only find out from the tree that it is off.

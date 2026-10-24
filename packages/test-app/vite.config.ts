@@ -5,7 +5,11 @@ import { anchors } from "@mdsvex/plugin-anchors";
 import { citations } from "@mdsvex/plugin-citations";
 import { emoji } from "@mdsvex/plugin-emoji";
 import { external_links } from "@mdsvex/plugin-external-links";
-import { code_blocks, figures, kit, mermaid } from "@mdsvex/plugin-kit";
+import { elements } from "@mdsvex/plugin-elements";
+import { embeds } from "@mdsvex/plugin-embeds";
+import { figures } from "@mdsvex/plugin-figures";
+import { code_blocks } from "@mdsvex/plugin-code-blocks";
+import { diagram } from "@mdsvex/plugin-diagram";
 import { numbering } from "@mdsvex/plugin-numbering";
 import { page_data } from "@mdsvex/plugin-page-data";
 import { references } from "@mdsvex/plugin-references";
@@ -22,10 +26,11 @@ export default defineConfig({
 			plugins: [
 				steps(),
 				tabs(),
-				kit(),
+				elements(),
+				embeds(),
 				figures(),
 				code_blocks(),
-				mermaid(),
+				diagram(),
 				anchors(),
 				external_links({
 					target: "_blank",
