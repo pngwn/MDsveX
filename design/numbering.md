@@ -1,14 +1,10 @@
 # Numbering and cross-references: design
 
-Status: draft for a decision, nothing built. Item 35 of `plugins/PLUGIN_AUDIT.md` (section 3.9, Reference apparatus).
+Status: decided 2026-10-24, being built as `@mdsvex/plugin-numbering`. Section 4 has the rulings, one item is still open. Item 35 of `plugins/PLUGIN_AUDIT.md` (section 3.9, Reference apparatus).
 
 What it is for: "Figure 3", "Table 2", "(4)" beside an equation and "1.2" before a heading, with references in the text that read as the number and link to the thing, in the way of [pandoc-crossref](https://lierdakil.github.io/pandoc-crossref/). PFM adds no syntax for it, so every part below is an existing construct: a directive, a directive arg, a fence meta key, a heading id.
 
-Three choices are not settled by the audit or `design/plugin-async.md`. Section 4 asks them, each with a recommendation. The rest follows from those answers and from the async design, and is here so the choices can be judged against it.
-
 ## 1. What an author writes
-
-With the recommendations of section 4:
 
 ````md
 ## Results
@@ -52,66 +48,54 @@ gives the energy and :ref[sec:results] has the rest. :ref[fig:sales, tbl:plans] 
 </p>
 ```
 
-- **The kind comes from the prefix of the id**, `fig:`, `tbl:`, `eq:`, `lst:`, `sec:`, as in pandoc-crossref. So a reference knows what it reads as ("Figure") before its target has arrived, which is what a stream needs (section 3).
-- **Listings** are fences with `caption="..."` and `id=lst:...`, which `fence_meta` already reads.
-- **Sections** are headings. A heading has no id syntax (custom ids are deferred), so `sec:results` names the heading whose id is `results`. Section numbers in front of headings are an option, off by default.
-- **The words** ("Figure", "Table", "Equation", "Section", the plural, "and") are options of the plugin, and a frontmatter key can change them for one document.
+- **The kind comes from the prefix of the id**, `fig:`, `tbl:`, `eq:`, `sec:`, as in pandoc-crossref. So a reference knows what it reads as ("Figure") before its target has arrived, which is what a stream needs (section 3).
+- **A figure** is the `:::figure` directive of `@mdsvex/plugin-kit`, the one way to make a figure. Without an id, or with an id that does not start with `fig:`, it is not numbered. The numbering plugin does not claim `figure`.
+- **A table** is the numbering plugin's own `:::table[Caption](id=tbl:x)` around a table.
+- **A figure and a table are numbered when they have a caption.** One with a `fig:` or `tbl:` id and no caption is a warning, as pandoc-crossref needs a caption too.
+- **An equation** is a `math` fence with `id=eq:x` in its meta. One without an id is not numbered, as LaTeX's `equation*`.
+- **A section** is a heading. A heading has no id syntax (custom ids are deferred), so `sec:results` names the heading whose id is `results`, which takes `heading_ids`. Numbers in front of headings are an option, off by default.
+- **The words** ("Figure", "Table", "Equation", "Section", their plurals, "and") are options of the plugin.
 
 ## 2. How it is built
 
-One bundle, `@mdsvex/plugin-numbering`, with components for its directives:
-
-- **A target's number is known at its close.** It is one more than the targets of its kind before it. Every target is a block (a container directive, a fence, a heading), and the parser never revokes one, so the count lives in `ctx.scratch`. The close callback writes `ctx.add('targets', { id, kind, number })`, owned by the target. `ctx.id(id, { fixed: true })` registers the id, so a heading or a footnote that has it already is a `HeadingIdError`, as for any id the author wrote.
-- **A figure and a table** are the plugin's own `figure` and `table` directives. The component renders `<figure>` and a caption with the number, from an arg the close callback sets.
-- **An equation** gets its number as `\tag{n}` appended to the fence's code (a plugin can put text in a fence), which Temml and KaTeX both render to the right of the display. The fence is wrapped in a `div` with its id by `wrap_from` at open and `close()` at its close, since the math wrapper takes no attributes.
-- **A reference** is the inline directive `ref`. Its component reads the targets from plugin data through Svelte context (`PluginDataContext`) and renders a link with the text. While its target is not known it renders "Figure ?" with no link.
-- **The document hook** warns at each reference whose id names no target, and at an id with an unknown prefix.
+- **A target's number is known at its close.** It is one more than the targets of its kind before it. Every target is a block (a directive label, a fence, a heading), and the parser never revokes one, so the counts live in `ctx.scratch`. The close callback writes `ctx.set('target:<id>', { kind, number, text })`, owned by the target, `number` a string so `2.1` fits later. `ctx.id(id, { fixed: true })` registers the id, so one given twice is a `HeadingIdError`, as for any id the author wrote.
+- **A figure** is numbered from the close callback of its caption, a global `directive_label` handler whose parent is a `figure` directive. A global handler never sees a directive that a component of another bundle takes, so the label is the one place the plugin meets the kit's figure while the document streams. The kit's figure reads `plugin_data.numbering['target:' + id]` from Svelte context and renders `text` before the caption.
+- **A table** is the plugin's own directive, numbered the same way, its component renders `<figure class="table">` and the caption with the number.
+- **An equation** gets its number as `\tag{n}` appended to the fence's code, which Temml and KaTeX render beside the display. The fence is wrapped in a `div` with its id, since the math wrapper takes no attributes.
+- **A reference** is the inline directive `ref`. Its close callback hands its component the ids and the words as args, and the component reads the targets from plugin data through Svelte context. While a target is not known it renders the word and `?`, with no link.
+- **Several ids**, `:ref[fig:a, fig:b]`, read "Figures 1 and 2", each number its own link, as citations does with several keys. Ids of different kinds read "Figure 1 and Table 2".
+- **The document hook** warns at each reference whose id names no target, at an id with an unknown prefix, and at a figure or table with a numbered id and no caption.
 
 ## 3. What streams and what does not
 
-- **Targets stream.** A figure's number is right the moment it closes and never changes, since only what is before it counts.
-- **References stream.** A reference to a target before it reads the number at once. A reference to a target after it (a forward reference) reads "Figure ?" until the target closes, then the data event for `targets` renders it again. This is the reason for the prefix: without it, a forward reference could not even say "Figure".
+- **Targets stream.** A figure's number is right the moment its caption closes and never changes, since only what is before it counts.
+- **References stream.** A reference to a target before it reads the number at once. A forward reference reads "Figure ?" until the target closes, then the data event for its key renders it again.
 - **In a compile** the data is complete before the render, so every reference has its number and nothing waits.
 - **Warnings for unknown ids** wait for the end, in the document hook, since a target may still come.
 - **Section numbers** stream as headings close, from a counter per depth in the scratch.
-- **Numbering by chapter**, "Figure 2.3", streams too: the chapter is the last `h1` before the figure.
-- **What cannot be done:** a number that depends on what comes later, such as "Figure 3 of 7". Nobody has asked for it.
+- **What cannot be done:** a number that depends on what comes later, such as "Figure 3 of 7".
 
 ## 4. Decisions
 
-### 4.1 Which construct is a figure
+Decided 2026-10-24:
 
-The component kit being built beside this (`plugins/kit`, not on `next` yet) makes a figure of a lone image with a title, `![alt](./sales.png "Sales by month")`, with `unwrap_images` on. A numbered figure needs an id as well, and an image has nowhere to put one.
+1. **Figures.** One way to make a figure, the kit's `:::figure[Caption](id=...)`. The kit's lone image with a title is removed. With a `fig:` id and the numbering plugin on, a figure is numbered, the kit renders the number it is given through plugin data.
+2. **Tables.** `:::table[Caption](id=tbl:x)` around the table, owned by the numbering plugin.
+3. **References.** `:ref[fig:sales]`, the kind from the prefix, "Figure ?" while a forward reference streams, and several ids in one reference as pandoc-crossref groups them.
 
-1. **A `:::figure` directive with an `id` arg, which this plugin owns, around an image or anything else** (recommended). Its label is the caption. It also covers a figure that is a code block, a diagram or two images side by side. The kit's titled image stays the way to get an unnumbered figure, so there are two ways to get a `<figure>`, one numbered and one not.
-2. **The kit's titled image, numbered, with an id made from the caption** as heading ids are made (`fig:sales-by-month`). No new directive, one way to make a figure. A reference breaks when the caption is edited, and only images can be figures.
-3. **The kit's titled image, with the id in the title**, `"Sales by month (fig:sales)"`. One construct, but it puts structure in a string, which PFM avoids elsewhere.
+Open:
 
-Whichever is picked, the kit and this plugin must not both claim `figure`: when two bundles claim one directive name, the component of the later one renders it and nothing says so.
+4. **The number alone**, pandoc-crossref's `-@fig:sales`, which reads "1" without the word. The recommendation is a directive arg, `:ref[fig:sales](prefix=false)`, since `@fig:sales` would be new syntax and clashes with `@user` mentions of the references plugin. Not built until it is decided.
 
-### 4.2 Which construct is a table
+Smaller choices, as recommended:
 
-Tables have no caption in PFM and no place for an id.
-
-1. **A `:::table[Caption](id=tbl:x)` directive around the table** (recommended), the same shape as 4.1 option 1.
-2. **One `:::figure` for both**, the kind taken from the prefix of its id: `:::figure[Caption](id=tbl:plans)` around a table is Table 1. One directive fewer, and a `figure` that is called a table is easy to misread.
-
-### 4.3 How a reference is written
-
-1. **`:ref[fig:sales]`**, the id as the label (recommended). Several ids, comma separated, read as "Figures 1 and 2". The number alone, for "Figures 1 to 3" written by hand, is `:ref[fig:sales](bare=true)`. A capital at the start of a sentence comes from the words option, not from the id.
-2. **A plain link with an empty text, `[](#fig:sales)`**, filled in by the plugin. No directive, and it degrades to a link on GitHub, but an empty link means something today (nothing) and would change meaning when the plugin is added.
-3. **`:fig[sales]`, `:tbl[plans]`**, one directive per kind. Shorter, five names to learn, and the prefix rule of 4.1 goes.
-
-### Smaller choices, with the default I would take
-
-- **Ids keep their prefix as the element id** (`id="fig:sales"`), so a link to `#fig:sales` written by hand works too, and the link check plugin sees it. A colon is valid in an id and needs escaping only in CSS.
+- **Ids keep their prefix as the element id** (`id="fig:sales"`), so a link to `#fig:sales` written by hand works too, and the link check plugin sees it.
 - **Section numbering is off by default**, and numbers headings from `h2` when on, since an `h1` is usually the title.
-- **Equations without an id are not numbered**, as in LaTeX's `equation*`. Every figure and table with a caption is numbered, with an id or without.
+- **Listings** (fences with a caption) and chapter numbers (`Figure 2.1`) come later.
 
 ## 5. What the plugin API is missing for this
 
-Nothing blocks it. Three things cost workarounds:
-
+- **A global handler never sees a directive that a component of another bundle takes**, and two bundles that bind one directive name run only the later one's handlers. So the plugin numbers a figure from its caption label, and a figure with no caption cannot be numbered while it streams.
 - **A plugin cannot add a class or an id to the math wrapper**, so an equation is wrapped in a `div` of its own.
-- **A plugin cannot see the options of the compile.** Section numbering wants to know whether `heading_ids` is on, and the words want the language of the page.
-- **Two bundles that claim one directive name are not reported**, the later one's component wins. That matters as soon as the kit ships.
+- **A plugin cannot see the options of the compile.** Section references need `heading_ids`, and the plugin can only find out from the tree that it is off.
+- **Two bundles that claim one directive name are not reported**, the later one's component renders it.
