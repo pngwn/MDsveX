@@ -54,7 +54,7 @@ describe('compile', () => {
 
 	test('the three plugins of the package sit side by side', () => {
 		const { code } = compile(
-			':::details[Code]\n' + FENCE + ':::\n\n![a](/a.png "T")\n',
+			':::details[Code]\n' + FENCE + ':::\n\n:::figure[A]\n![a](/a.png)\n:::\n',
 			{
 				plugins: [kit(), figures(), code_blocks()],
 				highlight: false,
@@ -68,7 +68,7 @@ describe('compile', () => {
 			"import { pre as Pre_MDSVEX_G } from '@mdsvex/plugin-kit/code-blocks';"
 		);
 		expect(code).toContain(
-			"import { img as Img_MDSVEX_G } from '@mdsvex/plugin-kit/figures';"
+			"import { figure as Figure_MDSVEX_D_G } from '@mdsvex/plugin-kit/figures';"
 		);
 	});
 });

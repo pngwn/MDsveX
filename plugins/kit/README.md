@@ -1,6 +1,6 @@
 # @mdsvex/plugin-kit
 
-Components most [mdsvex](https://mdsvex.pngwn.io) sites want: details, accordions, keys, ruby, badges and video embeds, each written as a directive, figures for images with a title, code blocks with a copy button, and mermaid diagrams.
+Components most [mdsvex](https://mdsvex.pngwn.io) sites want: details, accordions, keys, ruby, badges, video embeds and figures, each written as a directive, code blocks with a copy button, and mermaid diagrams.
 
 ```bash
 pnpm add --save-dev @mdsvex/plugin-kit@next
@@ -104,7 +104,7 @@ Press :kbd[Ctrl]+:kbd[C] to copy. :ruby[漢字](rt=かんじ) is read _kanji_. :
 
 ## Figures
 
-`figures()` is a plugin of its own in the same package. It replaces `img`, so add it when you want figures:
+`figures()` is a plugin of its own in the same package. It adds a `:::figure` directive, which puts anything written inside it, an image, a code block, a table or a diagram, in a `<figure>` with the bracket text as its caption:
 
 ```js
 import { figures, kit } from '@mdsvex/plugin-kit';
@@ -112,28 +112,41 @@ import { figures, kit } from '@mdsvex/plugin-kit';
 mdsvex({ unwrap_images: true, plugins: [kit(), figures()] });
 ```
 
-An image with a title that stands on its own becomes a figure, with the title as its caption:
-
 ```md
-Sales grew all year.
+:::figure[Sales by month, 2026](id=fig:sales)
 
-![A bar chart of sales by month](./chart.png 'Sales by month, 2026')
+![A bar chart of sales by month](./chart.png)
+
+:::
 ```
 
 ```html
-<p>Sales grew all year.</p>
-<figure class="figure">
+<figure class="figure" id="fig:sales">
 	<img src="/assets/chart.4f2a.png" alt="A bar chart of sales by month" />
 	<figcaption class="figure-caption">Sales by month, 2026</figcaption>
 </figure>
 ```
 
-- **It needs [`unwrap_images`](https://mdsvex.pngwn.io/docs#unwrap_images)** for an image on a line of its own, since a `<figure>` can't sit inside the `<p>` markdown puts around it. An image in a tight list item, which has no `<p>`, is a figure either way.
-- **An image written beside text stays an image**, and so does one in a heading or a table cell. A `<figure>` is not allowed there, and the page would not hydrate.
-- **The alt text describes the image and the title is the caption.** A reader hears both, so don't repeat one in the other. The caption is not also a `title` attribute.
-- **An image with no title stays an image**, with its other attributes kept.
+- **The bracket text is the caption**, with its inline markup, below the content. A figure without brackets has no caption.
+- **`id` is optional** and stays on the `<figure>`, so a link to `#fig:sales` reaches it. It is an id you wrote, so a heading or footnote that already has it fails the build, as it would for any id you write twice.
+- **With [`unwrap_images`](https://mdsvex.pngwn.io/docs#unwrap_images)** an image alone in the figure has no `<p>` around it. Without it the image keeps its paragraph, which is valid inside a figure.
+- **The alt text describes the image and the caption is for every reader.** A screen reader reads both, so don't repeat one in the other.
+- **A lone image is never a figure**, with a title or without. The title stays the image's `title`.
+- **An empty figure warns**, as `empty_figure`.
 
-The component gets `src`, `alt`, `title` and the image's other attributes, and `figure="true"` when the image may be a figure. Export an `img` from a `components` module and it replaces this one and gets the same `figure` prop. Leave the stylesheet out with `figures({ css: false })`.
+### Numbers
+
+A figure is unnumbered on its own. A numbering plugin numbers it through [plugin data](https://mdsvex.pngwn.io/docs#plugin-data): when the data of the plugin named `numbering` has a `targets` list with an entry whose `id` is the figure's, the caption starts with that entry's `text`, or with "Figure" and its `number`:
+
+```html
+<figcaption class="figure-caption">
+	<span class="figure-number">Figure 3</span>: Sales by month, 2026
+</figcaption>
+```
+
+A `number` arg, `:::figure[Caption](number=3)`, does the same by hand.
+
+The component gets `label`, `children`, `id` and `number`. Export a `figure` from a directives module to replace it, or wrap the kit's, `@mdsvex/plugin-kit/Figure.svelte`. Leave the stylesheet out with `figures({ css: false })`.
 
 ## Code blocks
 
@@ -240,7 +253,7 @@ The build reports these, with the line they are on, and still renders the page:
 
 ## Styles
 
-The components come with a small stylesheet. Every selector is inside `:where()`, so any rule of yours wins. The classes are `details`, `details-summary`, `details-body`, `accordion`, `accordion-label`, `kbd`, `ruby`, `badge`, `embed`, `embed-youtube`, `embed-vimeo`, from `figures()`, `figure` and `figure-caption`, from `mermaid()`, `mermaid`, `mermaid-title`, `mermaid-diagram`, `mermaid-source`, `mermaid-error` and `mermaid-caption`, and from `code_blocks()`, `code-block`, `code-block-title`, `code-block-body`, `code-block-actions`, `code-block-status`, `code-block-copy` and `code-block-caption`, and these custom properties are read:
+The components come with a small stylesheet. Every selector is inside `:where()`, so any rule of yours wins. The classes are `details`, `details-summary`, `details-body`, `accordion`, `accordion-label`, `kbd`, `ruby`, `badge`, `embed`, `embed-youtube`, `embed-vimeo`, from `figures()`, `figure`, `figure-caption` and `figure-number`, from `mermaid()`, `mermaid`, `mermaid-title`, `mermaid-diagram`, `mermaid-source`, `mermaid-error` and `mermaid-caption`, and from `code_blocks()`, `code-block`, `code-block-title`, `code-block-body`, `code-block-actions`, `code-block-status`, `code-block-copy` and `code-block-caption`, and these custom properties are read:
 
 | property         | on                       | default                                    |
 | ---------------- | ------------------------ | ------------------------------------------ |
