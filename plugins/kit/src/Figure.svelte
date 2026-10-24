@@ -2,10 +2,10 @@
 	import { getContext } from 'svelte';
 
 	/**
-	 * one numbered target, as a numbering plugin writes it with
-	 * ctx.add('targets', ...) under its name in plugin data
+	 * a numbered target, as the numbering plugin writes it with
+	 * ctx.set('target:' + id, ...)
 	 *
-	 * @typedef {{ id: string, number?: number | string, text?: string }} Target
+	 * @typedef {{ kind?: string, number?: string, text?: string }} Target
 	 */
 
 	/**
@@ -13,26 +13,22 @@
 	 *   label?: import('svelte').Snippet,
 	 *   children?: import('svelte').Snippet,
 	 *   id?: string,
-	 *   number?: string,
 	 * }} Props
 	 */
 
 	/** @type {Props} */
-	let { label, children, id, number } = $props();
+	let { label, children, id } = $props();
 
 	/** @type {import('mdsvex/compile').PluginDataContext | undefined} */
 	const data = getContext(Symbol.for('mdsvex.plugin_data'));
 
-	// "Figure 3" once something numbers this figure, nothing otherwise
+	// current changes while a document streams, the number arrives when the figure closes
 	const prefix = $derived.by(() => {
-		if (number) return 'Figure ' + number;
 		if (!id) return undefined;
-		const numbering = /** @type {{ targets?: Target[] } | undefined} */ (
+		const numbering = /** @type {Record<string, Target | undefined> | undefined} */ (
 			data?.current?.numbering
 		);
-		const target = numbering?.targets?.find((entry) => entry.id === id);
-		if (target === undefined) return undefined;
-		return target.text ?? (target.number === undefined ? undefined : 'Figure ' + target.number);
+		return numbering?.['target:' + id]?.text || undefined;
 	});
 </script>
 
