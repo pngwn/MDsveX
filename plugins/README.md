@@ -9,6 +9,7 @@ Each directory here is one npm package, `@mdsvex/plugin-<name>`, that exports a 
 | `@mdsvex/plugin-elements`       | [`elements`](./elements)             | details, accordions, keys, ruby and badges, each a directive over an html element   |
 | `@mdsvex/plugin-embeds`         | [`embeds`](./embeds)                 | YouTube and Vimeo players named by their title                                      |
 | `@mdsvex/plugin-figures`        | [`figures`](./figures)               | `:::figure[Caption]` around an image or anything else, numbered when asked          |
+| `@mdsvex/plugin-code-blocks`    | [`code-blocks`](./code-blocks)       | a `pre` with a copy button, the title and the caption of the fence                  |
 | `@mdsvex/plugin-anchors`        | [`anchors`](./anchors)               | a link to itself on every heading that has an id                                    |
 | `@mdsvex/plugin-external-links` | [`external-links`](./external-links) | `rel` and `target` on every link that leaves the site                               |
 | `@mdsvex/plugin-toc`            | [`toc`](./toc)                       | the headings of a document as data, and a `::toc` that lists them                   |
@@ -68,11 +69,11 @@ npm login
 ```
 
 ```bash
-node scripts/setup-trusted-publishing.mjs --dry-run @mdsvex/plugin-link-check @mdsvex/plugin-elements @mdsvex/plugin-embeds @mdsvex/plugin-figures
+node scripts/setup-trusted-publishing.mjs --dry-run @mdsvex/plugin-link-check @mdsvex/plugin-elements @mdsvex/plugin-embeds @mdsvex/plugin-figures @mdsvex/plugin-code-blocks
 ```
 
 ```bash
-node scripts/setup-trusted-publishing.mjs @mdsvex/plugin-link-check @mdsvex/plugin-elements @mdsvex/plugin-embeds @mdsvex/plugin-figures
+node scripts/setup-trusted-publishing.mjs @mdsvex/plugin-link-check @mdsvex/plugin-elements @mdsvex/plugin-embeds @mdsvex/plugin-figures @mdsvex/plugin-code-blocks
 ```
 
 The other packages here are on npm since `0.1.0-next.0`, so the commands name only those that are not yet.

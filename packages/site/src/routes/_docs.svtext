@@ -1852,6 +1852,7 @@ The first-party plugins are packages of their own, named `@mdsvex/plugin-*`. Eac
 import { mdsvex } from 'mdsvex';
 import { anchors } from '@mdsvex/plugin-anchors';
 import { citations } from '@mdsvex/plugin-citations';
+import { code_blocks } from '@mdsvex/plugin-code-blocks';
 import { emoji } from '@mdsvex/plugin-emoji';
 import { external_links } from '@mdsvex/plugin-external-links';
 import { elements } from '@mdsvex/plugin-elements';
@@ -1872,6 +1873,7 @@ mdsvex({
 		elements(),
 		embeds(),
 		figures(),
+		code_blocks(),
 		anchors(),
 		external_links(),
 		toc(),
@@ -1890,6 +1892,7 @@ mdsvex({
 | [`@mdsvex/plugin-tabs`](docs#tabs) | tabs and code groups, one tab for each heading or code fence inside `:::tabs` |
 | [`@mdsvex/plugin-elements`](docs#elements) | details, accordions, keys, ruby and badges, each a directive over an HTML element |
 | [`@mdsvex/plugin-embeds`](docs#embeds) | YouTube and Vimeo players named by their title |
+| [`@mdsvex/plugin-code-blocks`](docs#code-blocks) | a `pre` with a copy button, the title and the caption of the fence |
 | [`@mdsvex/plugin-figures`](docs#figures) | `:::figure[Caption]` around an image or anything else, numbered when a numbering plugin asks |
 | [`@mdsvex/plugin-anchors`](docs#anchors) | a link to itself on every heading that has an id |
 | [`@mdsvex/plugin-external-links`](docs#external-links) | `rel` and `target` on every link that leaves the site |
@@ -2167,6 +2170,20 @@ mdsvex({ unwrap_images: true, plugins: [figures()] });
 ````
 
 The `id` is optional and stays on the `<figure>`, as an id you wrote, so one a heading already has fails the build. With `unwrap_images` an image alone in the figure has no `<p>`. A figure has no number of its own: a numbering plugin gives it one through [plugin data](docs#plugin-data), and the caption then starts with "Figure 3", or is "Figure 3" alone when the figure has no caption. An empty figure warns (`empty_figure`). `figures({ css: false })` leaves the stylesheet out, and a `figure` from a [directives module](docs#declaring-directives) replaces the plugin's component.
+
+### Code blocks
+
+```bash
+pnpm add --save-dev @mdsvex/plugin-code-blocks@next
+```
+
+```js
+import { code_blocks } from '@mdsvex/plugin-code-blocks';
+
+mdsvex({ plugins: [code_blocks()] });
+```
+
+Replaces `pre` with a code block that has a copy button, the title of the fence above the code and its caption below. The button is named "Copy code of" and the title, a `status` region beside it announces "Copied" or "Copy failed", and `nocopy` in the fence meta leaves it out. It copies the `code` prop, so [live values](docs#live-code) are copied as the reader sees them. Without JavaScript the stylesheet hides the button. In a code group of [tabs](docs#tabs) the tab shows the title, so the code block hides its own. A `pre` from a `components` module or a template replaces it, and the plugin's own is exported as `@mdsvex/plugin-code-blocks/Pre.svelte`.
 
 ### Anchors
 
@@ -3028,6 +3045,8 @@ A copy button with a filename:
 // src/lib/markdown.js
 export { default as pre } from './markdown/Pre.svelte';
 ```
+
+[`@mdsvex/plugin-code-blocks`](docs#code-blocks) is a finished one, with an announced result and the caption, to use or to copy.
 
 Meta that no convention claims becomes props. `key="value"`, `key='value'` and `key=value` give a string, and a bare `key` gives `true`:
 

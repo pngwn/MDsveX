@@ -1,0 +1,76 @@
+/* every selector sits in :where() so any rule of a site wins */
+
+:where(.code-block) {
+	--code-block-line: color-mix(in srgb, currentColor 20%, transparent);
+	--code-block-radius: 0.375rem;
+
+	margin-block: 1.5rem;
+}
+
+:where(.code-block-title) {
+	padding: 0.375rem 0.75rem;
+	border: 1px solid var(--code-block-line);
+	border-block-end: 0;
+	border-radius: var(--code-block-radius) var(--code-block-radius) 0 0;
+	font-size: 0.875em;
+	font-weight: 600;
+}
+
+:where(.code-block-body) {
+	position: relative;
+}
+
+:where(.code-block-body > pre) {
+	margin: 0;
+	overflow-x: auto;
+}
+
+:where(.code-block-actions) {
+	position: absolute;
+	z-index: 1;
+	inset-block-start: 0.375rem;
+	inset-inline-end: 0.375rem;
+	display: flex;
+	gap: 0.5rem;
+	align-items: center;
+	font-size: 0.8rem;
+}
+
+:where(.code-block-status:empty) {
+	display: none;
+}
+
+:where(.code-block-status) {
+	padding: 0.125rem 0.375rem;
+	border-radius: 0.25rem;
+	background: Canvas;
+	color: CanvasText;
+}
+
+:where(.code-block-copy) {
+	padding: 0.25rem 0.5rem;
+	border: 1px solid var(--code-block-line);
+	border-radius: 0.25rem;
+	background: Canvas;
+	color: CanvasText;
+	font: inherit;
+	cursor: pointer;
+}
+
+/* in a code group of @mdsvex/plugin-tabs the tab shows the title */
+:where(.tabs-code > .tab-panel > .code-block > .code-block-title) {
+	display: none;
+}
+
+:where(.code-block-caption) {
+	margin-block-start: 0.5rem;
+	color: color-mix(in srgb, currentColor 70%, transparent);
+	font-size: 0.9em;
+}
+
+/* without scripting the button can not copy */
+@media (scripting: none) {
+	:where(.code-block-actions) {
+		display: none;
+	}
+}

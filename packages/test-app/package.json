@@ -30,6 +30,7 @@
 		"@fontsource/source-code-pro": "^5.2.5",
 		"@mdsvex/plugin-anchors": "workspace:*",
 		"@mdsvex/plugin-citations": "workspace:*",
+		"@mdsvex/plugin-code-blocks": "workspace:*",
 		"@mdsvex/plugin-emoji": "workspace:*",
 		"@mdsvex/plugin-external-links": "workspace:*",
 		"@mdsvex/plugin-elements": "workspace:*",

@@ -8,6 +8,7 @@ import { external_links } from "@mdsvex/plugin-external-links";
 import { elements } from "@mdsvex/plugin-elements";
 import { embeds } from "@mdsvex/plugin-embeds";
 import { figures } from "@mdsvex/plugin-figures";
+import { code_blocks } from "@mdsvex/plugin-code-blocks";
 import { link_check } from "@mdsvex/plugin-link-check";
 import { page_data } from "@mdsvex/plugin-page-data";
 import { references } from "@mdsvex/plugin-references";
@@ -28,6 +29,7 @@ export default defineConfig({
 				elements(),
 				embeds(),
 				figures(),
+				code_blocks(),
 				anchors(),
 				external_links({
 					target: "_blank",
