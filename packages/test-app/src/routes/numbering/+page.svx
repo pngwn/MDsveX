@@ -18,6 +18,14 @@ The plans are in :ref[tbl:plans], the prices in :ref[tbl:prices], and :ref[tbl:p
 | 2026 | 10 |
 :::
 
+A table with an id and no caption is numbered all the same:
+
+:::table(id=tbl:bare)
+| a |
+| --- |
+| 1 |
+:::
+
 A table with no id has a caption and no number:
 
 :::table[Not numbered]
@@ -42,4 +50,4 @@ A math fence with no id is not numbered:
 a^2 + b^2 = c^2
 ```
 
-As :ref[eq:energy] shows, :ref[tbl:plans] is cheap. A reference to nothing reads :ref[fig:missing], and is a warning in the terminal of the dev server.
+As :ref[eq:energy] shows, :ref[tbl:plans] is cheap. With a word of its own, :ref[tbl:prices](prefix="Price list") and :ref[tbl:plans, tbl:prices](prefix=Lists); with none, :ref[eq:mass](prefix=false) and :ref[tbl:plans, tbl:bare](prefix=false). Mixing kinds is a warning and reads each with its own word: :ref[tbl:plans, eq:energy]. A reference to nothing reads :ref[fig:missing], and is a warning in the terminal of the dev server.

@@ -25,11 +25,16 @@ const FILES = {
 		'| free | 0 |',
 		':::',
 		'',
+		':::table(id=tbl:bare)',
+		'| a |',
+		'| --- |',
+		':::',
+		'',
 		'```math id=eq:energy',
 		'E = mc^2',
 		'```',
 		'',
-		'See :ref[tbl:plans], :ref[eq:energy] and :ref[sec:results].',
+		'See :ref[tbl:plans], :ref[eq:energy] and :ref[sec:results], :ref[tbl:plans, tbl:bare](prefix=false).',
 		'',
 	].join('\n'),
 };
@@ -74,10 +79,13 @@ describe('in a vite app', () => {
 				'<h2 id="results">Results</h2>' +
 					'<figure id="tbl:plans" class="table"><figcaption><span class="table-number">Table 1</span>: What each plan costs</figcaption> ' +
 					'<table><thead><tr><th>plan</th><th>price</th></tr></thead><tbody><tr><td>free</td><td>0</td></tr></tbody></table></figure>' +
+					'<figure id="tbl:bare" class="table"><figcaption><span class="table-number">Table 2</span></figcaption> ' +
+					'<table><thead><tr><th>a</th></tr></thead></table></figure>' +
 					'<div id="eq:energy" class="equation"><div class="math math-display" translate="no"><math/></div></div>' +
 					'<p>See <span class="ref"><a href="#tbl:plans">Table 1</a></span>, ' +
 					'<span class="ref"><a href="#eq:energy">Equation 1</a></span> and ' +
-					'<span class="ref"><a href="#results">Section 1</a></span>.</p>'
+					'<span class="ref"><a href="#results">Section 1</a></span>, ' +
+					'<span class="ref"><a href="#tbl:plans">1</a> and <a href="#tbl:bare">2</a></span>.</p>'
 			);
 		} finally {
 			await runner.close();

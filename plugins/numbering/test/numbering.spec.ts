@@ -1,5 +1,16 @@
-import { numbering, ref_parts, WORDS } from '@mdsvex/plugin-numbering';
-import type { NumberingOptions, Target, Words } from '@mdsvex/plugin-numbering';
+import {
+	AND,
+	mixed_kinds,
+	numbering,
+	prefix_arg,
+	PREFIXES,
+	ref_parts,
+} from '@mdsvex/plugin-numbering';
+import type {
+	NumberingOptions,
+	RefWords,
+	Target,
+} from '@mdsvex/plugin-numbering';
 import { compile, HeadingIdError } from 'mdsvex';
 import type { Bundle } from 'mdsvex';
 import { load_math } from 'mdsvex/math';
@@ -92,13 +103,11 @@ describe('targets', () => {
 		).toEqual([]);
 	});
 
-	test('one without a caption is not numbered and is a warning', () => {
-		expect(codes(':::figure(id=fig:a)\nx\n:::\n\n::table(id=tbl:b)\n')).toEqual(
-			[
-				'no_caption figure fig:a has no caption, so it is not numbered, write :::figure[Caption](id=fig:a)',
-				'no_caption table tbl:b has no caption, so it is not numbered, write :::table[Caption](id=tbl:b)',
-			]
-		);
+	test('one without a caption is numbered all the same', () => {
+		expect(
+			targets(':::figure(id=fig:a)\nx\n:::\n\n::table(id=tbl:b)\n')
+		).toEqual(['fig:a 1 Figure 1', 'tbl:b 1 Table 1']);
+		expect(codes(':::figure(id=fig:a)\nx\n:::\n')).toEqual([]);
 	});
 
 	test('a math fence without an eq: id, and any other fence, is not numbered', () => {
@@ -152,10 +161,11 @@ describe('the markup', () => {
 		);
 	});
 
-	test('a reference hands its component its ids and the words of their kinds', () => {
-		const { code } = run(':ref[fig:a, tbl:b, other]\n');
-		expect(code).toContain(
-			'<Ref_MDSVEX_D_G ids="[&quot;fig:a&quot;,&quot;tbl:b&quot;,&quot;other&quot;]" words={"{\\"and\\":\\"and\\",\\"fig\\":[\\"Figure\\",\\"Figures\\"],\\"tbl\\":[\\"Table\\",\\"Tables\\"]}"}>'
+	test('a reference hands its component its ids, the words of their kinds and its prefix', () => {
+		expect(
+			run(':ref[fig:a, fig:b, other](prefix="Bar chart")\n').code
+		).toContain(
+			'<Ref_MDSVEX_D_G prefix="Bar chart" ids="[&quot;fig:a&quot;,&quot;fig:b&quot;,&quot;other&quot;]" prefixes={"{\\"fig\\":[\\"Figure\\",\\"Figures\\"]}"} and="and">'
 		);
 	});
 
@@ -215,6 +225,16 @@ describe('warnings', () => {
 		).toEqual(['not_inline', 'not_inline']);
 	});
 
+	test('a reference that mixes kinds', () => {
+		expect(
+			codes(
+				':ref[fig:a, tbl:b](prefix=Item)\n\n::figure[A](id=fig:a)\n\n::table[B](id=tbl:b)\n'
+			)
+		).toEqual([
+			'mixed_kinds :ref[fig:a, tbl:b] names targets of several kinds, each reads with its own word and a prefix is ignored, write one :ref for each kind',
+		]);
+	});
+
 	test('a reference before its target is fine', () => {
 		expect(
 			codes(':ref[fig:later]\n\n:::figure[Later](id=fig:later)\nx\n:::\n')
@@ -230,17 +250,17 @@ describe('what a reference reads as', () => {
 		'tbl:t': { kind: 'tbl', number: '1', text: 'Table 1' },
 		'sec:install': { kind: 'sec', number: '1.2', text: 'Section 1.2' },
 	};
-	const read = (ids: string[], words: Words = WORDS) =>
-		ref_parts(ids, words, (id) => data[id])
+	const read = (ids: string[], words: Partial<RefWords> = {}) =>
+		ref_parts(ids, { prefixes: PREFIXES, and: AND, ...words }, (id) => data[id])
 			.map((p) => (p.href ? `[${p.text}](${p.href})` : p.text))
 			.join('');
 
-	test('one target is one link', () => {
+	test('one target is one link, word and number', () => {
 		expect(read(['fig:a'])).toBe('[Figure 1](#fig:a)');
 		expect(read(['sec:install'])).toBe('[Section 1.2](#install)');
 	});
 
-	test('several of a kind share the word, each number a link', () => {
+	test('several of a kind share the plural word, each number a link', () => {
 		expect(read(['fig:a', 'fig:b'])).toBe(
 			'Figures [1](#fig:a) and [2](#fig:b)'
 		);
@@ -249,10 +269,38 @@ describe('what a reference reads as', () => {
 		);
 	});
 
-	test('kinds apart read apart', () => {
-		expect(read(['fig:a', 'tbl:t', 'fig:b'])).toBe(
-			'[Figure 1](#fig:a), [Table 1](#tbl:t) and [Figure 2](#fig:b)'
+	test('a prefix is the word as written, false leaves it out', () => {
+		expect(read(['fig:a'], { prefix: 'Chart' })).toBe('[Chart 1](#fig:a)');
+		expect(read(['fig:a'], { prefix: 'Bar chart' })).toBe(
+			'[Bar chart 1](#fig:a)'
 		);
+		expect(read(['fig:a', 'fig:b'], { prefix: 'Charts' })).toBe(
+			'Charts [1](#fig:a) and [2](#fig:b)'
+		);
+		expect(read(['fig:a'], { prefix: false })).toBe('[1](#fig:a)');
+		expect(read(['fig:a', 'fig:b'], { prefix: false })).toBe(
+			'[1](#fig:a) and [2](#fig:b)'
+		);
+		expect(read(['fig:later'], { prefix: false })).toBe('?');
+	});
+
+	test('only the literal false turns the word off', () => {
+		expect(prefix_arg('false')).toBe(false);
+		for (const value of ['False', 'no', '0', 'none'])
+			expect(prefix_arg(value)).toBe(value);
+		expect(prefix_arg(undefined)).toBeUndefined();
+	});
+
+	test('kinds apart read each with its own word, a written prefix is ignored', () => {
+		const mixed =
+			'[Figure 1](#fig:a), [Table 1](#tbl:t) and [Figure 2](#fig:b)';
+		expect(read(['fig:a', 'tbl:t', 'fig:b'])).toBe(mixed);
+		expect(read(['fig:a', 'tbl:t', 'fig:b'], { prefix: 'Item' })).toBe(mixed);
+		expect(read(['fig:a', 'tbl:t'], { prefix: false })).toBe(
+			'[1](#fig:a) and [1](#tbl:t)'
+		);
+		expect(mixed_kinds(['fig:a', 'tbl:t'])).toBe(true);
+		expect(mixed_kinds(['fig:a', 'other', 'fig:b'])).toBe(false);
 	});
 
 	test('a target not known yet is ?, an id of no kind reads as written', () => {
@@ -261,16 +309,20 @@ describe('what a reference reads as', () => {
 		expect(read(['thing'])).toBe('thing');
 	});
 
-	test('the words option', () => {
+	test('the prefixes and and options', () => {
 		expect(
-			read(['fig:a', 'fig:b'], { ...WORDS, fig: ['Fig.', 'Figs.'], and: '&' })
+			read(['fig:a', 'fig:b'], {
+				prefixes: { ...PREFIXES, fig: ['Fig.', 'Figs.'] },
+				and: '&',
+			})
 		).toBe('Figs. [1](#fig:a) & [2](#fig:b)');
 		expect(
-			run(':ref[fig:a]\n', { words: { fig: ['Abb.', 'Abb.'] } }).code
-		).toContain('\\"fig\\":[\\"Abb.\\",\\"Abb.\\"]');
+			run(':ref[fig:a]\n', { prefixes: { fig: ['Abb.', 'Abb.'] }, and: 'und' })
+				.code
+		).toContain('prefixes={"{\\"fig\\":[\\"Abb.\\",\\"Abb.\\"]}"} and="und"');
 		expect(
 			targets(':::figure[A](id=fig:a)\nx\n:::\n', {
-				words: { fig: ['Abb.', 'Abb.'] },
+				prefixes: { fig: ['Abb.', 'Abb.'] },
 			})
 		).toEqual(['fig:a 1 Abb. 1']);
 	});
@@ -280,15 +332,15 @@ describe('options', () => {
 	test('an option of the wrong shape throws when the plugin is made', () => {
 		for (const [options, message] of [
 			[null, 'the options must be an object'],
-			[{ words: 'x' }, 'words must be an object of words by kind'],
-			[{ words: { and: 1 } }, 'words.and must be a string, got 1'],
+			[{ prefixes: 'x' }, 'prefixes must be an object of words by kind'],
+			[{ and: 1 }, 'and must be a string, got 1'],
 			[
-				{ words: { fig: 'Figure' } },
-				"words.fig must be the word for one and for several, such as ['Figure', 'Figures']",
+				{ prefixes: { fig: 'Figure' } },
+				"prefixes.fig must be the word for one and for several, such as ['Figure', 'Figures']",
 			],
 			[
-				{ words: { lst: ['Listing', 'Listings'] } },
-				'words has no kind "lst", the kinds are fig, tbl, eq, sec and and',
+				{ prefixes: { lst: ['Listing', 'Listings'] } },
+				'prefixes has no kind "lst", the kinds are fig, tbl, eq, sec',
 			],
 			[
 				{ number_sections: 'yes' },
@@ -375,7 +427,7 @@ describe('every parser path', () => {
 		expect(found.data.numbering['target:fig:costs'].number).toBe('2');
 		expect(found.refs).toHaveLength(5);
 		expect(found.wrappers).toBe(1);
-		expect(found.codes).toEqual(['unknown_target']);
+		expect(found.codes).toEqual(['mixed_kinds', 'unknown_target']);
 	});
 
 	test('a reference that never closes is no reference', async () => {

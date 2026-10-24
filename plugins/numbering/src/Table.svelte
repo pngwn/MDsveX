@@ -28,8 +28,9 @@
 </script>
 
 <figure {...rest} {id} class={['table', class_name]}>
-	{#if label}<figcaption
-			>{#if target}<span class="table-number">{target.text}</span>{': '}{/if}{@render label()}</figcaption
+	{#if label || target}<figcaption
+			>{#if target}<span class="table-number">{target.text}</span
+				>{#if label}{': '}{/if}{/if}{#if label}{@render label()}{/if}</figcaption
 		>{/if}
 	{@render children?.()}
 </figure>

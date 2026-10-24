@@ -1,17 +1,26 @@
 import { fence_meta } from 'mdsvex/compile';
 import type { Bundle, NodeView, PluginContext } from 'mdsvex/compile';
 
-import { kind_of, KINDS, WORDS } from './words.js';
-import type { Kind, NumberingData, Target, Word, Words } from './words.js';
+import { AND, kind_of, KINDS, mixed_kinds, PREFIXES } from './words.js';
+import type { Kind, NumberingData, Prefixes, Target, Word } from './words.js';
 
-export { href_of, kind_of, ref_parts, WORDS } from './words.js';
+export {
+	AND,
+	href_of,
+	kind_of,
+	mixed_kinds,
+	prefix_arg,
+	PREFIXES,
+	ref_parts,
+} from './words.js';
 export type {
 	Kind,
 	NumberingData,
+	Prefixes,
 	RefPart,
+	RefWords,
 	Target,
 	Word,
-	Words,
 } from './words.js';
 
 /** the name of the package, in one place, the directives module is made from it */
@@ -21,13 +30,19 @@ const NAME = 'numbering';
 
 export interface NumberingOptions {
 	/**
-	 * what references and captions read as, by kind, each the word for one
-	 * and for several, and what joins the last two numbers
+	 * the word in front of the numbers of each kind, for one and for several,
+	 * a reference with a prefix arg uses that word in its place
 	 *
 	 * @example
-	 * numbering({ words: { fig: ['Fig.', 'Figs.'], and: '&' } })
+	 * numbering({ prefixes: { fig: ['Fig.', 'Figs.'] } })
 	 */
-	words?: Partial<Words>;
+	prefixes?: Partial<Prefixes>;
+	/**
+	 * what joins the last two numbers of a reference
+	 *
+	 * @default 'and'
+	 */
+	and?: string;
 	/**
 	 * puts the number of each heading in front of it, 1, 1.1, 1.2, off by
 	 * default, references to sections read the number either way
@@ -48,43 +63,33 @@ declare module 'mdsvex/compile' {
 	}
 }
 
-/** the directives whose caption numbers them, by name */
-const CAPTIONED: Record<string, Kind> = { figure: 'fig', table: 'tbl' };
-
-const DIRECTIVES = ['directive_container', 'directive_leaf'];
+const BLOCKS = ['directive_container', 'directive_leaf'];
 
 function option_error(message: string): never {
 	throw new TypeError(`[${PACKAGE}] ${message}`);
 }
 
-function words_of(given: Partial<Words> | undefined): Words {
-	if (given === undefined) return WORDS;
+function prefixes_of(given: Partial<Prefixes> | undefined): Prefixes {
+	if (given === undefined) return PREFIXES;
 	if (typeof given !== 'object' || given === null)
-		option_error('words must be an object of words by kind');
-	const words = { ...WORDS };
+		option_error('prefixes must be an object of words by kind');
+	const prefixes = { ...PREFIXES };
 	for (const [key, value] of Object.entries(given)) {
-		if (key === 'and') {
-			if (typeof value !== 'string')
-				option_error(
-					`words.and must be a string, got ${JSON.stringify(value)}`
-				);
-			words.and = value;
-		} else if ((KINDS as readonly string[]).includes(key)) {
-			if (
-				!Array.isArray(value) ||
-				value.length !== 2 ||
-				value.some((word) => typeof word !== 'string')
-			)
-				option_error(
-					`words.${key} must be the word for one and for several, such as ['Figure', 'Figures']`
-				);
-			words[key as Kind] = [value[0], value[1]] as Word;
-		} else
+		if (!(KINDS as readonly string[]).includes(key))
 			option_error(
-				`words has no kind ${JSON.stringify(key)}, the kinds are ${KINDS.join(', ')} and and`
+				`prefixes has no kind ${JSON.stringify(key)}, the kinds are ${KINDS.join(', ')}`
 			);
+		if (
+			!Array.isArray(value) ||
+			value.length !== 2 ||
+			value.some((word) => typeof word !== 'string')
+		)
+			option_error(
+				`prefixes.${key} must be the word for one and for several, such as ['Figure', 'Figures']`
+			);
+		prefixes[key as Kind] = [value[0], value[1]] as Word;
 	}
-	return words;
+	return prefixes;
 }
 
 /** the ids of a reference, in order */
@@ -99,12 +104,6 @@ function ids_of(node: NodeView): string[] {
 function id_arg(node: NodeView): string | undefined {
 	const id = (node.attrs.args as Record<string, string> | undefined)?.id;
 	return typeof id === 'string' && id !== '' ? id : undefined;
-}
-
-/** the label of a block directive, null for one written without */
-function label_of(node: NodeView): NodeView | null {
-	const first = node.first_child;
-	return first !== null && first.type === 'directive_label' ? first : null;
 }
 
 /**
@@ -122,7 +121,10 @@ function label_of(node: NodeView): NodeView | null {
 export function numbering(options: NumberingOptions = {}): Bundle {
 	if (typeof options !== 'object' || options === null)
 		option_error('the options must be an object');
-	const words = words_of(options.words);
+	const prefixes = prefixes_of(options.prefixes);
+	const and = options.and ?? AND;
+	if (typeof and !== 'string')
+		option_error(`and must be a string, got ${JSON.stringify(and)}`);
 	const number_sections = options.number_sections ?? false;
 	const depth = options.section_depth ?? 2;
 	if (typeof number_sections !== 'boolean')
@@ -141,8 +143,29 @@ export function numbering(options: NumberingOptions = {}): Bundle {
 	}
 
 	function target(ctx: PluginContext, id: string, kind: Kind, number: string) {
-		const value: Target = { kind, number, text: `${words[kind][0]} ${number}` };
+		const value: Target = {
+			kind,
+			number,
+			text: `${prefixes[kind][0]} ${number}`,
+		};
 		ctx.set('target:' + id, value);
+	}
+
+	/**
+	 * a figure or a table with an id of its kind, numbered as it opens, the
+	 * owner's handler for a table and an observer of the kit's figure
+	 */
+	function numbered(kind: Kind) {
+		return (node: NodeView, ctx: PluginContext) => {
+			if (!BLOCKS.includes(node.type)) return;
+			const id = id_arg(node);
+			if (id === undefined || kind_of(id) !== kind) return;
+			const number = next(ctx, kind);
+			return () => {
+				ctx.id(id, { fixed: true });
+				target(ctx, id, kind, number);
+			};
+		};
 	}
 
 	return {
@@ -165,38 +188,32 @@ export function numbering(options: NumberingOptions = {}): Bundle {
 							ctx.warn('no_id', ':ref names no id, write :ref[fig:id]', node);
 							return;
 						}
-						// the words its kinds read as, so a forward reference can say Figure ?
-						const used: Partial<Words> = { and: words.and };
+						if (mixed_kinds(ids))
+							ctx.warn(
+								'mixed_kinds',
+								`:ref[${ids.join(', ')}] names targets of several kinds, each reads with its own word and a prefix is ignored, write one :ref for each kind`,
+								node
+							);
+						// the words of its kinds, so a forward reference can say Figure ?
+						const used: Partial<Prefixes> = {};
 						for (const id of ids) {
 							const kind = kind_of(id);
-							if (kind !== undefined) used[kind] = words[kind];
+							if (kind !== undefined) used[kind] = prefixes[kind];
 						}
 						node.attrs.args = {
 							...node.attrs.args,
 							ids: JSON.stringify(ids),
-							words: JSON.stringify(used),
+							prefixes: JSON.stringify(used),
+							and,
 						};
 					};
 				},
 			},
-			table: {},
+			table: { parse: numbered('tbl') },
 		},
 		parse: {
-			// the caption is where a figure of another plugin is met, a global handler never sees the directive
-			directive_label: {
-				parse(node, ctx) {
-					const parent = node.parent;
-					if (parent === null || !DIRECTIVES.includes(parent.type)) return;
-					const kind = CAPTIONED[parent.attrs.name as string];
-					if (kind === undefined) return;
-					const id = id_arg(parent);
-					if (id === undefined || kind_of(id) !== kind) return;
-					return () => {
-						ctx.id(id, { fixed: true });
-						target(ctx, id, kind, next(ctx, kind));
-					};
-				},
-			},
+			// the kit owns the figure, its args are all this needs
+			observe: { figure: { parse: numbered('fig') } },
 			code_fence: {
 				parse(node, ctx) {
 					const meta = fence_meta(node.info);
@@ -261,26 +278,10 @@ export function numbering(options: NumberingOptions = {}): Bundle {
 								else if (data['target:' + id] === undefined)
 									ctx.warn(
 										'unknown_target',
-										`${id} names no numbered ${words[kind_of(id)!][0].toLowerCase()} of this document`,
+										`${id} names no numbered ${prefixes[kind_of(id)!][0].toLowerCase()} of this document`,
 										node
 									);
 							}
-						} else if (
-							DIRECTIVES.includes(type) &&
-							typeof name === 'string' &&
-							CAPTIONED[name] !== undefined
-						) {
-							const id = id_arg(node);
-							if (
-								id !== undefined &&
-								kind_of(id) === CAPTIONED[name] &&
-								label_of(node) === null
-							)
-								ctx.warn(
-									'no_caption',
-									`${name} ${id} has no caption, so it is not numbered, write :::${name}[Caption](id=${id})`,
-									node
-								);
 						}
 						walk(node);
 					}

@@ -16,6 +16,7 @@ E = mc^2
 ```
 
 The plans are in :ref[tbl:plans], :ref[eq:energy] gives the energy, and :ref[fig:a, fig:b] reads "Figures 1 and 2".
+:ref[fig:a](prefix=Chart) reads "Chart 1" and :ref[fig:a](prefix=false) reads "1".
 ````
 
-A figure is the `:::figure[Caption](id=fig:x)` of `@mdsvex/plugin-kit`, a section is a heading referenced as `sec:` and its id, and `number_sections: true` puts the number in front of each heading. In a streaming view each number shows as soon as its target arrives, and a reference to a target further down reads "Figure ?" until then.
+The words are the `prefixes` option. A figure is the `:::figure[Caption](id=fig:x)` of `@mdsvex/plugin-kit`, a section is a heading referenced as `sec:` and its id, and `number_sections: true` puts the number in front of each heading. In a streaming view each number shows as soon as its target arrives, and a reference to a target further down reads "Figure ?" until then.

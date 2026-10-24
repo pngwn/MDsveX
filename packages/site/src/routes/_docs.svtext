@@ -2676,16 +2676,19 @@ Sales rose in March (:ref[fig:sales]), the plans are in :ref[tbl:plans], :ref[eq
 
 ```ts
 numbering({
-	words: { fig: ['Figure', 'Figures'], tbl, eq, sec, and: 'and' }, // what references and captions read as
+	prefixes: { fig: ['Figure', 'Figures'], tbl, eq, sec }, // the word for one and for several, by kind
+	and: 'and', // what joins the last two numbers
 	number_sections: boolean = false, // the number in front of each heading
 	section_depth: number = 2 // the depth of the headings numbered 1, 2, 3
 });
 ```
 
 - **`fig:`** is the [kit's](docs#kit) `:::figure[Caption](id=fig:x)`, **`tbl:`** is `:::table[Caption](id=tbl:x)` around a table, **`eq:`** is a `math` fence with `id=eq:x` in its meta and **`sec:`** is a heading, `sec:` and its id. Each kind counts on its own, in document order.
-- **A figure or table is numbered** when it has a caption and an id with its prefix. One with the id and no caption is a warning.
+- **A figure or table is numbered** when it has an id with its prefix, with a caption or without. The kit owns the figure and renders its number, this plugin observes it.
 - **An equation** gets its number as `\tag{n}`, which the [math renderer](docs#math-1) shows beside it, inside a `<div class="equation">` with its id.
-- **`:ref[fig:a, fig:b]`** reads "Figures 1 and 2", each number a link. A reference to an id that is not there is a warning and reads "Figure ?".
+- **`:ref[fig:a, fig:b]`** reads "Figures 1 and 2", the plural word, each number a link. A reference to an id that is not there is a warning and reads "Figure ?".
+- **`prefix`** replaces the word: `:ref[fig:sales](prefix=Chart)` reads "Chart 1" and `prefix="Bar chart"` "Bar chart 1", the word as written, so a reference to several ids takes the plural. Only the literal `prefix=false` leaves the word out, "1" or "1 and 2". A capital for the start of a sentence is a word too, `prefix=Fig.` beside `prefixes: { fig: ['fig.', 'figs.'] }`.
+- **Ids of different kinds** in one reference are a warning. It reads each kind with its own word, "Figure 1 and Table 1", and ignores a written `prefix`.
 - **In a streaming view** a number is known when its target closes, and never changes. A reference to a target that has not arrived reads "Figure ?" until it does. Components read the numbers from [plugin data](docs#plugin-data), `plugin_data.numbering['target:' + id]`, through Svelte context.
 
 ## Syntax highlighting

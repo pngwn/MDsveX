@@ -6,29 +6,25 @@ export const KINDS: readonly Kind[] = ['fig', 'tbl', 'eq', 'sec'];
 /** what one kind reads as, alone and for several */
 export type Word = [one: string, many: string];
 
-/** the words of the references, by kind, and what joins the last two numbers */
-export interface Words {
-	fig: Word;
-	tbl: Word;
-	eq: Word;
-	sec: Word;
-	and: string;
-}
+/** the word in front of the numbers of each kind */
+export type Prefixes = Record<Kind, Word>;
 
-export const WORDS: Words = {
+export const PREFIXES: Prefixes = {
 	fig: ['Figure', 'Figures'],
 	tbl: ['Table', 'Tables'],
 	eq: ['Equation', 'Equations'],
 	sec: ['Section', 'Sections'],
-	and: 'and',
 };
+
+/** what joins the last two numbers of a reference */
+export const AND = 'and';
 
 /** a numbered target as the plugin hands it to components */
 export interface Target {
 	kind: Kind;
 	/** a string, so a later 2.1 fits */
 	number: string;
-	/** what a caption or a reference reads as, Figure 1 */
+	/** what a caption reads as, Figure 1 */
 	text: string;
 }
 
@@ -39,6 +35,14 @@ export type NumberingData = Record<`target:${string}`, Target>;
 export interface RefPart {
 	text: string;
 	href?: string;
+}
+
+/** how a reference reads, the defaults and what the author wrote */
+export interface RefWords {
+	prefixes: Prefixes;
+	and: string;
+	/** the prefix arg, a word used as written, false for none, undefined for the default */
+	prefix?: string | false;
 }
 
 /** the kind an id names by its prefix, undefined for none */
@@ -56,6 +60,19 @@ export function href_of(id: string, kind: Kind): string {
 	return '#' + (kind === 'sec' ? id.slice(4) : id);
 }
 
+/** the prefix arg as written, only the literal false turns the word off */
+export function prefix_arg(value: unknown): string | false | undefined {
+	if (typeof value !== 'string') return undefined;
+	return value === 'false' ? false : value;
+}
+
+/** true when the ids name targets of more than one kind */
+export function mixed_kinds(ids: readonly string[]): boolean {
+	const kinds = new Set(ids.map(kind_of));
+	kinds.delete(undefined);
+	return kinds.size > 1;
+}
+
 function joined(items: RefPart[][], and: string): RefPart[] {
 	const out: RefPart[] = [];
 	items.forEach((item, i) => {
@@ -66,19 +83,26 @@ function joined(items: RefPart[][], and: string): RefPart[] {
 }
 
 /**
- * what a reference reads as, one target is one link, Figure 1, several of a
- * kind share the word, Figures 1 and 2 with each number a link, a target not
- * known yet reads as ?, and an id of no known kind as written
+ * what a reference reads as, one target is one link with its word, Figure 1,
+ * several of a kind share the word, Figures 1 and 2 with each number a link,
+ * a target not known yet reads as ?, an id of no known kind as written, a
+ * written prefix replaces the word and false leaves it out, ids of several
+ * kinds read each kind with its own word
  *
  * @example
- * ref_parts(['fig:a', 'fig:b'], WORDS, (id) => data['target:' + id]);
+ * ref_parts(['fig:a', 'fig:b'], { prefixes: PREFIXES, and: AND }, (id) => data['target:' + id]);
  * // [{ text: 'Figures ' }, { text: '1', href: '#fig:a' }, { text: ' and ' }, { text: '2', href: '#fig:b' }]
  */
 export function ref_parts(
 	ids: readonly string[],
-	words: Words,
+	words: RefWords,
 	target: (id: string) => Target | undefined
 ): RefPart[] {
+	// one written word can not name two kinds
+	const prefix =
+		typeof words.prefix === 'string' && mixed_kinds(ids)
+			? undefined
+			: words.prefix;
 	// neighbouring ids of one kind read as one group
 	const groups: { kind: Kind | undefined; ids: string[] }[] = [];
 	for (const id of ids) {
@@ -91,24 +115,26 @@ export function ref_parts(
 	return joined(
 		groups.map(({ kind, ids }) => {
 			if (kind === undefined) return [{ text: ids[0] }];
-			const word = words[kind];
+			const many = ids.length > 1;
+			const word =
+				prefix === false
+					? ''
+					: prefix === undefined
+						? words.prefixes[kind][many ? 1 : 0]
+						: prefix;
+			const lead = word === '' ? '' : word + ' ';
 			const numbers = ids.map((id): RefPart => {
 				const found = target(id);
 				return found === undefined
 					? { text: '?' }
 					: { text: found.number, href: href_of(id, kind) };
 			});
-			if (numbers.length === 1) {
-				const [only] = numbers;
-				return [{ ...only, text: `${word[0]} ${only.text}` }];
-			}
-			return [
-				{ text: word[1] + ' ' },
-				...joined(
-					numbers.map((n) => [n]),
-					words.and
-				),
-			];
+			if (!many) return [{ ...numbers[0], text: lead + numbers[0].text }];
+			const list = joined(
+				numbers.map((n) => [n]),
+				words.and
+			);
+			return lead === '' ? list : [{ text: lead }, ...list];
 		}),
 		words.and
 	);
