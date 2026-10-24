@@ -32,6 +32,7 @@
 		"@mdsvex/plugin-citations": "workspace:*",
 		"@mdsvex/plugin-emoji": "workspace:*",
 		"@mdsvex/plugin-external-links": "workspace:*",
+		"@mdsvex/plugin-kit": "workspace:*",
 		"@mdsvex/plugin-page-data": "workspace:*",
 		"@mdsvex/plugin-references": "workspace:*",
 		"@mdsvex/plugin-steps": "workspace:*",
