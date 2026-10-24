@@ -1,6 +1,6 @@
 # Numbering and cross-references: design
 
-Status: draft for a decision, nothing built. Item 35 of `plugins/PLUGIN_AUDIT.md` (§3.9, Reference apparatus).
+Status: draft for a decision, nothing built. Item 35 of `plugins/PLUGIN_AUDIT.md` (section 3.9, Reference apparatus).
 
 What it is for: "Figure 3", "Table 2", "(4)" beside an equation and "1.2" before a heading, with references in the text that read as the number and link to the thing, in the way of [pandoc-crossref](https://lierdakil.github.io/pandoc-crossref/). PFM adds no syntax for it, so every part below is an existing construct: a directive, a directive arg, a fence meta key, a heading id.
 
