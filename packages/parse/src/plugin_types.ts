@@ -186,10 +186,17 @@ export interface ParsePlugin {
 	 * the text of an element that holds code, such as code or kbd
 	 */
 	all_text?: boolean;
+	/**
+	 * directives the plugin observes by name, whoever owns them, entries as
+	 * those of a table of bound handlers, they run in the fused pass after the
+	 * handlers of the owner and change no node, a write to one is a TypeError
+	 */
+	observe?: DirectiveHandlers;
 	[nodeType: string]:
 		| { parse: NodeHandler['parse'] }
 		| TextHandler
 		| ((root: NodeView, ctx: PluginContext) => void | Promise<void>)
+		| DirectiveHandlers
 		| boolean
 		| string
 		| undefined;
