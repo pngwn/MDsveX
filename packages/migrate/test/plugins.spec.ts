@@ -54,6 +54,19 @@ describe("config: remark and rehype plugins", () => {
 		expect(plugins[1].message).toContain("`heading_ids: true` was added.");
 	});
 
+	test("figures, mermaid and keys point at the plugin kit", () => {
+		const { code, plugins } = config(
+			"import { mdsvex } from 'mdsvex';\nimport figure from 'rehype-figure';\nimport mermaid from 'rehype-mermaid';\nimport kbd from 'remark-kbd';\nmdsvex({ smart_punctuation: true, remarkPlugins: [kbd], rehypePlugins: [figure, mermaid] });",
+		);
+		expect(plugins.map((n) => n.message.split(". ")[1])).toEqual([
+			"Install `@mdsvex/plugin-kit` and add `kit()` to `plugins`",
+			"Install `@mdsvex/plugin-kit` and add `figures()` to `plugins`",
+			"Install `@mdsvex/plugin-kit` and `mermaid`, and add `mermaid()` to `plugins`",
+		]);
+		expect(plugins[1].message).toContain("`unwrap_images: true` was added.");
+		expect(code).toContain("unwrap_images: true });");
+	});
+
 	test("an option that is already set is not added twice", () => {
 		const { code, plugins } = config(
 			"import { mdsvex } from 'mdsvex';\nimport slug from 'rehype-slug';\nimport old from 'remark-slug';\nmdsvex({ smart_punctuation: true, heading_ids: true, remarkPlugins: [old], rehypePlugins: [slug] });",

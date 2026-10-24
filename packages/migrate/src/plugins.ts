@@ -37,6 +37,15 @@ const KATEX: Replacement = {
 	message:
 		"Math renders with Temml by default. For KaTeX, install `katex` and set `math: { renderer: 'katex' }`.",
 };
+const MERMAID: Replacement = {
+	message:
+		"Install `@mdsvex/plugin-kit` and `mermaid`, and add `mermaid()` to `plugins`. Diagrams are drawn in the browser.",
+};
+const FIGURES: Replacement = {
+	message:
+		"Install `@mdsvex/plugin-kit` and add `figures()` to `plugins`. An image with a title on a line of its own is a figure, with the title as its caption.",
+	option: "unwrap_images: true",
+};
 const DIRECTIVES: Replacement = {
 	message:
 		"Directives are built in: `:::note` renders the `note` component of a directives module. Rewrite the old container syntax by hand.",
@@ -158,13 +167,18 @@ const REPLACEMENTS: Record<string, Replacement> = {
 	"rehype-section": {
 		message: "A parse plugin wraps sections with `wrap_from`, the docs have it under plugin handlers.",
 	},
-	"rehype-mermaid": {
+	"rehype-mermaid": MERMAID,
+	"remark-mermaidjs": MERMAID,
+	"rehype-figure": FIGURES,
+	"@microflash/rehype-figure": FIGURES,
+	"remark-figure-caption": FIGURES,
+	"remark-youtube": {
 		message:
-			"Replace `pre` with a component that draws its `code` in the browser when `lang` is `mermaid`.",
+			"Install `@mdsvex/plugin-kit` and add `kit()` to `plugins`. Write a video as `::youtube[A talk](id=dQw4w9WgXcQ)`.",
 	},
-	"remark-mermaidjs": {
+	"remark-kbd": {
 		message:
-			"Replace `pre` with a component that draws its `code` in the browser when `lang` is `mermaid`.",
+			"Install `@mdsvex/plugin-kit` and add `kit()` to `plugins`. Write a key as `:kbd[Ctrl]`.",
 	},
 	"remark-abbr": {
 		message: "An inline directive does this: `:abbr[HTML](title=HyperText)` with an `abbr` component.",
