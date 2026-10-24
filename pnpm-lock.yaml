@@ -725,15 +725,27 @@ importers:
       '@mdsvex/plugin-citations':
         specifier: workspace:*
         version: link:../../plugins/citations
+      '@mdsvex/plugin-code-blocks':
+        specifier: workspace:*
+        version: link:../../plugins/code-blocks
+      '@mdsvex/plugin-diagram':
+        specifier: workspace:*
+        version: link:../../plugins/diagram
+      '@mdsvex/plugin-elements':
+        specifier: workspace:*
+        version: link:../../plugins/elements
+      '@mdsvex/plugin-embeds':
+        specifier: workspace:*
+        version: link:../../plugins/embeds
       '@mdsvex/plugin-emoji':
         specifier: workspace:*
         version: link:../../plugins/emoji
       '@mdsvex/plugin-external-links':
         specifier: workspace:*
         version: link:../../plugins/external-links
-      '@mdsvex/plugin-kit':
+      '@mdsvex/plugin-figures':
         specifier: workspace:*
-        version: link:../../plugins/kit
+        version: link:../../plugins/figures
       '@mdsvex/plugin-page-data':
         specifier: workspace:*
         version: link:../../plugins/page-data
@@ -755,6 +767,9 @@ importers:
       mermaid:
         specifier: 12.1.0
         version: 12.1.0
+      pele:
+        specifier: 1.9.0
+        version: 1.9.0
     devDependencies:
       '@playwright/test':
         specifier: ^1.49.1
@@ -823,6 +838,102 @@ importers:
         specifier: ^7.3.1
         version: 7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0)
 
+  plugins/code-blocks:
+    devDependencies:
+      '@sveltejs/package':
+        specifier: ^3.0.0
+        version: 3.0.0(svelte@5.57.1(@typescript-eslint/types@8.57.2))(typescript@6.0.2)
+      '@sveltejs/vite-plugin-svelte':
+        specifier: ^6.2.4
+        version: 6.2.4(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0))
+      mdsvex:
+        specifier: workspace:^
+        version: link:../../packages/mdsvex
+      npm-run-all2:
+        specifier: ^7.0.2
+        version: 7.0.2
+      svelte:
+        specifier: ^5.55.0
+        version: 5.57.1(@typescript-eslint/types@8.57.2)
+      vite:
+        specifier: ^7.3.1
+        version: 7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0)
+
+  plugins/diagram:
+    devDependencies:
+      '@mdsvex/plugin-tabs':
+        specifier: workspace:^
+        version: link:../tabs
+      '@sveltejs/package':
+        specifier: ^3.0.0
+        version: 3.0.0(svelte@5.57.1(@typescript-eslint/types@8.57.2))(typescript@6.0.2)
+      '@sveltejs/vite-plugin-svelte':
+        specifier: ^6.2.4
+        version: 6.2.4(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.3.1(@types/node@22.15.2)(lightningcss@1.33.0)(terser@5.44.0))
+      '@types/node':
+        specifier: ^22.15.2
+        version: 22.15.2
+      mdsvex:
+        specifier: workspace:^
+        version: link:../../packages/mdsvex
+      mermaid:
+        specifier: 12.1.0
+        version: 12.1.0
+      npm-run-all2:
+        specifier: ^7.0.2
+        version: 7.0.2
+      pele:
+        specifier: 1.9.0
+        version: 1.9.0
+      svelte:
+        specifier: ^5.55.0
+        version: 5.57.1(@typescript-eslint/types@8.57.2)
+      vite:
+        specifier: ^7.3.1
+        version: 7.3.1(@types/node@22.15.2)(lightningcss@1.33.0)(terser@5.44.0)
+
+  plugins/elements:
+    devDependencies:
+      '@sveltejs/package':
+        specifier: ^3.0.0
+        version: 3.0.0(svelte@5.57.1(@typescript-eslint/types@8.57.2))(typescript@6.0.2)
+      '@sveltejs/vite-plugin-svelte':
+        specifier: ^6.2.4
+        version: 6.2.4(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0))
+      mdsvex:
+        specifier: workspace:^
+        version: link:../../packages/mdsvex
+      npm-run-all2:
+        specifier: ^7.0.2
+        version: 7.0.2
+      svelte:
+        specifier: ^5.55.0
+        version: 5.57.1(@typescript-eslint/types@8.57.2)
+      vite:
+        specifier: ^7.3.1
+        version: 7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0)
+
+  plugins/embeds:
+    devDependencies:
+      '@sveltejs/package':
+        specifier: ^3.0.0
+        version: 3.0.0(svelte@5.57.1(@typescript-eslint/types@8.57.2))(typescript@6.0.2)
+      '@sveltejs/vite-plugin-svelte':
+        specifier: ^6.2.4
+        version: 6.2.4(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0))
+      mdsvex:
+        specifier: workspace:^
+        version: link:../../packages/mdsvex
+      npm-run-all2:
+        specifier: ^7.0.2
+        version: 7.0.2
+      svelte:
+        specifier: ^5.55.0
+        version: 5.57.1(@typescript-eslint/types@8.57.2)
+      vite:
+        specifier: ^7.3.1
+        version: 7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0)
+
   plugins/emoji:
     devDependencies:
       gemoji:
@@ -856,11 +967,8 @@ importers:
         specifier: ^0.3.4
         version: 0.3.4
 
-  plugins/kit:
+  plugins/figures:
     devDependencies:
-      '@mdsvex/plugin-tabs':
-        specifier: workspace:^
-        version: link:../tabs
       '@sveltejs/package':
         specifier: ^3.0.0
         version: 3.0.0(svelte@5.57.1(@typescript-eslint/types@8.57.2))(typescript@6.0.2)
@@ -870,9 +978,6 @@ importers:
       mdsvex:
         specifier: workspace:^
         version: link:../../packages/mdsvex
-      mermaid:
-        specifier: 12.1.0
-        version: 12.1.0
       npm-run-all2:
         specifier: ^7.0.2
         version: 7.0.2
@@ -4477,6 +4582,10 @@ packages:
     resolution: {integrity: sha512-vE7JKRyES09KiunauX7nd2Q9/L7lhok4smP9RZTDeD4MVs72Dp2qNFVz39Nz5a0FVEW0BJR6C0DYrq6unoziZA==}
     engines: {node: '>= 14.16'}
 
+  pele@1.9.0:
+    resolution: {integrity: sha512-KUmBt7P5JduVKQaP6FKfXiRgH3LBVIKsmdgPJZU7jD3ye6F+Z8fbms+OjivE7rWY09Qx+5X65VKe/9ywKFJ9Sw==}
+    engines: {node: '>=20'}
+
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
 
@@ -6797,6 +6906,15 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@sveltejs/vite-plugin-svelte-inspector@5.0.1(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.3.1(@types/node@22.15.2)(lightningcss@1.33.0)(terser@5.44.0)))(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.3.1(@types/node@22.15.2)(lightningcss@1.33.0)(terser@5.44.0))':
+    dependencies:
+      '@sveltejs/vite-plugin-svelte': 6.2.4(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.3.1(@types/node@22.15.2)(lightningcss@1.33.0)(terser@5.44.0))
+      debug: 4.4.3
+      svelte: 5.57.1(@typescript-eslint/types@8.57.2)
+      vite: 7.3.1(@types/node@22.15.2)(lightningcss@1.33.0)(terser@5.44.0)
+    transitivePeerDependencies:
+      - supports-color
+
   '@sveltejs/vite-plugin-svelte-inspector@5.0.1(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0)))(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0))':
     dependencies:
       '@sveltejs/vite-plugin-svelte': 6.2.4(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0))
@@ -6827,6 +6945,18 @@ snapshots:
       svelte: 5.55.0
       vite: 7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0)
       vitefu: 1.1.3(vite@7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0))
+    transitivePeerDependencies:
+      - supports-color
+
+  '@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.3.1(@types/node@22.15.2)(lightningcss@1.33.0)(terser@5.44.0))':
+    dependencies:
+      '@sveltejs/vite-plugin-svelte-inspector': 5.0.1(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.3.1(@types/node@22.15.2)(lightningcss@1.33.0)(terser@5.44.0)))(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.3.1(@types/node@22.15.2)(lightningcss@1.33.0)(terser@5.44.0))
+      deepmerge: 4.3.1
+      magic-string: 0.30.21
+      obug: 2.1.1
+      svelte: 5.57.1(@typescript-eslint/types@8.57.2)
+      vite: 7.3.1(@types/node@22.15.2)(lightningcss@1.33.0)(terser@5.44.0)
+      vitefu: 1.1.3(vite@7.3.1(@types/node@22.15.2)(lightningcss@1.33.0)(terser@5.44.0))
     transitivePeerDependencies:
       - supports-color
 
@@ -9402,6 +9532,8 @@ snapshots:
 
   pathval@2.0.0: {}
 
+  pele@1.9.0: {}
+
   picocolors@1.1.1: {}
 
   picomatch@2.3.1: {}
@@ -10374,6 +10506,20 @@ snapshots:
       lightningcss: 1.33.0
       terser: 5.44.0
 
+  vite@7.3.1(@types/node@22.15.2)(lightningcss@1.33.0)(terser@5.44.0):
+    dependencies:
+      esbuild: 0.27.4
+      fdir: 6.5.0(picomatch@4.0.3)
+      picomatch: 4.0.3
+      postcss: 8.5.6
+      rollup: 4.52.4
+      tinyglobby: 0.2.15
+    optionalDependencies:
+      '@types/node': 22.15.2
+      fsevents: 2.3.3
+      lightningcss: 1.33.0
+      terser: 5.44.0
+
   vite@7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0):
     dependencies:
       esbuild: 0.27.4
@@ -10420,6 +10566,10 @@ snapshots:
   vitefu@1.1.1(vite@7.1.9(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0)):
     optionalDependencies:
       vite: 7.1.9(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0)
+
+  vitefu@1.1.3(vite@7.3.1(@types/node@22.15.2)(lightningcss@1.33.0)(terser@5.44.0)):
+    optionalDependencies:
+      vite: 7.3.1(@types/node@22.15.2)(lightningcss@1.33.0)(terser@5.44.0)
 
   vitefu@1.1.3(vite@7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0)):
     optionalDependencies:

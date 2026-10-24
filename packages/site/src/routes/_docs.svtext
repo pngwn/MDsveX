@@ -974,8 +974,6 @@ export { default as img } from './Figure.svelte';
 mdsvex({ components: '#lib/markdown.js', unwrap_images: true });
 ```
 
-[`figures()`](docs#kit) from `@mdsvex/plugin-kit` is such a replacement, and leaves an image that is still inside a paragraph as an image.
-
 With `unwrap_images`, a paragraph that holds only images gets no `<p>`, so the figure stands on its own:
 
 ```svx
@@ -1821,9 +1819,13 @@ The first-party plugins are packages of their own, named `@mdsvex/plugin-*`. Eac
 import { mdsvex } from 'mdsvex';
 import { anchors } from '@mdsvex/plugin-anchors';
 import { citations } from '@mdsvex/plugin-citations';
+import { code_blocks } from '@mdsvex/plugin-code-blocks';
+import { diagram } from '@mdsvex/plugin-diagram';
 import { emoji } from '@mdsvex/plugin-emoji';
 import { external_links } from '@mdsvex/plugin-external-links';
-import { kit } from '@mdsvex/plugin-kit';
+import { elements } from '@mdsvex/plugin-elements';
+import { embeds } from '@mdsvex/plugin-embeds';
+import { figures } from '@mdsvex/plugin-figures';
 import { page_data } from '@mdsvex/plugin-page-data';
 import { references } from '@mdsvex/plugin-references';
 import { steps } from '@mdsvex/plugin-steps';
@@ -1835,7 +1837,11 @@ mdsvex({
 	plugins: [
 		steps(),
 		tabs(),
-		kit(),
+		elements(),
+		embeds(),
+		figures(),
+		code_blocks(),
+		diagram(),
 		anchors(),
 		external_links(),
 		toc(),
@@ -1851,7 +1857,11 @@ mdsvex({
 | --- | --- |
 | [`@mdsvex/plugin-steps`](docs#steps) | numbered steps, one for each heading inside `:::steps` |
 | [`@mdsvex/plugin-tabs`](docs#tabs) | tabs and code groups, one tab for each heading or code fence inside `:::tabs` |
-| [`@mdsvex/plugin-kit`](docs#kit) | details, accordions, keys, ruby, badges and video embeds, each a directive, figures, code blocks with a copy button and mermaid diagrams |
+| [`@mdsvex/plugin-elements`](docs#elements) | details, accordions, keys, ruby and badges, each a directive over an HTML element |
+| [`@mdsvex/plugin-embeds`](docs#embeds) | YouTube and Vimeo players named by their title |
+| [`@mdsvex/plugin-code-blocks`](docs#code-blocks) | a `pre` with a copy button, the title and the caption of the fence |
+| [`@mdsvex/plugin-diagram`](docs#diagrams) | `mermaid` fences drawn by pele at build time or by mermaid in the browser |
+| [`@mdsvex/plugin-figures`](docs#figures) | `:::figure[Caption]` around an image or anything else, numbered when a numbering plugin asks |
 | [`@mdsvex/plugin-anchors`](docs#anchors) | a link to itself on every heading that has an id |
 | [`@mdsvex/plugin-external-links`](docs#external-links) | `rel` and `target` on every link that leaves the site |
 | [`@mdsvex/plugin-toc`](docs#table-of-contents) | the headings of a document as data, and a `::toc` directive that lists them |
@@ -2046,19 +2056,19 @@ The stylesheet that comes with the components has selectors with no specificity,
 
 `tabs({ css: false })` leaves it out and keeps the markup. To change the markup, export your own `tabs` and `tab` from a [directives module](docs#declaring-directives). They get `label` and `children`, a `tabs` also gets `group` and `code` (`"true"` for a code group), and a `tab` gets `index`. The `label` of a tab is the content of its heading, or the name of its fence as text. The plugin's own are at `@mdsvex/plugin-tabs/Tabs.svelte` and `@mdsvex/plugin-tabs/Tab.svelte`. It needs Svelte 5.20 or later.
 
-### Kit
+### Elements
 
 ```bash
-pnpm add --save-dev @mdsvex/plugin-kit@next
+pnpm add --save-dev @mdsvex/plugin-elements@next
 ```
 
 ```js
-import { kit } from '@mdsvex/plugin-kit';
+import { elements } from '@mdsvex/plugin-elements';
 
-mdsvex({ plugins: [kit()] });
+mdsvex({ plugins: [elements()] });
 ```
 
-Components most sites want, each written as a directive. A document imports only the ones it uses, none loads a script of its own, and each works without JavaScript:
+Directives over plain HTML elements. A document imports only the ones it uses, none loads a script, and each works without JavaScript:
 
 | directive | renders |
 | --- | --- |
@@ -2067,8 +2077,6 @@ Components most sites want, each written as a directive. A document imports only
 | `:kbd[Ctrl]` | a `<kbd>` |
 | `:ruby[漢字](rt=かんじ)` | a `<ruby>` with the reading in `<rt>` and `<rp>` fallbacks |
 | `:badge[new](tone=tip)` | a `<span class="badge">`, tinted by `note`, `tip`, `warning` or `danger` |
-| `::youtube[Title](id=...)` | a lazy YouTube player from `youtube-nocookie.com`, `start` in seconds |
-| `::vimeo[Title](id=...)` | a lazy Vimeo player with `dnt=1` |
 
 An accordion splits like [tabs](docs#tabs): the first heading written directly inside sets the depth, and each heading of that depth starts an item whose summary is the text of the heading, so it gets no id and no place in a table of contents. `(name=faq)` gives every item the `name` of a `<details>`, so opening one closes the others. A `:::details` written directly inside is an item too.
 
@@ -2086,33 +2094,83 @@ Every part of it.
 :::
 ````
 
-The bracket text of an embed is the title of its frame, which is what a screen reader announces, and `(title=...)` sets it instead. A `<details>` is a disclosure the browser already makes accessible, a button in the tab order that announces whether it is expanded.
+A `<details>` is a disclosure the browser already makes accessible, a button in the tab order that announces whether it is expanded.
 
-The build warns, with the line, about an accordion with no items (`no_items`), content before its first item (`content_before_first_item`), an empty heading in one (`item_without_label`), a `:ruby` with no `rt` (`ruby_without_rt`), an embed with no id or one that is no id on its site (`embed_id`), and an embed with no title (`embed_without_title`).
+The build warns, with the line, about an accordion with no items (`no_items`), content before its first item (`content_before_first_item`), an empty heading in one (`item_without_label`) and a `:ruby` with no `rt` (`ruby_without_rt`).
 
-`figures()`, from the same package, replaces `img`. An image with a title that stands on its own renders as a `<figure>` with the title as its `<figcaption>`, once [`unwrap_images`](docs#unwrap_images) has taken it out of its paragraph:
+The stylesheet has selectors with no specificity and reads `--elements-line`, `--elements-radius` and `--elements-padding` from `.details` and `.accordion`, `--kbd-line` from `.kbd` and `--badge-color` from `.badge`. `elements({ css: false })` leaves it out and keeps the markup. To change the markup, export a component under the name of the directive from a [directives module](docs#declaring-directives). It gets the args as string props, and `label` and `children`. The plugin's own are exported as `@mdsvex/plugin-elements/Details.svelte` and so on.
 
-```js
-import { figures, kit } from '@mdsvex/plugin-kit';
+### Embeds
 
-mdsvex({ unwrap_images: true, plugins: [kit(), figures()] });
+```bash
+pnpm add --save-dev @mdsvex/plugin-embeds@next
 ```
 
-An image beside text, in a heading or in a table cell stays an image, since a `<figure>` isn't allowed there, and so does one with no title. The alt text describes the image and the title is the caption, so write each for what it is.
-
-`code_blocks()` replaces `pre` with a code block that has a copy button, the title of the fence above the code and its caption below. The button is named "Copy code of" and the title, a `status` region beside it announces "Copied" or "Copy failed", and `nocopy` in the fence meta leaves it out. It copies the `code` prop, so [live values](docs#live-code) are copied as the reader sees them. Without JavaScript the stylesheet hides the button.
-
-`mermaid()` draws each `mermaid` fence as a diagram in the browser. Install `mermaid` beside the kit, it is an optional peer dependency:
-
 ```js
-import { mermaid } from '@mdsvex/plugin-kit';
+import { embeds } from '@mdsvex/plugin-embeds';
 
-mdsvex({ plugins: [mermaid()] });
+mdsvex({ plugins: [embeds()] });
 ```
 
-The plugin wraps each `mermaid` fence in a `mermaid` directive, so the server renders the fence as code, through the highlighter and whatever replaces `pre`. Once the page mounts, the component imports the library and draws the diagram in place of the code, which moves into a closed "Diagram source" disclosure. Without JavaScript, or when a diagram doesn't parse, the reader sees the code. The `title` and `caption` of the fence go around the diagram, mermaid's `accTitle:` and `accDescr:` lines name it for screen readers, and the theme follows the reader's colour scheme unless `mermaid({ theme })` sets one. The highlighter has no mermaid grammar, so the build warns once per file that the code renders plain.
+`::youtube[Title](id=...)` is a lazy YouTube player from `youtube-nocookie.com`, which sets no cookie until the video plays, and `::vimeo[Title](id=...)` a lazy Vimeo player with `dnt=1`. `start` is a time in seconds. The bracket text is the title of the frame, which is what a screen reader announces, and `(title=...)` sets it instead. The build warns about an embed with no id or one that is no id on its site (`embed_id`), and one with no title (`embed_without_title`). `embeds({ css: false })` leaves the stylesheet out, and a `youtube` or `vimeo` from a [directives module](docs#declaring-directives) replaces the plugin's component.
 
-The stylesheet has selectors with no specificity and reads `--kit-line`, `--kit-radius` and `--kit-padding` from `.details` and `.accordion`, and `--badge-color` from `.badge`. `kit({ css: false })` leaves it out and keeps the markup. To change the markup, export a component under the name of the directive from a [directives module](docs#declaring-directives). It gets the args as string props, `label` and `children`, and an embed also gets `title`. The plugin's own are exported as `@mdsvex/plugin-kit/Details.svelte` and so on.
+### Figures
+
+```bash
+pnpm add --save-dev @mdsvex/plugin-figures@next
+```
+
+```js
+import { figures } from '@mdsvex/plugin-figures';
+
+mdsvex({ unwrap_images: true, plugins: [figures()] });
+```
+
+`:::figure` puts what is written inside it, an image, a code block, a table or a diagram, in a `<figure>` with the bracket text as its `<figcaption>`. It is the one way to make a figure: a lone image stays an image, unwrapped by [`unwrap_images`](docs#unwrap_images).
+
+````svx
+:::figure[Sales by month](id=fig:sales)
+
+![A bar chart of sales by month](./chart.png)
+
+:::
+````
+
+The `id` is optional and stays on the `<figure>`, as an id you wrote, so one a heading already has fails the build. With `unwrap_images` an image alone in the figure has no `<p>`. A figure has no number of its own: a numbering plugin gives it one through [plugin data](docs#plugin-data), and the caption then starts with "Figure 3", or is "Figure 3" alone when the figure has no caption. An empty figure warns (`empty_figure`). `figures({ css: false })` leaves the stylesheet out, and a `figure` from a [directives module](docs#declaring-directives) replaces the plugin's component.
+
+### Code blocks
+
+```bash
+pnpm add --save-dev @mdsvex/plugin-code-blocks@next
+```
+
+```js
+import { code_blocks } from '@mdsvex/plugin-code-blocks';
+
+mdsvex({ plugins: [code_blocks()] });
+```
+
+Replaces `pre` with a code block that has a copy button, the title of the fence above the code and its caption below. The button is named "Copy code of" and the title, a `status` region beside it announces "Copied" or "Copy failed", and `nocopy` in the fence meta leaves it out. It copies the `code` prop, so [live values](docs#live-code) are copied as the reader sees them. Without JavaScript the stylesheet hides the button. In a code group of [tabs](docs#tabs) the tab shows the title, so the code block hides its own. A `pre` from a `components` module or a template replaces it, and the plugin's own is exported as `@mdsvex/plugin-code-blocks/Pre.svelte`.
+
+### Diagrams
+
+```bash
+pnpm add --save-dev @mdsvex/plugin-diagram@next pele
+```
+
+```js
+import { diagram } from '@mdsvex/plugin-diagram';
+
+mdsvex({ plugins: [diagram()] });
+```
+
+Each `mermaid` fence is drawn as a diagram, by [pele](https://pele.run) or by [mermaid](https://mermaid.js.org). Both are optional peer dependencies, install the one you want. `engine: 'auto'`, the default, takes pele when it is installed and mermaid otherwise, and the choice is made once, when `diagram()` runs, so the page never imports a package you didn't install. With neither installed it throws a `DiagramError` that says what to install.
+
+**With pele** the diagram is drawn at build time and the page ships the SVG, with no script, so it shows without JavaScript too. It is themed by CSS variables such as `--pele-bg` and `--pele-fg`, with dark values for a reader whose system is dark, so light and dark need no second render. A diagram pele can't draw is a `diagram_error` warning at its fence and shows its source, and `diagram({ strict: true })` fails the build there instead. `pele` passes [render options](https://pele.run/api) such as `fontFamily`. pele reads Mermaid syntax with its own layout, and has no Mermaid themes, no HTML labels and no JavaScript click callbacks.
+
+**With mermaid** the server renders the code and the browser loads mermaid on a page that has a diagram and draws it in place of the code. Without JavaScript the reader sees the code.
+
+The plugin wraps each `mermaid` fence in a `diagram` directive, so the code still renders through whatever replaces `pre`, as the source in a closed "Diagram source" disclosure under the drawing. The `title` and `caption` of the fence go around the diagram, and `accTitle:` and `accDescr:` name it for screen readers. The highlighter has no mermaid grammar, so the build warns once per file that the code renders plain.
 
 ### Anchors
 
@@ -2920,7 +2978,7 @@ A copy button with a filename:
 export { default as pre } from './markdown/Pre.svelte';
 ```
 
-[`code_blocks()`](docs#kit) from `@mdsvex/plugin-kit` is a finished one, with an announced result and the caption, to use or to copy.
+[`@mdsvex/plugin-code-blocks`](docs#code-blocks) is a finished one, with an announced result and the caption, to use or to copy.
 
 Meta that no convention claims becomes props. `key="value"`, `key='value'` and `key=value` give a string, and a bare `key` gives `true`:
 
@@ -3949,13 +4007,13 @@ mdsvex 0.x ran remark and rehype, and took their plugins in `remarkPlugins` and 
 | `rehype-rewrite`, `rehype-wrap`, `rehype-components` | a component | [replace the element](docs#custom-components) with a component of your own |
 | `rehype-class-names`, `rehype-add-classes` | a parse plugin | `{ table: { parse(node) { node.attrs.class = 'table'; } } }` in [`parse_plugins`](docs#parse_plugins) |
 | `remark-sectionize`, `rehype-section` | a parse plugin | the `sections` plugin under [plugin handlers](docs#plugin-handlers) |
-| `rehype-figure`, `remark-figure-caption` | [`@mdsvex/plugin-kit`](docs#kit) | `figures()` with `unwrap_images: true` makes an image with a title a `<figure>` with that caption. Or write an `img` replacement, as under [`unwrap_images`](docs#unwrap_images) |
+| `rehype-figure`, `remark-figure-caption` | [`@mdsvex/plugin-figures`](docs#figures) | `:::figure[Caption]` around an image or anything else, with the caption in a `<figcaption>`. A lone image stays an image |
 | `rehype-img-size`, `rehype-plugin-image-native-lazy-loading` | a component | an `img` replacement sets `loading="lazy"`. For sizes, import the image with `?enhanced` from [`@sveltejs/enhanced-img`][enhanced-img], the replacement gets the imported value as `src` |
-| `rehype-mermaid`, `remark-mermaidjs` | [`@mdsvex/plugin-kit`](docs#kit) | `mermaid()` draws each `mermaid` fence in the browser, install `mermaid` beside it. Diagrams are not drawn at build time |
-| `remark-embedder`, `remark-oembed`, `remark-youtube` | [`@mdsvex/plugin-kit`](docs#kit) | `kit()` has `::youtube[A talk](id=dQw4w9WgXcQ)` and `::vimeo`. Any other site is a leaf directive with a component of your own, see [directives](docs#the-three-forms) |
+| `rehype-mermaid`, `remark-mermaidjs` | [`@mdsvex/plugin-diagram`](docs#diagrams) | `diagram()` draws each `mermaid` fence, at build time with `pele` installed or in the browser with `mermaid` |
+| `remark-embedder`, `remark-oembed`, `remark-youtube` | [`@mdsvex/plugin-embeds`](docs#embeds) | `::youtube[A talk](id=dQw4w9WgXcQ)` and `::vimeo`. Any other site is a leaf directive with a component of your own, see [directives](docs#the-three-forms) |
 | `remark-abbr` | a component | an inline directive, `:abbr[HTML](title=HyperText)` |
-| `remark-collapse` | nothing needed | `<details>` and `<summary>` work as typed, with markdown inside, and `kit()` from [`@mdsvex/plugin-kit`](docs#kit) adds `:::details[Summary]` and accordions |
-| `remark-kbd`, `remark-ruby` | [`@mdsvex/plugin-kit`](docs#kit) | `kit()` has `:kbd[Ctrl]` and `:ruby[漢字](rt=かんじ)` |
+| `remark-collapse` | nothing needed | `<details>` and `<summary>` work as typed, with markdown inside, and [`@mdsvex/plugin-elements`](docs#elements) adds `:::details[Summary]` and accordions |
+| `remark-kbd`, `remark-ruby` | [`@mdsvex/plugin-elements`](docs#elements) | `:kbd[Ctrl]` and `:ruby[漢字](rt=かんじ)` |
 | `rehype-meta`, `rehype-document` | a template | a [template](docs#templates-1) renders `<svelte:head>` from its props |
 | `rehype-video` | a component | an `a` or `img` replacement that renders a `<video>` for a video url |
 
