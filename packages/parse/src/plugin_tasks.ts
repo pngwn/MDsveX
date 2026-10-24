@@ -123,6 +123,11 @@ export interface TaskHost {
 	real(task: Task, index: number): NodeView;
 }
 
+/** the message of a write to a node by an observer, which changes no node */
+export function observer_write(what: string, observing: string): string {
+	return `${what}: ${observing}, an observer changes no node, it writes what it finds with ctx.set or ctx.add`;
+}
+
 /** async work deferred on a node, its changes wait until it settled and the node is committed */
 export class Task {
 	/** the node it was deferred on, the owner of what it writes */
@@ -139,6 +144,8 @@ export class Task {
 	/** the node went, or the document did, the task is forgotten */
 	dropped = false;
 	applied = false;
+	/** for the task of an observer, who observes what, a write to a node then throws */
+	observing: string | null = null;
 	ops: Op[] = [];
 	/** resolves once the task settled, never rejects */
 	done: Promise<void> = Promise.resolve();
@@ -175,6 +182,9 @@ export class Task {
 
 	/** a write to a node of the document, it must be the node or inside it */
 	check(index: number, what: string): void {
+		if (this.observing !== null) {
+			throw new TypeError(observer_write(what, this.observing));
+		}
 		if (this.dropped) return;
 		const buf = this.host.buffer(this);
 		for (let up = index; up !== NONE; up = buf.parent_at(up)) {
@@ -432,6 +442,9 @@ export class TaskView {
 
 	remove(): void {
 		const task = this._task;
+		if (task.observing !== null) {
+			throw new TypeError(observer_write('remove', task.observing));
+		}
 		if (this._index === task.node) {
 			throw new TypeError(
 				'remove: a deferred task removes what is inside its node, not the node itself'
