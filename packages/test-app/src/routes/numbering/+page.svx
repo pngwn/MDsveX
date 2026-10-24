@@ -2,6 +2,21 @@
 
 The plans are in :ref[tbl:plans], the prices in :ref[tbl:prices], and :ref[tbl:plans, tbl:prices] together. :ref[eq:energy] and :ref[eq:mass, eq:energy] come later on the page, and so does :ref[sec:the-equations].
 
+## The figures
+
+:::figure[Plans side by side](id=fig:plans)
+```txt
+free  ##
+pro   ##########
+```
+:::
+
+:::figure(id=fig:bare)
+A figure with an id and no caption is numbered all the same.
+:::
+
+:ref[fig:plans] and :ref[fig:plans, fig:bare] are figures, numbered by this plugin and drawn by `@mdsvex/plugin-figures`.
+
 ## The tables
 
 :::table[What each plan costs](id=tbl:plans)

@@ -110,7 +110,7 @@ function id_arg(node: NodeView): string | undefined {
  * numbered figures, tables, equations and sections, and `:ref[fig:x]`
  * references that read as the number and link to the target, as
  * pandoc-crossref does, a figure is the `:::figure` of
- * `@mdsvex/plugin-kit`, a table is `:::table[Caption](id=tbl:x)`, an
+ * `@mdsvex/plugin-figures`, a table is `:::table[Caption](id=tbl:x)`, an
  * equation is a math fence with `id=eq:x`
  *
  * @example
@@ -153,7 +153,7 @@ export function numbering(options: NumberingOptions = {}): Bundle {
 
 	/**
 	 * a figure or a table with an id of its kind, numbered as it opens, the
-	 * owner's handler for a table and an observer of the kit's figure
+	 * owner's handler for a table and an observer of the figure of @mdsvex/plugin-figures
 	 */
 	function numbered(kind: Kind) {
 		return (node: NodeView, ctx: PluginContext) => {
@@ -212,7 +212,7 @@ export function numbering(options: NumberingOptions = {}): Bundle {
 			table: { parse: numbered('tbl') },
 		},
 		parse: {
-			// the kit owns the figure, its args are all this needs
+			// @mdsvex/plugin-figures owns the figure, its args are all this needs
 			observe: { figure: { parse: numbered('fig') } },
 			code_fence: {
 				parse(node, ctx) {

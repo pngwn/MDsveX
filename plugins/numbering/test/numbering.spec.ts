@@ -11,6 +11,7 @@ import type {
 	RefWords,
 	Target,
 } from '@mdsvex/plugin-numbering';
+import { figures } from '@mdsvex/plugin-figures';
 import { compile, HeadingIdError } from 'mdsvex';
 import type { Bundle } from 'mdsvex';
 import { load_math } from 'mdsvex/math';
@@ -21,12 +22,8 @@ import { PATHS } from '../../../packages/parse/test/plugin_harness';
 
 const NONE = 0xffffffff;
 
-/** the figure of the kit as a compile sees it, a directive whose component another bundle gives */
-const FIGURES: Bundle = {
-	name: 'figures',
-	module: '@mdsvex/plugin-kit/figures',
-	directives: { figure: {} },
-};
+/** the owner of the figure, observed by numbering */
+const FIGURES: Bundle = figures();
 
 function run(source: string, options?: NumberingOptions) {
 	return compile(source, {
@@ -228,7 +225,7 @@ describe('warnings', () => {
 	test('a reference that mixes kinds', () => {
 		expect(
 			codes(
-				':ref[fig:a, tbl:b](prefix=Item)\n\n::figure[A](id=fig:a)\n\n::table[B](id=tbl:b)\n'
+				':ref[fig:a, tbl:b](prefix=Item)\n\n:::figure[A](id=fig:a)\nx\n:::\n\n::table[B](id=tbl:b)\n'
 			)
 		).toEqual([
 			'mixed_kinds :ref[fig:a, tbl:b] names targets of several kinds, each reads with its own word and a prefix is ignored, write one :ref for each kind',

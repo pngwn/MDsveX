@@ -9,7 +9,7 @@ pnpm add --save-dev @mdsvex/plugin-numbering@next
 ```js
 // vite.config.js
 import { mdsvex } from 'mdsvex';
-import { figures } from '@mdsvex/plugin-kit';
+import { figures } from '@mdsvex/plugin-figures';
 import { numbering } from '@mdsvex/plugin-numbering';
 
 export default {
@@ -61,12 +61,12 @@ Sales rose in March (:ref[fig:sales]), the plans are in :ref[tbl:plans],
 
 The prefix of an id says what it is, as in pandoc-crossref.
 
-| kind   | written as                                             | numbered when                                                                 |
-| ------ | ------------------------------------------------------ | ----------------------------------------------------------------------------- |
-| `fig:` | `:::figure[Caption](id=fig:x)` of `@mdsvex/plugin-kit` | it has a `fig:` id                                                            |
-| `tbl:` | `:::table[Caption](id=tbl:x)` around a table           | it has a `tbl:` id                                                            |
-| `eq:`  | a `math` fence with `id=eq:x` in its meta              | it has an `eq:` id                                                            |
-| `sec:` | a heading, `sec:` and its id                           | it has an id, from `heading_ids`, and is as deep as `section_depth` or deeper |
+| kind   | written as                                                 | numbered when                                                                 |
+| ------ | ---------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `fig:` | `:::figure[Caption](id=fig:x)` of `@mdsvex/plugin-figures` | it has a `fig:` id                                                            |
+| `tbl:` | `:::table[Caption](id=tbl:x)` around a table               | it has a `tbl:` id                                                            |
+| `eq:`  | a `math` fence with `id=eq:x` in its meta                  | it has an `eq:` id                                                            |
+| `sec:` | a heading, `sec:` and its id                               | it has an id, from `heading_ids`, and is as deep as `section_depth` or deeper |
 
 - **Each kind counts on its own**, in the order the document has them: Figure 1, Table 1, Figure 2.
 - **A figure or table without a caption** is numbered all the same, a figure or table without an id of its kind is not.
@@ -74,7 +74,7 @@ The prefix of an id says what it is, as in pandoc-crossref.
 - **A section** is numbered 1, 1.1, 1.2 from `section_depth` down, `h2` by default since an `h1` is usually the title. `number_sections: true` also puts the number in front of each heading, in a `<span class="section-number">`.
 - **An id given twice** to two targets fails the compile with a `HeadingIdError`, as any id the author wrote does.
 
-The kit owns the figure and renders the number, the numbering plugin only observes it. It reads `plugin_data.numbering['target:' + id]`, `{ kind, number, text }`, from Svelte context, and so can any component of your own.
+`@mdsvex/plugin-figures` owns the figure and renders the number, the numbering plugin only observes it. It reads `plugin_data.numbering['target:' + id]`, `{ kind, number, text }`, from Svelte context, and so can any component of your own.
 
 ## References
 

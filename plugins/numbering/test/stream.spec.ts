@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { svelte } from '@sveltejs/vite-plugin-svelte';
+import { figures } from '@mdsvex/plugin-figures';
 import { numbering } from '@mdsvex/plugin-numbering';
 import { mdsvex } from 'mdsvex';
 import type { Component } from 'svelte';
@@ -16,16 +17,7 @@ import { write_app } from '../../test/app';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PACKAGE = dirname(HERE);
 
-/** a figure that reads its number as the kit's does, from plugin data through context */
-const FIGURE = [
-	'<script>',
-	"  import { getContext } from 'svelte';",
-	'  let { id, label, children } = $props();',
-	"  const data = getContext(Symbol.for('mdsvex.plugin_data'));",
-	"  const target = $derived(id === undefined ? undefined : data?.current?.numbering?.['target:' + id]);",
-	'</script>',
-	'<figure {id}>{@render children?.()}{#if label}<figcaption>{#if target}{target.text + ": "}{/if}{@render label()}</figcaption>{/if}</figure>',
-].join('\n');
+const FIGURES = join(dirname(PACKAGE), 'figures');
 
 /** documents streamed here and compiled as a page, by the name of their file */
 const DOCS: Record<string, string> = {
@@ -72,13 +64,10 @@ let m: {
 };
 
 beforeAll(async () => {
-	const files: Record<string, string> = {
-		'src/Figure.svelte': FIGURE,
-		'src/figures.js': "export { default as figure } from './Figure.svelte';\n",
-	};
+	const files: Record<string, string> = {};
 	for (const [name, source] of Object.entries(DOCS))
 		files[`src/${name}.svx`] = source;
-	root = write_app(HERE, files, [PACKAGE]);
+	root = write_app(HERE, files, [PACKAGE, FIGURES]);
 	server = await createServer({
 		root,
 		configFile: false,
@@ -89,14 +78,7 @@ beforeAll(async () => {
 		server: { middlewareMode: true, hmr: false, watch: null },
 		plugins: [
 			mdsvex({
-				plugins: [
-					{
-						name: 'figures',
-						module: join(root, 'src/figures.js'),
-						directives: { figure: {} },
-					},
-					numbering(),
-				],
+				plugins: [figures(), numbering()],
 			}),
 			svelte({ configFile: false, extensions: ['.svelte', '.svx'] }),
 		],
@@ -109,7 +91,7 @@ beforeAll(async () => {
 		Node: (await runner.import('@mdsvex/render/Node.svelte')).default,
 		directives: {
 			...(await runner.import('@mdsvex/plugin-numbering/directives')),
-			...(await runner.import('/src/figures.js')),
+			...(await runner.import('@mdsvex/plugin-figures/directives')),
 		},
 		plugin: await runner.import('@mdsvex/plugin-numbering'),
 	};
@@ -175,8 +157,13 @@ function read(html: string): string {
 	const refs = [...html.matchAll(/<span class="ref">([^]*?)<\/span>/g)].map(
 		([, inner]) => inner.replace(/<a href="([^"]+)">([^<]*)<\/a>/g, '[$2]($1)')
 	);
-	const captions = [...html.matchAll(/<figcaption>([^]*?)<\/figcaption>/g)].map(
-		([, inner]) => inner.replace(/<[^>]+>/g, '')
+	const captions = [
+		...html.matchAll(/<figcaption[^>]*>([^]*?)<\/figcaption>/g),
+	].map(([, inner]) =>
+		inner
+			.replace(/<[^>]+>/g, '')
+			.replace(/\s+/g, ' ')
+			.trim()
 	);
 	return [...refs, '|', ...captions].join(' / ');
 }

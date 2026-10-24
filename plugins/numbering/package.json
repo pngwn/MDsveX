@@ -48,6 +48,7 @@
 	},
 	"devDependencies": {
 		"@mdsvex/parse": "workspace:*",
+		"@mdsvex/plugin-figures": "workspace:*",
 		"@mdsvex/render": "workspace:*",
 		"@sveltejs/package": "^3.0.0",
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
