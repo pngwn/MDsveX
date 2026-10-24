@@ -4098,12 +4098,13 @@ mdsvex 0.x ran remark and rehype, and took their plugins in `remarkPlugins` and 
 | `rehype-rewrite`, `rehype-wrap`, `rehype-components` | a component | [replace the element](docs#custom-components) with a component of your own |
 | `rehype-class-names`, `rehype-add-classes` | a parse plugin | `{ table: { parse(node) { node.attrs.class = 'table'; } } }` in [`parse_plugins`](docs#parse_plugins) |
 | `remark-sectionize`, `rehype-section` | a parse plugin | the `sections` plugin under [plugin handlers](docs#plugin-handlers) |
-| `rehype-figure`, `remark-figure-caption` | a component | `unwrap_images: true` and an `img` replacement that renders a `<figure>`, as under [`unwrap_images`](docs#unwrap_images) |
+| `rehype-figure`, `remark-figure-caption` | [`@mdsvex/plugin-figures`](docs#figures) | `:::figure[Caption]` around an image or anything else, with the caption in a `<figcaption>`. A lone image stays an image |
 | `rehype-img-size`, `rehype-plugin-image-native-lazy-loading` | a component | an `img` replacement sets `loading="lazy"`. For sizes, import the image with `?enhanced` from [`@sveltejs/enhanced-img`][enhanced-img], the replacement gets the imported value as `src` |
-| `rehype-mermaid`, `remark-mermaidjs` | a component | a [`pre` replacement](docs#code-block-components) that draws its `code` in the browser when `lang` is `mermaid` |
-| `remark-embedder`, `remark-oembed`, `remark-youtube` | a component | a leaf directive, `::youtube[A talk](id=dQw4w9WgXcQ)`, see [directives](docs#the-three-forms) |
+| `rehype-mermaid`, `remark-mermaidjs` | [`@mdsvex/plugin-diagram`](docs#diagrams) | `diagram()` draws each `mermaid` fence, at build time with `pele` installed or in the browser with `mermaid` |
+| `remark-embedder`, `remark-oembed`, `remark-youtube` | [`@mdsvex/plugin-embeds`](docs#embeds) | `::youtube[A talk](id=dQw4w9WgXcQ)` and `::vimeo`. Any other site is a leaf directive with a component of your own, see [directives](docs#the-three-forms) |
 | `remark-abbr` | a component | an inline directive, `:abbr[HTML](title=HyperText)` |
-| `remark-collapse` | nothing needed | `<details>` and `<summary>` work as typed, with markdown inside |
+| `remark-collapse` | nothing needed | `<details>` and `<summary>` work as typed, with markdown inside, and [`@mdsvex/plugin-elements`](docs#elements) adds `:::details[Summary]` and accordions |
+| `remark-kbd`, `remark-ruby` | [`@mdsvex/plugin-elements`](docs#elements) | `:kbd[Ctrl]` and `:ruby[漢字](rt=かんじ)` |
 | `rehype-meta`, `rehype-document` | a template | a [template](docs#templates-1) renders `<svelte:head>` from its props |
 | `rehype-video` | a component | an `a` or `img` replacement that renders a `<video>` for a video url |
 

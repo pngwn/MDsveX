@@ -8,7 +8,7 @@ Popularity is **npm downloads for the month to 2026-10-09**. Some numbers are in
 - `rehype-attr`, `rehype-ignore` and `rehype-rewrite` by @uiw/react-md-editor.
 - `remark-cjk-friendly`, probably by one large tool.
 
-**Status as of 2026-10-13.** The tables say what exists on `next` today: "exists" names the option or package, "in progress" is being built, and a row with neither is not built. The same answers, written for someone with a 0.x plugin list, are in the docs, in the section "Coming from remark and rehype plugins" of [`packages/site/src/routes/_docs.svtext`](../packages/site/src/routes/_docs.svtext).
+**Status as of 2026-10-24.** The tables say what exists on `next` today: "exists" names the option or package, "in progress" is being built, and a row with neither is not built. The same answers, written for someone with a 0.x plugin list, are in the docs, in the section "Coming from remark and rehype plugins" of [`packages/site/src/routes/_docs.svtext`](../packages/site/src/routes/_docs.svtext).
 
 ## How this is organised
 
@@ -23,7 +23,7 @@ Features are grouped by **concern**: the job a user is trying to get done. That 
 | `component` | a directive or a replaced element already does it; ship components and docs |
 | `tooling` | language-tools or a CLI: diagnostics, lint, editor features |
 
-The parse-plugin API can annotate, retag, wrap, append and remove existing node kinds, add text nodes, group siblings (`wrap_from`), read the file path and the frontmatter, report warnings, and hand data back to the page (`plugin_data`). A plugin can bring directives and their components. A sequential plugin can rewrite text (`run.replace`). A plugin can't add syntax, write to `metadata`, or wait for anything, since handlers are synchronous.
+The parse-plugin API can annotate, retag, wrap, append and remove existing node kinds, add text nodes, group siblings (`wrap_from`), read the file path and the frontmatter, report warnings, and hand data back to the page (`plugin_data`). A plugin can bring directives and their components, and replace elements. A sequential plugin can rewrite text (`run.replace`). A plugin can wait: `ctx.defer` runs a task for a node, the `document` hook may be async, and `ctx.read` and `ctx.cached` load files, under `compile_async` and the Vite plugin. A plugin can't add syntax or write to `metadata`.
 
 ---
 
@@ -119,11 +119,11 @@ How blocks render, and how authors style them. **Shared state:** none at runtime
 | **Callouts and GitHub alerts** | remark-github-blockquote-alert (3.8M), remark-github-admonitions-to-directives (119k), remark-github-alerts (113k), rehype-callouts (92k), remark-hint, remark-obsidian-callout | `component` (`:::note`) + `core` (`> [!NOTE]`, deferred) | The alert syntax duplicates `:::note`, but it degrades well on GitHub (PFM principle 7). Deferred for now; it will probably be supported properly. |
 | **Styling hooks** | rehype-class-names (1.4M), rehype-add-classes (35k) | `plugin`, a recipe in the docs, no package | Classes or attributes per element without writing a component, for example `table: { class: 'table' }` or `not-prose` on code. Three lines of `parse_plugins`. |
 | **Unwrap lone images** | rehype-unwrap-images (404k), remark-unwrap-images (137k) | `core` option, exists (`unwrap_images`) | Off by default. A `<figure>` can't sit inside a `<p>`, so this comes before figures. |
-| **Figure and caption** | @microflash/rehype-figure (80k), rehype-figure, remark-figure-caption, remark-captions, rehype-semantic-images | `component` (replaced `img`) | Works once images are unwrapped. Code fences already do this with `title` and `caption`. |
-| **Details, kbd, ruby, badges** | remark-collapse (61k), remark-kbd(-plus), remark-ruby (4k), remark-directive-sugar (4k), remark-flexible-paragraphs | `component` | One starter kit: `:::details`, `:kbd[Ctrl]`, `:ruby[漢字](rt=かんじ)`, `:badge[new]`. |
-| **Structured containers: steps, tabs, accordions, code groups** | rehype-code-group (30k), expressive-code tabs | `plugin+API` (plugin-owned directives, `wrap_from`) + `component`; steps, tabs and code groups exist (`@mdsvex/plugin-steps`, `@mdsvex/plugin-tabs`), accordions do not | The plugin claims `:::steps`, supplies the component, and its bound handlers rewrite the headings inside into `step` directives. See `design/plugin-directives.md`. |
+| **Figure and caption** | @microflash/rehype-figure (80k), rehype-figure, remark-figure-caption, remark-captions, rehype-semantic-images | `component`, exists (`@mdsvex/plugin-figures`) | `:::figure[Caption](id=fig:x)` around an image, a code block, a table or anything else renders a `<figure>` with the bracket text as its caption. The `id` is optional and stays on the element. It is the one way to make a figure: a lone image stays an image, unwrapped by `unwrap_images`. A numbering plugin numbers a figure through plugin data, which the component reads from Svelte context. Code fences also take `title` and `caption`. |
+| **Details, kbd, ruby, badges** | remark-collapse (61k), remark-kbd(-plus), remark-ruby (4k), remark-directive-sugar (4k), remark-flexible-paragraphs | `component`, exists (`@mdsvex/plugin-elements`) | One starter kit: `:::details`, `:kbd[Ctrl]`, `:ruby[漢字](rt=かんじ)`, `:badge[new](tone=tip)`. No script, each works without JavaScript. |
+| **Structured containers: steps, tabs, accordions, code groups** | rehype-code-group (30k), expressive-code tabs | `plugin+API` (plugin-owned directives, `wrap_from`) + `component`; all exist (`@mdsvex/plugin-steps`, `@mdsvex/plugin-tabs`, and accordions in `@mdsvex/plugin-elements`) | The plugin claims `:::steps`, supplies the component, and its bound handlers rewrite the headings inside into `step` directives. See `design/plugin-directives.md`. An accordion item is a native `<details>`, and `(name=…)` keeps one open at a time. |
 | **Static directives** | none | `vite` | Opt-in: render a directive's component at build time and write its HTML into the page, with holes for the label and children. No component code ships for it. Suits callouts, steps and badges. See `design/plugin-directives.md` §5. |
-| **Embeds** | @remark-embedder/core (20k), remark-oembed, remark-youtube, remark-iframes | `component`, `plugin+API` (async) for oEmbed | `::youtube[](id=…)`. Fetching oEmbed at build time needs async. |
+| **Embeds** | @remark-embedder/core (20k), remark-oembed, remark-youtube, remark-iframes | `component`, exists for YouTube and Vimeo (`@mdsvex/plugin-embeds`); `plugin` for oEmbed, not built | `::youtube[Title](id=…)` and `::vimeo[Title](id=…)`, lazy frames named by their label. Fetching oEmbed at build time is a deferred task now that plugins can wait. |
 | **Media links** | rehype-video (180k), remark-images (59k) | `component` (replaced `a`, `img`) | A link to `.mp4` renders `<video>`. |
 | **Definition lists** | remark-definition-list (818k), remark-deflist (61k) | `core`, or a `:::dl` component | |
 | **Mark and insert** | remark-flexible-markers (143k), remark-ins (148k), remark-mark-highlight (61k) | `core` | `==mark==`, `++ins++`. Issue #721 is the component gap for plugin-made `mark`. |
@@ -136,7 +136,7 @@ Showing code, and running it. **Shared state:** the fence meta conventions and s
 | --- | --- | --- | --- |
 | **Code from a file** | remark-code-import (156k), remark-sources | `vite`, exists (`src=`) | `src=./x.ts#L5-L20`. The file is tracked for HMR. The migrator renames `file=`. |
 | **Runnable blocks** | no remark equivalent; #832, #52, #432, #608 | `vite`, exists (`run`, `run=client`) | The flag turns the fence into a module of the Vite graph, which the replaced `pre` gets as `module`, or as `load` for `run=client`. |
-| **Copy button, frames, terminal chrome** | expressive-code (5.4M) | `component` | A reference `Pre.svelte`. |
+| **Copy button, frames, terminal chrome** | expressive-code (5.4M) | `component`; the copy button exists (`@mdsvex/plugin-code-blocks`), frames and terminal chrome do not | A replaced `pre` with an announced copy button, the title and the caption, exported as `Pre.svelte` to build on. |
 | **Code tabs** | rehype-code-group (30k), expressive-code tabs | `plugin+API` + `component`, exists (`@mdsvex/plugin-tabs`) | `:::tabs` around fences. One of the structured containers under Presentation. |
 | **Doc tests** | remark-code-blocks (5.5k) | `vite` + `tooling`, not built | Snippet modules are real modules, so a test runner could import every `run` block. `compile()` already lists them as `snippets`. |
 | **Color chips** | rehype-color-chips (19k) | `plugin` | Appends a swatch to `` `#e2551b` ``. |
@@ -148,7 +148,7 @@ A fence that renders as a picture. **Shared state:** the language-to-renderer ta
 
 | Feature | Plugins | Delivery | Notes |
 | --- | --- | --- | --- |
-| **Mermaid** | rehype-mermaid (2.3M), remark-mermaidjs (20k), rehype-mermaidjs | `component` (client), `plugin+API` (async, build time) | Replace `pre` when the language is `mermaid`. Rendering at build time needs Playwright, so client rendering is the cheap path. |
+| **Mermaid** | rehype-mermaid (2.3M), remark-mermaidjs (20k), rehype-mermaidjs | `plugin` + `component`, exists (`@mdsvex/plugin-diagram`), at build time with pele and on the client with mermaid | Each `mermaid` fence is wrapped in a `diagram` directive rather than a replaced `pre`, so it renders through any `pre` as the source and the fallback. pele, which reads Mermaid syntax, draws it synchronously in the parse and the page ships the SVG, themed by CSS variables. Without pele, mermaid draws it in the browser, loaded lazily. Both are optional peer dependencies, picked once when the plugin is set up. |
 | **Other engines** | remark-kroki (4k), remark-simple-plantuml, remark-refer-plantuml, rehype-graphviz-diagram | `component` | Same pattern. Low priority. |
 
 ### 3.7 Typography
@@ -233,7 +233,7 @@ Resolution, Composition, Code and Collections moved to the Vite plugin, so they 
 | **Hand data back** | exists (`ctx.data`, exported as `plugin_data`). Nothing writes to `metadata` | TOC data, Document data, numbering |
 | **Diagnostics** (warnings with positions) | exists (`ctx.warn`) | link validation, plus any plugin that wants to report errors |
 | **A document hook** (run once with the whole tree) | exists (`document(root, ctx)`, which may be async). The page data plugin reads the document there | anything that reads the whole document |
-| **Async hooks**, or a pre-pass | exists (`ctx.defer` for work on a node, an async `document` hook, `ctx.read` and `ctx.cached` for files, `compile_async`) | bibliographies and citations (exist), oEmbed, build-time mermaid, last modified dates (exists) |
+| **Async hooks**, or a pre-pass | exists (`ctx.defer` for work on a node, an async `document` hook, `ctx.read` and `ctx.cached` for files, `compile_async`) | bibliographies and citations (exist), oEmbed, last modified dates (exists) |
 
 ---
 
@@ -258,13 +258,13 @@ Ranked on usefulness to mdsvex users × popularity × cost. Items tagged `core` 
 | 13 | Reading time | Document data | plugin, exists | 1M |
 | 14 | Links to routes and the base path | Resolution | vite, exists | ~150k combined; issue #389 |
 | 15 | Metadata-only imports | Collections | vite, exists | every blog and docs listing |
-| 16 | Component starter kit (details, kbd, ruby, badges, embeds; steps and tabs exist as plugins, accordions do not) | Presentation | component + plugin+API | replaces ~10 plugins |
-| 17 | Mermaid | Diagrams | component | 2.3M |
-| 18 | Unwrap lone images (core option, exists), then figure and caption | Presentation | core + component | 540k + 90k |
+| 16 | Component starter kit (details, kbd, ruby, badges, embeds, accordions; steps and tabs are plugins of their own) | Presentation | component + plugin+API, exists (`@mdsvex/plugin-elements`, `@mdsvex/plugin-embeds`) | replaces ~10 plugins |
+| 17 | Mermaid | Diagrams | plugin + component, exists (build time with pele, client with mermaid) | 2.3M |
+| 18 | Unwrap lone images, then figure and caption | Presentation | core + component, both exist | 540k + 90k |
 | 19 | Code from a file (`src=`) | Code | vite, exists | 156k |
 | 20 | Runnable blocks (`run`) | Code | vite, exists | issue #832 |
 | 21 | Excerpt, inferred title, source info | Document data | plugin, exists | 64k+ |
-| 22 | Copy button and code tabs (code tabs exist, `@mdsvex/plugin-tabs`) | Code | component + plugin+API | expressive-code 5.4M |
+| 22 | Copy button and code tabs | Code | component + plugin+API, both exist (`@mdsvex/plugin-code-blocks`, `@mdsvex/plugin-tabs`) | expressive-code 5.4M |
 | 23 | Definition lists | Presentation | core / component | 818k |
 | 24 | Link validation | Quality | plugin+API, exists | 639k |
 | 25 | GitHub refs, mentions, linkify | Cross-references | plugin, exists | 3.2M |
@@ -307,5 +307,12 @@ Decided 2026-10-10:
   - Fence meta carries equation options, such as a label for numbering.
   - Not supported: plain `$…$` (ambiguous with currency and with Svelte's `{}`), `$$…$$` (a second way to write the fence; the migrator rewrites it), and directives (their text isn't raw).
   - A `latex` fence stays a code block that shows the source. Highlighting it needs a LaTeX grammar in twinkleplop.
+
+Decided 2026-10-24:
+
+- **The component items are five packages, one concern each.** `@mdsvex/plugin-elements` (details, accordions, kbd, ruby, badges), `@mdsvex/plugin-embeds` (YouTube, Vimeo), `@mdsvex/plugin-figures`, `@mdsvex/plugin-code-blocks` and `@mdsvex/plugin-diagram`. A site adds only what it uses, and only the diagram package has optional peer dependencies.
+- **Diagrams draw with pele or mermaid.** pele draws Mermaid syntax at build time and the page ships the SVG, mermaid draws in the browser. `engine: 'auto'` takes pele when it is installed. Both are optional peers, and the choice is made once when the plugin is set up, so a package that is not installed is never imported.
+- **Mermaid wraps the fence instead of replacing `pre`.** A site has one `pre`, so a Mermaid `pre` would fight the site's own and the copy button.
+- **A figure is the `:::figure[Caption](id=…)` directive of `@mdsvex/plugin-figures`, and only that.** It holds an image or anything else, the id is optional, and a lone image with a title is not a figure. A numbering plugin numbers a figure whose id it knows by writing the number to its plugin data, and the figure component puts it in front of the caption.
 
 Nothing is open.
