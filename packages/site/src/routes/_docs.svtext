@@ -1853,6 +1853,7 @@ import { mdsvex } from 'mdsvex';
 import { anchors } from '@mdsvex/plugin-anchors';
 import { citations } from '@mdsvex/plugin-citations';
 import { code_blocks } from '@mdsvex/plugin-code-blocks';
+import { diagram } from '@mdsvex/plugin-diagram';
 import { emoji } from '@mdsvex/plugin-emoji';
 import { external_links } from '@mdsvex/plugin-external-links';
 import { elements } from '@mdsvex/plugin-elements';
@@ -1874,6 +1875,7 @@ mdsvex({
 		embeds(),
 		figures(),
 		code_blocks(),
+		diagram(),
 		anchors(),
 		external_links(),
 		toc(),
@@ -1893,6 +1895,7 @@ mdsvex({
 | [`@mdsvex/plugin-elements`](docs#elements) | details, accordions, keys, ruby and badges, each a directive over an HTML element |
 | [`@mdsvex/plugin-embeds`](docs#embeds) | YouTube and Vimeo players named by their title |
 | [`@mdsvex/plugin-code-blocks`](docs#code-blocks) | a `pre` with a copy button, the title and the caption of the fence |
+| [`@mdsvex/plugin-diagram`](docs#diagrams) | `mermaid` fences drawn by pele at build time or by mermaid in the browser |
 | [`@mdsvex/plugin-figures`](docs#figures) | `:::figure[Caption]` around an image or anything else, numbered when a numbering plugin asks |
 | [`@mdsvex/plugin-anchors`](docs#anchors) | a link to itself on every heading that has an id |
 | [`@mdsvex/plugin-external-links`](docs#external-links) | `rel` and `target` on every link that leaves the site |
@@ -2184,6 +2187,26 @@ mdsvex({ plugins: [code_blocks()] });
 ```
 
 Replaces `pre` with a code block that has a copy button, the title of the fence above the code and its caption below. The button is named "Copy code of" and the title, a `status` region beside it announces "Copied" or "Copy failed", and `nocopy` in the fence meta leaves it out. It copies the `code` prop, so [live values](docs#live-code) are copied as the reader sees them. Without JavaScript the stylesheet hides the button. In a code group of [tabs](docs#tabs) the tab shows the title, so the code block hides its own. A `pre` from a `components` module or a template replaces it, and the plugin's own is exported as `@mdsvex/plugin-code-blocks/Pre.svelte`.
+
+### Diagrams
+
+```bash
+pnpm add --save-dev @mdsvex/plugin-diagram@next pele
+```
+
+```js
+import { diagram } from '@mdsvex/plugin-diagram';
+
+mdsvex({ plugins: [diagram()] });
+```
+
+Each `mermaid` fence is drawn as a diagram, by [pele](https://pele.run) or by [mermaid](https://mermaid.js.org). Both are optional peer dependencies, install the one you want. `engine: 'auto'`, the default, takes pele when it is installed and mermaid otherwise, and the choice is made once, when `diagram()` runs, so the page never imports a package you didn't install. With neither installed it throws a `DiagramError` that says what to install.
+
+**With pele** the diagram is drawn at build time and the page ships the SVG, with no script, so it shows without JavaScript too. It is themed by CSS variables such as `--pele-bg` and `--pele-fg`, with dark values for a reader whose system is dark, so light and dark need no second render. A diagram pele can't draw is a `diagram_error` warning at its fence and shows its source, and `diagram({ strict: true })` fails the build there instead. `pele` passes [render options](https://pele.run/api) such as `fontFamily`. pele reads Mermaid syntax with its own layout, and has no Mermaid themes, no HTML labels and no JavaScript click callbacks.
+
+**With mermaid** the server renders the code and the browser loads mermaid on a page that has a diagram and draws it in place of the code. Without JavaScript the reader sees the code.
+
+The plugin wraps each `mermaid` fence in a `diagram` directive, so the code still renders through whatever replaces `pre`, as the source in a closed "Diagram source" disclosure under the drawing. The `title` and `caption` of the fence go around the diagram, and `accTitle:` and `accDescr:` name it for screen readers. The highlighter has no mermaid grammar, so the build warns once per file that the code renders plain.
 
 ### Anchors
 

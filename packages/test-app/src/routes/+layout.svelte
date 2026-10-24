@@ -22,6 +22,7 @@ let {children} = $props()
 		<a href="/embeds">embeds</a>
 		<a href="/figures">figures</a>
 		<a href="/code-blocks">code blocks</a>
+		<a href="/diagram">diagram</a>
 		<a href="/external-links">external links</a>
 		<a href="/toc">toc</a>
 		<a href="/link-check">link check</a>

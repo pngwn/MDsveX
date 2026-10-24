@@ -9,6 +9,7 @@ import { elements } from "@mdsvex/plugin-elements";
 import { embeds } from "@mdsvex/plugin-embeds";
 import { figures } from "@mdsvex/plugin-figures";
 import { code_blocks } from "@mdsvex/plugin-code-blocks";
+import { diagram } from "@mdsvex/plugin-diagram";
 import { link_check } from "@mdsvex/plugin-link-check";
 import { page_data } from "@mdsvex/plugin-page-data";
 import { references } from "@mdsvex/plugin-references";
@@ -30,6 +31,7 @@ export default defineConfig({
 				embeds(),
 				figures(),
 				code_blocks(),
+				diagram(),
 				anchors(),
 				external_links({
 					target: "_blank",
