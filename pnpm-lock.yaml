@@ -740,6 +740,9 @@ importers:
       '@mdsvex/plugin-figures':
         specifier: workspace:*
         version: link:../../plugins/figures
+      '@mdsvex/plugin-link-check':
+        specifier: workspace:*
+        version: link:../../plugins/link-check
       '@mdsvex/plugin-page-data':
         specifier: workspace:*
         version: link:../../plugins/page-data
@@ -915,6 +918,27 @@ importers:
       npm-run-all2:
         specifier: ^7.0.2
         version: 7.0.2
+      svelte:
+        specifier: ^5.55.0
+        version: 5.57.1(@typescript-eslint/types@8.57.2)
+      vite:
+        specifier: ^7.3.1
+        version: 7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0)
+
+  plugins/link-check:
+    devDependencies:
+      '@sveltejs/vite-plugin-svelte':
+        specifier: ^6.2.4
+        version: 6.2.4(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.3.1(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0))
+      mdsvex:
+        specifier: workspace:^
+        version: link:../../packages/mdsvex
+      npm-run-all2:
+        specifier: ^7.0.2
+        version: 7.0.2
+      shx:
+        specifier: ^0.3.4
+        version: 0.3.4
       svelte:
         specifier: ^5.55.0
         version: 5.57.1(@typescript-eslint/types@8.57.2)
