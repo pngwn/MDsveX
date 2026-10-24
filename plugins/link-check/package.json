@@ -1,0 +1,51 @@
+{
+	"name": "@mdsvex/plugin-link-check",
+	"version": "0.0.1",
+	"description": "Link checking for mdsvex, warns about #anchors and links to other documents that go nowhere",
+	"type": "module",
+	"scripts": {
+		"build": "run-s build:tsc build:vite build:copy-dts",
+		"build:tsc": "tsc",
+		"build:vite": "vite build --config vite.config.build.ts",
+		"build:copy-dts": "shx cp tsc/*.d.ts dist/",
+		"test": "vitest --disableConsoleIntercept",
+		"test:run": "vitest run"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		},
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"dist"
+	],
+	"sideEffects": false,
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pngwn/MDsveX.git",
+		"directory": "plugins/link-check"
+	},
+	"keywords": [
+		"mdsvex",
+		"mdsvex-plugin",
+		"markdown",
+		"links",
+		"validation",
+		"lint"
+	],
+	"author": "pngwn <hello@pngwn.io>",
+	"license": "MIT",
+	"peerDependencies": {
+		"mdsvex": "^1.0.0-next.2"
+	},
+	"devDependencies": {
+		"@sveltejs/vite-plugin-svelte": "^6.2.4",
+		"mdsvex": "workspace:^",
+		"npm-run-all2": "^7.0.2",
+		"shx": "^0.3.4",
+		"svelte": "^5.55.0",
+		"vite": "^7.3.1"
+	}
+}

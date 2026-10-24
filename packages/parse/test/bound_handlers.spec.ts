@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { PFMParser, WireEmitter, parse_markdown_svelte } from '../src/main';
+import {
+	DirectiveOwnerError,
+	PFMParser,
+	WireEmitter,
+	parse_markdown_svelte,
+} from '../src/main';
 import { SourceTextSource, WireTextSource } from '../src/node_view';
 import type { NodeView } from '../src/node_view';
 import {
@@ -20,6 +25,7 @@ import {
 	expect_linked,
 	expect_parity,
 	expect_parity_logged,
+	run_batch,
 	shape,
 } from './plugin_harness';
 import type { PluginSetup } from './plugin_harness';
@@ -396,26 +402,16 @@ describe('bound handlers: global plugins', () => {
 		]);
 	});
 
-	it('a later table takes a name whole', () => {
-		const { log } = expect_parity_logged(
-			':::box[]\n## One\n\ntext\n:::\n',
-			(log) =>
+	it('two tables for one name are an error, a directive has one owner', () => {
+		expect(() =>
+			run_batch(
+				':::box[]\n## One\n:::\n',
 				bound(
-					{
-						box: {
-							children: { heading: () => void log.push('first heading') },
-							parse: () => void log.push('first parse'),
-						},
-					},
-					{
-						box: {
-							children: { paragraph: () => void log.push('second paragraph') },
-						},
-					}
-				),
-			NAMED
-		);
-		expect(log).toEqual(['second paragraph']);
+					{ box: { children: { heading() {} } } },
+					{ box: { children: { paragraph() {} } } }
+				)
+			)
+		).toThrow(DirectiveOwnerError);
 	});
 });
 

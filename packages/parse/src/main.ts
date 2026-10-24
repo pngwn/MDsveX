@@ -80,7 +80,11 @@ export type {
 	HeadingInfo,
 	HeadingSlug,
 } from './heading_ids.js';
-export { PluginDispatcher, has_directive_handlers } from './plugin_dispatch.js';
+export {
+	DirectiveOwnerError,
+	PluginDispatcher,
+	has_directive_handlers,
+} from './plugin_dispatch.js';
 export { SourceTextSource, WireTextSource } from './node_view.js';
 
 export { WireEmitter, WireOp } from './wire_emitter.js';
