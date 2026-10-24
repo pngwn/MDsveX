@@ -34,6 +34,7 @@
 		"@mdsvex/plugin-external-links": "workspace:*",
 		"@mdsvex/plugin-elements": "workspace:*",
 		"@mdsvex/plugin-embeds": "workspace:*",
+		"@mdsvex/plugin-link-check": "workspace:*",
 		"@mdsvex/plugin-page-data": "workspace:*",
 		"@mdsvex/plugin-references": "workspace:*",
 		"@mdsvex/plugin-steps": "workspace:*",

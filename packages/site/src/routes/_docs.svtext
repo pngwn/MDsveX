@@ -627,8 +627,41 @@ Things to know:
 - **A nested blockquote or list is not a child.** `children` means written directly inside the directive. Use `descendants` for every node of a type at any depth.
 - **Only containers have children.** The bracket text of a leaf or inline directive is not passed to `children` or `descendants` handlers. Their own `parse` still runs, though an inline directive gets its args after it, so read them in the function `parse` returns.
 - **Your own export wins.** A `directives` export of the same name from a [`components` module](docs#declaring-directives) or a template replaces the plugin's component. The plugin's handlers still run, so your `step` gets the same `label` and `children`.
-- **A later plugin wins a name.** When two plugins have an entry for the same directive, the later one's component and handlers are used.
+- **A directive has one owner.** Two plugins with an entry for the same directive throw a `DirectiveOwnerError` when the config loads, naming both. Another plugin reads the directive by observing it, below.
 - **Other plugins still see the nodes.** A heading inside `:::steps` reaches the `heading` handlers of `parse_plugins` too, after the bound handler ran. A plugin's `parse` runs ahead of `parse_plugins`.
+
+A plugin that wants to read a directive another plugin owns observes it, with `observe` in its `parse`, or in an entry of `parse_plugins`. This numbers the figures of a figure plugin and leaves what it finds as [plugin data](docs#plugin-data), which the figure's component can read:
+
+```js
+export function numbering() {
+	return {
+		name: 'numbering',
+		parse: {
+			observe: {
+				figure: {
+					parse(figure, ctx) {
+						const number = (ctx.scratch.figures = (ctx.scratch.figures ?? 0) + 1);
+						const id = figure.attrs.args?.id;
+						if (id === undefined) return;
+						return () => {
+							const label = figure.first_child;
+							ctx.set('target:' + id, {
+								number,
+								caption: label?.type === 'directive_label' ? label.text_content : null
+							});
+						};
+					}
+				}
+			}
+		}
+	};
+}
+```
+
+- **It takes the same entries** as a plugin's own `directives`: `parse`, `children` and `descendants`, with a `ctx.state` and `ctx.index` of its own.
+- **It changes no node.** It writes data, warns, and reads the tree. Writing to a node, the directive or anything else, throws a `TypeError` that names the plugin that owns the directive.
+- **It runs after the owner,** at the open and at the close, so it sees the args and the children as the owner left them.
+- **It runs whoever renders the directive:** a plugin, your own component, or nothing yet.
 
 `compile()` takes `plugins` as well. It writes `module` as the import specifier exactly as given.
 
@@ -1805,11 +1838,11 @@ A directive with no component is an error that names it and its line and column:
 no component renders the directive :::Calout at 3:1. Export a component named "Calout" from a directives module (export * as directives from './directives.ts'), or replace the directive_container node in a parse plugin
 ```
 
-A [parse plugin](docs#parse_plugins) can handle directives that have no component, through the `directive_inline`, `directive_leaf` and `directive_container` node types. A directive with a component never reaches those handlers.
+A [parse plugin](docs#parse_plugins) can handle directives that have no component, through the `directive_inline`, `directive_leaf` and `directive_container` node types. A directive with a component never reaches those handlers, a plugin reads it by [observing it](docs#plugins).
 
 ### Directives from a plugin
 
-A [plugin](docs#plugins) can bring directives of its own, with the components that render them. They sit below everything above: an export of the same name from a `components` module or a template replaces the plugin's component. [`@mdsvex/plugin-steps`](docs#steps) is one.
+A [plugin](docs#plugins) can bring directives of its own, with the components that render them. They sit below everything above: an export of the same name from a `components` module or a template replaces the plugin's component. Two plugins can't both bring one. [`@mdsvex/plugin-steps`](docs#steps) is one.
 
 ## Plugins
 
@@ -1823,6 +1856,7 @@ import { emoji } from '@mdsvex/plugin-emoji';
 import { external_links } from '@mdsvex/plugin-external-links';
 import { elements } from '@mdsvex/plugin-elements';
 import { embeds } from '@mdsvex/plugin-embeds';
+import { link_check } from '@mdsvex/plugin-link-check';
 import { page_data } from '@mdsvex/plugin-page-data';
 import { references } from '@mdsvex/plugin-references';
 import { steps } from '@mdsvex/plugin-steps';
@@ -1842,7 +1876,8 @@ mdsvex({
 		page_data(),
 		references({ repo: 'you/site' }),
 		emoji(),
-		citations()
+		citations(),
+		link_check({ routes: 'src/routes' })
 	]
 });
 ```
@@ -1860,6 +1895,7 @@ mdsvex({
 | [`@mdsvex/plugin-emoji`](docs#emoji) | emoji shortcodes, `:tada:` becomes the emoji, with an optional label for screen readers |
 | [`@mdsvex/plugin-references`](docs#references) | links for `@user`, `#123`, `owner/repo#123` and commits, and for bare urls when asked |
 | [`@mdsvex/plugin-citations`](docs#citations) | `:cite[key]` from a CSL JSON bibliography, and a `::bibliography` that lists what a document cites |
+| [`@mdsvex/plugin-link-check`](docs#link-check) | a warning at every link to an id or a document that is not there |
 
 ### Steps
 
@@ -2581,6 +2617,61 @@ The citations and their entries are [plugin data](docs#plugin-data), `plugin_dat
 ```
 
 The file is read while the document compiles, so the Vite plugin and [`compile_async`](docs#compile_async), with a `read` option, take a document that cites, and `compile` throws a `PluginAsyncError`. The formatting is small on purpose: names, year, title, where it was published, the publisher and a link. Citation styles such as APA or Chicago, locators like page numbers, and telling apart two works of one author in one year need a full CSL processor.
+
+### Link check
+
+```bash
+pnpm add --save-dev @mdsvex/plugin-link-check@next
+```
+
+```js
+import { link_check } from '@mdsvex/plugin-link-check';
+
+mdsvex({
+	heading_ids: true,
+	links: { routes: 'src/routes' },
+	plugins: [link_check({ routes: 'src/routes' })]
+});
+```
+
+Warns at every link that goes nowhere, with the line of the link, as the compile warns about anything else:
+
+```svx
+# Install
+
+See [the setup](#setup), [the guide](../guide/+page.md#usage) and [the api](/api#options).
+```
+
+```
+#setup links to no element of this document, none has the id "setup"
+../guide/+page.md#usage links to src/routes/guide/+page.md, which has no element with the id "usage"
+```
+
+```ts
+link_check({
+	documents: boolean = true, // check links to other documents too
+	heading_ids: boolean | { slug } = true, // how other documents' headings get ids
+	routes: string, // the directory whose documents are routes, as links.routes
+	extensions: string[] = ['.md', '.svx'],
+	base: string, // a root url written with the base has it taken off
+	ignore: (href, filename) => boolean,
+	strict: boolean = false // fail the compile with a LinkCheckError
+});
+```
+
+- **Within a page**, `#id` is checked against every id the document gives an element: the ids of headings, which need [`heading_ids`](docs#heading_ids), an `id` typed on an element, the `name` of an `<a>`, the `id` arg of a directive, the `fn-` ids of footnotes and an id a plugin gave a node. `#top` and `#` need none. An id a component makes as it renders is not known, skip it with `ignore`.
+- **Other documents** are checked by file, `./guide.md#usage`, relative to the document, and by route, `/guide#usage`, when `routes` names the directory of your routes, as [`links.routes`](docs#links) does. A route is the document `guide.md`, `guide/+page.md` or `guide/index.md`, with each extension. A route with no such document is not reported, since it may be a Svelte page, and neither is a route inside a `(group)`. A root url with no fragment is not checked.
+- **What is read.** Each linked document is read and compiled once for every document that links to it, with the `heading_ids` given to the plugin, so give it the value you give mdsvex when that is not `true`. A link to a document that does not exist is a warning too, and the file it names is watched, so creating it checks the link again.
+- **In the dev server** a document that links to another is a [dependency](docs#loading-files) of it. Change the headings of `guide.md` and every document that links to it compiles again and warns about what now goes nowhere.
+- **`strict`** fails a document that has a link that goes nowhere with a `LinkCheckError`, after the warnings, its `links` listing each one. Turn it on for a build:
+
+```js
+export default defineConfig(({ command }) => ({
+	plugins: [mdsvex({ plugins: [link_check({ strict: command === 'build' })] })]
+}));
+```
+
+Other documents are read while the document compiles, so the Vite plugin and [`compile_async`](docs#compile_async), with a `read` option, check them, and `compile` throws a `PluginAsyncError` for a document that links to another. `documents: false` checks links within a page alone, under `compile` too. Markdown links are checked, not an `<a>` typed as html, and not files that are no documents, such as images.
 
 ## Syntax highlighting
 

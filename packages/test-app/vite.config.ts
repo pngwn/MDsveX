@@ -7,6 +7,7 @@ import { emoji } from "@mdsvex/plugin-emoji";
 import { external_links } from "@mdsvex/plugin-external-links";
 import { elements } from "@mdsvex/plugin-elements";
 import { embeds } from "@mdsvex/plugin-embeds";
+import { link_check } from "@mdsvex/plugin-link-check";
 import { page_data } from "@mdsvex/plugin-page-data";
 import { references } from "@mdsvex/plugin-references";
 import { steps } from "@mdsvex/plugin-steps";
@@ -18,6 +19,7 @@ export default defineConfig({
 		mdsvex({
 			extensions: [".svx"],
 			heading_ids: true,
+			links: { routes: "src/routes" },
 			plugins: [
 				steps(),
 				tabs(),
@@ -42,6 +44,7 @@ export default defineConfig({
 				}),
 				emoji({ label: true }),
 				citations(),
+				link_check({ routes: "src/routes", extensions: [".svx"] }),
 			],
 			templates: {
 				article: "$lib/templates/Article.svelte",

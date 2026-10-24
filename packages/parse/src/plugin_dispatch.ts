@@ -57,6 +57,7 @@ import {
 	Task,
 	TaskState,
 	TaskView,
+	observer_write,
 	within,
 	type TaskHost,
 } from './plugin_tasks.js';
@@ -212,6 +213,14 @@ interface RegistrationResult {
 	names: (string | undefined)[];
 	/** the document hooks, in plugin order */
 	documents: DocumentHook[];
+	/** the observe table of each plugin that has one, null for none */
+	observers: ObserveTable[] | null;
+}
+
+/** the directives one plugin observes */
+interface ObserveTable {
+	plugin: string | undefined;
+	table: DirectiveHandlers;
 }
 
 /** a document hook and the place of its plugin */
@@ -233,10 +242,20 @@ function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
 	const sequential: RegistrationResult['sequential'] = [];
 	const names: (string | undefined)[] = [];
 	const documents: DocumentHook[] = [];
+	let observers: ObserveTable[] | null = null;
 
 	for (let at = 0; at < plugins.length; at++) {
 		const plugin = plugins[at];
 		names.push(typeof plugin.name === 'string' ? plugin.name : undefined);
+		const observe = plugin.observe;
+		if (observe !== undefined) {
+			if (!is_table(observe)) {
+				throw new TypeError(
+					`the observe of ${plugin_named(names[at])} must be an object of entries by directive name`
+				);
+			}
+			(observers ??= []).push({ plugin: names[at], table: observe });
+		}
 		const hook = plugin.document;
 		if (hook !== undefined) {
 			if (typeof hook !== 'function') {
@@ -319,6 +338,7 @@ function register_plugins(plugins: ParsePlugin[]): RegistrationResult {
 		open_wants,
 		names,
 		documents,
+		observers,
 	};
 }
 
@@ -404,9 +424,54 @@ interface BoundEntry {
 	descendant_kinds: number[];
 	/** the name of the plugin the table came with, undefined for a bare table */
 	plugin: string | undefined;
+	/** the entries that observe the name, null for none */
+	observers: BoundEntry[] | null;
+	/** for an observer, who observes what and who owns it, for the TypeError of a write, null for an owner */
+	observing: string | null;
 }
 
 type BoundRegistration = Map<string, BoundEntry>;
+
+/** the tables of bound handlers read once, the plugin that owns each name with them */
+interface BoundTables {
+	bound: BoundRegistration | null;
+	/** each name a table has an entry for, handlers or not, by the plugin of the table */
+	owners: Map<string, string | undefined>;
+}
+
+/** two tables have an entry for one directive name, which has one owner */
+export class DirectiveOwnerError extends Error {
+	directive: string;
+	/** the names of the two plugins, the earlier first, undefined for a table without one */
+	plugins: [string | undefined, string | undefined];
+
+	constructor(
+		directive: string,
+		plugins: [string | undefined, string | undefined]
+	) {
+		super(
+			`${table_named(plugins[0])} and ${table_named(plugins[1])} both own directive "${directive}", ` +
+				'a directive has one owner, another plugin can observe it'
+		);
+		this.name = 'DirectiveOwnerError';
+		this.directive = directive;
+		this.plugins = plugins;
+	}
+}
+
+function table_named(plugin: string | undefined): string {
+	return plugin === undefined ? 'a table without a name' : `plugin "${plugin}"`;
+}
+
+function plugin_named(plugin: string | undefined): string {
+	return plugin === undefined
+		? 'a plugin without a name'
+		: `plugin "${plugin}"`;
+}
+
+function is_table(value: unknown): value is DirectiveHandlers {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
 function bound_table(
 	handlers: DirectiveEntry['children'],
@@ -460,9 +525,58 @@ function is_named(table: DirectiveTable): table is NamedDirectiveHandlers {
 	return typeof (table as NamedDirectiveHandlers).name === 'string';
 }
 
-/** null when no entry has a handler, so nothing needs a dispatcher */
-function register_bound(tables: DirectiveTable[]): BoundRegistration | null {
+/** the handlers of one entry, null when it has none */
+function bound_entry(
+	entry: DirectiveEntry,
+	name: string,
+	plugin: string | undefined
+): BoundEntry | null {
+	const child_kinds: number[] = [];
+	const descendant_kinds: number[] = [];
+	const children = bound_table(entry.children, name, 'children', child_kinds);
+	const descendants = bound_table(
+		entry.descendants,
+		name,
+		'descendants',
+		descendant_kinds
+	);
+	const parse = entry.parse ?? null;
+	if (parse !== null && typeof parse !== 'function') {
+		throw new TypeError(
+			`the parse handler of directive "${name}" must be a function`
+		);
+	}
+	// bound_table checked that children is an object
+	const any_child = entry.children?.[ANY] ?? null;
+	if (any_child !== null && typeof any_child !== 'function') {
+		throw new TypeError(
+			`the children.${ANY} handler of directive "${name}" must be a function`
+		);
+	}
+	if (
+		children === null &&
+		any_child === null &&
+		descendants === null &&
+		parse === null
+	)
+		return null;
+	return {
+		children,
+		any_child,
+		descendants,
+		parse,
+		child_kinds,
+		descendant_kinds,
+		plugin,
+		observers: null,
+		observing: null,
+	};
+}
+
+/** bound is null when no entry has a handler, so nothing needs a dispatcher */
+function register_bound(tables: DirectiveTable[]): BoundTables {
 	let bound: BoundRegistration | null = null;
+	const owners = new Map<string, string | undefined>();
 	for (const given of tables) {
 		let table: DirectiveHandlers;
 		let plugin: string | undefined;
@@ -478,74 +592,39 @@ function register_bound(tables: DirectiveTable[]): BoundRegistration | null {
 		for (const name of Object.keys(table)) {
 			const entry = table[name];
 			if (entry == null || typeof entry !== 'object') continue;
-			const child_kinds: number[] = [];
-			const descendant_kinds: number[] = [];
-			const children = bound_table(
-				entry.children,
-				name,
-				'children',
-				child_kinds
-			);
-			const descendants = bound_table(
-				entry.descendants,
-				name,
-				'descendants',
-				descendant_kinds
-			);
-			const parse = entry.parse ?? null;
-			if (parse !== null && typeof parse !== 'function') {
-				throw new TypeError(
-					`the parse handler of directive "${name}" must be a function`
-				);
+			// an entry with no handlers names a component, it owns the name all the same
+			if (owners.has(name)) {
+				throw new DirectiveOwnerError(name, [owners.get(name), plugin]);
 			}
-			// bound_table checked that children is an object
-			const any_child = entry.children?.[ANY] ?? null;
-			if (any_child !== null && typeof any_child !== 'function') {
-				throw new TypeError(
-					`the children.${ANY} handler of directive "${name}" must be a function`
-				);
-			}
+			owners.set(name, plugin);
+			const handlers = bound_entry(entry, name, plugin);
+			if (handlers === null) continue;
 			if (bound === null) bound = new Map();
-			// a later table takes the name whole, as its component does
-			if (
-				children === null &&
-				any_child === null &&
-				descendants === null &&
-				parse === null
-			) {
-				bound.delete(name);
-				continue;
-			}
-			bound.set(name, {
-				children,
-				any_child,
-				descendants,
-				parse,
-				child_kinds,
-				descendant_kinds,
-				plugin,
-			});
+			bound.set(name, handlers);
 		}
 	}
-	return bound !== null && bound.size !== 0 ? bound : null;
+	return { bound, owners };
 }
 
 // by array, a caller with many documents passes the same one
-const bound_registrations = new WeakMap<
-	DirectiveTable[],
-	BoundRegistration | null
->();
+const bound_registrations = new WeakMap<DirectiveTable[], BoundTables>();
+
+const NO_TABLES: BoundTables = { bound: null, owners: new Map() };
+
+function tables_for(tables: DirectiveTable[] | undefined): BoundTables {
+	if (tables === undefined || tables.length === 0) return NO_TABLES;
+	let read = bound_registrations.get(tables);
+	if (read === undefined) {
+		read = register_bound(tables);
+		bound_registrations.set(tables, read);
+	}
+	return read;
+}
 
 function bound_for(
 	tables: DirectiveTable[] | undefined
 ): BoundRegistration | null {
-	if (tables === undefined || tables.length === 0) return null;
-	let bound = bound_registrations.get(tables);
-	if (bound === undefined) {
-		bound = register_bound(tables);
-		bound_registrations.set(tables, bound);
-	}
-	return bound;
+	return tables_for(tables).bound;
 }
 
 /** true when a table binds a handler, without one a parse needs no dispatcher for them */
@@ -553,6 +632,76 @@ export function has_directive_handlers(
 	tables: DirectiveTable[] | undefined
 ): boolean {
 	return bound_for(tables) !== null;
+}
+
+// by registration, then by tables, the observers of the plugins joined to them
+const observed_registrations = new WeakMap<
+	RegistrationResult,
+	WeakMap<BoundTables, BoundRegistration>
+>();
+
+/**
+ * the bound handlers of the tables with the observers of the plugins added,
+ * each name an observer reads gets an entry, one with no handlers of its own
+ * when no table binds it
+ */
+function observed_for(
+	reg: RegistrationResult,
+	tables: DirectiveTable[] | undefined
+): BoundRegistration {
+	const read = tables_for(tables);
+	let by_tables = observed_registrations.get(reg);
+	if (by_tables === undefined) {
+		by_tables = new WeakMap();
+		observed_registrations.set(reg, by_tables);
+	}
+	let out = by_tables.get(read);
+	if (out !== undefined) return out;
+	// copies, the registration of the tables is shared with other plugins
+	out = new Map();
+	if (read.bound !== null) {
+		for (const [name, entry] of read.bound) out.set(name, { ...entry });
+	}
+	for (const { plugin, table } of reg.observers!) {
+		for (const name of Object.keys(table)) {
+			const given = table[name];
+			if (given == null || typeof given !== 'object') continue;
+			const owned = read.owners.has(name);
+			const owner = read.owners.get(name);
+			if (owned && owner !== undefined && owner === plugin) {
+				throw new TypeError(
+					`plugin "${plugin}" owns directive "${name}" and observes it, its own handlers already see it`
+				);
+			}
+			const observer = bound_entry(given, name, plugin);
+			if (observer === null) continue;
+			observer.observing =
+				`${plugin_named(plugin)} observes directive "${name}"` +
+				(owned
+					? owner === undefined
+						? ', which a table without a name owns'
+						: `, which plugin "${owner}" owns`
+					: '');
+			let entry = out.get(name);
+			if (entry === undefined) {
+				entry = {
+					children: null,
+					any_child: null,
+					descendants: null,
+					parse: null,
+					child_kinds: [],
+					descendant_kinds: [],
+					plugin: owner,
+					observers: null,
+					observing: null,
+				};
+				out.set(name, entry);
+			}
+			(entry.observers ??= []).push(observer);
+		}
+	}
+	by_tables.set(read, out);
+	return out;
 }
 
 /** an open container directive with children or descendants handlers */
@@ -778,6 +927,13 @@ class CloseCallbackStore {
 	add_first(idx: number, callback: () => void): void {
 		const cbs = this.live === 0 ? undefined : this.store!.get(idx);
 		if (cbs !== undefined) cbs.unshift(callback);
+		else this.set(idx, [callback]);
+	}
+
+	/** a callback that fires after the ones the node already has */
+	add_last(idx: number, callback: () => void): void {
+		const cbs = this.live === 0 ? undefined : this.store!.get(idx);
+		if (cbs !== undefined) cbs.push(callback);
 		else this.set(idx, [callback]);
 	}
 
@@ -1034,6 +1190,9 @@ export class PluginDispatcher
 	/** the node whose handler or close callback is running */
 	private running = NONE;
 
+	/** the observer whose handler or close callback is running, it changes no node */
+	private observing: BoundEntry | null = null;
+
 	/** the callbacks of a close that is final are running, their node is settled */
 	private final_close = false;
 
@@ -1084,7 +1243,10 @@ export class PluginDispatcher
 		this.documents = reg.documents;
 		this.text_source = text_source;
 		this.handled = this.handles = reg.open_wants;
-		this.bound = bound_for(directive_handlers);
+		this.bound =
+			reg.observers === null
+				? bound_for(directive_handlers)
+				: observed_for(reg, directive_handlers);
 		this.binds = this.bound !== null;
 	}
 
@@ -1574,6 +1736,7 @@ export class PluginDispatcher
 		}
 		this.task_buf = node._live();
 		const task = new Task(running, plugin, this.task_seq++, this);
+		if (this.observing !== null) task.observing = this.observing.observing;
 		// final at once in a sequential pass and in the callbacks of a final close
 		if (this.sequential_pass || this.final_close) task.committed = true;
 		else this.uncommitted++;
@@ -1757,6 +1920,9 @@ export class PluginDispatcher
 	check_write(what: string): void {
 		if (this.running === NONE && !this.sequential_pass) {
 			throw new TypeError(NO_HANDLER(what));
+		}
+		if (this.observing !== null) {
+			throw new TypeError(observer_write(what, this.observing.observing!));
 		}
 	}
 
@@ -2036,6 +2202,9 @@ export class PluginDispatcher
 	 * gone downstream
 	 */
 	remove(buf: NodeBuffer, node: number): void {
+		if (this.observing !== null) {
+			throw new TypeError(observer_write('remove', this.observing.observing!));
+		}
 		const kind = kind_to_string(buf.kind_at(node));
 		if (buf.kind_at(node) === NodeKind.root) {
 			throw new Error('remove: the root can not be removed');
@@ -2137,6 +2306,9 @@ export class PluginDispatcher
 	}
 
 	close_wrapper(buf: NodeBuffer, wrapper: number): void {
+		if (this.observing !== null) {
+			throw new TypeError(observer_write('close', this.observing.observing!));
+		}
 		if (!this.open_from.has(wrapper)) return;
 		this.refuse_pending(buf, 'close');
 		const parent = buf.parent_at(wrapper);
@@ -2485,16 +2657,23 @@ export class PluginDispatcher
 		const index = counts[slot]++;
 		// the index goes back with the node, as the state it wrote does
 		this.undo.record_count(counts, slot);
-		const callback = handler(
+		const entry = scope.entry;
+		const observer = entry.observing !== null;
+		if (observer) this.observing = entry;
+		let callback = handler(
 			view,
 			new BoundContext(
 				this,
-				scope.entry.plugin,
+				entry.plugin,
 				this.cache!.get(scope.directive)!,
 				index,
 				scope.state ?? (scope.state = this.make_state())
 			)
 		);
+		if (observer) {
+			this.observing = null;
+			if (callback) callback = this.observed(entry, callback);
+		}
 		if (callback) {
 			if (callbacks === null) callbacks = [callback];
 			else callbacks.push(callback);
@@ -2571,35 +2750,117 @@ export class PluginDispatcher
 			return;
 		}
 		const parse = entry.parse;
-		if (parse === null) return;
+		if (parse !== null) {
+			const cache = this.views(buf);
+			const view = cache.get(buf_idx)!;
+			const undo = this.undo;
+			// a scope shares its state with its children and descendants handlers
+			let state: Record<string, any>;
+			if (scope === null) state = this.make_state();
+			else state = scope.state = this.make_state();
+			undo.set_active_node(buf_idx);
+			this.running = buf_idx;
+			const callback = parse(
+				view,
+				new BoundContext(this, entry.plugin, view, 0, state)
+			);
+			undo.clear_active_node();
+			this.running = NONE;
 
-		const cache = this.views(buf);
-		const view = cache.get(buf_idx)!;
-		const undo = this.undo;
-		// a scope shares its state with its children and descendants handlers
-		let state: Record<string, any>;
-		if (scope === null) state = this.make_state();
-		else state = scope.state = this.make_state();
-		undo.set_active_node(buf_idx);
-		this.running = buf_idx;
-		const callback = parse(
-			view,
-			new BoundContext(this, entry.plugin, view, 0, state)
-		);
-		undo.clear_active_node();
-		this.running = NONE;
+			this.adopt(buf_idx, buf);
 
-		this.adopt(buf_idx, buf);
+			if (callback) {
+				let close_cbs = this.close_cbs;
+				if (close_cbs === NO_CLOSE_CBS)
+					close_cbs = this.close_cbs = new CloseCallbackStore();
+				// ahead of the callbacks the open handlers left, bound runs first
+				close_cbs.add_first(buf_idx, callback);
+			}
 
-		if (callback) {
-			let close_cbs = this.close_cbs;
-			if (close_cbs === NO_CLOSE_CBS)
-				close_cbs = this.close_cbs = new CloseCallbackStore();
-			// ahead of the callbacks the open handlers left, bound runs first
-			close_cbs.add_first(buf_idx, callback);
+			cache.clear();
 		}
+		if (entry.observers !== null)
+			this.observe(entry.observers, buf_idx, kind, buf);
+	}
 
-		cache.clear();
+	/**
+	 * observers run after the owner at the open and after every other callback
+	 * at the close, each with a scope of its own below that of the owner
+	 */
+	private observe(
+		observers: BoundEntry[],
+		buf_idx: number,
+		kind: NodeKind,
+		buf: NodeBuffer
+	): void {
+		let scoped: Scope[] | null = null;
+		if (kind === NodeKind.directive_container) {
+			let scopes = this.scopes;
+			if (scopes === null) scopes = this.scopes = [];
+			let at = scopes.length;
+			if (at !== 0 && scopes[at - 1].directive === buf_idx) at--;
+			for (let i = 0; i < observers.length; i++) {
+				const observer = observers[i];
+				if (
+					observer.children === null &&
+					observer.any_child === null &&
+					observer.descendants === null
+				)
+					continue;
+				const scope = new Scope(buf_idx, observer);
+				// a later observer sits below an earlier one, the innermost runs first
+				scopes.splice(at, 0, scope);
+				(scoped ??= []).push(scope);
+			}
+			if (scoped !== null) this.scopes_changed();
+		}
+		const undo = this.undo;
+		for (let i = 0; i < observers.length; i++) {
+			const observer = observers[i];
+			const parse = observer.parse;
+			if (parse === null) continue;
+			let state: Record<string, any> | null = null;
+			if (scoped !== null) {
+				for (let s = 0; s < scoped.length; s++) {
+					if (scoped[s].entry === observer)
+						state = scoped[s].state = this.make_state();
+				}
+			}
+			const cache = this.views(buf);
+			const view = cache.get(buf_idx)!;
+			undo.set_active_node(buf_idx);
+			this.running = buf_idx;
+			this.observing = observer;
+			const callback = parse(
+				view,
+				new BoundContext(
+					this,
+					observer.plugin,
+					view,
+					0,
+					state ?? this.make_state()
+				)
+			);
+			this.observing = null;
+			undo.clear_active_node();
+			this.running = NONE;
+			if (callback) {
+				let close_cbs = this.close_cbs;
+				if (close_cbs === NO_CLOSE_CBS)
+					close_cbs = this.close_cbs = new CloseCallbackStore();
+				close_cbs.add_last(buf_idx, this.observed(observer, callback));
+			}
+			cache.clear();
+		}
+	}
+
+	/** a close callback of an observer, which changes no node either */
+	private observed(observer: BoundEntry, callback: () => void): () => void {
+		return () => {
+			this.observing = observer;
+			callback();
+			this.observing = null;
+		};
 	}
 
 	/** a scope opened or ended, the kinds an open needs the dispatcher for follow */
@@ -2622,10 +2883,17 @@ export class PluginDispatcher
 				const kinds = scopes[i].entry.descendant_kinds;
 				for (let k = 0; k < kinds.length; k++) wants[kinds[k]] = PAST_END;
 			}
-			// only the innermost scope can have a new child
-			const kinds = top.entry.child_kinds;
-			for (let k = 0; k < kinds.length; k++) wants[kinds[k]] = PAST_END;
-			if (top.entry.any_child === null) this.drop_narrow();
+			// only the innermost directive can have a new child, its observers
+			// have scopes of their own on it
+			let any = false;
+			for (let i = depth - 1; i >= 0; i--) {
+				const entry = scopes[i].entry;
+				if (scopes[i].directive !== top.directive) break;
+				const kinds = entry.child_kinds;
+				for (let k = 0; k < kinds.length; k++) wants[kinds[k]] = PAST_END;
+				if (entry.any_child !== null) any = true;
+			}
+			if (!any) this.drop_narrow();
 			else {
 				// its child can be of any kind, dispatch_open lets the rest through
 				let narrow = this.narrow;
@@ -2656,13 +2924,15 @@ export class PluginDispatcher
 	/** the scope of a revoked directive ends, wherever it sits */
 	private end_scope(directive: number): void {
 		const scopes = this.scopes!;
+		let ended = false;
+		// with those of its observers
 		for (let i = scopes.length - 1; i >= 0; i--) {
 			if (scopes[i].directive === directive) {
 				scopes.splice(i, 1);
-				this.scopes_changed();
-				return;
+				ended = true;
 			}
 		}
+		if (ended) this.scopes_changed();
 	}
 
 	/**
@@ -2717,7 +2987,13 @@ export class PluginDispatcher
 		// close innermost first, so only the innermost scope can end here
 		const scope = this.scope;
 		if (scope !== null && scope.directive === buf_idx) {
-			this.scopes!.pop();
+			const scopes = this.scopes!;
+			// the scopes of its observers sit right below
+			do scopes.pop();
+			while (
+				scopes.length !== 0 &&
+				scopes[scopes.length - 1].directive === buf_idx
+			);
 			this.scopes_changed();
 		}
 
@@ -2780,8 +3056,7 @@ export class PluginDispatcher
 		const scope = this.scope;
 		if (scope === null || buf.kind_at(buf_idx) !== NodeKind.paragraph)
 			return null;
-		const entry = scope.entry;
-		if (entry.children === null && entry.any_child === null) return null;
+		if (!this.takes_lifted(scope)) return null;
 		// a wrapper holds what was written in the directive
 		let parent = buf.parent_at(buf_idx);
 		while (parent !== NONE && buf.synthetic_at(parent)) {
@@ -2803,11 +3078,22 @@ export class PluginDispatcher
 		return lifted;
 	}
 
+	/** a children handler on the innermost directive, of the owner or of an observer */
+	private takes_lifted(scope: Scope): boolean {
+		const scopes = this.scopes!;
+		for (let i = scopes.length - 1; i >= 0; i--) {
+			const entry = scopes[i].entry;
+			if (scopes[i].directive !== scope.directive) break;
+			if (entry.children !== null || entry.any_child !== null) return true;
+		}
+		return false;
+	}
+
 	/** the children handlers of the innermost scope for each node the repair made its child */
 	dispatch_lifted(nodes: number[], buf: NodeBuffer): void {
-		const scope = this.scope;
-		if (scope === null) return;
-		const entry = scope.entry;
+		const top = this.scope;
+		if (top === null) return;
+		const scopes = this.scopes!;
 		const undo = this.undo;
 		for (let i = 0; i < nodes.length; i++) {
 			const node = nodes[i];
@@ -2819,13 +3105,19 @@ export class PluginDispatcher
 			if (!closed || buf.pending_at(node) !== 0) undo.set_active_node(node);
 			this.running = node;
 			let callbacks: (() => void)[] | null = null;
-			const handler = entry.children === null ? null : entry.children[kind];
-			if (handler != null) {
-				callbacks = this.call_bound(handler, view, scope, kind, callbacks);
-			}
-			const any = entry.any_child;
-			if (any !== null && kind !== NodeKind.line_break) {
-				callbacks = this.call_bound(any, view, scope, ANY_SLOT, callbacks);
+			// the scope of the owner first, then those of its observers
+			for (let s = scopes.length - 1; s >= 0; s--) {
+				const scope = scopes[s];
+				if (scope.directive !== top.directive) break;
+				const entry = scope.entry;
+				const handler = entry.children === null ? null : entry.children[kind];
+				if (handler != null) {
+					callbacks = this.call_bound(handler, view, scope, kind, callbacks);
+				}
+				const any = entry.any_child;
+				if (any !== null && kind !== NodeKind.line_break) {
+					callbacks = this.call_bound(any, view, scope, ANY_SLOT, callbacks);
+				}
 			}
 			undo.clear_active_node();
 			this.running = NONE;
@@ -3109,6 +3401,7 @@ export class PluginDispatcher
 		this.close_with = null;
 		// a throw in a handler leaves these set
 		this.running = NONE;
+		this.observing = null;
 		this.closing = false;
 		this.final_close = false;
 		this.held = NONE;
