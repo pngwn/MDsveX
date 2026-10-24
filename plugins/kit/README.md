@@ -144,6 +144,8 @@ A figure is unnumbered on its own. A numbering plugin numbers it through [plugin
 </figcaption>
 ```
 
+A numbered figure with no caption has the number alone as its caption, `<figcaption><span class="figure-number">Figure 2</span></figcaption>`, and one with neither has no `<figcaption>`.
+
 The component gets `label`, `children` and `id`. Export a `figure` from a directives module to replace it, or wrap the kit's, `@mdsvex/plugin-kit/Figure.svelte`. Leave the stylesheet out with `figures({ css: false })`.
 
 ## Code blocks
