@@ -63,3 +63,21 @@ test("an image alone with a title is a figure with a caption", async ({
 	await expect(figure.locator("figcaption")).toHaveText("The mdsvex penguin");
 	await expect(page.locator("p > img[title='Inline']")).toHaveCount(1);
 });
+
+test("a code block copies its code and says so", async ({ page, context }) => {
+	await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+	await page.goto("/kit");
+	const block = page.locator(".code-block", { hasText: "Install" });
+	await expect(block.locator(".code-block-title")).toHaveText("Install");
+	await expect(block.locator(".code-block-caption")).toHaveText(
+		"Then restart the dev server.",
+	);
+	await block.getByRole("button", { name: "Copy code of Install" }).click();
+	await expect(block.getByRole("status")).toHaveText("Copied");
+	expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+		"pnpm add @mdsvex/plugin-C",
+	);
+	await expect(
+		page.locator(".code-block", { hasText: "ls" }).getByRole("button"),
+	).toHaveCount(0);
+});

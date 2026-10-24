@@ -1851,7 +1851,7 @@ mdsvex({
 | --- | --- |
 | [`@mdsvex/plugin-steps`](docs#steps) | numbered steps, one for each heading inside `:::steps` |
 | [`@mdsvex/plugin-tabs`](docs#tabs) | tabs and code groups, one tab for each heading or code fence inside `:::tabs` |
-| [`@mdsvex/plugin-kit`](docs#kit) | details, accordions, keys, ruby, badges and video embeds, each a directive, and figures for images with a title |
+| [`@mdsvex/plugin-kit`](docs#kit) | details, accordions, keys, ruby, badges and video embeds, each a directive, figures for images with a title and code blocks with a copy button |
 | [`@mdsvex/plugin-anchors`](docs#anchors) | a link to itself on every heading that has an id |
 | [`@mdsvex/plugin-external-links`](docs#external-links) | `rel` and `target` on every link that leaves the site |
 | [`@mdsvex/plugin-toc`](docs#table-of-contents) | the headings of a document as data, and a `::toc` directive that lists them |
@@ -2099,6 +2099,8 @@ mdsvex({ unwrap_images: true, plugins: [kit(), figures()] });
 ```
 
 An image beside text, in a heading or in a table cell stays an image, since a `<figure>` isn't allowed there, and so does one with no title. The alt text describes the image and the title is the caption, so write each for what it is.
+
+`code_blocks()` replaces `pre` with a code block that has a copy button, the title of the fence above the code and its caption below. The button is named "Copy code of" and the title, a `status` region beside it announces "Copied" or "Copy failed", and `nocopy` in the fence meta leaves it out. It copies the `code` prop, so [live values](docs#live-code) are copied as the reader sees them. Without JavaScript the stylesheet hides the button.
 
 The stylesheet has selectors with no specificity and reads `--kit-line`, `--kit-radius` and `--kit-padding` from `.details` and `.accordion`, and `--badge-color` from `.badge`. `kit({ css: false })` leaves it out and keeps the markup. To change the markup, export a component under the name of the directive from a [directives module](docs#declaring-directives). It gets the args as string props, `label` and `children`, and an embed also gets `title`. The plugin's own are exported as `@mdsvex/plugin-kit/Details.svelte` and so on.
 
@@ -2907,6 +2909,8 @@ A copy button with a filename:
 // src/lib/markdown.js
 export { default as pre } from './markdown/Pre.svelte';
 ```
+
+[`code_blocks()`](docs#kit) from `@mdsvex/plugin-kit` is a finished one, with an announced result and the caption, to use or to copy.
 
 Meta that no convention claims becomes props. `key="value"`, `key='value'` and `key=value` give a string, and a bare `key` gives `true`:
 

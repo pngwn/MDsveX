@@ -49,3 +49,11 @@ Press :kbd[Ctrl]+:kbd[{key}] to copy. :ruby[漢字](rt=かんじ) is read *kanji
 ![A penguin](/favicon.png "The mdsvex penguin")
 
 A small ![penguin](/favicon.png "Inline") beside text stays an image.
+
+```sh title="Install" caption="Then restart the dev server."
+pnpm add @mdsvex/plugin-{key} # [!eval]
+```
+
+```sh nocopy
+ls
+```

@@ -1,6 +1,6 @@
 # @mdsvex/plugin-kit
 
-Components most [mdsvex](https://mdsvex.pngwn.io) sites want: details, accordions, keys, ruby, badges and video embeds, each written as a directive, and figures for images with a title.
+Components most [mdsvex](https://mdsvex.pngwn.io) sites want: details, accordions, keys, ruby, badges and video embeds, each written as a directive, figures for images with a title, and code blocks with a copy button.
 
 ```bash
 pnpm add --save-dev @mdsvex/plugin-kit@next
@@ -135,6 +135,51 @@ Sales grew all year.
 
 The component gets `src`, `alt`, `title` and the image's other attributes, and `figure="true"` when the image may be a figure. Export an `img` from a `components` module and it replaces this one and gets the same `figure` prop. Leave the stylesheet out with `figures({ css: false })`.
 
+## Code blocks
+
+`code_blocks()` replaces `pre` with a code block that has a copy button:
+
+```js
+import { code_blocks } from '@mdsvex/plugin-kit';
+
+mdsvex({ plugins: [code_blocks()] });
+```
+
+````md
+```sh title="Install" caption="Then restart the dev server."
+pnpm add mdsvex
+```
+````
+
+```html
+<div class="code-block" data-language="sh">
+	<div class="code-block-title">Install</div>
+	<div class="code-block-body">
+		<div class="code-block-actions">
+			<span class="code-block-status" role="status"></span>
+			<button
+				type="button"
+				class="code-block-copy"
+				aria-label="Copy code of Install"
+			>
+				Copy
+			</button>
+		</div>
+		<pre class="twinkleplop language-sh">...</pre>
+	</div>
+	<div class="code-block-caption">Then restart the dev server.</div>
+</div>
+```
+
+- **It copies the code a reader sees**, without code directives and with [live values](https://mdsvex.pngwn.io/docs#live-code) in place.
+- **The button says what it copies.** Its name is "Copy code", or "Copy code of" and the title of the fence. It comes before the code, so it is reached first, and it sits over the top corner of the code.
+- **The result is announced.** A `status` region next to the button reads "Copied", or "Copy failed" where the page has no clipboard, such as a page served over plain http. It clears after two seconds.
+- **The title and caption of the fence** are rendered above and below the code. In a code group of `@mdsvex/plugin-tabs` the tab already shows the title, so the stylesheet hides it.
+- **`nocopy` in the fence meta** leaves the button out of that block.
+- **Without JavaScript** the stylesheet hides the button, which could not copy. This uses the `scripting` media query.
+
+It wraps whatever renders the fence, the built in highlighter or your own. An export named `pre` from a `components` module or a template replaces this one. To build your own from it, it is exported as `@mdsvex/plugin-kit/Pre.svelte`. Leave the stylesheet out with `code_blocks({ css: false })`. The custom properties `--code-block-line` and `--code-block-radius` are read from `.code-block`.
+
 ## What it warns about
 
 The build reports these, with the line they are on, and still renders the page:
@@ -150,7 +195,7 @@ The build reports these, with the line they are on, and still renders the page:
 
 ## Styles
 
-The components come with a small stylesheet. Every selector is inside `:where()`, so any rule of yours wins. The classes are `details`, `details-summary`, `details-body`, `accordion`, `accordion-label`, `kbd`, `ruby`, `badge`, `embed`, `embed-youtube`, `embed-vimeo`, and from `figures()`, `figure` and `figure-caption`, and these custom properties are read:
+The components come with a small stylesheet. Every selector is inside `:where()`, so any rule of yours wins. The classes are `details`, `details-summary`, `details-body`, `accordion`, `accordion-label`, `kbd`, `ruby`, `badge`, `embed`, `embed-youtube`, `embed-vimeo`, from `figures()`, `figure` and `figure-caption`, and from `code_blocks()`, `code-block`, `code-block-title`, `code-block-body`, `code-block-actions`, `code-block-status`, `code-block-copy` and `code-block-caption`, and these custom properties are read:
 
 | property         | on                       | default                                    |
 | ---------------- | ------------------------ | ------------------------------------------ |

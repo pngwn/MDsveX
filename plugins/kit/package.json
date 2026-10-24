@@ -1,7 +1,7 @@
 {
 	"name": "@mdsvex/plugin-kit",
 	"version": "0.0.1",
-	"description": "Components most mdsvex sites want: details, accordions, keys, ruby, badges, video embeds and figures",
+	"description": "Components most mdsvex sites want: details, accordions, keys, ruby, badges, video embeds, figures and code blocks with a copy button",
 	"type": "module",
 	"scripts": {
 		"build": "run-s build:check build:package",
@@ -63,8 +63,21 @@
 			"types": "./dist/Figure.svelte.d.ts",
 			"svelte": "./dist/Figure.svelte"
 		},
+		"./code-blocks": {
+			"types": "./dist/code-blocks-unstyled.d.ts",
+			"svelte": "./dist/code-blocks.js"
+		},
+		"./code-blocks/unstyled": {
+			"types": "./dist/code-blocks-unstyled.d.ts",
+			"svelte": "./dist/code-blocks-unstyled.js"
+		},
+		"./Pre.svelte": {
+			"types": "./dist/Pre.svelte.d.ts",
+			"svelte": "./dist/Pre.svelte"
+		},
 		"./kit.css": "./dist/kit.css",
 		"./figures.css": "./dist/figures.css",
+		"./code-blocks.css": "./dist/code-blocks.css",
 		"./package.json": "./package.json"
 	},
 	"files": [
@@ -73,7 +86,8 @@
 	"sideEffects": [
 		"**/*.css",
 		"./dist/directives.js",
-		"./dist/figures.js"
+		"./dist/figures.js",
+		"./dist/code-blocks.js"
 	],
 	"repository": {
 		"type": "git",
@@ -92,7 +106,9 @@
 		"badge",
 		"youtube",
 		"vimeo",
-		"figure"
+		"figure",
+		"copy-button",
+		"code-block"
 	],
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",

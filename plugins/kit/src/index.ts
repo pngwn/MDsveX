@@ -231,3 +231,26 @@ export function figures(options: KitOptions = {}): Bundle {
 		parse: STANDALONE,
 	};
 }
+
+/**
+ * replaces `pre` with a code block that has a copy button, the title and
+ * caption of the fence above and below it, a fence with the `nocopy` flag
+ * gets no button
+ *
+ * @example
+ * import { code_blocks } from '@mdsvex/plugin-kit';
+ *
+ * mdsvex({ plugins: [code_blocks()] });
+ */
+export function code_blocks(options: KitOptions = {}): Bundle {
+	return {
+		name: 'code_blocks',
+		components: {
+			specifier:
+				options.css === false
+					? '@mdsvex/plugin-kit/code-blocks/unstyled'
+					: '@mdsvex/plugin-kit/code-blocks',
+			names: ['pre'],
+		},
+	};
+}

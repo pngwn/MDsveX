@@ -2,7 +2,7 @@ import { rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { figures, kit } from '@mdsvex/plugin-kit';
+import { code_blocks, figures, kit } from '@mdsvex/plugin-kit';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { mdsvex } from 'mdsvex';
 import { createServer, createServerModuleRunner, normalizePath } from 'vite';
@@ -53,6 +53,20 @@ const FILES = {
 		'',
 	].join('\n'),
 	'src/chart.png': '',
+	'src/code.svx': [
+		'<script>',
+		"  let name = 'kit';",
+		'</script>',
+		'',
+		'```sh title="Install" caption="Then restart"',
+		'pnpm add {name} # [!eval]',
+		'```',
+		'',
+		'```sh nocopy',
+		'ls',
+		'```',
+		'',
+	].join('\n'),
 	'src/lib/markdown.js': "export * as directives from './directives.js';",
 	'src/lib/directives.js': "export { default as kbd } from './MyKbd.svelte';",
 	'src/lib/MyKbd.svelte': [
@@ -279,5 +293,44 @@ describe('figures in a vite app', () => {
 			'/node_modules/@mdsvex/plugin-kit/dist/figures.js'
 		);
 		expect(entry?.code).toMatch(/import ".*\/dist\/figures\.css"/);
+	});
+});
+
+describe('code blocks in a vite app', () => {
+	let root: string;
+	let server: ViteDevServer;
+
+	beforeAll(async () => {
+		root = write_app(HERE, FILES, [PACKAGE]);
+		server = await serve(root, mdsvex({ plugins: [code_blocks()] }));
+	});
+
+	afterAll(async () => {
+		await server?.close();
+		rmSync(root, { recursive: true, force: true });
+	});
+
+	test('a code block has its title, a copy button with a status and its caption', async () => {
+		const html = await ssr(server, '/src/code.svx');
+		expect(html).toContain(
+			'<div class="code-block" data-language="sh">' +
+				'<div class="code-block-title">Install</div> ' +
+				'<div class="code-block-body">' +
+				'<div class="code-block-actions">' +
+				'<span class="code-block-status" role="status"></span> ' +
+				'<button type="button" class="code-block-copy" aria-label="Copy code of Install">Copy</button>' +
+				'</div> <pre'
+		);
+		expect(html).toContain(
+			'</pre></div> <div class="code-block-caption">Then restart</div></div>'
+		);
+		// nocopy leaves the button out
+		expect(html.match(/<button/g)).toHaveLength(1);
+	});
+
+	test('the code it copies has live values in place', async () => {
+		const client = server.environments.client;
+		const doc = await client.transformRequest('/src/code.svx');
+		expect(doc?.code).toMatch(/code: `pnpm add \$\{name\}`/);
 	});
 });
