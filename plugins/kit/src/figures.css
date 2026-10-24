@@ -5,14 +5,22 @@
 	margin-inline: 0;
 }
 
-:where(.figure > img) {
+:where(.figure > img, .figure > a > img) {
 	display: block;
 	max-width: 100%;
 	height: auto;
+}
+
+:where(.figure > :first-child) {
+	margin-block-start: 0;
 }
 
 :where(.figure-caption) {
 	margin-block-start: 0.5rem;
 	color: color-mix(in srgb, currentColor 70%, transparent);
 	font-size: 0.9em;
+}
+
+:where(.figure-number) {
+	font-weight: 600;
 }

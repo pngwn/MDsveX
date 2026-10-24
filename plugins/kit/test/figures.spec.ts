@@ -2,134 +2,139 @@ import { figures } from '@mdsvex/plugin-kit';
 import { compile } from 'mdsvex';
 import { describe, expect, test } from 'vitest';
 
-import { expect_parity } from '../../../packages/parse/test/plugin_harness';
+import {
+	expect_parity,
+	PATHS,
+} from '../../../packages/parse/test/plugin_harness';
 
-const bundle = figures();
-
-/** the tree on both builders, whole and fed in chunks, with the plugin and unwrap_images as given */
-function tree(source: string, unwrap_images = true): unknown {
-	return expect_parity(
-		source,
-		() => ({
-			plugins: [{ name: bundle.name, ...bundle.parse! }],
-			syntax: { unwrap_images },
-		}),
-		{ attrs: ['title', 'figure'] }
-	);
+function setup(unwrap_images = true) {
+	return {
+		directive_handlers: [
+			{ name: 'figures', directives: figures().directives! },
+		],
+		syntax: { unwrap_images },
+	};
 }
 
-const FIGURE = 'image title="T" figure="true"';
-const IMAGE = 'image title="T"';
+/** the tree on both builders, whole and fed in chunks */
+function tree(source: string, unwrap_images = true): unknown {
+	return expect_parity(source, () => setup(unwrap_images), {
+		attrs: ['name', 'args'],
+	});
+}
 
-describe('which images are figures', () => {
-	test('an image unwrapped from its paragraph', () => {
-		expect(tree('![a](/a.png "T")\n')).toEqual(['root', [FIGURE, 'text:a']]);
-		expect(tree('![a](/a.png "T") ![b](/b.png "T")\n')).toEqual([
+/** the warning codes of a document, the same on every path */
+function warnings(source: string): string[] {
+	let first: string[] | undefined;
+	for (const [name, run] of PATHS) {
+		const found = run(source, setup()).dispatcher!.warnings ?? [];
+		const codes = found.map((warning) => warning.code);
+		if (first === undefined) first = codes;
+		else expect(codes, name).toEqual(first);
+	}
+	return first!;
+}
+
+describe('the figure directive', () => {
+	test('holds what is written inside it, the label is the caption', () => {
+		const source =
+			':::figure[Sales by *month*](id=fig:sales)\n![A chart](/c.png)\n:::\n';
+		expect(warnings(source)).toEqual([]);
+		expect(tree(source)).toEqual([
 			'root',
-			[FIGURE, 'text:a'],
-			'text: ',
-			[FIGURE, 'text:b'],
+			[
+				'directive_container name="figure" args={"id":"fig:sales"}',
+				[
+					'directive_label',
+					'text:Sales by ',
+					['strong_emphasis', 'text:month'],
+				],
+				['image', 'text:A chart'],
+			],
 		]);
 	});
 
-	test('an unwrapped image in a link, a block quote and a directive', () => {
-		expect(tree('[![a](/a.png "T")](/full.png)\n')).toEqual([
+	test('without unwrap_images the image keeps its paragraph', () => {
+		expect(tree(':::figure[Chart]\n![A chart](/c.png)\n:::\n', false)).toEqual([
 			'root',
-			['link', [FIGURE, 'text:a']],
-		]);
-		expect(tree('> ![a](/a.png "T")\n')).toEqual([
-			'root',
-			['block_quote', [FIGURE, 'text:a']],
-		]);
-		expect(tree(':::note\n![a](/a.png "T")\n:::\n')).toEqual([
-			'root',
-			['directive_container', [FIGURE, 'text:a']],
+			[
+				'directive_container name="figure"',
+				['directive_label', 'text:Chart'],
+				['paragraph', ['image', 'text:A chart']],
+			],
 		]);
 	});
 
-	test('an image beside text stays an image', () => {
-		expect(tree('See ![a](/a.png "T")\n')).toEqual([
+	test('a lone image with a title stays an image', () => {
+		expect(tree('![A chart](/c.png "Sales")\n')).toEqual([
 			'root',
-			['paragraph', 'text:See ', [IMAGE, 'text:a']],
+			['image', 'text:A chart'],
 		]);
 	});
 
-	test('an image in a heading or a table cell stays an image', () => {
-		expect(tree('# ![a](/a.png "T")\n')).toEqual([
-			'root',
-			['heading', [IMAGE, 'text:a']],
-		]);
-		const table = tree('| a |\n| - |\n| ![a](/a.png "T") |\n') as unknown[];
-		expect(JSON.stringify(table)).toContain(JSON.stringify([IMAGE, 'text:a']));
-		expect(JSON.stringify(table)).not.toContain('figure');
-	});
-
-	test('without unwrap_images every paragraph keeps its image', () => {
-		expect(tree('![a](/a.png "T")\n', false)).toEqual([
-			'root',
-			['paragraph', [IMAGE, 'text:a']],
-		]);
-	});
-
-	test('a tight list item holds no paragraph, so its image is a figure either way', () => {
-		for (const unwrap of [true, false]) {
-			expect(tree('- ![a](/a.png "T")\n', unwrap)).toEqual([
-				'root',
-				['list', ['list_item', [FIGURE, 'text:a']]],
-			]);
-		}
-	});
-
-	test('an image with no title has no caption, so it stays an image', () => {
-		expect(tree('![a](/a.png)\n')).toEqual(['root', ['image', 'text:a']]);
-		expect(tree('![a](/a.png "")\n')).toEqual([
-			'root',
-			['image title=""', 'text:a'],
-		]);
+	test('a figure with nothing in it warns', () => {
+		expect(warnings(':::figure[Empty]\n:::\n')).toEqual(['empty_figure']);
+		expect(warnings(':::figure(id=fig:x)\n:::\n')).toEqual(['empty_figure']);
+		expect(warnings(':::figure\n```js\nx\n```\n:::\n')).toEqual([]);
 	});
 });
 
 describe('compile', () => {
-	test('imports the img component of the package', () => {
+	test('imports the figure component of the package', () => {
 		expect(
-			compile('![A chart](/c.png "Sales by month")\n', {
+			compile(':::figure[Sales](id=fig:sales)\n![A chart](/c.png)\n:::\n', {
 				plugins: [figures()],
 				unwrap_images: true,
 			}).code
 		).toBe(
 			[
 				'<script>',
-				"import { img as Img_MDSVEX_G } from '@mdsvex/plugin-kit/figures';",
-				'</script><Img_MDSVEX_G src="/c.png" alt="A chart" title="Sales by month" figure="true" />',
+				"import { figure as Figure_MDSVEX_D_G } from '@mdsvex/plugin-kit/figures';",
+				'</script><Figure_MDSVEX_D_G id="fig:sales">{#snippet label()}Sales{/snippet}',
+				'<img src="/c.png" alt="A chart" />',
+				'</Figure_MDSVEX_D_G>',
 			].join('\n')
 		);
 	});
 
 	test('css false imports the component without the stylesheet', () => {
 		expect(
-			compile('![a](/a.png)\n', { plugins: [figures({ css: false })] }).code
+			compile(':::figure\n![a](/a.png)\n:::\n', {
+				plugins: [figures({ css: false })],
+			}).code
 		).toContain("from '@mdsvex/plugin-kit/figures/unstyled';");
 	});
 
-	test('an imported image is a figure too', () => {
-		const { code } = compile('![a](./a.png "T")\n', {
-			plugins: [figures()],
-			unwrap_images: true,
-			import_images: true,
-		});
-		expect(code).toMatch(
-			/<Img_MDSVEX_G src=\{\w+\} alt="a" title="T" figure="true" \/>/
+	test('a code block or a table can be a figure', () => {
+		const { code } = compile(
+			':::figure[Plans]\n| plan | price |\n| - | - |\n| free | 0 |\n:::\n',
+			{ plugins: [figures()] }
+		);
+		expect(code).toContain(
+			'<Figure_MDSVEX_D_G>{#snippet label()}Plans{/snippet}\n<table>'
 		);
 	});
 
-	test('an img of the site replaces the one of the plugin and still gets figure', () => {
-		const { code } = compile('![a](/a.png "T")\n', {
+	test('the id of a figure is the author id, one a heading took fails the build', () => {
+		expect(() =>
+			compile('## Results\n\n:::figure[x](id=results)\n![a](/a.png)\n:::\n', {
+				plugins: [figures()],
+				heading_ids: true,
+			})
+		).toThrow(/the id "results" of the directive container/);
+		expect(
+			compile(':::figure[x](id=results)\n![a](/a.png)\n:::\n\n## Results\n', {
+				plugins: [figures()],
+				heading_ids: true,
+			}).code
+		).toContain('<h2 id="results-1">Results</h2>');
+	});
+
+	test('a lone image with a title is not a figure', () => {
+		const { code } = compile('![A chart](/c.png "Sales")\n', {
 			plugins: [figures()],
 			unwrap_images: true,
-			components: [{ specifier: '#lib/markdown.js', names: ['img'] }],
 		});
-		expect(code).toContain("from '#lib/markdown.js';");
-		expect(code).not.toContain('plugin-kit');
-		expect(code).toContain('figure="true"');
+		expect(code).toBe('<img src="/c.png" alt="A chart" title="Sales" />');
 	});
 });

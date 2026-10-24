@@ -974,8 +974,6 @@ export { default as img } from './Figure.svelte';
 mdsvex({ components: '#lib/markdown.js', unwrap_images: true });
 ```
 
-[`figures()`](docs#kit) from `@mdsvex/plugin-kit` is such a replacement, and leaves an image that is still inside a paragraph as an image.
-
 With `unwrap_images`, a paragraph that holds only images gets no `<p>`, so the figure stands on its own:
 
 ```svx
@@ -1851,7 +1849,7 @@ mdsvex({
 | --- | --- |
 | [`@mdsvex/plugin-steps`](docs#steps) | numbered steps, one for each heading inside `:::steps` |
 | [`@mdsvex/plugin-tabs`](docs#tabs) | tabs and code groups, one tab for each heading or code fence inside `:::tabs` |
-| [`@mdsvex/plugin-kit`](docs#kit) | details, accordions, keys, ruby, badges and video embeds, each a directive, figures, code blocks with a copy button and mermaid diagrams |
+| [`@mdsvex/plugin-kit`](docs#kit) | details, accordions, keys, ruby, badges, video embeds and figures, each a directive, code blocks with a copy button and mermaid diagrams |
 | [`@mdsvex/plugin-anchors`](docs#anchors) | a link to itself on every heading that has an id |
 | [`@mdsvex/plugin-external-links`](docs#external-links) | `rel` and `target` on every link that leaves the site |
 | [`@mdsvex/plugin-toc`](docs#table-of-contents) | the headings of a document as data, and a `::toc` directive that lists them |
@@ -2090,7 +2088,15 @@ The bracket text of an embed is the title of its frame, which is what a screen r
 
 The build warns, with the line, about an accordion with no items (`no_items`), content before its first item (`content_before_first_item`), an empty heading in one (`item_without_label`), a `:ruby` with no `rt` (`ruby_without_rt`), an embed with no id or one that is no id on its site (`embed_id`), and an embed with no title (`embed_without_title`).
 
-`figures()`, from the same package, replaces `img`. An image with a title that stands on its own renders as a `<figure>` with the title as its `<figcaption>`, once [`unwrap_images`](docs#unwrap_images) has taken it out of its paragraph:
+`figures()`, from the same package, adds a `:::figure` directive. It puts what is written inside it, an image, a code block, a table or a diagram, in a `<figure>` with the bracket text as its `<figcaption>`:
+
+````svx
+:::figure[Sales by month](id=fig:sales)
+
+![A bar chart of sales by month](./chart.png)
+
+:::
+````
 
 ```js
 import { figures, kit } from '@mdsvex/plugin-kit';
@@ -2098,7 +2104,7 @@ import { figures, kit } from '@mdsvex/plugin-kit';
 mdsvex({ unwrap_images: true, plugins: [kit(), figures()] });
 ```
 
-An image beside text, in a heading or in a table cell stays an image, since a `<figure>` isn't allowed there, and so does one with no title. The alt text describes the image and the title is the caption, so write each for what it is.
+The `id` is optional and stays on the `<figure>`, as an id you wrote, so one a heading already has fails the build. With [`unwrap_images`](docs#unwrap_images) an image alone in the figure has no `<p>`. A lone image is never a figure. A figure has no number of its own, a numbering plugin gives it one through [plugin data](docs#plugin-data), and the caption then starts with "Figure 3".
 
 `code_blocks()` replaces `pre` with a code block that has a copy button, the title of the fence above the code and its caption below. The button is named "Copy code of" and the title, a `status` region beside it announces "Copied" or "Copy failed", and `nocopy` in the fence meta leaves it out. It copies the `code` prop, so [live values](docs#live-code) are copied as the reader sees them. Without JavaScript the stylesheet hides the button.
 
