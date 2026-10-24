@@ -6,6 +6,8 @@ Each directory here is one npm package, `@mdsvex/plugin-<name>`, that exports a 
 | ------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------- |
 | `@mdsvex/plugin-steps`          | [`steps`](./steps)                   | numbered steps, one for each heading inside `:::steps`                              |
 | `@mdsvex/plugin-tabs`           | [`tabs`](./tabs)                     | tabs and code groups, one tab for each heading or fence inside `:::tabs`            |
+| `@mdsvex/plugin-elements`       | [`elements`](./elements)             | details, accordions, keys, ruby and badges, each a directive over an html element   |
+| `@mdsvex/plugin-embeds`         | [`embeds`](./embeds)                 | YouTube and Vimeo players named by their title                                      |
 | `@mdsvex/plugin-anchors`        | [`anchors`](./anchors)               | a link to itself on every heading that has an id                                    |
 | `@mdsvex/plugin-external-links` | [`external-links`](./external-links) | `rel` and `target` on every link that leaves the site                               |
 | `@mdsvex/plugin-toc`            | [`toc`](./toc)                       | the headings of a document as data, and a `::toc` that lists them                   |
@@ -65,11 +67,11 @@ npm login
 ```
 
 ```bash
-node scripts/setup-trusted-publishing.mjs --dry-run @mdsvex/plugin-link-check
+node scripts/setup-trusted-publishing.mjs --dry-run @mdsvex/plugin-link-check @mdsvex/plugin-elements @mdsvex/plugin-embeds
 ```
 
 ```bash
-node scripts/setup-trusted-publishing.mjs @mdsvex/plugin-link-check
+node scripts/setup-trusted-publishing.mjs @mdsvex/plugin-link-check @mdsvex/plugin-elements @mdsvex/plugin-embeds
 ```
 
 The other packages here are on npm since `0.1.0-next.0`, so the commands name only those that are not yet.

@@ -5,6 +5,8 @@ import { anchors } from "@mdsvex/plugin-anchors";
 import { citations } from "@mdsvex/plugin-citations";
 import { emoji } from "@mdsvex/plugin-emoji";
 import { external_links } from "@mdsvex/plugin-external-links";
+import { elements } from "@mdsvex/plugin-elements";
+import { embeds } from "@mdsvex/plugin-embeds";
 import { link_check } from "@mdsvex/plugin-link-check";
 import { page_data } from "@mdsvex/plugin-page-data";
 import { references } from "@mdsvex/plugin-references";
@@ -21,6 +23,8 @@ export default defineConfig({
 			plugins: [
 				steps(),
 				tabs(),
+				elements(),
+				embeds(),
 				anchors(),
 				external_links({
 					target: "_blank",
