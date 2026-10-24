@@ -307,7 +307,8 @@ describe('other documents', () => {
 	});
 
 	test('a relative filename and routes are taken from the working directory', async () => {
-		const cwd = process.cwd();
+		// a windows path arrives with forward slashes, as vite names files
+		const cwd = process.cwd().replace(/\\/g, '/');
 		const files = {
 			[`${cwd}/pages/a.md`]: '[b](./b.md#here) [c](/b#gone)\n',
 			[`${cwd}/pages/b.md`]: '# Here\n',
