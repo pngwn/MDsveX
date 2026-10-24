@@ -7,6 +7,7 @@ import { emoji } from "@mdsvex/plugin-emoji";
 import { external_links } from "@mdsvex/plugin-external-links";
 import { elements } from "@mdsvex/plugin-elements";
 import { embeds } from "@mdsvex/plugin-embeds";
+import { figures } from "@mdsvex/plugin-figures";
 import { link_check } from "@mdsvex/plugin-link-check";
 import { page_data } from "@mdsvex/plugin-page-data";
 import { references } from "@mdsvex/plugin-references";
@@ -19,12 +20,14 @@ export default defineConfig({
 		mdsvex({
 			extensions: [".svx"],
 			heading_ids: true,
+			unwrap_images: true,
 			links: { routes: "src/routes" },
 			plugins: [
 				steps(),
 				tabs(),
 				elements(),
 				embeds(),
+				figures(),
 				anchors(),
 				external_links({
 					target: "_blank",

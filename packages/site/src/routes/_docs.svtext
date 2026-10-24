@@ -1856,6 +1856,7 @@ import { emoji } from '@mdsvex/plugin-emoji';
 import { external_links } from '@mdsvex/plugin-external-links';
 import { elements } from '@mdsvex/plugin-elements';
 import { embeds } from '@mdsvex/plugin-embeds';
+import { figures } from '@mdsvex/plugin-figures';
 import { link_check } from '@mdsvex/plugin-link-check';
 import { page_data } from '@mdsvex/plugin-page-data';
 import { references } from '@mdsvex/plugin-references';
@@ -1870,6 +1871,7 @@ mdsvex({
 		tabs(),
 		elements(),
 		embeds(),
+		figures(),
 		anchors(),
 		external_links(),
 		toc(),
@@ -1888,6 +1890,7 @@ mdsvex({
 | [`@mdsvex/plugin-tabs`](docs#tabs) | tabs and code groups, one tab for each heading or code fence inside `:::tabs` |
 | [`@mdsvex/plugin-elements`](docs#elements) | details, accordions, keys, ruby and badges, each a directive over an HTML element |
 | [`@mdsvex/plugin-embeds`](docs#embeds) | YouTube and Vimeo players named by their title |
+| [`@mdsvex/plugin-figures`](docs#figures) | `:::figure[Caption]` around an image or anything else, numbered when a numbering plugin asks |
 | [`@mdsvex/plugin-anchors`](docs#anchors) | a link to itself on every heading that has an id |
 | [`@mdsvex/plugin-external-links`](docs#external-links) | `rel` and `target` on every link that leaves the site |
 | [`@mdsvex/plugin-toc`](docs#table-of-contents) | the headings of a document as data, and a `::toc` directive that lists them |
@@ -2140,6 +2143,30 @@ mdsvex({ plugins: [embeds()] });
 ```
 
 `::youtube[Title](id=...)` is a lazy YouTube player from `youtube-nocookie.com`, which sets no cookie until the video plays, and `::vimeo[Title](id=...)` a lazy Vimeo player with `dnt=1`. `start` is a time in seconds. The bracket text is the title of the frame, which is what a screen reader announces, and `(title=...)` sets it instead. The build warns about an embed with no id or one that is no id on its site (`embed_id`), and one with no title (`embed_without_title`). `embeds({ css: false })` leaves the stylesheet out, and a `youtube` or `vimeo` from a [directives module](docs#declaring-directives) replaces the plugin's component.
+
+### Figures
+
+```bash
+pnpm add --save-dev @mdsvex/plugin-figures@next
+```
+
+```js
+import { figures } from '@mdsvex/plugin-figures';
+
+mdsvex({ unwrap_images: true, plugins: [figures()] });
+```
+
+`:::figure` puts what is written inside it, an image, a code block, a table or a diagram, in a `<figure>` with the bracket text as its `<figcaption>`. It is the one way to make a figure: a lone image stays an image, unwrapped by [`unwrap_images`](docs#unwrap_images).
+
+````svx
+:::figure[Sales by month](id=fig:sales)
+
+![A bar chart of sales by month](./chart.png)
+
+:::
+````
+
+The `id` is optional and stays on the `<figure>`, as an id you wrote, so one a heading already has fails the build. With `unwrap_images` an image alone in the figure has no `<p>`. A figure has no number of its own: a numbering plugin gives it one through [plugin data](docs#plugin-data), and the caption then starts with "Figure 3", or is "Figure 3" alone when the figure has no caption. An empty figure warns (`empty_figure`). `figures({ css: false })` leaves the stylesheet out, and a `figure` from a [directives module](docs#declaring-directives) replaces the plugin's component.
 
 ### Anchors
 

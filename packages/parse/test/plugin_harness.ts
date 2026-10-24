@@ -12,6 +12,7 @@ import type {
 	PluginDocument,
 } from '../src/plugin_types';
 import { TreeBuilder } from '../src/tree_builder';
+import type { SyntaxOptions } from '../src/types';
 import type { NodeBuffer, NodeKind } from '../src/utils';
 import { WireTreeBuilder } from '../src/wire_tree_builder';
 
@@ -99,6 +100,8 @@ export interface PluginSetup {
 	setup?: (dispatcher: PluginDispatcher) => void;
 	/** makes heading ids at each close, finished when the document ends */
 	headings?: HeadingIds;
+	/** the syntax options of the parser, such as unwrap_images */
+	syntax?: SyntaxOptions;
 }
 
 /** a plain array is the global plugins alone */
@@ -128,6 +131,10 @@ function dispatcher_for(
 		if (setup.setup !== undefined) setup.setup(dispatcher);
 	}
 	return dispatcher;
+}
+
+function syntax_of(setup: Plugins | undefined): SyntaxOptions | undefined {
+	return setup === undefined || Array.isArray(setup) ? undefined : setup.syntax;
 }
 
 function headings_of(setup: Plugins | undefined): HeadingIds | undefined {
@@ -212,7 +219,11 @@ export function run_batch(
 		headings.start(source);
 		tree.set_headings(headings);
 	}
-	const parser = new PFMParser(relayed ? new Relay(tree) : tree);
+	const parser = new PFMParser(
+		relayed ? new Relay(tree) : tree,
+		2,
+		syntax_of(plugins)
+	);
 	if (chunk === 0) parser.parse(source);
 	else {
 		parser.init();
@@ -237,7 +248,7 @@ export function run_wire(
 	chunk = 0
 ): PluginRun {
 	const emitter = new WireEmitter();
-	const parser = new PFMParser(emitter);
+	const parser = new PFMParser(emitter, 2, syntax_of(plugins));
 	const dispatcher = dispatcher_for(plugins, true, source);
 	const builder = new WireTreeBuilder(128, dispatcher);
 	const headings = headings_of(plugins);
