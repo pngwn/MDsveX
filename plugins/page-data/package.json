@@ -1,6 +1,6 @@
 {
 	"name": "@mdsvex/plugin-page-data",
-	"version": "0.0.1",
+	"version": "0.1.0-next.0",
 	"description": "Page data for mdsvex, the reading time, excerpt, inferred title, edit url and last modified date of a document",
 	"type": "module",
 	"scripts": {

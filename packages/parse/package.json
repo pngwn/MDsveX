@@ -1,6 +1,6 @@
 {
 	"name": "@mdsvex/parse",
-	"version": "1.0.0-next.1",
+	"version": "1.0.0-next.2",
 	"description": "The parser for Penguin-Flavoured Markdown, the markdown mdsvex reads",
 	"main": "./dist/main.js",
 	"module": "./dist/main.js",
