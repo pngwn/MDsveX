@@ -46,9 +46,13 @@ Press :kbd[Ctrl]+:kbd[{key}] to copy. :ruby[漢字](rt=かんじ) is read *kanji
 
 ::vimeo[A short film](id=76979871)
 
-![A penguin](/favicon.png "The mdsvex penguin")
+::::figure[The mdsvex *penguin*](id=fig:penguin)
 
-A small ![penguin](/favicon.png "Inline") beside text stays an image.
+![A penguin](/favicon.png)
+
+::::
+
+![A lone penguin](/favicon.png "Only a title")
 
 ```sh title="Install" caption="Then restart the dev server."
 pnpm add @mdsvex/plugin-{key} # [!eval]

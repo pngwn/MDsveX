@@ -6,7 +6,7 @@ Each directory here is one npm package, `@mdsvex/plugin-<name>`, that exports a 
 | ------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------- |
 | `@mdsvex/plugin-steps`          | [`steps`](./steps)                   | numbered steps, one for each heading inside `:::steps`                              |
 | `@mdsvex/plugin-tabs`           | [`tabs`](./tabs)                     | tabs and code groups, one tab for each heading or fence inside `:::tabs`            |
-| `@mdsvex/plugin-kit`            | [`kit`](./kit)                       | directives for details, accordions, keys, ruby, badges and embeds, and figures      |
+| `@mdsvex/plugin-kit`            | [`kit`](./kit)                       | details, accordions, keys, ruby, badges, embeds and figures, each a directive       |
 | `@mdsvex/plugin-anchors`        | [`anchors`](./anchors)               | a link to itself on every heading that has an id                                    |
 | `@mdsvex/plugin-external-links` | [`external-links`](./external-links) | `rel` and `target` on every link that leaves the site                               |
 | `@mdsvex/plugin-toc`            | [`toc`](./toc)                       | the headings of a document as data, and a `::toc` that lists them                   |

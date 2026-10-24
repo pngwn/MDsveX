@@ -54,14 +54,14 @@ test("embeds are frames named by their label", async ({ page }) => {
 	);
 });
 
-test("an image alone with a title is a figure with a caption", async ({
+test("a figure directive holds its image with the caption", async ({
 	page,
 }) => {
 	await page.goto("/kit");
-	const figure = page.getByRole("figure", { name: "The mdsvex penguin" });
+	const figure = page.locator("figure#fig\\:penguin");
 	await expect(figure.getByRole("img", { name: "A penguin" })).toBeVisible();
 	await expect(figure.locator("figcaption")).toHaveText("The mdsvex penguin");
-	await expect(page.locator("p > img[title='Inline']")).toHaveCount(1);
+	await expect(page.locator("figure img[alt='A lone penguin']")).toHaveCount(0);
 });
 
 test("a code block copies its code and says so", async ({ page, context }) => {

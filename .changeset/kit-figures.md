@@ -2,10 +2,10 @@
 '@mdsvex/plugin-kit': minor
 ---
 
-`figures()` renders an image with a title as a figure, with the title as its caption, when the image stands on its own. With `unwrap_images` that is an image on a line of its own. An image beside text, in a heading or in a table cell stays an image, so the page stays valid HTML.
+`figures()` adds a `:::figure` directive. What is written inside it, an image, a code block, a table or a diagram, is put in a `<figure>` with the bracket text as its caption, and an optional `id` stays on the element so a link can reach it.
 
-```js
-import { figures } from '@mdsvex/plugin-kit';
-
-mdsvex({ unwrap_images: true, plugins: [figures()] });
+```md
+:::figure[Sales by month](id=fig:sales)
+![A bar chart of sales by month](./chart.png)
+:::
 ```
