@@ -2,7 +2,7 @@ import { rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { figures, kit } from '@mdsvex/plugin-kit';
+import { elements } from '@mdsvex/plugin-elements';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { mdsvex } from 'mdsvex';
 import { createServer, createServerModuleRunner, normalizePath } from 'vite';
@@ -36,59 +36,6 @@ const FILES = {
 	].join('\n'),
 	'src/inline.svx':
 		'Press :kbd[Ctrl]+:kbd[C], read :ruby[漢字](rt=かんじ), see :badge[new](tone=tip).\n',
-	'src/embeds.svx': [
-		'::youtube[A *talk*](id=dQw4w9WgXcQ, start=30)',
-		'',
-		'::vimeo[A film](id=76979871)',
-		'',
-		'::youtube[No id]',
-		'',
-	].join('\n'),
-	'src/figures.svx': [
-		':::figure[Sales by *month*](id=fig:sales)',
-		'![A chart](./chart.png "A title")',
-		':::',
-		'',
-		':::figure',
-		'![No caption](/plain.png)',
-		':::',
-		'',
-	].join('\n'),
-	// as a numbering plugin would hand the figure its number
-	'src/Numbered.svelte': [
-		'<script>',
-		"  import { setContext } from 'svelte';",
-		"  import Doc from './figures.svx';",
-		"  setContext(Symbol.for('mdsvex.plugin_data'), { current: { numbering: { 'target:fig:sales': { kind: 'fig', number: '3', text: 'Figure 3' } } } });",
-		'</script>',
-		'<Doc />',
-	].join('\n'),
-	'src/bare.svx': [
-		':::figure(id=fig:bare)',
-		'![Numbered](/n.png)',
-		':::',
-		'',
-		':::figure[](id=fig:empty)',
-		'![Empty brackets](/e.png)',
-		':::',
-		'',
-		':::figure(id=fig:none)',
-		'![Not numbered](/x.png)',
-		':::',
-		'',
-	].join('\n'),
-	'src/NumberedBare.svelte': [
-		'<script>',
-		"  import { setContext } from 'svelte';",
-		"  import Doc from './bare.svx';",
-		"  setContext(Symbol.for('mdsvex.plugin_data'), { current: { numbering: {",
-		"    'target:fig:bare': { kind: 'fig', number: '2', text: 'Figure 2' },",
-		"    'target:fig:empty': { kind: 'fig', number: '3', text: 'Figure 3' },",
-		'  } } });',
-		'</script>',
-		'<Doc />',
-	].join('\n'),
-	'src/chart.png': '',
 	'src/lib/markdown.js': "export * as directives from './directives.js';",
 	'src/lib/directives.js': "export { default as kbd } from './MyKbd.svelte';",
 	'src/lib/MyKbd.svelte': [
@@ -133,7 +80,7 @@ async function ssr(server: ViteDevServer, url: string): Promise<string> {
 /** the package as installed, a copy of what it publishes */
 function installed(root: string, file: string): string {
 	return normalizePath(
-		join(root, 'node_modules/@mdsvex/plugin-kit/dist', file)
+		join(root, 'node_modules/@mdsvex/plugin-elements/dist', file)
 	);
 }
 
@@ -143,7 +90,7 @@ describe('in a vite app', () => {
 
 	beforeAll(async () => {
 		root = write_app(HERE, FILES, [PACKAGE]);
-		server = await serve(root, mdsvex({ plugins: [kit()] }));
+		server = await serve(root, mdsvex({ plugins: [elements()] }));
 	});
 
 	afterAll(async () => {
@@ -198,31 +145,18 @@ describe('in a vite app', () => {
 		);
 	});
 
-	test('embeds are lazy frames named by their label', async () => {
-		const html = await ssr(server, '/src/embeds.svx');
-		expect(html).toBe(
-			'<div class="embed embed-youtube"><iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=30" title="A talk" loading="lazy" ' +
-				'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" ' +
-				'referrerpolicy="strict-origin-when-cross-origin" allowfullscreen=""></iframe></div>' +
-				'<div class="embed embed-vimeo"><iframe src="https://player.vimeo.com/video/76979871?dnt=1" title="A film" loading="lazy" ' +
-				'allow="autoplay; fullscreen; picture-in-picture; clipboard-write" ' +
-				'referrerpolicy="strict-origin-when-cross-origin" allowfullscreen=""></iframe></div>' +
-				'<p>No id</p>'
-		);
-	});
-
 	test('the client gets the components and the stylesheet', async () => {
 		const client = server.environments.client;
 		const entry = await client.transformRequest(
-			'/node_modules/@mdsvex/plugin-kit/dist/directives.js'
+			'/node_modules/@mdsvex/plugin-elements/dist/directives.js'
 		);
-		expect(entry?.code).toMatch(/import ".*\/dist\/kit\.css"/);
+		expect(entry?.code).toMatch(/import ".*\/dist\/elements\.css"/);
 		const css = await client.transformRequest(
-			'/node_modules/@mdsvex/plugin-kit/dist/kit.css'
+			'/node_modules/@mdsvex/plugin-elements/dist/elements.css'
 		);
 		expect(css?.code).toContain('.accordion');
 		const details = await client.transformRequest(
-			'/node_modules/@mdsvex/plugin-kit/dist/Details.svelte'
+			'/node_modules/@mdsvex/plugin-elements/dist/Details.svelte'
 		);
 		expect(details?.code).toMatch(/svelte.internal.client/);
 	});
@@ -242,7 +176,7 @@ describe('in a vite app with options', () => {
 	test('css false leaves the stylesheet out', async () => {
 		const server = await serve(
 			root,
-			mdsvex({ plugins: [kit({ css: false })] })
+			mdsvex({ plugins: [elements({ css: false })] })
 		);
 		try {
 			const client = server.environments.client;
@@ -251,7 +185,7 @@ describe('in a vite app with options', () => {
 				installed(root, 'unstyled.js')
 			);
 			const entry = await client.transformRequest(
-				'/node_modules/@mdsvex/plugin-kit/dist/unstyled.js'
+				'/node_modules/@mdsvex/plugin-elements/dist/unstyled.js'
 			);
 			expect(entry?.code).not.toContain('.css');
 		} finally {
@@ -262,7 +196,7 @@ describe('in a vite app with options', () => {
 	test('a kbd exported by the site replaces the component', async () => {
 		const server = await serve(
 			root,
-			mdsvex({ plugins: [kit()], components: '#lib/markdown.js' })
+			mdsvex({ plugins: [elements()], components: '#lib/markdown.js' })
 		);
 		try {
 			expect(await ssr(server, '/src/inline.svx')).toContain(
@@ -271,57 +205,5 @@ describe('in a vite app with options', () => {
 		} finally {
 			await server.close();
 		}
-	});
-});
-
-describe('figures in a vite app', () => {
-	let root: string;
-	let server: ViteDevServer;
-
-	beforeAll(async () => {
-		root = write_app(HERE, FILES, [PACKAGE]);
-		server = await serve(
-			root,
-			mdsvex({ unwrap_images: true, plugins: [figures()] })
-		);
-	});
-
-	afterAll(async () => {
-		await server?.close();
-		rmSync(root, { recursive: true, force: true });
-	});
-
-	test('a figure holds its content and the label is the caption', async () => {
-		expect(await ssr(server, '/src/figures.svx')).toBe(
-			'<figure class="figure" id="fig:sales"><img src="/src/chart.png" alt="A chart" title="A title"/> ' +
-				'<figcaption class="figure-caption">Sales by <strong>month</strong></figcaption></figure>' +
-				'<figure class="figure"><img src="/plain.png" alt="No caption"/> </figure>'
-		);
-	});
-
-	test('a number in the plugin data of a numbering plugin goes in front of the caption', async () => {
-		expect(await ssr(server, '/src/Numbered.svelte')).toContain(
-			'<figcaption class="figure-caption"><span class="figure-number">Figure 3</span>: Sales by <strong>month</strong></figcaption>'
-		);
-	});
-
-	test('a numbered figure with no caption has the number alone as its caption', async () => {
-		expect(await ssr(server, '/src/NumberedBare.svelte')).toBe(
-			'<figure class="figure" id="fig:bare"><img src="/n.png" alt="Numbered"/> ' +
-				'<figcaption class="figure-caption"><span class="figure-number">Figure 2</span></figcaption></figure>' +
-				'<figure class="figure" id="fig:empty"><img src="/e.png" alt="Empty brackets"/> ' +
-				'<figcaption class="figure-caption"><span class="figure-number">Figure 3</span></figcaption></figure>' +
-				'<figure class="figure" id="fig:none"><img src="/x.png" alt="Not numbered"/> </figure>'
-		);
-	});
-
-	test('the client gets the component and its stylesheet', async () => {
-		const client = server.environments.client;
-		const found = await client.pluginContainer.resolveId('mdsvex:plugin/0');
-		expect(found?.id.replace(/\?.*$/, '')).toBe(installed(root, 'figures.js'));
-		const entry = await client.transformRequest(
-			'/node_modules/@mdsvex/plugin-kit/dist/figures.js'
-		);
-		expect(entry?.code).toMatch(/import ".*\/dist\/figures\.css"/);
 	});
 });

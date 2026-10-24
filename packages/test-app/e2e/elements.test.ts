@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("details toggle from their summary", async ({ page }) => {
-	await page.goto("/kit");
+	await page.goto("/elements");
 	const details = page.locator("details.details").first();
 	await expect(details).not.toHaveAttribute("open");
 	await details.locator("summary").click();
@@ -10,7 +10,7 @@ test("details toggle from their summary", async ({ page }) => {
 });
 
 test("the summary is a control the keyboard reaches", async ({ page }) => {
-	await page.goto("/kit");
+	await page.goto("/elements");
 	const summary = page.locator("details.details > summary").first();
 	await summary.focus();
 	await page.keyboard.press("Enter");
@@ -18,7 +18,7 @@ test("the summary is a control the keyboard reaches", async ({ page }) => {
 });
 
 test("one item of a named accordion is open at a time", async ({ page }) => {
-	await page.goto("/kit");
+	await page.goto("/elements");
 	const items = page.locator(".accordion > details");
 	await expect(items).toHaveCount(3);
 	await expect(page.locator(".accordion summary")).toHaveText([
@@ -34,32 +34,8 @@ test("one item of a named accordion is open at a time", async ({ page }) => {
 });
 
 test("keys, ruby and badges", async ({ page }) => {
-	await page.goto("/kit");
+	await page.goto("/elements");
 	await expect(page.locator("kbd.kbd")).toHaveText(["Ctrl", "C"]);
 	await expect(page.locator("ruby.ruby rt")).toHaveText("かんじ");
 	await expect(page.locator(".badge[data-tone]")).toHaveCount(4);
-});
-
-test("embeds are frames named by their label", async ({ page }) => {
-	await page.goto("/kit");
-	await expect(
-		page.locator('iframe[title="A conference talk"]'),
-	).toHaveAttribute(
-		"src",
-		/youtube-nocookie\.com\/embed\/dQw4w9WgXcQ\?start=30/,
-	);
-	await expect(page.locator('iframe[title="A short film"]')).toHaveAttribute(
-		"loading",
-		"lazy",
-	);
-});
-
-test("a figure directive holds its image with the caption", async ({
-	page,
-}) => {
-	await page.goto("/kit");
-	const figure = page.locator("figure#fig\\:penguin");
-	await expect(figure.getByRole("img", { name: "A penguin" })).toBeVisible();
-	await expect(figure.locator("figcaption")).toHaveText("The mdsvex penguin");
-	await expect(page.locator("figure img[alt='A lone penguin']")).toHaveCount(0);
 });

@@ -1,4 +1,4 @@
-import { figures } from '@mdsvex/plugin-kit';
+import { figures } from '@mdsvex/plugin-figures';
 import { compile } from 'mdsvex';
 import { describe, expect, test } from 'vitest';
 
@@ -89,7 +89,7 @@ describe('compile', () => {
 		).toBe(
 			[
 				'<script>',
-				"import { figure as Figure_MDSVEX_D_G } from '@mdsvex/plugin-kit/figures';",
+				"import { figure as Figure_MDSVEX_D_G } from '@mdsvex/plugin-figures/directives';",
 				'</script><Figure_MDSVEX_D_G id="fig:sales">{#snippet label()}Sales{/snippet}',
 				'<img src="/c.png" alt="A chart" />',
 				'</Figure_MDSVEX_D_G>',
@@ -102,7 +102,7 @@ describe('compile', () => {
 			compile(':::figure\n![a](/a.png)\n:::\n', {
 				plugins: [figures({ css: false })],
 			}).code
-		).toContain("from '@mdsvex/plugin-kit/figures/unstyled';");
+		).toContain("from '@mdsvex/plugin-figures/directives/unstyled';");
 	});
 
 	test('a code block or a table can be a figure', () => {

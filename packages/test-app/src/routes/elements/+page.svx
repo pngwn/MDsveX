@@ -2,7 +2,7 @@
   let key = $state("C");
 </script>
 
-# Kit
+# Elements
 
 :::details[Why *two* builds?]
 
@@ -41,15 +41,3 @@ An item of its own.
 Press :kbd[Ctrl]+:kbd[{key}] to copy. :ruby[漢字](rt=かんじ) is read *kanji*.
 
 :badge[new] :badge[note](tone=note) :badge[tip](tone=tip) :badge[warning](tone=warning) :badge[danger](tone=danger)
-
-::youtube[A conference talk](id=dQw4w9WgXcQ, start=30)
-
-::vimeo[A short film](id=76979871)
-
-::::figure[The mdsvex *penguin*](id=fig:penguin)
-
-![A penguin](/favicon.png)
-
-::::
-
-![A lone penguin](/favicon.png "Only a title")

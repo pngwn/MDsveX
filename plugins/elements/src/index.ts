@@ -6,7 +6,7 @@ import type {
 	WrapperView,
 } from 'mdsvex/compile';
 
-export interface KitOptions {
+export interface ElementsOptions {
 	/**
 	 * false leaves the default stylesheet out, the markup and its class names
 	 * stay the same
@@ -114,115 +114,32 @@ const RT: BundleDirective = {
 	},
 };
 
-/** a video directive, its label is the name of the frame */
-function embed(
-	name: string,
-	site: string,
-	id_pattern: RegExp,
-	example: string
-): BundleDirective {
-	return {
-		parse(node, ctx) {
-			const id = node.attrs.args?.id;
-			if (typeof id !== 'string' || !id_pattern.test(id)) {
-				ctx.warn(
-					'embed_id',
-					id === undefined || id === ''
-						? `::${name} has no id, write it as ::${name}[Title](id=${example})`
-						: `::${name} has an id that is no ${site} id: ${id}`,
-					node
-				);
-			}
-			return () => {
-				const args = node.attrs.args;
-				if (args?.title !== undefined) return;
-				// an expression is not known until the page runs, it leaves a gap
-				const title = node.text_content.replace(/\s+/g, ' ').trim();
-				if (title === '') {
-					ctx.warn(
-						'embed_without_title',
-						`::${name} has no title, a screen reader names the frame "${site} video", write the title in its brackets`,
-						node
-					);
-					return;
-				}
-				node.attrs.args = { ...args, title };
-			};
-		},
-	};
-}
-
 /**
- * components most sites want, each a directive, `:::details`,
- * `:::accordion`, `:kbd[Ctrl]`, `:ruby[漢字](rt=かんじ)`, `:badge[new]`,
- * `::youtube[Title](id=...)` and `::vimeo[Title](id=...)`
+ * thin directives over html elements, `:::details`, `:::accordion`,
+ * `:kbd[Ctrl]`, `:ruby[漢字](rt=かんじ)` and `:badge[new]`, none needs javascript
  *
  * each heading written directly inside `:::accordion` starts an item, a
  * `details` that holds the text of the heading as its summary and what follows
  * as its body, `(name=faq)` keeps one item of the set open at a time
  *
  * @example
- * import { kit } from '@mdsvex/plugin-kit';
+ * import { elements } from '@mdsvex/plugin-elements';
  *
- * mdsvex({ plugins: [kit()] });
+ * mdsvex({ plugins: [elements()] });
  */
-export function kit(options: KitOptions = {}): Bundle {
+export function elements(options: ElementsOptions = {}): Bundle {
 	return {
-		name: 'kit',
+		name: 'elements',
 		module:
 			options.css === false
-				? '@mdsvex/plugin-kit/directives/unstyled'
-				: '@mdsvex/plugin-kit/directives',
+				? '@mdsvex/plugin-elements/directives/unstyled'
+				: '@mdsvex/plugin-elements/directives',
 		directives: {
 			details: {},
 			accordion,
 			kbd: {},
 			ruby: RT,
 			badge: {},
-			youtube: embed('youtube', 'YouTube', /^[\w-]{11}$/, 'dQw4w9WgXcQ'),
-			vimeo: embed('vimeo', 'Vimeo', /^\d+$/, '76979871'),
 		},
-	};
-}
-
-const FIGURE: BundleDirective = {
-	parse(node, ctx) {
-		// an id the author wrote, a heading or footnote that has it already fails the build
-		const id = node.attrs.args?.id;
-		if (typeof id === 'string' && id !== '') ctx.id(id, { fixed: true });
-		return () => {
-			for (let child = node.first_child; child !== null; child = child.next) {
-				if (child.type !== 'directive_label' && child.type !== 'line_break')
-					return;
-			}
-			ctx.warn(
-				'empty_figure',
-				':::figure holds nothing, write the image, code or table it captions inside it',
-				node
-			);
-		};
-	},
-};
-
-/**
- * a figure, `:::figure[Caption](id=fig:sales)` around an image or anything
- * else renders a `<figure>` with the bracket text as its caption, the id is
- * optional and stays on the element
- *
- * a numbering plugin numbers it through plugin data, see `Figure.svelte`
- *
- * @example
- * import { figures } from '@mdsvex/plugin-kit';
- *
- * mdsvex({ unwrap_images: true, plugins: [figures()] });
- */
-export function figures(options: KitOptions = {}): Bundle {
-	return {
-		name: 'figures',
-		module:
-			options.css === false
-				? '@mdsvex/plugin-kit/figures/unstyled'
-				: '@mdsvex/plugin-kit/figures',
-		directives: { figure: FIGURE },
 	};
 }

@@ -1,29 +1,29 @@
 /* every selector sits in :where() so any rule of a site wins */
 
 :where(.details, .accordion) {
-	--kit-line: color-mix(in srgb, currentColor 20%, transparent);
-	--kit-radius: 0.375rem;
-	--kit-padding: 0.5rem 0.75rem;
+	--elements-line: color-mix(in srgb, currentColor 20%, transparent);
+	--elements-radius: 0.375rem;
+	--elements-padding: 0.5rem 0.75rem;
 }
 
 :where(.details) {
 	margin-block: 1rem;
-	border: 1px solid var(--kit-line);
-	border-radius: var(--kit-radius);
+	border: 1px solid var(--elements-line);
+	border-radius: var(--elements-radius);
 }
 
 :where(.details-summary) {
-	padding: var(--kit-padding);
+	padding: var(--elements-padding);
 	font-weight: 600;
 	cursor: pointer;
 }
 
 :where(.details[open] > .details-summary) {
-	border-block-end: 1px solid var(--kit-line);
+	border-block-end: 1px solid var(--elements-line);
 }
 
 :where(.details-body) {
-	padding: var(--kit-padding);
+	padding: var(--elements-padding);
 }
 
 :where(.details-body > :first-child) {
@@ -42,8 +42,8 @@
 
 :where(.accordion) {
 	margin-block: 1.5rem;
-	border: 1px solid var(--kit-line);
-	border-radius: var(--kit-radius);
+	border: 1px solid var(--elements-line);
+	border-radius: var(--elements-radius);
 }
 
 :where(.accordion-label + .accordion) {
@@ -57,21 +57,21 @@
 }
 
 :where(.accordion > .details + .details) {
-	border-block-start: 1px solid var(--kit-line);
+	border-block-start: 1px solid var(--elements-line);
 }
 
 /* anything written before the first item */
 :where(.accordion > :not(.details)) {
 	margin: 0;
-	padding: var(--kit-padding);
+	padding: var(--elements-padding);
 }
 
 :where(.kbd) {
-	--kit-kbd-line: color-mix(in srgb, currentColor 30%, transparent);
+	--kbd-line: color-mix(in srgb, currentColor 30%, transparent);
 
 	display: inline-block;
 	padding: 0.05em 0.4em;
-	border: 1px solid var(--kit-kbd-line);
+	border: 1px solid var(--kbd-line);
 	border-block-end-width: 2px;
 	border-radius: 0.25rem;
 	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -110,16 +110,4 @@
 
 :where(.badge[data-tone='danger']) {
 	--badge-color: #e5534b;
-}
-
-:where(.embed) {
-	margin-block: 1.5rem;
-	aspect-ratio: 16 / 9;
-}
-
-:where(.embed > iframe) {
-	display: block;
-	width: 100%;
-	height: 100%;
-	border: 0;
 }
