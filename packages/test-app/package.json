@@ -38,6 +38,7 @@
 		"@mdsvex/plugin-embeds": "workspace:*",
 		"@mdsvex/plugin-figures": "workspace:*",
 		"@mdsvex/plugin-link-check": "workspace:*",
+		"@mdsvex/plugin-numbering": "workspace:*",
 		"@mdsvex/plugin-page-data": "workspace:*",
 		"@mdsvex/plugin-references": "workspace:*",
 		"@mdsvex/plugin-steps": "workspace:*",

@@ -180,7 +180,7 @@ What technical and academic writing needs. **Shared state:** counters and labels
 | --- | --- | --- | --- |
 | **Footnotes** | part of remark-gfm (181M), remark-numbered-footnote-labels, remark-footnotes-extra | `core`, exists | GFM parity, with blocks in a definition and `footnote` and `footnotes` components. A reference with no definition fails the build. The migrator writes GFM footnotes as PFM ones. |
 | **Math** | remark-math (36M), rehype-katex (32M), rehype-mathjax (531k), @daiji256/rehype-mathml (4k), rehype-katex-notranslate (14k) | `core` + render option, exists (`math`) | Issue #302. Temml (MathML, no runtime JS) by default; KaTeX as an option, an optional peer dependency the user installs. `translate="no"` is set. Syntax: a `math` fence for display, `` $`…`$ `` inline. The migrator rewrites `$…$` with `math: true`. |
-| **Numbering and cross-references** | not on the lists (pandoc-crossref is the reference) | `plugin+API`, in progress (`@mdsvex/plugin-numbering`, `design/numbering.md`) | "Figure 3", numbered equations and sections, with references such as `:ref[fig:chart]` that resolve to the number. |
+| **Numbering and cross-references** | not on the lists (pandoc-crossref is the reference) | `plugin+API`, exists (`@mdsvex/plugin-numbering`) | Numbered figures (the `:::figure[Caption](id=fig:x)` of `@mdsvex/plugin-figures`, observed), tables (`:::table[Caption](id=tbl:x)`), equations (a `math` fence with `id=eq:x`) and sections (headings), with `:ref[fig:x]` and `:ref[fig:a, fig:b]` reading "Figure 1" and "Figures 1 and 2", linked, and `prefix=Chart` or `prefix=false` for another word or none. Numbers stream: each is known when its target closes, and a forward reference reads "Figure ?" until then. |
 | **Citations and bibliography** | rehype-citation (170k), @benrbray/remark-cite | `plugin`, exists (`@mdsvex/plugin-citations`) | Loads BibTeX or CSL and renders a bibliography. Here `:cite[key]` (an inline directive, no new syntax) and `::bibliography`, from a CSL JSON file read in a deferred task and shared with `ctx.cached`, numeric or author-date. BibTeX is not read. |
 | **Abbreviations and glossary** | remark-abbr (9k), @richardtowers/remark-abbr, remark-terms (3k) | `component` | `:abbr[HTML](title=…)`. A glossary could auto-link defined terms, which is Cross-references' pattern table again. |
 
@@ -277,7 +277,7 @@ Ranked on usefulness to mdsvex users × popularity × cost. Items tagged `core` 
 | 32 | Wiki links (last) | Cross-references | core | 108k |
 | 33 | Plain text for search and feeds | Collections | vite | — |
 | 34 | Citations and bibliography | Reference apparatus | plugin, exists | 170k |
-| 35 | Numbering and cross-references | Reference apparatus | plugin+API, in progress | — |
+| 35 | Numbering and cross-references | Reference apparatus | plugin+API, exists | — |
 | 36 | Typographic details | Typography | plugin+API | ~200k combined |
 | 37 | Prose lint | Quality | tooling | ~860k |
 | 38 | Abbreviations and glossary | Reference apparatus | component | 12k |

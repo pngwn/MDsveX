@@ -19,6 +19,7 @@ Each directory here is one npm package, `@mdsvex/plugin-<name>`, that exports a 
 | `@mdsvex/plugin-references`     | [`references`](./references)         | links for `@user`, `#123`, `owner/repo#123`, commits and bare urls                  |
 | `@mdsvex/plugin-citations`      | [`citations`](./citations)           | `:cite[key]` from a CSL JSON bibliography, and a `::bibliography` that lists them   |
 | `@mdsvex/plugin-link-check`     | [`link-check`](./link-check)         | a warning at every link to an id or a document that is not there                    |
+| `@mdsvex/plugin-numbering`      | [`numbering`](./numbering)           | numbered figures, tables, equations and sections, and `:ref[fig:x]` references      |
 
 The other files in this directory are the audit of the remark and rehype plugins these replace. [`PLUGIN_AUDIT.md`](./PLUGIN_AUDIT.md) says, for each thing those plugins did, whether mdsvex has it and where.
 
@@ -70,11 +71,11 @@ npm login
 ```
 
 ```bash
-node scripts/setup-trusted-publishing.mjs --dry-run @mdsvex/plugin-link-check @mdsvex/plugin-elements @mdsvex/plugin-embeds @mdsvex/plugin-figures @mdsvex/plugin-code-blocks @mdsvex/plugin-diagram
+node scripts/setup-trusted-publishing.mjs --dry-run @mdsvex/plugin-link-check @mdsvex/plugin-elements @mdsvex/plugin-embeds @mdsvex/plugin-figures @mdsvex/plugin-code-blocks @mdsvex/plugin-diagram @mdsvex/plugin-numbering
 ```
 
 ```bash
-node scripts/setup-trusted-publishing.mjs @mdsvex/plugin-link-check @mdsvex/plugin-elements @mdsvex/plugin-embeds @mdsvex/plugin-figures @mdsvex/plugin-code-blocks @mdsvex/plugin-diagram
+node scripts/setup-trusted-publishing.mjs @mdsvex/plugin-link-check @mdsvex/plugin-elements @mdsvex/plugin-embeds @mdsvex/plugin-figures @mdsvex/plugin-code-blocks @mdsvex/plugin-diagram @mdsvex/plugin-numbering
 ```
 
 The other packages here are on npm since `0.1.0-next.0`, so the commands name only those that are not yet.

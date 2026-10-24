@@ -1,0 +1,68 @@
+# Numbering
+
+The plans are in :ref[tbl:plans], the prices in :ref[tbl:prices], and :ref[tbl:plans, tbl:prices] together. :ref[eq:energy] and :ref[eq:mass, eq:energy] come later on the page, and so does :ref[sec:the-equations].
+
+## The figures
+
+:::figure[Plans side by side](id=fig:plans)
+```txt
+free  ##
+pro   ##########
+```
+:::
+
+:::figure(id=fig:bare)
+A figure with an id and no caption is numbered all the same.
+:::
+
+:ref[fig:plans] and :ref[fig:plans, fig:bare] are figures, numbered by this plugin and drawn by `@mdsvex/plugin-figures`.
+
+## The tables
+
+:::table[What each plan costs](id=tbl:plans)
+| plan | price |
+| --- | --- |
+| free | 0 |
+| pro | 10 |
+:::
+
+:::table[Prices by year](id=tbl:prices)
+| year | price |
+| --- | --- |
+| 2025 | 9 |
+| 2026 | 10 |
+:::
+
+A table with an id and no caption is numbered all the same:
+
+:::table(id=tbl:bare)
+| a |
+| --- |
+| 1 |
+:::
+
+A table with no id has a caption and no number:
+
+:::table[Not numbered]
+| a |
+| --- |
+| 1 |
+:::
+
+## The equations
+
+```math id=eq:energy
+E = mc^2
+```
+
+```math id=eq:mass
+m = \frac{E}{c^2}
+```
+
+A math fence with no id is not numbered:
+
+```math
+a^2 + b^2 = c^2
+```
+
+As :ref[eq:energy] shows, :ref[tbl:plans] is cheap. With a word of its own, :ref[tbl:prices](prefix="Price list") and :ref[tbl:plans, tbl:prices](prefix=Lists); with none, :ref[eq:mass](prefix=false) and :ref[tbl:plans, tbl:bare](prefix=false). Mixing kinds is a warning and reads each with its own word: :ref[tbl:plans, eq:energy]. A reference to nothing reads :ref[fig:missing], and is a warning in the terminal of the dev server.

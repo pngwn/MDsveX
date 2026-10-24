@@ -1860,6 +1860,7 @@ import { elements } from '@mdsvex/plugin-elements';
 import { embeds } from '@mdsvex/plugin-embeds';
 import { figures } from '@mdsvex/plugin-figures';
 import { link_check } from '@mdsvex/plugin-link-check';
+import { numbering } from '@mdsvex/plugin-numbering';
 import { page_data } from '@mdsvex/plugin-page-data';
 import { references } from '@mdsvex/plugin-references';
 import { steps } from '@mdsvex/plugin-steps';
@@ -1883,6 +1884,7 @@ mdsvex({
 		references({ repo: 'you/site' }),
 		emoji(),
 		citations(),
+		numbering(),
 		link_check({ routes: 'src/routes' })
 	]
 });
@@ -1905,6 +1907,7 @@ mdsvex({
 | [`@mdsvex/plugin-references`](docs#references) | links for `@user`, `#123`, `owner/repo#123` and commits, and for bare urls when asked |
 | [`@mdsvex/plugin-citations`](docs#citations) | `:cite[key]` from a CSL JSON bibliography, and a `::bibliography` that lists what a document cites |
 | [`@mdsvex/plugin-link-check`](docs#link-check) | a warning at every link to an id or a document that is not there |
+| [`@mdsvex/plugin-numbering`](docs#numbering) | numbered figures, tables, equations and sections, and `:ref[fig:x]` references that read as the number |
 
 ### Steps
 
@@ -2739,6 +2742,70 @@ export default defineConfig(({ command }) => ({
 ```
 
 Other documents are read while the document compiles, so the Vite plugin and [`compile_async`](docs#compile_async), with a `read` option, check them, and `compile` throws a `PluginAsyncError` for a document that links to another. `documents: false` checks links within a page alone, under `compile` too. Markdown links are checked, not an `<a>` typed as html, and not files that are no documents, such as images.
+
+### Numbering
+
+```bash
+pnpm add --save-dev @mdsvex/plugin-numbering@next
+```
+
+```js
+import { figures } from '@mdsvex/plugin-figures';
+import { numbering } from '@mdsvex/plugin-numbering';
+
+mdsvex({ heading_ids: true, plugins: [figures(), numbering()] });
+```
+
+Numbers figures, tables, equations and sections, and turns `:ref[id]` into a link that reads as the number, in the way of [pandoc-crossref](https://lierdakil.github.io/pandoc-crossref/). The prefix of an id says what it is:
+
+````svx
+## Results
+
+:::figure[Sales by month](id=fig:sales)
+![A bar chart of sales by month](./sales.png)
+:::
+
+:::table[What each plan costs](id=tbl:plans)
+| plan | price |
+| --- | --- |
+| free | 0 |
+:::
+
+```math id=eq:energy
+E = mc^2
+```
+
+Sales rose in March (:ref[fig:sales]), the plans are in :ref[tbl:plans], :ref[eq:energy] gives the energy and :ref[sec:results] has the rest.
+````
+
+```html
+<figure id="tbl:plans" class="table">
+	<figcaption><span class="table-number">Table 1</span>: What each plan costs</figcaption>
+	<table>...</table>
+</figure>
+<p>
+	Sales rose in March (<span class="ref"><a href="#fig:sales">Figure 1</a></span>), the plans are in
+	<span class="ref"><a href="#tbl:plans">Table 1</a></span>, <span class="ref"><a href="#eq:energy">Equation 1</a></span>
+	gives the energy and <span class="ref"><a href="#results">Section 1</a></span> has the rest.
+</p>
+```
+
+```ts
+numbering({
+	prefixes: { fig: ['Figure', 'Figures'], tbl, eq, sec }, // the word for one and for several, by kind
+	and: 'and', // what joins the last two numbers
+	number_sections: boolean = false, // the number in front of each heading
+	section_depth: number = 2 // the depth of the headings numbered 1, 2, 3
+});
+```
+
+- **`fig:`** is the `:::figure[Caption](id=fig:x)` of [`@mdsvex/plugin-figures`](docs#figures), **`tbl:`** is `:::table[Caption](id=tbl:x)` around a table, **`eq:`** is a `math` fence with `id=eq:x` in its meta and **`sec:`** is a heading, `sec:` and its id. Each kind counts on its own, in document order.
+- **A figure or table is numbered** when it has an id with its prefix, with a caption or without. The figures plugin owns the figure and renders its number, this plugin observes it.
+- **An equation** gets its number as `\tag{n}`, which the [math renderer](docs#math-1) shows beside it, inside a `<div class="equation">` with its id.
+- **`:ref[fig:a, fig:b]`** reads "Figures 1 and 2", the plural word, each number a link. A reference to an id that is not there is a warning and reads "Figure ?".
+- **`prefix`** replaces the word: `:ref[fig:sales](prefix=Chart)` reads "Chart 1" and `prefix="Bar chart"` "Bar chart 1", the word as written, so a reference to several ids takes the plural. Only the literal `prefix=false` leaves the word out, "1" or "1 and 2". A capital for the start of a sentence is a word too, `prefix=Fig.` beside `prefixes: { fig: ['fig.', 'figs.'] }`.
+- **Ids of different kinds** in one reference are a warning. It reads each kind with its own word, "Figure 1 and Table 1", and ignores a written `prefix`.
+- **In a streaming view** a number is known when its target closes, and never changes. A reference to a target that has not arrived reads "Figure ?" until it does. Components read the numbers from [plugin data](docs#plugin-data), `plugin_data.numbering['target:' + id]`, through Svelte context.
 
 ## Syntax highlighting
 
