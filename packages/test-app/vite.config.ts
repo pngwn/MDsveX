@@ -6,6 +6,7 @@ import { citations } from "@mdsvex/plugin-citations";
 import { emoji } from "@mdsvex/plugin-emoji";
 import { external_links } from "@mdsvex/plugin-external-links";
 import { code_blocks, figures, kit, mermaid } from "@mdsvex/plugin-kit";
+import { numbering } from "@mdsvex/plugin-numbering";
 import { page_data } from "@mdsvex/plugin-page-data";
 import { references } from "@mdsvex/plugin-references";
 import { steps } from "@mdsvex/plugin-steps";
@@ -44,6 +45,7 @@ export default defineConfig({
 				}),
 				emoji({ label: true }),
 				citations(),
+				numbering(),
 			],
 			templates: {
 				article: "$lib/templates/Article.svelte",

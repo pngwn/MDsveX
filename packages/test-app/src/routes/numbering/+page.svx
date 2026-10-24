@@ -1,0 +1,45 @@
+# Numbering
+
+The plans are in :ref[tbl:plans], the prices in :ref[tbl:prices], and :ref[tbl:plans, tbl:prices] together. :ref[eq:energy] and :ref[eq:mass, eq:energy] come later on the page, and so does :ref[sec:the-equations].
+
+## The tables
+
+:::table[What each plan costs](id=tbl:plans)
+| plan | price |
+| --- | --- |
+| free | 0 |
+| pro | 10 |
+:::
+
+:::table[Prices by year](id=tbl:prices)
+| year | price |
+| --- | --- |
+| 2025 | 9 |
+| 2026 | 10 |
+:::
+
+A table with no id has a caption and no number:
+
+:::table[Not numbered]
+| a |
+| --- |
+| 1 |
+:::
+
+## The equations
+
+```math id=eq:energy
+E = mc^2
+```
+
+```math id=eq:mass
+m = \frac{E}{c^2}
+```
+
+A math fence with no id is not numbered:
+
+```math
+a^2 + b^2 = c^2
+```
+
+As :ref[eq:energy] shows, :ref[tbl:plans] is cheap. A reference to nothing reads :ref[fig:missing], and is a warning in the terminal of the dev server.
