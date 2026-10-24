@@ -136,7 +136,7 @@ mdsvex({ unwrap_images: true, plugins: [kit(), figures()] });
 
 ### Numbers
 
-A figure is unnumbered on its own. A numbering plugin numbers it through [plugin data](https://mdsvex.pngwn.io/docs#plugin-data): when the data of the plugin named `numbering` has a `targets` list with an entry whose `id` is the figure's, the caption starts with that entry's `text`, or with "Figure" and its `number`:
+A figure is unnumbered on its own. A numbering plugin numbers it through [plugin data](https://mdsvex.pngwn.io/docs#plugin-data): when the data of the plugin named `numbering` has a key `target:` followed by the figure's id, such as `target:fig:sales`, holding `{ kind, number, text }`, the caption starts with its `text`. The component reads the data from Svelte context, so while a document streams the number appears once it arrives:
 
 ```html
 <figcaption class="figure-caption">
@@ -144,9 +144,7 @@ A figure is unnumbered on its own. A numbering plugin numbers it through [plugin
 </figcaption>
 ```
 
-A `number` arg, `:::figure[Caption](number=3)`, does the same by hand.
-
-The component gets `label`, `children`, `id` and `number`. Export a `figure` from a directives module to replace it, or wrap the kit's, `@mdsvex/plugin-kit/Figure.svelte`. Leave the stylesheet out with `figures({ css: false })`.
+The component gets `label`, `children` and `id`. Export a `figure` from a directives module to replace it, or wrap the kit's, `@mdsvex/plugin-kit/Figure.svelte`. Leave the stylesheet out with `figures({ css: false })`.
 
 ## What it warns about
 

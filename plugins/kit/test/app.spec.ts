@@ -59,7 +59,7 @@ const FILES = {
 		'<script>',
 		"  import { setContext } from 'svelte';",
 		"  import Doc from './figures.svx';",
-		"  setContext(Symbol.for('mdsvex.plugin_data'), { current: { numbering: { targets: [{ id: 'fig:sales', kind: 'fig', number: 3 }] } } });",
+		"  setContext(Symbol.for('mdsvex.plugin_data'), { current: { numbering: { 'target:fig:sales': { kind: 'fig', number: '3', text: 'Figure 3' } } } });",
 		'</script>',
 		'<Doc />',
 	].join('\n'),
