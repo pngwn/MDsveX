@@ -1,6 +1,6 @@
 # Plugin directives: design
 
-Status: phases 0 to 3 are built (2026-10-11): the `plugins` option, bundles, bound handlers and `wrap_from`. §3.1, §3.2, §3.4 and §7 describe what was built. Static directives (§5) and the kit plugins are not started. Two points are implemented as drafted and not yet ruled on, Q1 and Q10 in §9.
+Status: phases 0 to 3 are built (2026-10-11): the `plugins` option, bundles, bound handlers and `wrap_from`. One owner per directive name and observers (§3.5) were added 2026-10-24. §3.1, §3.2, §3.4 and §7 describe what was built. Static directives (§5) and the kit plugins are not started. Two points are implemented as drafted and not yet ruled on, Q1 and Q10 in §9.
 
 Sources:
 - The plugin audit (`plugins/PLUGIN_AUDIT.md`): the Presentation concern, and the directive rows in its §4.
@@ -142,7 +142,7 @@ A bundle can also carry `parse`, an ordinary `ParsePlugin` for document-wide han
 | `parse` | a global parse plugin, under the bundle's `name` | ahead of `parse_plugins`, so those run last |
 | `directives` itself | a table of bound handlers with the bundle's `name` (`directive_handlers` in the parse package) | in bundle order |
 
-- **Precedence.** Bundle sources sit below the `components` modules, which sit below template directives. A user's own `steps` export replaces the plugin's component. Among bundles a later one wins a name, its handlers along with its component.
+- **Precedence.** Bundle sources sit below the `components` modules, which sit below template directives. A user's own `steps` export replaces the plugin's component. Two bundles never share a name, see §3.5.
 - **Nothing is scanned.** The plugin author names the directives, so the names come from the keys.
 - **The parse package ignores keys it does not know in an entry,** so `bundle.directives` is passed to it as it is and `static` rides along.
 - **Derived arrays are memoized.** The unpacked result is cached by the identity of the bundles array, and each merge with an option's array is kept for the next compile that gives the same array. The directive scope, the guard, the dispatcher's registrations and the session's plugin arena are all keyed by array identity, and all still hit across documents.
@@ -185,7 +185,7 @@ interface DirectiveContext {
 }
 ```
 
-At the parse level they are registered apart from plugins, as `directive_handlers` on the parse options or the third argument of `PluginDispatcher`: an array of tables keyed by directive name. A later table replaces an earlier one's entry for a name. Documented for plugin authors in `packages/parse/PLUGINS.md`.
+At the parse level they are registered apart from plugins, as `directive_handlers` on the parse options or the third argument of `PluginDispatcher`: an array of tables keyed by directive name. Two tables with an entry for one name are an error (§3.5). Documented for plugin authors in `packages/parse/PLUGINS.md`.
 
 - **No parent checks.** The handler can assume it is inside its own directive. A global `heading` handler would run for every heading in the document; this one runs only inside `:::steps`.
 - **"Directly inside" means in the source.** After the first `wrap_from`, later nodes sit inside a `step` wrapper in the tree. They still count as children of `steps`. A heading inside a nested blockquote, or inside another directive, is not a child and is not passed to `children` handlers. The test is the node's source parent, which both builders have at the open, before any redirect.
@@ -198,7 +198,7 @@ At the parse level they are registered apart from plugins, as `directive_handler
 - **Order.** For one node the innermost open directive goes first: its `children` handler, then its `descendants` handler, then the `descendants` handlers of each directive further out. Global plugins run after all of them, so a heading-ids plugin still gives a heading inside `:::steps` its id and sees the wrapper the bound handler made. Close callbacks fire in the same order.
 - **The directive itself.** `parse(directive, ctx)` runs once for each directive of the name, in any of the three forms, and the function it returns runs when the directive closes, ahead of the other close callbacks of that node. It runs when the name arrives, which is after the node's open, so global `directive_*` open handlers have already run (without a name to read) and `node.parent` is the parent in the tree. A block directive has its args by then (§7.2). An inline directive gets them at its closing bracket, so its `parse` reads them in the close callback.
 - **Leaf and inline directives get `parse` only** (Q7). The nodes inside their label are not passed to the `children` or `descendants` handlers of that name. A container around them still sees those nodes as descendants. An inline directive is pending until its bracket closes, and a `children` handler that had run inside one that is then revoked would leave its work behind, so this stays out until there is a use for it.
-- **The guard doesn't change.** Global directive handlers still never see a directive that has a component. Bound handlers are how the owning plugin reaches it. A bound `children` or `descendants` handler for a directive kind does see the directives inside its own, whoever owns them, which is what the long form of tabs needs.
+- **The guard doesn't change.** Global directive handlers still never see a directive that has a component. Bound handlers are how the owning plugin reaches it, observers (§3.5) how any other plugin does. A bound `children` or `descendants` handler for a directive kind does see the directives inside its own, whoever owns them, which is what the long form of tabs needs.
 - **Overrides.** The handlers run even when the user replaces the component (principle 3). A user who exports their own `step` gets the same `label` and `children`. This is Q1.
 - **No `text` handlers.** The wire emitter suppresses text opens and neither builder dispatches for text, so a `text` entry throws at registration. Rewriting text needs its own design.
 
@@ -281,6 +281,23 @@ Built in `packages/parse/src/plugin_dispatch.ts`.
 - **The stack keeps the dispatcher awake.** `quiet()` is false while a scope is open, and the batch builder sends the close of its directive to the dispatcher, which is where the scope ends. The nodes inside it opened after the directive and close without it. `reset()` clears the stack.
 - **Tables are built once per array of tables,** cached by its identity. Per directive the dispatcher allocates the scope, and the `state` proxy and a counts array when a handler first runs. A bound handler call allocates its context.
 - **Bound handlers run in the fused pass only.** A sequential plugin sees the tree they left.
+
+### 3.5 One owner, any number of observers
+
+Added 2026-10-24, after a numbering plugin could not number the kit's `:::figure`: the guard kept its global handler away, and a second bundle binding `figure` silently took the name from the kit, component and handlers.
+
+**One owner.** A directive name has one owner: the bundle whose `directives` has a key for it, handlers or not. Two bundles with the name throw a `DirectiveOwnerError` from `unpack`, so at setup (`check_plugins` in the Vite plugin) and before any document, naming the directive and both plugins. The parse level does the same for two `directive_handlers` tables. The `directives` and `components` options and template directives still replace a bundle's component (Q1), that is the site's choice, not a second plugin's. None of the first party plugins collide (cite, bibliography, steps, step, tabs, tab, toc, and the kit's details, accordion, kbd, ruby, badge, youtube, vimeo, figure, mermaid, checked 2026-10-24).
+
+**Observers.** Any parse plugin, a bundle's `parse` included, can observe directives by name: `observe: { figure: { parse, children, descendants } }`, the entry shape of a bound table. The decisions:
+
+- **Read-only, enforced.** An observer writes plugin data (`set`, `add`, owned by its node and revoked with it), warns, takes ids, uses its scratch and defers. Any write to a node, from its handlers, its close callbacks or a task it deferred, is a `TypeError` naming the observer, the directive and the owner. The owner decides the shape and the component, so a second plugin that could change the node would bring the override problem back.
+- **After the owner, at both ends.** Open: global open handlers, the owner's `parse`, then observers in plugin order. Close: the owner's callback, the global ones, then the observers'. The usual nesting order would put the observer's close first, but nothing an observer does can be seen by the owner, so order only decides what the observer reads, and last lets it read what the owner set at the close (tabs writes its `count` arg there).
+- **Children as they stream.** An observer entry may have `children` and `descendants`. Each gets a scope of its own on the directive, below the owner's, so the owner's handlers for a child run first and the observer has its own `state`, `index` and counts. A directive with no observers costs nothing new: the scopes of one directive are popped together, and the kinds mask takes the union of their `children` kinds.
+- **No owner.** An observer runs for a directive of its name whoever renders it, a bundle, the site's own component or nothing, and is read-only all the same. A warning would fire on every site without the kit, and a handler that could write only while nothing owned the name would break silently once a kit is added.
+- **Fused pass only,** as bound handlers, also for a sequential plugin.
+- **A plugin does not observe its own directive,** that is a `TypeError`.
+
+**Cost.** The observer path is a separate cold method behind `entry.observers !== null` in `dispatch_name`. The hot paths gain one field test each: `check_write` and `call_bound`.
 
 ## 4. Examples
 

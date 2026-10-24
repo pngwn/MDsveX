@@ -845,7 +845,7 @@ An entry can hold three keys. Any other key is ignored, so a layer above can kee
 
 A handler is a function, not a `{ parse }` object. Like a plugin handler it may return a function, which runs when the node closes. A key that is not a node type throws when the tables are first used, and so does `text`: text goes to the [text handler](#text-handlers) of a sequential plugin. The one key of `children` that is no node type is `'*'`, see [A child of any type](#a-child-of-any-type).
 
-`directive_handlers` is an array of tables. When two tables have an entry for the same name the later one replaces the earlier one whole. The tables are read once per array, so pass the same array for every document and build a new one to change a handler.
+`directive_handlers` is an array of tables. A table's entry owns its name, with or without handlers, and a name has one owner: two tables with an entry for the same name throw a `DirectiveOwnerError` when the tables are first used, with `directive` and the two plugin names as `plugins`. Another plugin that wants to see the directive [observes it](#observing-a-directive). The tables are read once per array, so pass the same array for every document and build a new one to change a handler.
 
 A table can come with the name of the plugin it belongs to, as `{ name: 'steps', directives: bound }`. The name keys what its handlers write with `ctx.set` and `ctx.add` and is the `plugin` of their warnings. `mdsvex` passes each plugin's `directives` this way.
 
@@ -956,6 +956,46 @@ A container with `children` or `descendants` handlers opens a scope when its nam
 - A scope ends when its directive closes, so that close goes through the dispatcher. The closes of the nodes inside it do not, unless a handler left something on them. The wire builder asks the dispatcher at every close, which is a few compares for a node no handler touched.
 
 Bound handlers run in the fused pass only. A sequential plugin sees the tree they left.
+
+### Observing a directive
+
+A directive has one owner, the table that binds its name. Another plugin reads it by observing it: numbering a figure, collecting the tabs of a page, checking an arg.
+
+```js
+const numbering = {
+  name: 'numbering',
+  observe: {
+    figure: {
+      parse(figure, ctx) {
+        // a block directive is never revoked, so a count in the scratch stays right
+        const number = (ctx.scratch.figures = (ctx.scratch.figures ?? 0) + 1);
+        const id = figure.attrs.args?.id;
+        if (id === undefined) return;
+        return () => {
+          const label = figure.first_child;
+          ctx.set('target:' + id, {
+            number,
+            caption: label?.type === 'directive_label' ? label.text_content : null,
+          });
+        };
+      },
+    },
+  },
+};
+```
+
+`observe` is a key of a parse plugin, a table keyed by directive name with the entries a table of bound handlers has: `parse`, `children` (`'*'` too) and `descendants`. Handlers get the same context as the owner's, with a `state`, an `index` and counts of their own.
+
+- **It runs whoever owns the name.** With an owner, with only a component of the host for it, or with neither. Which plugins are installed changes nothing for an observer.
+- **It changes no node.** Not the directive, not what is inside it, not anything else: a write to `attrs` or `type`, a structural method and `remove` throw a `TypeError` that names the observer, the directive and its owner. A deferred task an observer starts is held to the same. The owner decides what the directive is and how it renders, so what an observer finds goes into its plugin data, which a component reads through Svelte context.
+- **What it may do:** `ctx.set` and `ctx.add`, owned by the node whose handler runs and revoked with it, `ctx.warn`, `ctx.id`, `ctx.scratch`, `ctx.defer`, and the close callbacks it returns.
+- **After the owner.** At the open the global open handlers of the directive run first, then the owner's `parse`, then the observers in plugin order. At the close the observers' callbacks run last, after the owner's and the global ones. For a child the owner's `children` and `descendants` handlers run first, then the observers', and their close callbacks in the same order. An observer can change nothing the owner would see, so the only thing the order decides is what the observer sees, and this way it is the directive as the owner left it: the args it set at the open, the wrappers it made, the args it wrote at the close.
+- **As the directive streams.** `children` and `descendants` handlers of an observer run as each node opens, as the owner's do, so an observer sees the label of a container when it arrives and need not wait for the close.
+- **In the fused pass,** as bound handlers run, also for a plugin that is `sequential`.
+- **A plugin does not observe its own directive.** A plugin whose name owns a table entry for the name and observes it too throws a `TypeError`, its own handlers already see the directive.
+- **Revocation** is as for the owner: an inline directive whose bracket never closes takes what its observers wrote with it, and a directive inside a construct that goes, an emphasis that never closes or a link with no destination, stays with what they wrote.
+
+`mdsvex` reads `observe` from a parse plugin of `parse_plugins` and from the `parse` of a plugin bundle, which carries the bundle's name. The global directive handlers of either still never see a directive a component takes.
 
 ## Dirty Tracking
 
