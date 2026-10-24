@@ -43,7 +43,7 @@ const MERMAID: Replacement = {
 };
 const FIGURES: Replacement = {
 	message:
-		"Install `@mdsvex/plugin-kit` and add `figures()` to `plugins`. An image with a title on a line of its own is a figure, with the title as its caption.",
+		"Install `@mdsvex/plugin-kit` and add `figures()` to `plugins`. Write a figure as `:::figure[Caption]` around the image.",
 	option: "unwrap_images: true",
 };
 const DIRECTIVES: Replacement = {
