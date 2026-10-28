@@ -57,8 +57,12 @@ import type { HeadingIds } from '@mdsvex/parse';
 import type { HeadingOptions, HeadingSlug } from './heading_ids.js';
 import { smart_of } from './smart_punctuation.js';
 import type { SmartOptions, SmartPunctuation } from './smart_punctuation.js';
-import { image_imports } from './image_imports.js';
-import type { ImageImports, ImageNeed } from './image_imports.js';
+import { image_imports, images_on } from './image_imports.js';
+import type {
+	ImageImports,
+	ImageNeed,
+	ImportImagesOptions,
+} from './image_imports.js';
 import { link_urls, links_of, with_images } from './link_urls.js';
 import type { LinkOptions, Links, Rewrite } from './link_urls.js';
 import {
@@ -119,7 +123,7 @@ export {
 	heading_slug,
 	make_heading_ids,
 } from './heading_ids.js';
-export type { ImageNeed } from './image_imports.js';
+export type { ImageNeed, ImportImagesOptions } from './image_imports.js';
 export { SourceError } from './fence_sources.js';
 export { FootnoteError } from './footnotes.js';
 export type {
@@ -268,9 +272,12 @@ export interface CompileOptions
 	 * imports every image with a relative url and gives the image what the
 	 * import gives, so a bundler hashes and optimises the file, ![a](./a.png)
 	 * and ![a](a.png) import ./a.png, off by default as it takes a bundler
-	 * that imports images, the vite plugin has it on
+	 * that imports images, the vite plugin has it on, { enhanced: true }
+	 * imports each image @sveltejs/enhanced-img optimises with ?enhanced and
+	 * renders the picture it gives, the vite plugin turns that on when
+	 * enhancedImages() is in its plugins
 	 */
-	import_images?: boolean;
+	import_images?: boolean | ImportImagesOptions;
 	/**
 	 * called for the url of every markdown link and of every markdown image
 	 * that is not imported, after links.routes and before links.base, a string
@@ -462,6 +469,8 @@ export interface CompileInputs {
 	footnotes: FootnoteOptions | undefined;
 	/** true imports relative images, anything else leaves every url */
 	import_images: boolean | undefined;
+	/** true imports what enhanced-img optimises as a picture, with import_images */
+	enhanced_images: boolean | undefined;
 	/** the rewrite and links options, links_of prepares them, undefined when no url changes */
 	links: Links | undefined;
 	/** the text of the files fences show with src=, by spec, false leaves src= unread */
@@ -515,6 +524,7 @@ function fresh_inputs(): CompileInputs {
 		math: undefined,
 		footnotes: undefined,
 		import_images: undefined,
+		enhanced_images: undefined,
 		links: undefined,
 		sources: undefined,
 		await_sources: false,
@@ -596,7 +606,10 @@ function inputs_of(options: CompileOptions): CompileInputs {
 	if (smart !== undefined) inputs.smart_punctuation = smart_of(smart);
 	inputs.math = math;
 	if (footnotes !== undefined) inputs.footnotes = footnotes_option(footnotes);
-	inputs.import_images = import_images;
+	if (import_images !== undefined) {
+		inputs.import_images = images_on(import_images);
+		inputs.enhanced_images = enhanced_of(import_images);
+	}
 	if (rewrite !== undefined || links !== undefined)
 		inputs.links = links_of(rewrite, links);
 	inputs.sources = sources;
@@ -604,6 +617,11 @@ function inputs_of(options: CompileOptions): CompileInputs {
 	inputs.resolve = resolve;
 	inputs.snippets = snippets;
 	return inputs;
+}
+
+/** true when a compile imports images as enhanced-img pictures */
+function enhanced_of(written: boolean | ImportImagesOptions): boolean {
+	return typeof written === 'object' && written.enhanced === true;
 }
 
 /** throws unless the footnotes option is one a compile takes */
@@ -653,7 +671,10 @@ function inputs_from(
 		inputs.unwrap_images = syntax.unwrap_images;
 		inputs.heading_ids = slug_of(syntax.heading_ids);
 		inputs.smart_punctuation = smart_of(syntax.smart_punctuation);
-		inputs.import_images = syntax.import_images;
+		if (syntax.import_images !== undefined) {
+			inputs.import_images = images_on(syntax.import_images);
+			inputs.enhanced_images = enhanced_of(syntax.import_images);
+		}
 		if (syntax.footnotes !== undefined)
 			inputs.footnotes = footnotes_option(syntax.footnotes);
 	}
@@ -1641,7 +1662,7 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 		(take_src() ||
 			inputs.parse_plugins !== undefined ||
 			inputs.directive_handlers !== undefined)
-			? image_imports(nodes, source)
+			? image_imports(nodes, source, inputs.enhanced_images === true)
 			: null;
 	const linked = inputs.links;
 	if (linked !== undefined)
@@ -2170,7 +2191,10 @@ export class CompilerSession {
 		parsed._notes = this.notes;
 		if (plugged) this.plugin_arena!.host.wait(parsed, inputs);
 		if (inputs.import_images === true)
-			need_images(parsed, image_imports(nodes, source));
+			need_images(
+				parsed,
+				image_imports(nodes, source, inputs.enhanced_images === true)
+			);
 		if (inputs.sources !== false || inputs.snippets !== false)
 			need_sources(parsed, fences_of(nodes, source, inputs));
 		return this.lend(parsed, plugged);
@@ -2464,7 +2488,7 @@ export class CompilerSession {
 			// is walked, with plugins the walk decides, they make images unseen
 			// and a compile a handler starts takes the note
 			if (inputs.import_images === true && (take_src() || plugged))
-				images = image_imports(nodes, source);
+				images = image_imports(nodes, source, inputs.enhanced_images === true);
 			// the parser notes where the info strings are, only a document with
 			// src= or the run flag in one is walked
 			const given = inputs.sources;
@@ -2769,6 +2793,7 @@ async function settle_plugins(
 /** the inputs of a waiting parse, copied as a caller may change them before it settles */
 interface Scan {
 	images: boolean;
+	enhanced: boolean;
 	shows: boolean;
 	runs: boolean;
 	filename: string | undefined;
@@ -2780,7 +2805,13 @@ function scan_of(inputs: CompileInputs): Scan | null {
 	const shows = inputs.sources !== false;
 	const runs = inputs.snippets !== false;
 	if (!images && !shows && !runs) return null;
-	return { images, shows, runs, filename: inputs.filename };
+	return {
+		images,
+		enhanced: inputs.enhanced_images === true,
+		shows,
+		runs,
+		filename: inputs.filename,
+	};
 }
 
 /**
@@ -2799,7 +2830,8 @@ function rescan(parsed: Parsed): void {
 	parsed.math = parsed._spans;
 	parsed._images = null;
 	parsed._sources = null;
-	if (scan.images) need_images(parsed, image_imports(nodes, source));
+	if (scan.images)
+		need_images(parsed, image_imports(nodes, source, scan.enhanced));
 	if (scan.shows || scan.runs)
 		need_sources(
 			parsed,

@@ -35,8 +35,11 @@ export interface JsonConfig {
 	/** false renders code plain, a host may take highlighter options here */
 	highlight?: boolean | Record<string, unknown>;
 	unwrap_images?: boolean;
-	/** on unless it is false, as the plugin has it */
-	import_images?: boolean;
+	/**
+	 * on unless it is false, as the plugin has it, json can not see the vite
+	 * plugins, so { "enhanced": true } says enhancedImages() is one of them
+	 */
+	import_images?: boolean | { enhanced?: boolean };
 	/**
 	 * the directives of each entry of the plugins option, json can not hold
 	 * its handlers, so only the names and the module that exports them
@@ -172,7 +175,14 @@ export function read_json_config(
 		else if (value !== undefined && value !== false)
 			fail(`${key} must be true or false`);
 	}
-	if (json.import_images !== false) manifest.import_images = true;
+	const images = json.import_images;
+	if (images !== false) manifest.import_images = true;
+	if (is_record(images)) {
+		if (images.enhanced === true) manifest.enhanced_images = true;
+		else if (images.enhanced !== undefined && images.enhanced !== false)
+			fail('import_images.enhanced must be true or false');
+	} else if (images !== undefined && typeof images !== 'boolean')
+		fail('import_images must be true, false or { "enhanced": true }');
 
 	const smart = smart_of(json.smart_punctuation);
 	if (typeof smart === 'string') fail(smart);

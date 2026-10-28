@@ -16,8 +16,10 @@ import type {
 	CompileInputs,
 	ComponentMode,
 	FootnoteOptions,
+	ImportImagesOptions,
 	Parsed,
 } from './compile.js';
+import { images_on } from './image_imports.js';
 import { slug_of } from './heading_ids.js';
 import type { HeadingOptions } from './heading_ids.js';
 import { smart_of } from './smart_punctuation.js';
@@ -179,10 +181,17 @@ export interface MdsvexOptions
 	 * the import, /a.png, a url with a scheme and a src with a svelte
 	 * expression are never imported, false leaves every url as written
 	 *
+	 * with enhancedImages() of @sveltejs/enhanced-img in the vite plugins, an
+	 * avif, gif, heif, jpeg, jpg, png, tiff or webp image without a query is
+	 * imported with ?enhanced and renders as a picture, a source per format
+	 * and an img with the width and height of the file, a replaced img gets
+	 * the picture as its src, { enhanced: false } keeps plain imports and
+	 * { enhanced: true } fails at startup without enhancedImages()
+	 *
 	 * @example
 	 * ![a diagram](./diagram.png?url)
 	 */
-	import_images?: boolean;
+	import_images?: boolean | ImportImagesOptions;
 	/**
 	 * called for the url of every markdown link and of every markdown image
 	 * that is not imported, after links.routes and before links.base, a string
@@ -326,12 +335,12 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	inputs.smart_punctuation = smart_of(options.smart_punctuation);
 	if (options.footnotes !== undefined)
 		inputs.footnotes = footnotes_option(options.footnotes);
-	if (
-		options.import_images !== undefined &&
-		typeof options.import_images !== 'boolean'
-	)
-		throw new Error('[mdsvex] import_images must be true or false');
-	inputs.import_images = options.import_images !== false;
+	const written_images = options.import_images;
+	inputs.import_images =
+		written_images === undefined || images_on(written_images);
+	// undefined follows enhancedImages(), configResolved decides
+	const written_enhanced =
+		typeof written_images === 'object' ? written_images.enhanced : undefined;
 	// a document that shows a file with src= stops after its parse, the
 	// plugin reads the file and the document renders with it
 	inputs.await_sources = true;
@@ -613,6 +622,8 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			if (options.unwrap_images === true) out.unwrap_images = true;
 			// on by default, so the editor types a src as the import it is
 			if (inputs.import_images === true) out.import_images = true;
+			// a replaced img gets a Picture, as enhanced-img declares *?enhanced
+			if (inputs.enhanced_images === true) out.enhanced_images = true;
 			if (plugins !== null) {
 				const described = plugins.describe();
 				if (described.length !== 0) out.plugins = described;
@@ -963,6 +974,17 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				set_links(config.root, config.base);
 				log = (message) => config.logger.warn('[mdsvex] ' + message);
 				manifest.set_root(config.root);
+				const enhanced = config.plugins.some(
+					(p) => p.name === 'vite-plugin-enhanced-img-markup'
+				);
+				if (written_enhanced === true && !enhanced)
+					throw new Error(
+						'[mdsvex] import_images.enhanced is true but enhancedImages() of @sveltejs/enhanced-img is not in the vite plugins'
+					);
+				inputs.enhanced_images =
+					inputs.import_images === true &&
+					written_enhanced !== false &&
+					enhanced;
 				manifest.schedule();
 				const svelte = config.plugins.find(
 					(p) => p.name === 'vite-plugin-svelte:config'

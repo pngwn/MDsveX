@@ -52,6 +52,7 @@ const nav = [
 			["math", "docs#math", true],
 			["unwrap_images", "docs#unwrap_images", true],
 			["import_images", "docs#import_images", true],
+			["optimised images", "docs#optimised-images", false],
 			["links", "docs#links", true],
 			["rewrite", "docs#rewrite", true],
 			["footnotes", "docs#footnotes", true],

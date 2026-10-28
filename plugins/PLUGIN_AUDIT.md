@@ -96,7 +96,7 @@ Turning paths and URLs into the right module or route. **Shared state:** the doc
 | --- | --- | --- | --- |
 | **External link policy** | rehype-external-links (10M) | `plugin`, exists (`@mdsvex/plugin-external-links`), Vite option later | `rel`, `target`, an optional icon, and a screen-reader label for "opens in a new tab". |
 | **Relative images become imports** | no direct equivalent; remark-embed-images (39k), remark-copy-linked-files (2k), rehype-inline-svg and rehype-svgo are workarounds | `vite`, exists (`import_images`, on by default) | `![](./a.png)` → `import a from './a.png'`, so Vite hashes and optimises it. `?inline` and `?raw` cover the SVG cases. Pairs with `@sveltejs/enhanced-img`. |
-| **Image size and loading** | rehype-img-size (32k), rehype-plugin-image-native-lazy-loading (11k), rehype-picture, rehype-resolution | `vite`, not built | Intrinsic `width` and `height` (#611), `loading=lazy`, `decoding=async`. Images are imports now, so a replaced `img` can do this today with `?enhanced`. |
+| **Image size and loading** | rehype-img-size (32k), rehype-plugin-image-native-lazy-loading (11k), rehype-picture, rehype-resolution | `vite`, exists through `@sveltejs/enhanced-img` | With `enhancedImages()` in the Vite plugins, `import_images` imports each image with `?enhanced` and renders the `<picture>` enhanced-img would, with intrinsic `width` and `height` (#611) and avif and webp sources. `loading=lazy` and `decoding=async` belong in an `img` replacement, which gets the `Picture` as `src`. No images plugin. |
 | **Links to routes and the base path** | remark-link-rewrite (40k), rehype-urls (53k), rehype-url-inspector (8k), remark-prepend-url, remark-relative-links, remark-remove-url-trailing-slash, remark-img-links | `vite`, exists (`links: { routes, base }` and `rewrite(url, ctx)`) | `./guide.md` → `/guide`, SvelteKit `base`, trailing slashes (#389). Two options replace seven plugins. |
 
 ### 3.3 Composition
@@ -250,7 +250,7 @@ Ranked on usefulness to mdsvex users × popularity × cost. Items tagged `core` 
 | 5 | Task lists | Presentation | core, exists | remark-gfm 181M |
 | 6 | Math | Reference apparatus | core, exists | 36M + 32M; issue #302 |
 | 7 | TOC as data | Navigation | plugin, exists | ~1.9M combined |
-| 8 | Relative images as imports, with size and loading | Resolution | vite, imports exist, size and loading do not | Svelte-specific; #611 |
+| 8 | Relative images as imports, with size and loading | Resolution | vite, exists. With `@sveltejs/enhanced-img` installed every image it optimises is imported with `?enhanced` and renders as a `<picture>` with its `width` and `height`. Lazy loading is an `img` replacement. No images plugin | Svelte-specific; #611 |
 | 9 | Smart punctuation | Typography | core option, exists | 17.7M; issue #825 |
 | 10 | Callouts and GitHub alerts | Presentation | component + core | ~4.2M combined |
 | 11 | Emoji shortcodes | Typography | plugin, exists | 9.7M |

@@ -68,7 +68,7 @@ describe('vite plugin import_images', () => {
 
 	test('rejects an option of the wrong type', () => {
 		expect(() => mdsvex({ import_images: 'yes' as any })).toThrow(
-			'[mdsvex] import_images must be true or false'
+			'[mdsvex] import_images must be true, false or { enhanced: true | false }'
 		);
 	});
 

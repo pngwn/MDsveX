@@ -15,6 +15,16 @@ export interface ImageNeed {
 	name: string;
 }
 
+/** the import_images option as an object */
+export interface ImportImagesOptions {
+	/**
+	 * imports each image @sveltejs/enhanced-img can optimise with ?enhanced
+	 * and renders the picture it gives, an image with a query of its own is
+	 * imported as written
+	 */
+	enhanced?: boolean;
+}
+
 /** @internal what a render with image imports is given */
 export interface ImageImports {
 	/** one per specifier, in document order */
@@ -141,14 +151,36 @@ export function js_string(s: string): string {
 
 const PREFIX = '__mdsvex_img_';
 
+// what enhanced-img optimises, its OPTIMIZABLE without a query or a fragment
+const ENHANCEABLE = /^#?[^?#]+\.(avif|heif|gif|jpeg|jpg|png|tiff|webp)$/;
+
+/** the specifier enhanced-img imports a picture from, null for one it leaves alone */
+export function enhanced_specifier(specifier: string): string | null {
+	return ENHANCEABLE.test(specifier) ? specifier + '?enhanced' : null;
+}
+
+/** true when the import_images option imports, throws for a value it can not be */
+export function images_on(written: boolean | ImportImagesOptions): boolean {
+	if (typeof written === 'boolean') return written;
+	if (typeof written === 'object' && written !== null) {
+		const enhanced = written.enhanced;
+		if (enhanced === undefined || typeof enhanced === 'boolean') return true;
+	}
+	throw new TypeError(
+		'[mdsvex] import_images must be true, false or { enhanced: true | false }'
+	);
+}
+
 /**
  * the imports for the relative images of a document, null when it has none,
  * the local names start with a prefix the source nowhere holds, so no
- * binding of the document can meet one
+ * binding of the document can meet one, enhanced imports what enhanced-img
+ * optimises as a picture
  */
 export function image_imports(
 	buf: NodeBuffer,
-	source: string
+	source: string,
+	enhanced: boolean
 ): ImageImports | null {
 	let by_url: Map<string, UrlSource | null> | null = null;
 	let by_specifier: Map<string, UrlSource> | null = null;
@@ -163,7 +195,12 @@ export function image_imports(
 			if (typeof url === 'string' && url !== '') {
 				if (by_url === null) by_url = new Map();
 				if (!by_url.has(url)) {
-					const specifier = image_specifier(url);
+					let specifier = image_specifier(url);
+					const picture =
+						enhanced && specifier !== null
+							? enhanced_specifier(specifier)
+							: null;
+					if (picture !== null) specifier = picture;
 					let to: UrlSource | null = null;
 					if (specifier !== null) {
 						if (by_specifier === null) {
@@ -175,8 +212,12 @@ export function image_imports(
 						if (hit !== undefined) to = hit;
 						else {
 							const name = prefix + needs!.length;
-							to = { type: 'expression', value: name };
-							by_specifier.set(specifier, to);
+							const made: UrlSource =
+								picture === null
+									? { type: 'expression', value: name }
+									: { type: 'picture', value: name };
+							by_specifier.set(specifier, made);
+							to = made;
 							needs!.push({ type: 'image', url, specifier, name });
 						}
 					}

@@ -181,7 +181,9 @@ export function document_options(
 	if (Object.keys(templates).length !== 0) compile.templates = templates;
 	if (manifest.unwrap_images === true) compile.unwrap_images = true;
 	// a replaced img gets the import as its src, typed as typescript resolves it
-	if (manifest.import_images === true) compile.import_images = true;
+	if (manifest.import_images === true)
+		compile.import_images =
+			manifest.enhanced_images === true ? { enhanced: true } : true;
 	// the id is a prop of a replaced heading, the default slug stands in for a function
 	if (manifest.heading_ids === true) compile.heading_ids = true;
 	// the text an editor maps is the text the build renders
