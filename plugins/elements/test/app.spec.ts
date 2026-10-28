@@ -36,6 +36,8 @@ const FILES = {
 	].join('\n'),
 	'src/inline.svx':
 		'Press :kbd[Ctrl]+:kbd[C], read :ruby[漢字](rt=かんじ), see :badge[new](tone=tip).\n',
+	'src/marks.svx':
+		'A :mark[_hot_ take], :ins[an addition](datetime=2026-10-28, cite=https://example.com/a), :ins[plain] and :abbr[HTML](title="HyperText Markup Language").\n',
 	'src/lib/markdown.js': "export * as directives from './directives.js';",
 	'src/lib/directives.js': "export { default as kbd } from './MyKbd.svelte';",
 	'src/lib/MyKbd.svelte': [
@@ -145,6 +147,15 @@ describe('in a vite app', () => {
 		);
 	});
 
+	test('marks, insertions and abbreviations are the native elements', async () => {
+		expect(await ssr(server, '/src/marks.svx')).toBe(
+			'<p>A <mark class="mark"><em>hot</em> take</mark>, ' +
+				'<ins class="ins" datetime="2026-10-28" cite="https://example.com/a">an addition</ins>, ' +
+				'<ins class="ins">plain</ins> and ' +
+				'<abbr class="abbr" title="HyperText Markup Language">HTML</abbr>.</p>'
+		);
+	});
+
 	test('the client gets the components and the stylesheet', async () => {
 		const client = server.environments.client;
 		const entry = await client.transformRequest(
@@ -155,6 +166,7 @@ describe('in a vite app', () => {
 			'/node_modules/@mdsvex/plugin-elements/dist/elements.css'
 		);
 		expect(css?.code).toContain('.accordion');
+		expect(css?.code).toContain('.mark');
 		const details = await client.transformRequest(
 			'/node_modules/@mdsvex/plugin-elements/dist/Details.svelte'
 		);

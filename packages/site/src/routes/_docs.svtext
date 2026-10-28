@@ -1894,7 +1894,7 @@ mdsvex({
 | --- | --- |
 | [`@mdsvex/plugin-steps`](docs#steps) | numbered steps, one for each heading inside `:::steps` |
 | [`@mdsvex/plugin-tabs`](docs#tabs) | tabs and code groups, one tab for each heading or code fence inside `:::tabs` |
-| [`@mdsvex/plugin-elements`](docs#elements) | details, accordions, keys, ruby and badges, each a directive over an HTML element |
+| [`@mdsvex/plugin-elements`](docs#elements) | details, accordions, keys, ruby, badges, marks, insertions and abbreviations, each a directive over an HTML element |
 | [`@mdsvex/plugin-embeds`](docs#embeds) | YouTube and Vimeo players named by their title |
 | [`@mdsvex/plugin-code-blocks`](docs#code-blocks) | a `pre` with a copy button, the title and the caption of the fence |
 | [`@mdsvex/plugin-diagram`](docs#diagrams) | `mermaid` fences drawn by pele at build time or by mermaid in the browser |
@@ -2116,6 +2116,9 @@ Directives over plain HTML elements. A document imports only the ones it uses, n
 | `:kbd[Ctrl]` | a `<kbd>` |
 | `:ruby[漢字](rt=かんじ)` | a `<ruby>` with the reading in `<rt>` and `<rp>` fallbacks |
 | `:badge[new](tone=tip)` | a `<span class="badge">`, tinted by `note`, `tip`, `warning` or `danger` |
+| `:mark[text]` | a `<mark>` |
+| `:ins[text](datetime=2026-10-28)` | an `<ins>`, with the `datetime` and `cite` of the element |
+| `:abbr[HTML](title="HyperText Markup Language")` | an `<abbr>` with what it stands for in `title` |
 
 An accordion splits like [tabs](docs#tabs): the first heading written directly inside sets the depth, and each heading of that depth starts an item whose summary is the text of the heading, so it gets no id and no place in a table of contents. `(name=faq)` gives every item the `name` of a `<details>`, so opening one closes the others. A `:::details` written directly inside is an item too.
 
@@ -2133,11 +2136,11 @@ Every part of it.
 :::
 ````
 
-A `<details>` is a disclosure the browser already makes accessible, a button in the tab order that announces whether it is expanded.
+A `<details>` is a disclosure the browser already makes accessible, a button in the tab order that announces whether it is expanded. Most screen readers say nothing of a `<mark>` or an `<ins>`, so the text has to carry what matters, and a `title` is read by only some, so spell an abbreviation out in the text where the reader needs it.
 
-The build warns, with the line, about an accordion with no items (`no_items`), content before its first item (`content_before_first_item`), an empty heading in one (`item_without_label`) and a `:ruby` with no `rt` (`ruby_without_rt`).
+The build warns, with the line, about an accordion with no items (`no_items`), content before its first item (`content_before_first_item`), an empty heading in one (`item_without_label`), a `:ruby` with no `rt` (`ruby_without_rt`) and an `:abbr` with no `title` (`abbr_without_title`). A title with a space or a comma needs quotes.
 
-The stylesheet has selectors with no specificity and reads `--elements-line`, `--elements-radius` and `--elements-padding` from `.details` and `.accordion`, `--kbd-line` from `.kbd` and `--badge-color` from `.badge`. `elements({ css: false })` leaves it out and keeps the markup. To change the markup, export a component under the name of the directive from a [directives module](docs#declaring-directives). It gets the args as string props, and `label` and `children`. The plugin's own are exported as `@mdsvex/plugin-elements/Details.svelte` and so on.
+The stylesheet has selectors with no specificity and reads `--elements-line`, `--elements-radius` and `--elements-padding` from `.details` and `.accordion`, `--kbd-line` from `.kbd`, `--badge-color` from `.badge` and `--mark-color` from `.mark`, a tint behind text that keeps its colour. `elements({ css: false })` leaves it out and keeps the markup. To change the markup, export a component under the name of the directive from a [directives module](docs#declaring-directives). It gets the args as string props, and `label` and `children`. The plugin's own are exported as `@mdsvex/plugin-elements/Details.svelte` and so on.
 
 ### Embeds
 
@@ -4169,9 +4172,10 @@ mdsvex 0.x ran remark and rehype, and took their plugins in `remarkPlugins` and 
 | `rehype-img-size`, `rehype-plugin-image-native-lazy-loading` | a component | an `img` replacement sets `loading="lazy"`. For sizes, import the image with `?enhanced` from [`@sveltejs/enhanced-img`][enhanced-img], the replacement gets the imported value as `src` |
 | `rehype-mermaid`, `remark-mermaidjs` | [`@mdsvex/plugin-diagram`](docs#diagrams) | `diagram()` draws each `mermaid` fence, at build time with `pele` installed or in the browser with `mermaid` |
 | `remark-embedder`, `remark-oembed`, `remark-youtube` | [`@mdsvex/plugin-embeds`](docs#embeds) | `::youtube[A talk](id=dQw4w9WgXcQ)` and `::vimeo`. Any other site is a leaf directive with a component of your own, see [directives](docs#the-three-forms) |
-| `remark-abbr` | a component | an inline directive, `:abbr[HTML](title=HyperText)` |
 | `remark-collapse` | nothing needed | `<details>` and `<summary>` work as typed, with markdown inside, and [`@mdsvex/plugin-elements`](docs#elements) adds `:::details[Summary]` and accordions |
 | `remark-kbd`, `remark-ruby` | [`@mdsvex/plugin-elements`](docs#elements) | `:kbd[Ctrl]` and `:ruby[漢字](rt=かんじ)` |
+| `remark-flexible-markers`, `remark-mark-highlight`, `remark-ins` | [`@mdsvex/plugin-elements`](docs#elements) | `:mark[text]` and `:ins[text]`. `==mark==` and `++ins++` are text, a plugin can't add syntax |
+| `remark-abbr` | [`@mdsvex/plugin-elements`](docs#elements) | `:abbr[HTML](title="HyperText Markup Language")` |
 | `rehype-meta`, `rehype-document` | a template | a [template](docs#templates-1) renders `<svelte:head>` from its props |
 | `rehype-video` | a component | an `a` or `img` replacement that renders a `<video>` for a video url |
 
@@ -4182,7 +4186,6 @@ mdsvex 0.x ran remark and rehype, and took their plugins in `remarkPlugins` and 
 | `remark-github-blockquote-alert`, `remark-github-alerts`, `rehype-callouts` | `> [!NOTE]` is a block quote that starts with `[!NOTE]`. Write `:::note` with a directive component |
 | `remark-heading-id`, `remark-attr`, `rehype-attr` | `{#id}` and `{.class}` can't exist, braces belong to Svelte. `heading_ids` makes ids, and a parse plugin can set any attribute |
 | `remark-definition-list`, `remark-deflist` | type `<dl>`, `<dt>` and `<dd>` |
-| `remark-flexible-markers`, `remark-ins` | `==mark==` and `++ins++` are text, type `<mark>` and `<ins>` |
 | `remark-wiki-link` | `[[Page]]` is text |
 | `remark-validate-links`, `remark-lint` | nothing checks links or style. A missing image fails the build when it is [imported](docs#import_images) |
 | `rehype-sanitize` | nothing, and none is planned. A document compiles to a component and runs as code, so don't compile markdown you don't trust |
@@ -4396,7 +4399,7 @@ A fence can be indented, inside an element or not. Its code keeps the indent it 
 ### Not read yet
 
 - **Bare urls.** Only `<https://example.com>` is a link, unless [`@mdsvex/plugin-references`](docs#references) is set to link them.
-- **GitHub alerts, definition lists, `==mark==` and wiki links**, see [nothing yet](docs#nothing-yet).
+- **GitHub alerts, definition lists and wiki links**, see [nothing yet](docs#nothing-yet). `==mark==` is text too, write [`:mark[text]`](docs#elements).
 
 ### Not possible yet
 

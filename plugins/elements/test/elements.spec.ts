@@ -230,6 +230,58 @@ describe('details, kbd, ruby and badges', () => {
 	});
 });
 
+describe('mark, ins and abbr', () => {
+	test('need no handler and keep the inline markup in their brackets', () => {
+		const source =
+			'A :mark[_key_ `term`] and :ins[new :kbd[Ctrl]](datetime=2026-10-28, cite=https://example.com/a), ' +
+			':abbr[HTML](title="HyperText Markup Language").\n';
+		expect(warnings(source)).toEqual([]);
+		expect(tree(source)).toEqual(plain(source));
+		expect(tree(source)).toEqual([
+			'root',
+			[
+				'paragraph',
+				'text:A ',
+				[
+					'directive_inline name="mark"',
+					['emphasis', 'text:key'],
+					'text: ',
+					'code_span',
+				],
+				'text: and ',
+				[
+					'directive_inline name="ins" args=' +
+						JSON.stringify({
+							datetime: '2026-10-28',
+							cite: 'https://example.com/a',
+						}),
+					'text:new ',
+					['directive_inline name="kbd"', 'text:Ctrl'],
+				],
+				'text:, ',
+				[
+					'directive_inline name="abbr" args=' +
+						JSON.stringify({ title: 'HyperText Markup Language' }),
+					'text:HTML',
+				],
+				'text:.',
+			],
+		]);
+	});
+
+	test('an abbr without a title warns', () => {
+		expect(warnings('An :abbr[HTML](title=Markup).\n')).toEqual([]);
+		expect(warnings('An :abbr[HTML] and :abbr[CSS](lang=en).\n')).toEqual([
+			'abbr_without_title',
+			'abbr_without_title',
+		]);
+	});
+
+	test('an abbr whose bracket never closes is text and does not warn', () => {
+		expect(warnings('An :abbr[HTML\n')).toEqual([]);
+	});
+});
+
 describe('compile', () => {
 	const IMPORT = "from '@mdsvex/plugin-elements/directives';";
 
@@ -276,10 +328,30 @@ describe('compile', () => {
 		).toContain('<Ruby_MDSVEX_D_G rt="かんじ">漢字</Ruby_MDSVEX_D_G>');
 	});
 
+	test('mark, ins and abbr pass their args', () => {
+		const { code } = compile(
+			':mark[hot] :ins[added](datetime=2026-10-28, cite=https://example.com/a) :abbr[HTML](title="HyperText Markup Language")\n',
+			{ plugins: [elements()] }
+		);
+		expect(code).toBe(
+			[
+				'<script>',
+				'import { mark as Mark_MDSVEX_D_G, ins as Ins_MDSVEX_D_G, abbr as Abbr_MDSVEX_D_G } ' +
+					IMPORT,
+				'</script><p><Mark_MDSVEX_D_G>hot</Mark_MDSVEX_D_G> ' +
+					'<Ins_MDSVEX_D_G datetime="2026-10-28" cite="https://example.com/a">added</Ins_MDSVEX_D_G> ' +
+					'<Abbr_MDSVEX_D_G title="HyperText Markup Language">HTML</Abbr_MDSVEX_D_G></p>',
+			].join('\n')
+		);
+	});
+
 	test('warnings come back with the plugin and the line', () => {
-		const { warnings: found } = compile(':::accordion\n:::\n\nA :ruby[x].\n', {
-			plugins: [elements()],
-		});
+		const { warnings: found } = compile(
+			':::accordion\n:::\n\nA :ruby[x].\n\nAn :abbr[x].\n',
+			{
+				plugins: [elements()],
+			}
+		);
 		expect(
 			found?.map((warning) => [
 				warning.code,
@@ -289,6 +361,7 @@ describe('compile', () => {
 		).toEqual([
 			['no_items', 'elements', 1],
 			['ruby_without_rt', 'elements', 4],
+			['abbr_without_title', 'elements', 6],
 		]);
 	});
 

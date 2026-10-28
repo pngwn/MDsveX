@@ -111,3 +111,13 @@
 :where(.badge[data-tone='danger']) {
 	--badge-color: #e5534b;
 }
+
+/* a tint in place of the black on yellow of the browser, so it reads on a dark page too */
+:where(.mark) {
+	--mark-color: #d4a72c;
+
+	padding-inline: 0.1em;
+	border-radius: 0.2em;
+	background: color-mix(in srgb, var(--mark-color) 35%, transparent);
+	color: inherit;
+}

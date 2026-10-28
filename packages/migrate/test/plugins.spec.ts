@@ -67,6 +67,18 @@ describe("config: remark and rehype plugins", () => {
 		expect(code).toContain("unwrap_images: true });");
 	});
 
+	test("marks, insertions and abbreviations point at the elements plugin", () => {
+		const { plugins } = config(
+			"import { mdsvex } from 'mdsvex';\nimport mark from 'remark-flexible-markers';\nimport ins from 'remark-ins';\nimport abbr from 'remark-abbr';\nmdsvex({ remarkPlugins: [mark, ins, abbr] });",
+		);
+		const install = "Install `@mdsvex/plugin-elements` and add `elements()` to `plugins`. ";
+		expect(plugins.map((n) => n.message)).toEqual([
+			expect.stringContaining(install + "`==mark==` is text, write `:mark[text]`."),
+			expect.stringContaining(install + "`++ins++` is text, write `:ins[text]`."),
+			expect.stringContaining(install + 'Write an abbreviation as `:abbr[HTML](title="HyperText Markup Language")`.'),
+		]);
+	});
+
 	test("an option that is already set is not added twice", () => {
 		const { code, plugins } = config(
 			"import { mdsvex } from 'mdsvex';\nimport slug from 'rehype-slug';\nimport old from 'remark-slug';\nmdsvex({ smart_punctuation: true, heading_ids: true, remarkPlugins: [old], rehypePlugins: [slug] });",

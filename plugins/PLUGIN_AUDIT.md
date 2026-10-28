@@ -126,7 +126,7 @@ How blocks render, and how authors style them. **Shared state:** none at runtime
 | **Embeds** | @remark-embedder/core (20k), remark-oembed, remark-youtube, remark-iframes | `component`, exists for YouTube and Vimeo (`@mdsvex/plugin-embeds`); `plugin` for oEmbed, not built | `::youtube[Title](id=…)` and `::vimeo[Title](id=…)`, lazy frames named by their label. Fetching oEmbed at build time is a deferred task now that plugins can wait. |
 | **Media links** | rehype-video (180k), remark-images (59k) | `component` (replaced `a`, `img`) | A link to `.mp4` renders `<video>`. |
 | **Definition lists** | remark-definition-list (818k), remark-deflist (61k) | `core`, or a `:::dl` component | |
-| **Mark and insert** | remark-flexible-markers (143k), remark-ins (148k), remark-mark-highlight (61k) | `core` | `==mark==`, `++ins++`. Issue #721 is the component gap for plugin-made `mark`. |
+| **Mark and insert** | remark-flexible-markers (143k), remark-ins (148k), remark-mark-highlight (61k) | `component`, exists (`@mdsvex/plugin-elements`) | `:mark[text]` and `:ins[text](datetime=2026-10-28, cite=url)`, generic directives over the native elements, since a plugin can't add syntax. The args are the attributes of `<ins>`. |
 
 ### 3.5 Code
 
@@ -182,7 +182,7 @@ What technical and academic writing needs. **Shared state:** counters and labels
 | **Math** | remark-math (36M), rehype-katex (32M), rehype-mathjax (531k), @daiji256/rehype-mathml (4k), rehype-katex-notranslate (14k) | `core` + render option, exists (`math`) | Issue #302. Temml (MathML, no runtime JS) by default; KaTeX as an option, an optional peer dependency the user installs. `translate="no"` is set. Syntax: a `math` fence for display, `` $`…`$ `` inline. The migrator rewrites `$…$` with `math: true`. |
 | **Numbering and cross-references** | not on the lists (pandoc-crossref is the reference) | `plugin+API`, exists (`@mdsvex/plugin-numbering`) | Numbered figures (the `:::figure[Caption](id=fig:x)` of `@mdsvex/plugin-figures`, observed), tables (`:::table[Caption](id=tbl:x)`), equations (a `math` fence with `id=eq:x`) and sections (headings), with `:ref[fig:x]` and `:ref[fig:a, fig:b]` reading "Figure 1" and "Figures 1 and 2", linked, and `prefix=Chart` or `prefix=false` for another word or none. Numbers stream: each is known when its target closes, and a forward reference reads "Figure ?" until then. |
 | **Citations and bibliography** | rehype-citation (170k), @benrbray/remark-cite | `plugin`, exists (`@mdsvex/plugin-citations`) | Loads BibTeX or CSL and renders a bibliography. Here `:cite[key]` (an inline directive, no new syntax) and `::bibliography`, from a CSL JSON file read in a deferred task and shared with `ctx.cached`, numeric or author-date. BibTeX is not read. |
-| **Abbreviations and glossary** | remark-abbr (9k), @richardtowers/remark-abbr, remark-terms (3k) | `component` | `:abbr[HTML](title=…)`. A glossary could auto-link defined terms, which is Cross-references' pattern table again. |
+| **Abbreviations and glossary** | remark-abbr (9k), @richardtowers/remark-abbr, remark-terms (3k) | `component`, `:abbr` exists (`@mdsvex/plugin-elements`); a glossary is not built | `:abbr[HTML](title="HyperText Markup Language")` renders an `<abbr>`, and warns without a `title`. A glossary that auto-links defined terms is not built, it would be Cross-references' pattern table again. |
 
 ### 3.10 Document data
 
@@ -271,7 +271,7 @@ Ranked on usefulness to mdsvex users × popularity × cost. Items tagged `core` 
 | 26 | CJK check | Typography | core, delimiters done, line joining not | 12.8M + 10.5M (inflated) |
 | 27 | Transclusion with heading shift (last) | Composition | vite + core | low downloads, structural gap |
 | 28 | PFM lint | Quality | tooling | remark-lint 1.5M |
-| 29 | Mark and insert | Presentation | core | ~350k combined |
+| 29 | Mark and insert | Presentation | component, exists (`@mdsvex/plugin-elements`) | ~350k combined |
 | 30 | Sectionize | Navigation | plugin, a recipe in the docs | 184k |
 | 31 | Custom heading id syntax (deferred) | Navigation | core | ~300k combined |
 | 32 | Wiki links (last) | Cross-references | core | 108k |
@@ -280,7 +280,7 @@ Ranked on usefulness to mdsvex users × popularity × cost. Items tagged `core` 
 | 35 | Numbering and cross-references | Reference apparatus | plugin+API, exists | — |
 | 36 | Typographic details | Typography | plugin+API | ~200k combined |
 | 37 | Prose lint | Quality | tooling | ~860k |
-| 38 | Abbreviations and glossary | Reference apparatus | component | 12k |
+| 38 | Abbreviations and glossary | Reference apparatus | component, `:abbr` exists (`@mdsvex/plugin-elements`), glossary not built | 12k |
 | 39 | Media links | Presentation | component | 180k |
 | 40 | Doc tests | Code | vite + tooling | — |
 | 41 | Color chips | Code | plugin | 19k |
@@ -310,7 +310,7 @@ Decided 2026-10-10:
 
 Decided 2026-10-24:
 
-- **The component items are five packages, one concern each.** `@mdsvex/plugin-elements` (details, accordions, kbd, ruby, badges), `@mdsvex/plugin-embeds` (YouTube, Vimeo), `@mdsvex/plugin-figures`, `@mdsvex/plugin-code-blocks` and `@mdsvex/plugin-diagram`. A site adds only what it uses, and only the diagram package has optional peer dependencies.
+- **The component items are five packages, one concern each.** `@mdsvex/plugin-elements` (details, accordions, kbd, ruby, badges, mark, ins, abbr), `@mdsvex/plugin-embeds` (YouTube, Vimeo), `@mdsvex/plugin-figures`, `@mdsvex/plugin-code-blocks` and `@mdsvex/plugin-diagram`. A site adds only what it uses, and only the diagram package has optional peer dependencies.
 - **Diagrams draw with pele or mermaid.** pele draws Mermaid syntax at build time and the page ships the SVG, mermaid draws in the browser. `engine: 'auto'` takes pele when it is installed. Both are optional peers, and the choice is made once when the plugin is set up, so a package that is not installed is never imported.
 - **Mermaid wraps the fence instead of replacing `pre`.** A site has one `pre`, so a Mermaid `pre` would fight the site's own and the copy button.
 - **A figure is the `:::figure[Caption](id=…)` directive of `@mdsvex/plugin-figures`, and only that.** It holds an image or anything else, the id is optional, and a lone image with a title is not a figure. A numbering plugin numbers a figure whose id it knows by writing the number to its plugin data, and the figure component puts it in front of the caption.
