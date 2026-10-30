@@ -29,6 +29,7 @@
   "author": "pngwn <hello@pngwn.io>",
   "license": "MIT",
   "devDependencies": {
+    "@lukeed/html": "^1.0.2",
     "@mdsvex/parse": "workspace:^",
     "@mdsvex/render": "workspace:^",
     "@types/node": "^20.12.7",
