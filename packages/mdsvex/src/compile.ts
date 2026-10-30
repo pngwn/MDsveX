@@ -279,6 +279,16 @@ export interface CompileOptions
 	 */
 	import_images?: boolean | ImportImagesOptions;
 	/**
+	 * wraps each run of two or more top level blocks with no svelte in them
+	 * in a display contents div, so hydration steps over the run as one node,
+	 * child and sibling selectors no longer match across a wrapper, off by
+	 * default
+	 *
+	 * @example
+	 * wrap_static: true
+	 */
+	wrap_static?: boolean;
+	/**
 	 * called for the url of every markdown link and of every markdown image
 	 * that is not imported, after links.routes and before links.base, a string
 	 * replaces the url and nothing keeps it, a url with a svelte expression is
@@ -471,6 +481,7 @@ export interface CompileInputs {
 	import_images: boolean | undefined;
 	/** true imports what enhanced-img optimises as a picture, with import_images */
 	enhanced_images: boolean | undefined;
+	wrap_static: boolean | undefined;
 	/** the rewrite and links options, links_of prepares them, undefined when no url changes */
 	links: Links | undefined;
 	/** the text of the files fences show with src=, by spec, false leaves src= unread */
@@ -525,6 +536,7 @@ function fresh_inputs(): CompileInputs {
 		footnotes: undefined,
 		import_images: undefined,
 		enhanced_images: undefined,
+		wrap_static: undefined,
 		links: undefined,
 		sources: undefined,
 		await_sources: false,
@@ -558,6 +570,7 @@ function inputs_of(options: CompileOptions): CompileInputs {
 	const math = options.math;
 	const footnotes = options.footnotes;
 	const import_images = options.import_images;
+	const wrap_static = options.wrap_static;
 	const rewrite = options.rewrite;
 	const links = options.links;
 	const sources = options.sources;
@@ -582,6 +595,7 @@ function inputs_of(options: CompileOptions): CompileInputs {
 		math === undefined &&
 		footnotes === undefined &&
 		import_images === undefined &&
+		wrap_static === undefined &&
 		rewrite === undefined &&
 		links === undefined &&
 		sources === undefined &&
@@ -606,6 +620,7 @@ function inputs_of(options: CompileOptions): CompileInputs {
 	if (smart !== undefined) inputs.smart_punctuation = smart_of(smart);
 	inputs.math = math;
 	if (footnotes !== undefined) inputs.footnotes = footnotes_option(footnotes);
+	inputs.wrap_static = wrap_static;
 	if (import_images !== undefined) {
 		inputs.import_images = images_on(import_images);
 		inputs.enhanced_images = enhanced_of(import_images);
@@ -1734,6 +1749,7 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 	const smart = inputs.smart_punctuation;
 	if (smart !== undefined) renderer.smart_punctuation = smart;
 	if (notes !== null) renderer.footnotes = notes;
+	if (inputs.wrap_static === true) renderer.wrap_static = true;
 
 	if (options?.sourcemap) {
 		let result;
@@ -2596,6 +2612,8 @@ export class CompilerSession {
 		const smart = inputs.smart_punctuation;
 		if (smart !== undefined) renderer.smart_punctuation = smart;
 		if (notes !== null) renderer.footnotes = notes;
+		const wrap = inputs.wrap_static === true;
+		if (wrap) renderer.wrap_static = true;
 		// the session keeps its renderer, a render that throws must not leave
 		// the imports of this document for the next
 		try {
@@ -2696,6 +2714,7 @@ export class CompilerSession {
 			if (host !== null) renderer.imports = undefined;
 			if (smart !== undefined) renderer.smart_punctuation = undefined;
 			if (notes !== null) renderer.footnotes = undefined;
+			if (wrap) renderer.wrap_static = undefined;
 		}
 		if (fenced !== null) done!.snippets = fenced.snippets;
 		// one call site for every kind, each more is another callee to inline
