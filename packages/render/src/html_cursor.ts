@@ -12,7 +12,13 @@
  */
 
 import { Cursor } from '@mdsvex/parse/cursor';
-import { is_raw_text_tag } from '@mdsvex/parse/utils';
+import {
+	is_raw_text_tag,
+	spans_have,
+	spans_text,
+	unread_spans,
+} from '@mdsvex/parse/utils';
+import type { AttrSpans } from '@mdsvex/parse/utils';
 import {
 	buf_code,
 	footnote_id,
@@ -1164,11 +1170,13 @@ function module_begin(buf: NodeBuffer, code: string): void {
 		if ((n[b] & 0xff) === K.HTML) {
 			const slot = n[b + W.meta];
 			const meta = slot === 0 ? undefined : buf._meta[slot - 1];
-			const attrs = meta?.attributes as Record<string, unknown> | undefined;
+			const script =
+				meta !== undefined && meta.tag === 'script' && !meta.self_closing;
+			const attrs = script
+				? (meta.attributes as Record<string, unknown> | undefined)
+				: undefined;
 			if (
-				meta !== undefined &&
-				meta.tag === 'script' &&
-				!meta.self_closing &&
+				script &&
 				attrs !== undefined &&
 				attrs.src === undefined &&
 				(attrs.module !== undefined || attrs.context === 'module')
@@ -2760,9 +2768,14 @@ function fold_html(c: Cursor, p: number): number {
 	const meta = c.meta();
 	const tag = meta?.tag as string;
 	if (is_embed_script(c, tag)) return push_dyn(p, embed_html(c));
-	const html_attrs = meta?.attributes as
-		| Record<string, string | boolean>
-		| undefined;
+	// an unread tag written as fold writes it is its own attribute text
+	const spans = c.synthetic ? undefined : unread_spans(meta);
+	const text =
+		spans !== undefined && spans.canonical ? spans_text(spans) : undefined;
+	const html_attrs =
+		text === undefined
+			? (meta?.attributes as Record<string, string | boolean> | undefined)
+			: undefined;
 
 	if (meta?.self_closing) {
 		// source passthrough as in _node, decided before any push because a
@@ -2772,13 +2785,15 @@ function fold_html(c: Cursor, p: number): number {
 		if (passthrough) return push_dyn(p, passthrough);
 		p = push_static(p, S_LT);
 		p = push_dyn(p, tag);
-		if (html_attrs) p = fold_html_attrs(html_attrs, !c.synthetic, p);
+		if (text !== undefined) p = push_dyn(p, text);
+		else if (html_attrs) p = fold_html_attrs(html_attrs, !c.synthetic, p);
 		return push_static(p, S_SELF_CLOSE);
 	}
 
 	p = push_static(p, S_LT);
 	p = push_dyn(p, tag);
-	if (html_attrs) {
+	if (text !== undefined) p = push_dyn(p, text);
+	else if (html_attrs) {
 		p = fold_html_attrs(html_attrs, !c.synthetic, p);
 		if (meta!.repeated !== undefined)
 			p = push_dyn(
@@ -4587,15 +4602,25 @@ function open_tag_end(
 /** the per kind extras of a typed element, those the author wrote are kept */
 function typed_extras(
 	tag: string,
-	attrs: Record<string, unknown> | undefined
+	attrs: Record<string, unknown> | undefined,
+	spans: AttrSpans | undefined
 ): string {
 	if (tag.length === 2 && tag.charCodeAt(0) === 104) {
 		const d = tag.charCodeAt(1) - 48;
-		if (d >= 1 && d <= 6 && (attrs === undefined || !('level' in attrs)))
+		if (d >= 1 && d <= 6 && !writes(attrs, spans, 'level'))
 			return ' level={' + d + '}';
-	} else if (tag === 'ol' && (attrs === undefined || !('start' in attrs)))
+	} else if (tag === 'ol' && !writes(attrs, spans, 'start'))
 		return ' start={1}';
 	return '';
+}
+
+function writes(
+	attrs: Record<string, unknown> | undefined,
+	spans: AttrSpans | undefined,
+	name: string
+): boolean {
+	if (spans !== undefined) return spans_have(spans, name);
+	return attrs !== undefined && name in attrs;
 }
 
 /**
@@ -4809,9 +4834,18 @@ function comp_node(
 		case K.HTML: {
 			const meta = c.meta()!;
 			const tag = meta.tag as string;
-			const attrs = meta.attributes as Record<string, unknown> | undefined;
 			const typed = !c.synthetic;
-			const end = typed ? open_tag_end(c, tag, attrs) : -1;
+			// attributes nobody read spell the source, so they need no check
+			const spans = typed ? unread_spans(meta) : undefined;
+			const unread = spans !== undefined && spans.name_start === c.start + 1;
+			const attrs = unread
+				? undefined
+				: (meta.attributes as Record<string, unknown> | undefined);
+			let end = -1;
+			if (unread) {
+				end = spans!.open_end;
+				tag_attrs_end = spans!.attrs_end;
+			} else if (typed) end = open_tag_end(c, tag, attrs);
 			// a typed tag keeps its attributes as written, they map as identity
 			const from = c.start + 1 + tag.length;
 			const at = pre + open.length;
@@ -4827,7 +4861,7 @@ function comp_node(
 				if (meta.repeated !== undefined)
 					open += repeated_attrs(meta.repeated as [string, unknown][], typed);
 			}
-			if (typed) open += typed_extras(tag, attrs);
+			if (typed) open += typed_extras(tag, attrs, unread ? spans : undefined);
 			const shut = meta.self_closing ? ' />' : '>';
 			if (end !== -1)
 				cm_tag(

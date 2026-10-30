@@ -1,5 +1,5 @@
 import { ParseStallError, parse_markdown_svelte } from '../src/main';
-import { type NodeBuffer, is_raw_text_tag } from '../src/utils';
+import { type NodeBuffer, is_raw_text_tag, plain_meta } from '../src/utils';
 import { contained, pieces_of, smaller, spaced } from './grammar';
 import type { Container, Level, Piece, Seen } from './grammar';
 import {
@@ -37,7 +37,7 @@ const OFFSETS = new Set(['info_start', 'info_end']);
 function meta_of(nodes: NodeBuffer, index: number, source: string | null) {
 	const meta = nodes.metadata_at(index);
 	if (!meta) return '';
-	const all: Record<string, unknown> = { ...meta };
+	const all: Record<string, unknown> = { ...plain_meta(meta) };
 	// the wire carries the info string, a tree built from the source its range
 	if (source !== null && meta.info_end > meta.info_start) {
 		all.info = source.slice(meta.info_start, meta.info_end);
@@ -338,7 +338,7 @@ function words_of(nodes: NodeBuffer, source: string): [string, string] {
 				text += ` ${source.slice(start, end)}`;
 			}
 		}
-		const data = nodes.metadata_at(index);
+		const data = plain_meta(nodes.metadata_at(index));
 		strings_of(data, meta);
 		if (data?.info_end > data?.info_start) {
 			meta.push(source.slice(data.info_start, data.info_end));

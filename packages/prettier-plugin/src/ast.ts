@@ -1,5 +1,5 @@
 import { parse_markdown_svelte } from '@mdsvex/parse';
-import { kind_to_string } from '@mdsvex/parse/utils';
+import { kind_to_string, plain_meta } from '@mdsvex/parse/utils';
 
 const NONE = 0xffffffff;
 
@@ -40,7 +40,7 @@ export function parse(text: string): SvxRoot {
 		) {
 			children.push(build(c));
 		}
-		const meta = nodes.metadata_at(i);
+		const meta = plain_meta(nodes.metadata_at(i));
 		return {
 			type: kind_to_string(nodes.kind_at(i)),
 			start: nodes.start_at(i),
