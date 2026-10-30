@@ -41,10 +41,13 @@ import type {
 
 import type { Emitter } from './opcodes.js';
 import {
+	AttrSpans,
 	NodeKind,
 	is_raw_text_tag,
 	note_footnote,
 	note_math,
+	store_attr_rec,
+	stored_attr_at,
 } from './utils.js';
 import { NodeBuffer, ErrorCollector } from './utils.js';
 import { TreeBuilder } from './tree_builder.js';
@@ -575,6 +578,110 @@ const TAG_ATTR_SHORTHAND = 2;
 const TAG_ATTR_EXPR = 3;
 // failed scans shorter than this never start the open tag memo
 const TAG_MEMO_MIN = 256;
+
+/**
+ * whether render can copy the attributes of a scan record as written, a space
+ * before each, no name twice, none that for in moves to the front or that
+ * sets the prototype
+ */
+function plain_attrs(
+	source: string,
+	base: number,
+	rec: Int32Array,
+	n: number
+): boolean {
+	for (let i = 0; i < n; i += 5) {
+		const from = rec[i + 1];
+		const length = rec[i + 2] - from;
+		const lead = rec[i] === TAG_ATTR_SHORTHAND ? from - 2 : from - 1;
+		const before = char_code_at.call(source, lead - base);
+		if (before !== SPACE && before !== TAB && before !== LINEFEED) return false;
+		const first = char_code_at.call(source, from - base);
+		if ((first >= 48 && first <= 57) || (first === 95 && length === 9))
+			return false;
+		for (let j = 0; j < i; j += 5) {
+			const other = rec[j + 1];
+			if (rec[j + 2] - other !== length) continue;
+			let k = 0;
+			while (
+				k < length &&
+				char_code_at.call(source, from + k - base) ===
+					char_code_at.call(source, other + k - base)
+			)
+				k++;
+			if (k === length) return false;
+		}
+	}
+	return true;
+}
+
+/**
+ * whether a record writes back as its source, one space before each
+ * attribute, values in double quotes or braces right after the name, and
+ * shorthands that are not names, which fold writes as name={name}
+ */
+function canonical_attrs(
+	source: string,
+	base: number,
+	rec: Int32Array,
+	n: number,
+	from: number
+): boolean {
+	let prev = from;
+	for (let i = 0; i < n; i += 5) {
+		const kind = rec[i];
+		const name_end = rec[i + 2];
+		let start = rec[i + 1];
+		let end = name_end;
+		if (kind === TAG_ATTR_SHORTHAND) {
+			const first = char_code_at.call(source, start - base);
+			if (first === 36 || first === 95 || is_ascii_letter(first)) return false;
+			start--;
+			end++;
+		} else if (kind !== TAG_ATTR_BOOL) {
+			const vs = rec[i + 3];
+			const open = char_code_at.call(source, vs - 1 - base);
+			if (vs - 2 !== name_end || char_code_at.call(source, name_end - base) !== EQUALS)
+				return false;
+			if (kind === TAG_ATTR_VALUE ? open !== QUOTE : open !== OPEN_BRACE)
+				return false;
+			// fold writes a name={name} that is not a name as {name}
+			const first = char_code_at.call(source, start - base);
+			if (
+				kind === TAG_ATTR_EXPR &&
+				!(first === 36 || first === 95 || is_ascii_letter(first))
+			)
+				return false;
+			end = rec[i + 4] + 1;
+		}
+		if (start - prev !== 1 || char_code_at.call(source, prev - base) !== SPACE)
+			return false;
+		prev = end;
+	}
+	return true;
+}
+
+/** past the last attribute of a scan record, its closing quote or brace included */
+function attrs_end(
+	source: string,
+	base: number,
+	rec: Int32Array,
+	n: number
+): number {
+	const i = n - 5;
+	switch (rec[i]) {
+		case TAG_ATTR_BOOL:
+			return rec[i + 2];
+		case TAG_ATTR_SHORTHAND:
+			return rec[i + 2] + 1;
+		case TAG_ATTR_EXPR:
+			return rec[i + 4] + 1;
+		default: {
+			const q = char_code_at.call(source, rec[i + 3] - 1 - base);
+			return q === QUOTE || q === APOSTROPHE ? rec[i + 4] + 1 : rec[i + 4];
+		}
+	}
+}
 
 /**
  * find_matching_brace from p at depth for strings, comments and long scans
@@ -4548,9 +4655,37 @@ export class PFMParser {
 
 		const rec = tag_rec;
 		const tag = string_slice.call(source, pos - base, tag_name_end - base);
+		const n = tag_rec_n;
+		if (
+			n !== 0 &&
+			!tag_reread &&
+			(!tag_lines || this.frames.length === 0) &&
+			plain_attrs(source, base, rec, n)
+		) {
+			const chunk = store_attr_rec(rec, n);
+			return {
+				tag,
+				attributes: new AttrSpans(
+					source,
+					base,
+					chunk,
+					stored_attr_at(),
+					n,
+					pos,
+					attrs_end(source, base, rec, n),
+					end,
+					tag_name_end,
+					canonical_attrs(source, base, rec, n, tag_name_end)
+				) as unknown as Record<string, TagAttribute>,
+				repeated: null,
+				self_closing: tag_self_closing,
+				end,
+				has_attrs: true,
+				lines: tag_lines,
+			};
+		}
 		const attributes: Record<string, TagAttribute> = {};
 		let repeated: [string, TagAttribute][] | null = null;
-		const n = tag_rec_n;
 		// a value over lines is read without what its containers put before them
 		const framed = tag_values;
 		for (let i = 0; i < n; i += 5) {

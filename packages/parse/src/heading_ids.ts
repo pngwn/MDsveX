@@ -229,9 +229,9 @@ export class HeadingIds {
 			const kind = buf.kind_at(i) as number;
 			if (kind === NodeKind.html) {
 				const meta = buf.metadata_at(i);
-				const id = meta?.attributes?.id;
-				if (typeof id === 'string' && is_heading_tag.test(meta.tag))
-					this.fix(buf, id, i);
+				if (!meta || !is_heading_tag.test(meta.tag)) continue;
+				const id = meta.attributes?.id;
+				if (typeof id === 'string') this.fix(buf, id, i);
 			} else if (
 				kind === NodeKind.footnote_reference ||
 				kind === NodeKind.footnote_definition

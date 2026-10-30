@@ -388,6 +388,146 @@ function info_search(
 	return false;
 }
 
+const ATTR_BOOL = 0;
+const ATTR_VALUE = 1;
+const ATTR_SHORTHAND = 2;
+
+/**
+ * @internal the attributes of an open tag as the scan found them, five words
+ * per attribute in rec from at, kind then name and value ranges
+ */
+export class AttrSpans {
+	constructor(
+		readonly source: string,
+		readonly base: number,
+		readonly rec: Int32Array,
+		readonly at: number,
+		readonly n: number,
+		/** where the tag name starts, one past the < */
+		readonly name_start: number,
+		/** past the last attribute, before the space ahead of > or /> */
+		readonly attrs_end: number,
+		/** past the > */
+		readonly open_end: number,
+		/** past the tag name, where the attributes start */
+		readonly attrs_start: number,
+		/** the source from attrs_start to attrs_end is what fold writes for the record */
+		readonly canonical: boolean
+	) {}
+	/** the canonical attribute text, sliced once */
+	text: string | undefined = undefined;
+}
+
+/** @internal the attributes of a canonical tag as written */
+export function spans_text(s: AttrSpans): string {
+	return (s.text ??= s.source.slice(s.attrs_start - s.base, s.attrs_end - s.base));
+}
+
+// one store for every lazy tag, a full chunk is left to the spans that use it
+let attr_chunk = new Int32Array(8192);
+let attr_used = 0;
+let attr_at = 0;
+
+/** @internal copies n words of a scan record into the shared store, attr_at says where */
+export function store_attr_rec(rec: Int32Array, n: number): Int32Array {
+	if (attr_used + n > attr_chunk.length) {
+		attr_chunk = new Int32Array(n > 8192 ? n : 8192);
+		attr_used = 0;
+	}
+	const chunk = attr_chunk;
+	const at = (attr_at = attr_used);
+	// a subarray view per tag costs more than the copy
+	for (let i = 0; i < n; i++) chunk[at + i] = rec[i];
+	attr_used = at + n;
+	return chunk;
+}
+
+/** @internal where the last store_attr_rec put its words */
+export function stored_attr_at(): number {
+	return attr_at;
+}
+
+/** the record the eager path builds, for a tag with no repeated names and no framed values */
+export function build_attrs(s: AttrSpans): Record<string, unknown> {
+	const source = s.source;
+	const base = s.base;
+	const rec = s.rec;
+	const end = s.at + s.n;
+	const attributes: Record<string, unknown> = {};
+	for (let i = s.at; i < end; i += 5) {
+		const kind = rec[i];
+		const name = source.slice(rec[i + 1] - base, rec[i + 2] - base);
+		if (kind === ATTR_BOOL) attributes[name] = true;
+		else if (kind === ATTR_SHORTHAND)
+			attributes[name] = { type: 'expression', value: name };
+		else {
+			const text = source.slice(rec[i + 3] - base, rec[i + 4] - base);
+			attributes[name] =
+				kind === ATTR_VALUE ? text : { type: 'expression', value: text };
+		}
+	}
+	return attributes;
+}
+
+/** @internal whether a lazy tag writes an attribute named name, without building the record */
+export function spans_have(s: AttrSpans, name: string): boolean {
+	const source = s.source;
+	const base = s.base;
+	const rec = s.rec;
+	const end = s.at + s.n;
+	for (let i = s.at; i < end; i += 5) {
+		const from = rec[i + 1] - base;
+		if (
+			rec[i + 2] - base - from === name.length &&
+			source.startsWith(name, from)
+		)
+			return true;
+	}
+	return false;
+}
+
+const ATTRS = Symbol('attributes');
+
+/**
+ * the metadata of a tagged node, attributes is built from its spans on first
+ * read, a symbol key keeps the store out of keys, for in and json
+ */
+export class HtmlMeta {
+	tag: unknown;
+	[ATTRS]: AttrSpans | Record<string, unknown> | undefined = undefined;
+	constructor(tag: unknown) {
+		this.tag = tag;
+	}
+	get attributes(): Record<string, unknown> | undefined {
+		const a = this[ATTRS];
+		if (a instanceof AttrSpans) return (this[ATTRS] = build_attrs(a));
+		return a;
+	}
+	set attributes(value: AttrSpans | Record<string, unknown> | undefined) {
+		this[ATTRS] = value;
+	}
+}
+
+/** metadata as own string keys, a spread leaves out the getter and keeps the symbol */
+export function plain_meta(meta: any): any {
+	if (!(meta instanceof HtmlMeta)) return meta;
+	const out: Record<string, unknown> = { tag: meta.tag };
+	const attributes = meta.attributes;
+	if (attributes !== undefined) out.attributes = attributes;
+	for (const k in meta) out[k] = (meta as any)[k];
+	return out;
+}
+
+/**
+ * @internal the spans of a typed tag whose attributes nobody has read, they
+ * spell the source as written, undefined otherwise
+ */
+export function unread_spans(meta: unknown): AttrSpans | undefined {
+	if (!(meta instanceof HtmlMeta)) return undefined;
+	const a = meta[ATTRS];
+	return a instanceof AttrSpans ? a : undefined;
+}
+
 /**
  * a computed key literal takes a slow generic define, so known keys get
  * constant key literals and other keys a store into an empty literal
@@ -395,7 +535,7 @@ function info_search(
 export function make_meta(key: string, value: any): Record<string, any> {
 	switch (key) {
 		case 'tag':
-			return { tag: value };
+			return new HtmlMeta(value) as unknown as Record<string, any>;
 		case 'href':
 			return { href: value };
 		case 'src':
@@ -410,7 +550,9 @@ export function make_meta(key: string, value: any): Record<string, any> {
 		case 'alignments':
 			return { alignments: value };
 		case 'attributes':
-			return { attributes: value };
+			return {
+				attributes: value instanceof AttrSpans ? build_attrs(value) : value,
+			};
 		case 'self_closing':
 			return { self_closing: value };
 		case 'title':
@@ -449,7 +591,10 @@ export function merge_meta(
 ): void {
 	switch (key) {
 		case 'attributes':
-			meta.attributes = value;
+			meta.attributes =
+				value instanceof AttrSpans && !(meta instanceof HtmlMeta)
+					? build_attrs(value)
+					: value;
 			return;
 		case 'start':
 			meta.start = value;
@@ -1767,7 +1912,7 @@ export class NodeBuffer {
 			start: this.start_at(index),
 			end: this.end_at(index),
 			metadata: {
-				...this.metadata_at(index),
+				...plain_meta(this.metadata_at(index)),
 				...extras_object,
 			},
 			parent: parent === 0xffffffff ? null : parent,

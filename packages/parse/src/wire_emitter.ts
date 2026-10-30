@@ -1,5 +1,5 @@
 import type { Emitter } from "./opcodes.js";
-import { NodeKind, is_raw_text_tag } from "./utils.js";
+import { AttrSpans, NodeKind, build_attrs, is_raw_text_tag } from "./utils.js";
 
 /**
  * wire format for PFM parser opcode streaming.
@@ -239,6 +239,9 @@ export class WireEmitter implements Emitter {
 	}
 
 	attr(id: number, key: string, value: unknown): void {
+		// the wire carries the record, a lazy tag builds it here
+		if (value instanceof AttrSpans) value = build_attrs(value);
+
 		// tag on html: remember raw-text variants so their value range
 		// (script/style content) becomes t events on self. the 'tag' attr
 		// is always set before value_start/value_end by the parser.
