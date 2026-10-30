@@ -1,5 +1,6 @@
 // the plugin finds these by name and edits or reads their extensions, neither
-// is a public contract of sveltekit or vite-plugin-svelte
+// is a public contract of sveltekit or vite-plugin-svelte, and it detects
+// enhanced-img by the name of its markup plugin and renders its Picture
 import { execFile } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -123,3 +124,76 @@ test('the vite-plugin-svelte mdsvex is developed against exposes its extensions'
 		'.probe',
 	]);
 }, 30_000);
+
+const ENHANCED_APP = resolve(HERE, 'enhanced_app');
+const MARKUP = 'vite-plugin-enhanced-img-markup';
+
+// what mdsvex detects enhanced-img by, and the Picture it renders from an ?enhanced import
+const ENHANCED_PROBE = `
+import { readFileSync } from 'node:fs';
+import { enhancedImages } from '@sveltejs/enhanced-img';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
+import { createServer, createServerModuleRunner } from 'vite';
+const server = await createServer({
+	configFile: false,
+	root: process.cwd(),
+	logLevel: 'silent',
+	appType: 'custom',
+	optimizeDeps: { noDiscovery: true, include: [] },
+	server: { middlewareMode: true, hmr: false, watch: null },
+	plugins: [enhancedImages(), svelte()],
+});
+try {
+	const runner = createServerModuleRunner(server.environments.ssr, { hmr: false });
+	const picture = (await runner.import('/src/routes/pictured/red.png?enhanced')).default;
+	await runner.close();
+	console.log(JSON.stringify({
+		version: JSON.parse(readFileSync('node_modules/@sveltejs/enhanced-img/package.json', 'utf8')).version,
+		names: server.config.plugins.map((p) => p.name),
+		picture,
+	}));
+} finally {
+	await server.close();
+}
+`;
+
+describe.skipIf(!kit_supported)(
+	'the enhanced-img installed for enhanced_app',
+	() => {
+		test('names its markup plugin and gives an ?enhanced import as a Picture', async () => {
+			const result = await new Promise<{
+				version: string;
+				names: string[];
+				picture: any;
+			}>((done, fail) => {
+				execFile(
+					process.execPath,
+					['--input-type=module', '-e', ENHANCED_PROBE],
+					{ cwd: ENHANCED_APP },
+					(error, stdout, stderr) => {
+						if (error) fail(new Error(stderr || error.message));
+						else done(JSON.parse(stdout));
+					}
+				);
+			});
+			expect(
+				{ version: result.version, has: result.names.includes(MARKUP) },
+				`no plugin named ${MARKUP}`
+			).toEqual({ version: result.version, has: true });
+			// mdsvex renders a source per entry of sources and the img from img
+			const { sources, img } = result.picture;
+			expect(Object.keys(sources), 'Picture.sources').toEqual([
+				'avif',
+				'webp',
+				'png',
+			]);
+			for (const srcset of Object.values(sources))
+				expect(typeof srcset, 'a srcset of Picture.sources').toBe('string');
+			expect(typeof img.src, 'Picture.img.src').toBe('string');
+			expect({ w: img.w, h: img.h }, 'Picture.img.w and h').toEqual({
+				w: 40,
+				h: 30,
+			});
+		}, 60_000);
+	}
+);

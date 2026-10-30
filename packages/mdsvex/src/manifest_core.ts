@@ -78,6 +78,11 @@ export interface MdsvexManifest {
 	 */
 	import_images?: boolean;
 	/**
+	 * true when an image enhanced-img optimises is imported with ?enhanced, so
+	 * a replaced img gets a Picture as its src, a manifest without it means off
+	 */
+	enhanced_images?: boolean;
+	/**
 	 * the plugins that bring components, lowest precedence first, their
 	 * directives sit below directives and their components below components,
 	 * a manifest without it has none

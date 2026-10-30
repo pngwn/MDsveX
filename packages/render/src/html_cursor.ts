@@ -130,8 +130,16 @@ export interface PreMeta {
 	pre_props(meta: string, start: number): string;
 }
 
-/** a string is escaped as a url of the source is, '' leaves the attribute out, an expression goes in braces */
-export type UrlSource = string | { type: 'expression'; value: string };
+/**
+ * a string is escaped as a url of the source is, '' leaves the attribute out,
+ * an expression goes in braces, a picture names an imagetools Picture, a
+ * markdown image renders it as a picture element and a replacement gets it
+ * as its src
+ */
+export type UrlSource =
+	| string
+	| { type: 'expression'; value: string }
+	| { type: 'picture'; value: string };
 
 /** what replaces the src of an image or the href of a link, url is never empty, null or undefined keeps it */
 export type UrlLookup = (
@@ -1648,12 +1656,11 @@ function render_node(c: Cursor, sink?: MapSink): void {
 		case K.IMAGE: {
 			const pre = mo.length;
 			const meta = c.meta();
-			let s = '<img';
-			if (meta?.src) s += url_attr(meta.src as string, true);
+			let s = img_head(meta?.src);
 			s += ' alt="' + escape_text_html(_children_raw(c)) + '"';
 			if (meta?.title)
 				s += ' title="' + escape_text_html(meta.title as string) + '"';
-			mo = mo + s + _attrs(c, IMAGE_HANDLED) + ' />';
+			mo = mo + s + _attrs(c, IMAGE_HANDLED) + FOLD_STR[img_close];
 			// the syntax spans are empty, only the node is recorded
 			if (sink) put_record(sink, pre, mo.length, c.start, c.end, c.index, 0);
 			break;
@@ -2182,6 +2189,7 @@ const S_IMG = fold_base('<img');
 const S_SRC = fold_base(' src="');
 const S_ALT = fold_base(' alt="');
 const S_SELF_CLOSE = fold_base(' />');
+const S_PICTURE_CLOSE = fold_base(' /></picture>');
 const S_OL_START = fold_base('<ol start="');
 const S_OL = fold_base('<ol');
 const S_OL_OPEN = fold_base('<ol>\n');
@@ -2684,8 +2692,14 @@ function fold_link(c: Cursor, p: number): number {
 
 function fold_image(c: Cursor, p: number): number {
 	const meta = c.meta();
-	p = push_static(p, S_IMG);
-	if (meta?.src) p = fold_url(p, meta.src as string, true);
+	let close = S_SELF_CLOSE;
+	if (ul === null) {
+		p = push_static(p, S_IMG);
+		if (meta?.src) p = fold_url(p, meta.src as string, true);
+	} else {
+		p = push_dyn(p, img_head(meta?.src));
+		close = img_close;
+	}
 	p = push_static(p, S_ALT);
 	p = push_dyn(p, escape_text_html(_children_raw(c)));
 	p = push_static(p, S_QUOTE);
@@ -2695,7 +2709,7 @@ function fold_image(c: Cursor, p: number): number {
 		p = push_static(p, S_QUOTE);
 	}
 	p = fold_attrs(meta, p, IMAGE_HANDLED);
-	return push_static(p, S_SELF_CLOSE);
+	return push_static(p, close);
 }
 
 function fold_list(c: Cursor, p: number): number {
@@ -3230,15 +3244,14 @@ function tr_node(c: Cursor, sink: MapSink, p: number): number {
 			const pre = mo.length + FOLD_LEN[p];
 			if (p !== 0) mo += FOLD_STR[p];
 			const meta = c.meta();
-			let s = '<img';
-			if (meta?.src) s += url_attr(meta.src as string, true);
+			let s = img_head(meta?.src);
 			s += ' alt="' + escape_text_html(_children_raw(c)) + '"';
 			if (meta?.title)
 				s += ' title="' + escape_text_html(meta.title as string) + '"';
 			mo = mo + s + _attrs(c, IMAGE_HANDLED);
 			// the syntax spans are empty, only the node is recorded
 			tr_at(sink, pre, c);
-			return S_SELF_CLOSE;
+			return img_close;
 		}
 
 		case K.HTML_COMMENT: {
@@ -3768,23 +3781,23 @@ function mp_node(c: Cursor, sink: MapSink, p: number): number {
 			const pre = mo.length + FOLD_LEN[p];
 			if (p !== 0) mo += FOLD_STR[p];
 			const meta = c.meta();
-			let s = '<img';
-			if (meta?.src) s += url_attr(meta.src as string, true);
+			let s = img_head(meta?.src);
 			s += ' alt="' + escape_text_html(_children_raw(c)) + '"';
 			if (meta?.title)
 				s += ' title="' + escape_text_html(meta.title as string) + '"';
 			mo = mo + s + _attrs(c, IMAGE_HANDLED);
+			const close = img_close;
 			// the syntax spans are empty, only the node is recorded
 			put_record(
 				sink,
 				pre,
-				mo.length + FOLD_LEN[S_SELF_CLOSE],
+				mo.length + FOLD_LEN[close],
 				c.start,
 				c.end,
 				c.index,
 				0
 			);
-			return S_SELF_CLOSE;
+			return close;
 		}
 
 		case K.HTML_COMMENT: {
@@ -6120,12 +6133,49 @@ function fold_url(p: number, url: string, image: boolean): number {
 
 /** url_attr of a render with a lookup */
 function url_swap(url: string, image: boolean): string {
-	const name = image ? ' src=' : ' href=';
-	let to = ul!(url, image);
+	return url_value(image ? ' src=' : ' href=', url, ul!(url, image));
+}
+
+/** the attribute for what the lookup gave, a picture is the src of a replacement */
+function url_value(
+	name: string,
+	url: string,
+	to: UrlSource | null | undefined
+): string {
 	if (to == null) to = url;
 	if (typeof to !== 'string') return name + '{' + to.value + '}';
 	// an empty url of the source has no attribute either
 	return to === '' ? '' : name + '"' + escape_text_html(to) + '"';
+}
+
+/** the static that closes what img_head opened last */
+let img_close = S_SELF_CLOSE;
+
+/**
+ * a markdown image up to its alt, the img and its src, or for a picture the
+ * markup enhanced-img gives an image it imports, one source per format and
+ * the img with the fallback and its size
+ */
+function img_head(src: unknown): string {
+	img_close = S_SELF_CLOSE;
+	if (!src) return '<img';
+	if (ul === null) return '<img src="' + escape_text_html(src as string) + '"';
+	const to = ul(src as string, true);
+	if (to == null || typeof to === 'string' || to.type !== 'picture')
+		return '<img' + url_value(' src=', src as string, to);
+	img_close = S_PICTURE_CLOSE;
+	const v = to.value;
+	return (
+		'<picture>{#each Object.entries(' +
+		v +
+		".sources) as [format, srcset]}<source {srcset} type={'image/' + format} />{/each}<img src={" +
+		v +
+		'.img.src} width={' +
+		v +
+		'.img.w} height={' +
+		v +
+		'.img.h}'
+	);
 }
 
 /** the fences of the render in progress that take their code from elsewhere, null reads every one from the source */

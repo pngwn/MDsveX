@@ -484,6 +484,117 @@ describe("an image the build imports", () => {
 	});
 });
 
+describe("an image the build imports with enhanced-img", () => {
+	const FILES: Record<string, string> = {
+		"src/lib/Picture.svelte": svelte(
+			"src: { sources: Record<string, string>; img: { src: string; w: number; h: number } }; alt: string",
+		),
+		"src/lib/pictures.ts": "export { default as img } from './Picture.svelte';\n",
+		// as enhanced-img and vite/client declare them
+		"src/images.d.ts": [
+			"declare module '*?enhanced' {",
+			"\tconst picture: { sources: Record<string, string>; img: { src: string; w: number; h: number } };",
+			"\texport default picture;",
+			"}",
+			"declare module '*.png' {",
+			"\tconst url: string;",
+			"\texport default url;",
+			"}",
+			"",
+		].join("\n"),
+		// no query, so only the manifest says the build imports a Picture
+		"src/doc.svx": "![A chart](./chart.png)\n",
+	};
+
+	function with_manifest(fields: object, components = true) {
+		const p = project(FILES);
+		const lib = p.root + "/src/lib/";
+		p.write(
+			"node_modules/.mdsvex/manifest.json",
+			JSON.stringify({
+				version: 1,
+				root: p.root,
+				extensions: [".svx"],
+				component_mode: "markdown",
+				frontmatter_parse: false,
+				directive_plugins: false,
+				select_template: false,
+				templates: {},
+				components: components
+					? [{ id: "mdsvex:components", file: lib + "pictures.ts", names: ["img"] }]
+					: [],
+				directives: [],
+				documents: {},
+				import_images: true,
+				...fields,
+			}),
+		);
+		return p;
+	}
+
+	/** what typescript finds wrong in the generated code of the document */
+	function errors(p: Project, code?: number): string[] {
+		const program = p.program();
+		const doc = program
+			.getSourceFiles()
+			.find((f) => f.fileName.endsWith("doc.svx"))!;
+		return program
+			.getSemanticDiagnostics(doc)
+			.filter((d) => code === undefined || d.code === code)
+			.map((d) => doc.text.slice(d.start!, d.start! + d.length!));
+	}
+
+	it("types a replaced src as the Picture when the manifest says enhanced-img imports it", () => {
+		const p = with_manifest({ enhanced_images: true });
+		try {
+			expect(errors(p, 2322)).toEqual([]);
+			expect(p.diagnostics("src/doc.svx")).toEqual([]);
+		} finally {
+			p.dispose();
+		}
+	});
+
+	it("types it as the plain import without the field", () => {
+		const p = with_manifest({});
+		try {
+			expect(errors(p, 2322)).toEqual(['"src"']);
+		} finally {
+			p.dispose();
+		}
+	});
+
+	it("checks the picture markdown renders without a replacement", () => {
+		const p = with_manifest({ enhanced_images: true }, false);
+		try {
+			expect(p.diagnostics("src/doc.svx")).toEqual([]);
+			// the harness has no svelte element types, the sources and img reads type check
+			expect(errors(p).filter((text) => text !== "svelteHTML")).toEqual([]);
+		} finally {
+			p.dispose();
+		}
+	});
+
+	it("is enhanced with a mdsvex.config.json that says so", () => {
+		const config = (json: object) =>
+			project({
+				...FILES,
+				"mdsvex.config.json": JSON.stringify({
+					components: "./src/lib/pictures.ts",
+					...json,
+				}),
+			});
+		const on = config({ import_images: { enhanced: true } });
+		const off = config({});
+		try {
+			expect(errors(on, 2322)).toEqual([]);
+			expect(errors(off, 2322)).toEqual(['"src"']);
+		} finally {
+			on.dispose();
+			off.dispose();
+		}
+	});
+});
+
 describe("the props markdown gives a replacement", () => {
 	const MODULE = [
 		"export { default as img } from './Picture.svelte';",

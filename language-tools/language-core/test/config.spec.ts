@@ -218,6 +218,17 @@ describe("document options from a manifest", () => {
 		).toBe(true);
 	});
 
+	it("asks for enhanced imports only when the manifest has enhanced_images", () => {
+		expect(
+			document_options({ ...m, import_images: true, enhanced_images: true }, "/app/a.svx")
+				.compile!.import_images,
+		).toEqual({ enhanced: true });
+		expect(
+			"import_images" in
+				document_options({ ...m, enhanced_images: true }, "/app/a.svx").compile!,
+		).toBe(false);
+	});
+
 	it("passes smart_punctuation on as the manifest has it", () => {
 		expect("smart_punctuation" in document_options(m, "/app/a.svx").compile!).toBe(false);
 		expect(
@@ -464,6 +475,15 @@ describe("mdsvex.config.json", () => {
 		expect(from_json({}, root, ts).import_images).toBe(true);
 		expect(from_json({ import_images: true }, root, ts).import_images).toBe(true);
 		expect("import_images" in from_json({ import_images: false }, root, ts)).toBe(false);
+	});
+
+	it("takes import_images { enhanced: true }, json can not see the vite plugins", () => {
+		const root = tree({ "doc.svx": "![a](./a.png)" });
+		const on = from_json({ import_images: { enhanced: true } }, root, ts);
+		expect(on.import_images).toBe(true);
+		expect(on.enhanced_images).toBe(true);
+		for (const json of [{}, { import_images: true }, { import_images: { enhanced: false } }])
+			expect("enhanced_images" in from_json(json, root, ts)).toBe(false);
 	});
 
 	it("takes math, a manifest without the field for the default", () => {
