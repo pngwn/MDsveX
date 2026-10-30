@@ -99,24 +99,36 @@ const accordion: BundleDirective = {
 	},
 };
 
-const RT: BundleDirective = {
-	parse(node, ctx) {
-		// an inline directive has its args once its brackets close
-		return () => {
-			const rt = node.attrs.args?.rt;
-			if (typeof rt === 'string' && rt !== '') return;
-			ctx.warn(
-				'ruby_without_rt',
-				':ruby has no rt, write the reading as :ruby[漢字](rt=かんじ)',
-				node
-			);
-		};
-	},
-};
+/** an inline directive that warns when an arg it needs is missing */
+function needs(arg: string, code: string, message: string): BundleDirective {
+	return {
+		parse(node, ctx) {
+			// an inline directive has its args once its brackets close
+			return () => {
+				const value = node.attrs.args?.[arg];
+				if (typeof value === 'string' && value !== '') return;
+				ctx.warn(code, message, node);
+			};
+		},
+	};
+}
+
+const RT = needs(
+	'rt',
+	'ruby_without_rt',
+	':ruby has no rt, write the reading as :ruby[漢字](rt=かんじ)'
+);
+
+const TITLE = needs(
+	'title',
+	'abbr_without_title',
+	':abbr has no title, write what it stands for as :abbr[HTML](title="HyperText Markup Language")'
+);
 
 /**
  * thin directives over html elements, `:::details`, `:::accordion`,
- * `:kbd[Ctrl]`, `:ruby[漢字](rt=かんじ)` and `:badge[new]`, none needs javascript
+ * `:kbd[Ctrl]`, `:ruby[漢字](rt=かんじ)`, `:badge[new]`, `:mark[text]`,
+ * `:ins[text]` and `:abbr[HTML](title=...)`, none needs javascript
  *
  * each heading written directly inside `:::accordion` starts an item, a
  * `details` that holds the text of the heading as its summary and what follows
@@ -140,6 +152,9 @@ export function elements(options: ElementsOptions = {}): Bundle {
 			kbd: {},
 			ruby: RT,
 			badge: {},
+			mark: {},
+			ins: {},
+			abbr: TITLE,
 		},
 	};
 }

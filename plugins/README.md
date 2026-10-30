@@ -2,24 +2,24 @@
 
 Each directory here is one npm package, `@mdsvex/plugin-<name>`, that exports a function returning a plugin for the `plugins` option of `mdsvex()` and `compile()`.
 
-| package                         | directory                            | what it adds                                                                        |
-| ------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------- |
-| `@mdsvex/plugin-steps`          | [`steps`](./steps)                   | numbered steps, one for each heading inside `:::steps`                              |
-| `@mdsvex/plugin-tabs`           | [`tabs`](./tabs)                     | tabs and code groups, one tab for each heading or fence inside `:::tabs`            |
-| `@mdsvex/plugin-elements`       | [`elements`](./elements)             | details, accordions, keys, ruby and badges, each a directive over an html element   |
-| `@mdsvex/plugin-embeds`         | [`embeds`](./embeds)                 | YouTube and Vimeo players named by their title                                      |
-| `@mdsvex/plugin-figures`        | [`figures`](./figures)               | `:::figure[Caption]` around an image or anything else, numbered when asked          |
-| `@mdsvex/plugin-code-blocks`    | [`code-blocks`](./code-blocks)       | a `pre` with a copy button, the title and the caption of the fence                  |
-| `@mdsvex/plugin-diagram`        | [`diagram`](./diagram)               | `mermaid` fences drawn by pele at build time or by mermaid in the browser           |
-| `@mdsvex/plugin-anchors`        | [`anchors`](./anchors)               | a link to itself on every heading that has an id                                    |
-| `@mdsvex/plugin-external-links` | [`external-links`](./external-links) | `rel` and `target` on every link that leaves the site                               |
-| `@mdsvex/plugin-toc`            | [`toc`](./toc)                       | the headings of a document as data, and a `::toc` that lists them                   |
-| `@mdsvex/plugin-page-data`      | [`page-data`](./page-data)           | a reading time, an excerpt, an inferred title, an edit url and a last modified date |
-| `@mdsvex/plugin-emoji`          | [`emoji`](./emoji)                   | emoji shortcodes, `:tada:` becomes the emoji, with an optional label                |
-| `@mdsvex/plugin-references`     | [`references`](./references)         | links for `@user`, `#123`, `owner/repo#123`, commits and bare urls                  |
-| `@mdsvex/plugin-citations`      | [`citations`](./citations)           | `:cite[key]` from a CSL JSON bibliography, and a `::bibliography` that lists them   |
-| `@mdsvex/plugin-link-check`     | [`link-check`](./link-check)         | a warning at every link to an id or a document that is not there                    |
-| `@mdsvex/plugin-numbering`      | [`numbering`](./numbering)           | numbered figures, tables, equations and sections, and `:ref[fig:x]` references      |
+| package                         | directory                            | what it adds                                                                                                        |
+| ------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `@mdsvex/plugin-steps`          | [`steps`](./steps)                   | numbered steps, one for each heading inside `:::steps`                                                              |
+| `@mdsvex/plugin-tabs`           | [`tabs`](./tabs)                     | tabs and code groups, one tab for each heading or fence inside `:::tabs`                                            |
+| `@mdsvex/plugin-elements`       | [`elements`](./elements)             | details, accordions, keys, ruby, badges, marks, insertions and abbreviations, each a directive over an html element |
+| `@mdsvex/plugin-embeds`         | [`embeds`](./embeds)                 | YouTube and Vimeo players named by their title                                                                      |
+| `@mdsvex/plugin-figures`        | [`figures`](./figures)               | `:::figure[Caption]` around an image or anything else, numbered when asked                                          |
+| `@mdsvex/plugin-code-blocks`    | [`code-blocks`](./code-blocks)       | a `pre` with a copy button, the title and the caption of the fence                                                  |
+| `@mdsvex/plugin-diagram`        | [`diagram`](./diagram)               | `mermaid` fences drawn by pele at build time or by mermaid in the browser                                           |
+| `@mdsvex/plugin-anchors`        | [`anchors`](./anchors)               | a link to itself on every heading that has an id                                                                    |
+| `@mdsvex/plugin-external-links` | [`external-links`](./external-links) | `rel` and `target` on every link that leaves the site                                                               |
+| `@mdsvex/plugin-toc`            | [`toc`](./toc)                       | the headings of a document as data, and a `::toc` that lists them                                                   |
+| `@mdsvex/plugin-page-data`      | [`page-data`](./page-data)           | a reading time, an excerpt, an inferred title, an edit url and a last modified date                                 |
+| `@mdsvex/plugin-emoji`          | [`emoji`](./emoji)                   | emoji shortcodes, `:tada:` becomes the emoji, with an optional label                                                |
+| `@mdsvex/plugin-references`     | [`references`](./references)         | links for `@user`, `#123`, `owner/repo#123`, commits and bare urls                                                  |
+| `@mdsvex/plugin-citations`      | [`citations`](./citations)           | `:cite[key]` from a CSL JSON bibliography, and a `::bibliography` that lists them                                   |
+| `@mdsvex/plugin-link-check`     | [`link-check`](./link-check)         | a warning at every link to an id or a document that is not there                                                    |
+| `@mdsvex/plugin-numbering`      | [`numbering`](./numbering)           | numbered figures, tables, equations and sections, and `:ref[fig:x]` references                                      |
 
 The other files in this directory are the audit of the remark and rehype plugins these replace. [`PLUGIN_AUDIT.md`](./PLUGIN_AUDIT.md) says, for each thing those plugins did, whether mdsvex has it and where.
 

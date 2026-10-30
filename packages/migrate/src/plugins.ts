@@ -54,6 +54,10 @@ const FOOTNOTES: Replacement = {
 	message:
 		"Footnotes are built in. `migrate` writes each reference with the label of its definition.",
 };
+const MARK: Replacement = {
+	message:
+		"Install `@mdsvex/plugin-elements` and add `elements()` to `plugins`. `==mark==` is text, write `:mark[text]`.",
+};
 const EMOJI: Replacement = {
 	message:
 		"Install `@mdsvex/plugin-emoji` and add `emoji()` to `plugins`. It has the shortcodes GitHub uses.",
@@ -181,7 +185,14 @@ const REPLACEMENTS: Record<string, Replacement> = {
 			"Install `@mdsvex/plugin-elements` and add `elements()` to `plugins`. Write a key as `:kbd[Ctrl]`.",
 	},
 	"remark-abbr": {
-		message: "An inline directive does this: `:abbr[HTML](title=HyperText)` with an `abbr` component.",
+		message:
+			'Install `@mdsvex/plugin-elements` and add `elements()` to `plugins`. Write an abbreviation as `:abbr[HTML](title="HyperText Markup Language")`.',
+	},
+	"remark-flexible-markers": MARK,
+	"remark-mark-highlight": MARK,
+	"remark-ins": {
+		message:
+			"Install `@mdsvex/plugin-elements` and add `elements()` to `plugins`. `++ins++` is text, write `:ins[text]`.",
 	},
 	"remark-emoji": EMOJI,
 	"remark-gemoji": EMOJI,

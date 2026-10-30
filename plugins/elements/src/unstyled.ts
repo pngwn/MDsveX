@@ -4,3 +4,6 @@ export { default as accordion } from './Accordion.svelte';
 export { default as kbd } from './Kbd.svelte';
 export { default as ruby } from './Ruby.svelte';
 export { default as badge } from './Badge.svelte';
+export { default as mark } from './Mark.svelte';
+export { default as ins } from './Ins.svelte';
+export { default as abbr } from './Abbr.svelte';

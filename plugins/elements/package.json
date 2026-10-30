@@ -1,7 +1,7 @@
 {
 	"name": "@mdsvex/plugin-elements",
 	"version": "0.0.1",
-	"description": "Directives over html elements for mdsvex: details, accordions, keys, ruby and badges",
+	"description": "Directives over html elements for mdsvex: details, accordions, keys, ruby, badges, marks, insertions and abbreviations",
 	"type": "module",
 	"scripts": {
 		"build": "run-s build:check build:package",
@@ -43,6 +43,18 @@
 			"types": "./dist/Badge.svelte.d.ts",
 			"svelte": "./dist/Badge.svelte"
 		},
+		"./Mark.svelte": {
+			"types": "./dist/Mark.svelte.d.ts",
+			"svelte": "./dist/Mark.svelte"
+		},
+		"./Ins.svelte": {
+			"types": "./dist/Ins.svelte.d.ts",
+			"svelte": "./dist/Ins.svelte"
+		},
+		"./Abbr.svelte": {
+			"types": "./dist/Abbr.svelte.d.ts",
+			"svelte": "./dist/Abbr.svelte"
+		},
 		"./elements.css": "./dist/elements.css",
 		"./package.json": "./package.json"
 	},
@@ -67,7 +79,10 @@
 		"accordion",
 		"kbd",
 		"ruby",
-		"badge"
+		"badge",
+		"mark",
+		"ins",
+		"abbr"
 	],
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
