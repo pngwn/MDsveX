@@ -193,6 +193,16 @@ export interface MdsvexOptions
 	 */
 	import_images?: boolean | ImportImagesOptions;
 	/**
+	 * wraps each run of two or more top level blocks with no svelte in them
+	 * in a display contents div, so hydration steps over the run as one node,
+	 * child and sibling selectors no longer match across a wrapper, off by
+	 * default
+	 *
+	 * @example
+	 * wrap_static: true
+	 */
+	wrap_static?: boolean;
+	/**
 	 * called for the url of every markdown link and of every markdown image
 	 * that is not imported, after links.routes and before links.base, a string
 	 * replaces the url and nothing keeps it, a url with a svelte expression is
@@ -335,6 +345,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	inputs.smart_punctuation = smart_of(options.smart_punctuation);
 	if (options.footnotes !== undefined)
 		inputs.footnotes = footnotes_option(options.footnotes);
+	inputs.wrap_static = options.wrap_static;
 	const written_images = options.import_images;
 	inputs.import_images =
 		written_images === undefined || images_on(written_images);

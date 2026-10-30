@@ -4157,7 +4157,7 @@ function mp_table_cells_ext(
 /** flat so the caller never pays for a rope */
 function render_folded(c: Cursor): string {
 	fold_out = comp_prefix;
-	const p = fold_node(c, 0);
+	const p = ws_on ? ws_pass(c, undefined, 0, CM.FOLD, false) : fold_node(c, 0);
 	let html = fold_out;
 	fold_out = '';
 	if (p !== 0) html += FOLD_STR[p];
@@ -5509,7 +5509,9 @@ function walk_child(
 function wrap_root(c: Cursor, sink: MapSink | undefined, p: number): number {
 	p = wrap_pass(c, sink, p, true);
 	p = cm_wrap(p, wrap_open);
-	p = wrap_pass(c, sink, p, false);
+	p = ws_on
+		? ws_pass(c, sink, p, wrap_mode, true)
+		: wrap_pass(c, sink, p, false);
 	if (fn !== null) p = fn_section(c, sink, p, wrap_mode);
 	return cm_wrap(p, '</' + WRAP_LOCAL + '>');
 }
@@ -5620,6 +5622,11 @@ export class CursorHTMLRenderer {
 	 * references of a document as its labels are first met
 	 */
 	declare footnotes?: FootnoteRender;
+	/**
+	 * true wraps each run of two or more static root blocks in a display
+	 * contents div, the cached render of update ignores it
+	 */
+	declare wrap_static?: boolean;
 	/** the cached render met a footnote, so each update numbers them again */
 	private noted = false;
 
@@ -5678,6 +5685,7 @@ export class CursorHTMLRenderer {
 					);
 				if (extra) extra_begin(imports);
 				if (this.strict_directives) dir_strict = true;
+				if (this.wrap_static === true) ws_on = true;
 				hoist_begin(c, buf, extra);
 				if (code) module_begin_fold(buf, code);
 				prebuilt_begin(buf);
@@ -5693,6 +5701,7 @@ export class CursorHTMLRenderer {
 				esc_prebuilt = true;
 				esc_bits = null;
 				if (dir_strict) dir_strict = false;
+				if (ws_on) ws_on = false;
 				if (comp_scope !== null) comp_end();
 				if (extra) extra_end();
 				if (code) module_end();
@@ -5813,6 +5822,7 @@ export class CursorHTMLRenderer {
 				);
 			if (extra) extra_begin(imports);
 			if (this.strict_directives) dir_strict = true;
+			if (this.wrap_static === true) ws_on = true;
 			hoist_begin(c, buf, extra);
 			mo = comp_prefix;
 			if (code) {
@@ -5821,7 +5831,8 @@ export class CursorHTMLRenderer {
 				mo += module_script();
 			}
 			prebuilt_begin(buf);
-			if (trace) p = tr_node(c, sink, 0);
+			if (ws_on) p = ws_pass(c, sink, 0, trace ? CM.TRACE : CM.MAPPED, false);
+			else if (trace) p = tr_node(c, sink, 0);
 			else p = mp_node(c, sink, 0);
 			if (fn !== null) p = fn_section(c, sink, p, trace ? CM.TRACE : CM.MAPPED);
 		} finally {
@@ -5834,6 +5845,7 @@ export class CursorHTMLRenderer {
 			esc_prebuilt = true;
 			esc_bits = null;
 			if (dir_strict) dir_strict = false;
+			if (ws_on) ws_on = false;
 			if (comp_scope !== null) comp_end();
 			if (extra) extra_end();
 			if (code) module_end();
@@ -5872,6 +5884,7 @@ export class CursorHTMLRenderer {
 				comp_last = comp_begin(c, scope, directives, mode, this.replace_typed);
 			if (extra) extra_begin(imports);
 			if (this.strict_directives) dir_strict = true;
+			if (this.wrap_static === true) ws_on = true;
 			wrap_begin(this.template!, mode);
 			wrap_hoist_begin(c, buf);
 			if (code) {
@@ -5904,6 +5917,7 @@ export class CursorHTMLRenderer {
 			esc_prebuilt = true;
 			esc_bits = null;
 			if (dir_strict) dir_strict = false;
+			if (ws_on) ws_on = false;
 			if (comp_scope !== null) comp_end();
 			if (extra) extra_end();
 			wrap_end();
@@ -6047,6 +6061,7 @@ export class CursorHTMLRenderer {
 		if (this.smart_punctuation !== undefined)
 			this.smart_punctuation = undefined;
 		if (this.footnotes !== undefined) this.footnotes = undefined;
+		if (this.wrap_static !== undefined) this.wrap_static = undefined;
 		this.noted = false;
 		// the escape index is module state and would keep the source alive,
 		// every render resets it, a zero length clamps any text of '' to empty
@@ -7475,4 +7490,176 @@ function fn_section_folded(c: Cursor): string {
 	fold_out = '';
 	if (p !== 0) html += FOLD_STR[p];
 	return html;
+}
+
+//  static runs
+
+// hydration steps over the siblings before each node svelte owns one at a
+// time, a run of blocks in one wrapper is one step
+
+/** set while a render wraps runs of static blocks, only the root walks read it */
+let ws_on = false;
+
+const WS_OPEN = '<div style="display: contents">';
+const WS_CLOSE = '</div>';
+
+/**
+ * the root children as wrap_pass walks them, each block renders into an
+ * output of its own and its records move when it joins its run and when the
+ * run joins the document, so the html is never cut and a record moves twice
+ * at most
+ */
+function ws_pass(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	mode: number,
+	skip_hoisted: boolean
+): number {
+	const fold = mode === CM.FOLD;
+	const stride = mode === CM.TRACE ? Trace.SIZE : Rec.SIZE;
+	let doc = fold ? fold_out : mo;
+	if (p !== 0) doc += FOLD_STR[p];
+	// the static blocks not yet in doc, their records count from the start of run
+	let run = '';
+	let count = 0;
+	let run_rec = 0;
+	const n = c.words;
+	let child = n[W.first_child];
+	while (child !== Slot.NONE) {
+		const b = child * W.stride;
+		if (n[b + W.parent] !== 0) break;
+		const k = n[b] & 0xff;
+		if (k !== K.LINE_BREAK) {
+			c.move_to(child);
+			if (!skip_hoisted || !wrap_hoists(c, k)) {
+				const rec = sink === undefined ? 0 : sink.n;
+				if (fold) fold_out = '';
+				else mo = '';
+				p = walk_child(c, sink, 0, mode, child, k);
+				let out = fold ? fold_out : mo;
+				if (p !== 0) out += FOLD_STR[p];
+				if (out.length === 0 && count === 0) {
+					// renders nothing outside a run, an import or a definition
+					ws_shift(sink, rec, stride, doc.length);
+				} else if (out.length === 0 || ws_static(out)) {
+					// a block that renders nothing inside a run neither ends it nor counts
+					if (count === 0) run_rec = rec;
+					ws_shift(sink, rec, stride, run.length);
+					if (out.length !== 0) {
+						run += out;
+						count++;
+					}
+				} else {
+					doc = ws_join(doc, run, count, sink, run_rec, rec, stride);
+					run = '';
+					count = 0;
+					ws_shift(sink, rec, stride, doc.length);
+					doc += out;
+				}
+			}
+		}
+		child = n[b + W.next];
+	}
+	const end = sink === undefined ? 0 : sink.n;
+	doc = ws_join(doc, run, count, sink, run_rec, end, stride);
+	if (fold) fold_out = doc;
+	else mo = doc;
+	c.move_to(0);
+	return 0;
+}
+
+/** doc and the run after it, inside a wrapper when the run holds two blocks or more */
+function ws_join(
+	doc: string,
+	run: string,
+	count: number,
+	sink: MapSink | undefined,
+	from: number,
+	to: number,
+	stride: number
+): string {
+	if (count === 0) return doc;
+	if (count === 1) {
+		ws_move(sink, from, to, stride, doc.length);
+		return doc + run;
+	}
+	ws_move(sink, from, to, stride, doc.length + WS_OPEN.length);
+	return doc + WS_OPEN + run + WS_CLOSE;
+}
+
+function ws_shift(
+	sink: MapSink | undefined,
+	from: number,
+	stride: number,
+	by: number
+): void {
+	if (sink !== undefined) ws_move(sink, from, sink.n, stride, by);
+}
+
+function ws_move(
+	sink: MapSink | undefined,
+	from: number,
+	to: number,
+	stride: number,
+	by: number
+): void {
+	if (sink === undefined || by === 0) return;
+	// grow keeps every index, so the records sit where they were written
+	const rec = sink.rec;
+	for (let i = from; i < to; i += stride) rec[i] += by;
+}
+
+/**
+ * true when the markup holds nothing svelte finds while hydrating, a block
+ * it wrongly takes is still correct inside a wrapper
+ */
+function ws_static(s: string): boolean {
+	const len = s.length;
+	// the next brace from i, found again only once the scan passes it
+	let brace = s.indexOf('{');
+	let i = 0;
+	for (;;) {
+		const lt = s.indexOf('<', i);
+		// a brace in text is an expression or a block
+		if (brace !== -1 && (lt === -1 || brace < lt)) return false;
+		if (lt === -1) return true;
+		let ch = s.charCodeAt(lt + 1);
+		if (ch === 33) {
+			// a comment, svelte drops it, braces and all
+			const e = s.indexOf('-->', lt + 4);
+			if (e === -1) return false;
+			i = e + 3;
+			if (brace !== -1 && brace < i) brace = s.indexOf('{', i);
+			continue;
+		}
+		let j = lt + 1;
+		if (ch === 47) {
+			// an end tag, its name was read at the start tag
+			i = lt + 2;
+			continue;
+		}
+		// a capital, a dot or a colon in the name is a component or a svelte element
+		for (; j < len; j++) {
+			ch = s.charCodeAt(j);
+			if ((ch >= 65 && ch <= 90) || ch === 46 || ch === 58) return false;
+			if (!((ch >= 97 && ch <= 122) || (ch >= 48 && ch <= 57) || ch === 45))
+				break;
+		}
+		if (j === lt + 1) return false;
+		const name = s.slice(lt + 1, j);
+		if (name === 'script' || name === 'style' || name === 'slot') return false;
+		// the attributes, a colon outside a value is a directive, a brace anywhere an expression
+		let quote = 0;
+		for (; j < len; j++) {
+			ch = s.charCodeAt(j);
+			if (ch === 123) return false;
+			if (quote !== 0) {
+				if (ch === quote) quote = 0;
+			} else if (ch === 34 || ch === 39) quote = ch;
+			else if (ch === 58) return false;
+			else if (ch === 62) break;
+		}
+		i = j;
+	}
 }
