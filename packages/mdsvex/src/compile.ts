@@ -73,6 +73,12 @@ import {
 } from './fence_sources.js';
 import type { Fenced, SourceFences, SourceNeed } from './fence_sources.js';
 import type { Snippet, SnippetsOption } from './run_blocks.js';
+import { document_text } from './document_text.js';
+import type {
+	DirectiveText,
+	DocumentText,
+	TextOptions,
+} from './document_text.js';
 
 export type {
 	DataChange,
@@ -105,6 +111,12 @@ export {
 	PluginTaskError,
 } from '@mdsvex/parse';
 export { fence_meta } from './code_meta.js';
+export type {
+	DirectiveText,
+	DocumentText,
+	TextOptions,
+	TextSection,
+} from './document_text.js';
 export type { FenceMeta, MetaInfo } from './code_meta.js';
 export type { PluginData, PluginDataContext };
 export { DirectiveError } from '@mdsvex/render/html-cursor';
@@ -193,6 +205,16 @@ type BoundTables = NonNullable<ParseOptions['directive_handlers']>;
 export interface BundleDirective extends DirectiveEntry {
 	/** reserved for rendering the component at build time, nothing reads it yet */
 	static?: boolean;
+	/**
+	 * what the directive reads as in the plain text of a document, given its
+	 * args once the plugins settled and the text of its label, undefined
+	 * reads the label and what the directive holds, a leaf or a container
+	 * reads the string as blocks, apart where it has a blank line
+	 *
+	 * @example
+	 * cite: { text: (args) => '[' + JSON.parse(args.cites).map((c) => c.label).join(', ') + ']' }
+	 */
+	text?: DirectiveText;
 }
 
 /**
@@ -2945,6 +2967,73 @@ async function own_dependencies(
 		if (path != null) deps.add(path);
 	}
 	if (deps.size !== 0) result.dependencies = [...deps];
+}
+
+/**
+ * the plain text a reader of a parsed document sees, by section, for search
+ * indexes, feeds and llms.txt, read after settle so what plugins deferred is
+ * in it, the document can still render or be dropped afterwards, plugins is
+ * the plugins option of the parse, its directives say what they read as
+ *
+ * @example
+ * const parsed = session.parse(raw, inputs);
+ * await session.settle(parsed);
+ * const { sections } = parsed_text(parsed, { plugins });
+ */
+export function parsed_text(
+	parsed: Parsed,
+	options?: TextOptions
+): DocumentText {
+	const nodes = parsed._nodes;
+	if (nodes === null)
+		throw new Error(
+			'[mdsvex] the document rendered or was dropped, read its text before'
+		);
+	const host = parsed._host;
+	if (host !== null && host.pending !== null)
+		throw new Error(
+			'[mdsvex] the plugins of this document deferred work, wait for settle(parsed) before its text'
+		);
+	return document_text(nodes, parsed.source, options);
+}
+
+/**
+ * the plain text a reader of a document sees, by section, with its plugins
+ * run and settled and nothing rendered, as parsed_text gives it, safe in a
+ * browser, session is as for compile_async
+ *
+ * @example
+ * const { title, text, sections } = await compile_text(source, {
+ *   heading_ids: true,
+ *   code_blocks: false,
+ * });
+ */
+export async function compile_text(
+	source: string,
+	options?: CompileOptions & TextOptions,
+	session?: CompilerSession
+): Promise<DocumentText> {
+	session ??=
+		options !== undefined && has_plugins(options)
+			? async_session(options)
+			: new CompilerSession();
+	// a copy, inputs_of hands out one object for options that set nothing
+	const inputs = Object.assign(
+		compile_inputs(),
+		options === undefined ? no_inputs : inputs_of(options)
+	);
+	// nothing renders, so nothing a render needs is looked for
+	inputs.import_images = false;
+	inputs.sources = false;
+	inputs.snippets = false;
+	inputs.links = undefined;
+	const parsed = session.parse(source, inputs);
+	try {
+		await session.settle(parsed);
+		return parsed_text(parsed, options);
+	} finally {
+		session.drop(parsed);
+	}
 }
 
 /** @internal for tests */
