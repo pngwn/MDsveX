@@ -1,6 +1,6 @@
 {
 	"name": "@mdsvex/prettier-plugin",
-	"version": "0.1.0-next.0",
+	"version": "0.1.0-next.1",
 	"description": "Prettier plugin that formats mdsvex documents",
 	"type": "module",
 	"scripts": {

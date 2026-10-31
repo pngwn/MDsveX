@@ -1,5 +1,13 @@
 # @mdsvex/migrate
 
+## 0.2.0-next.3
+
+### Patch Changes
+
+- [#1232](https://github.com/pngwn/MDsveX/pull/1232) [`974d940`](https://github.com/pngwn/MDsveX/commit/974d9404d23db0c98fa83fbe9ac27f83291c909d) Thanks [@pngwn](https://github.com/pngwn)! - The note left for `rehype-figure`, `remark-figure-caption`, `rehype-mermaid`, `remark-mermaidjs`, `remark-youtube` and `remark-kbd` names the plugin that replaces it: `@mdsvex/plugin-figures`, `@mdsvex/plugin-diagram`, `@mdsvex/plugin-embeds` or `@mdsvex/plugin-elements`. A figure plugin also turns on `unwrap_images`, so an image alone in a figure has no paragraph around it.
+
+- [#1237](https://github.com/pngwn/MDsveX/pull/1237) [`bd7f9dd`](https://github.com/pngwn/MDsveX/commit/bd7f9dd49467d24250b5bc581e8020c5ac6e0431) Thanks [@pngwn](https://github.com/pngwn)! - The note left for `remark-abbr`, `remark-flexible-markers`, `remark-mark-highlight` and `remark-ins` names `@mdsvex/plugin-elements`, and says to write `:abbr[...](title=...)`, `:mark[...]` or `:ins[...]`.
+
 ## 0.2.0-next.2
 
 ### Minor Changes
