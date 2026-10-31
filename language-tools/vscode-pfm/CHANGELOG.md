@@ -1,5 +1,14 @@
 # vscode-pfm
 
+## 0.1.0-next.4
+
+### Patch Changes
+
+- [#1245](https://github.com/pngwn/MDsveX/pull/1245) [`09100bf`](https://github.com/pngwn/MDsveX/commit/09100bf02b7aa771c8bea99b61fa4b40508c8147) Thanks [@pngwn](https://github.com/pngwn)! - The editor no longer warns of an unknown language on a fence a plugin claims, such as `mermaid` with `@mdsvex/plugin-diagram`, as the build does not.
+
+- Updated dependencies []:
+  - @mdsvex/typescript-plugin@0.1.0-next.4
+
 ## 0.1.0-next.3
 
 ### Patch Changes
