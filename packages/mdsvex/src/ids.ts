@@ -8,6 +8,7 @@ export {
 	PLUGIN_COMPONENTS_ID,
 	METADATA_ID,
 	DATA_ID,
+	TEXT_ID,
 } from './virtual_ids.js';
 
 /** a URL as a path, a string as written */
