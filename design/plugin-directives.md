@@ -299,6 +299,24 @@ Added 2026-10-24, after a numbering plugin could not number the kit's `:::figure
 
 **Cost.** The observer path is a separate cold method behind `entry.observers !== null` in `dispatch_name`. The hot paths gain one field test each: `check_write` and `call_bound`.
 
+### 3.6 Fence languages a plugin renders
+
+Added 2026-10-31. `@mdsvex/plugin-diagram` wraps each `mermaid` fence in a `diagram` directive and keeps the fence as the diagram's source and fallback. The fence still went through the highlighter, which has no mermaid grammar, so every file with a diagram warned `unknown_language`. A plugin had no way to say it renders a language itself.
+
+**A bundle claims languages.** `fences: ['mermaid']` on the bundle, beside `directives`, as the languages are part of what the plugin is, not something a handler decides per node. A handler that decided per fence (`ctx.claim(node)`) would need a node flag the render reads and the undo log reverts on a fed parse, for no case a static list misses. A static list is read once, in `unpack`.
+
+The decisions:
+
+- **Not highlighted at all.** A claimed fence never reaches the highlighter, twinkleplop or a highlighter function: it renders as plain code, as with `highlight: false`, and gives no warning. The plugin renders the fence, so highlighting it is wasted work. The code still goes to a replaced `pre`, which gets its `lang`, `meta`, `title` and `caption`. For diagram this means the source under a drawing is a plain `<pre><code class="language-mermaid">` and no longer the token-less twinkleplop block, which is what a site with `highlight: false` already had.
+- **One owner.** Two bundles that claim a language throw a `FenceOwnerError` from `unpack`, with `language` and both plugin names as `plugins`, at setup as `DirectiveOwnerError` does. A plugin may list a language twice. There is no observer for a fence: any plugin's `code_fence` handlers still see every fence, the claim only keeps the highlighter away.
+- **Only fences.** A code span with a `#!` hint is highlighted as before. A plugin that renders a code span replaces the node.
+- **The language as written,** the first word of the info string after any `src=` rewrite, so `Mermaid` is not claimed by `mermaid`. That matches what a handler reading `fence_meta(node.info).lang` sees. Names are non-empty and have no whitespace; `''` (a fence with no language) can't be claimed, as `default_language` covers it.
+- **`highlight: false`** highlights nothing, so a claim changes nothing. **A highlighter function** is never called for a claimed fence. **`math`** fences are rendered by the `math` option inside the run before the highlight config, so claiming `math` changes nothing while that option is on.
+- **The editor.** The language server compiles with twinkleplop and shows compile warnings as diagnostics, but never runs plugins. The manifest entry of a plugin carries `fences`, a plugin with fences and no modules gets an entry, and the language server passes them on as bundles that only claim, one array per manifest. No manifest version bump: an entry without `fences` claims none.
+- **Prettier.** `mdsvexFormatFences` formats a fence by the prettier parser of its language and leaves one with none alone. It doesn't load the mdsvex config and doesn't need to: the claim is about rendering, and formatting the source of a claimed fence is the same as of any other.
+
+**Cost.** `unpack` builds a `FenceClaims` only when a bundle has `fences`, and `unbundled`, which only a compile with plugins runs, swaps `highlight` for a config that checks the set before calling the real one, cached per option. `bind`, the run and the renderer are unchanged, so a document without such a plugin runs the code it ran before, and one with it pays a `Set.has` per fence.
+
 ## 4. Examples
 
 ### Steps

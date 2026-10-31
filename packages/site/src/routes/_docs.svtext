@@ -587,6 +587,7 @@ export function steps() {
 | `directives` | one entry per directive name the plugin owns |
 | `parse` | a [parse plugin](docs#parse_plugins) for the whole document, the same object an entry of `parse_plugins` is |
 | `components` | element replacements, as `{ specifier, names }` |
+| `fences` | the fence languages the plugin renders itself, such as `['mermaid']`, which the highlighter never sees |
 
 An entry of `directives` can hold handlers. They are bound to that directive, so they never run anywhere else in the document:
 
@@ -662,6 +663,34 @@ export function numbering() {
 - **It changes no node.** It writes data, warns, and reads the tree. Writing to a node, the directive or anything else, throws a `TypeError` that names the plugin that owns the directive.
 - **It runs after the owner,** at the open and at the close, so it sees the args and the children as the owner left them.
 - **It runs whoever renders the directive:** a plugin, your own component, or nothing yet.
+
+A plugin that renders the fences of a language itself claims them with `fences`. `@mdsvex/plugin-diagram` draws each `mermaid` fence and keeps its code as the diagram's source:
+
+```js
+export function diagram() {
+	return {
+		name: 'diagram',
+		module: '@acme/diagram/directives',
+		directives: { diagram: {} },
+		fences: ['mermaid'],
+		parse: {
+			code_fence: {
+				parse(node) {
+					if (fence_meta(node.info).lang !== 'mermaid') return;
+					node.wrap_from('directive_container', { name: 'diagram' }).close();
+				}
+			}
+		}
+	};
+}
+```
+
+- **The highlighter never sees a claimed fence.** It renders as plain code, as with `highlight: false`, and there is no `unknown_language` warning for it. That holds for twinkleplop and for a highlighter function, and saves the work of highlighting code the plugin replaces. It still goes to a replaced `pre`, with its `lang`, `title` and the rest.
+- **A language has one owner.** Two plugins that claim the same language throw a `FenceOwnerError` when the config loads, with `language` and both plugin names as `plugins`.
+- **Only fences.** A code span with a hint, `` `#!mermaid A --> B` ``, is highlighted as before.
+- **The language as written**, the first word of the info string, so `Mermaid` is not `mermaid`. Claim what your handler matches.
+- **`math` fences** are rendered by the [`math`](docs#math) option before any highlighter, so claiming `math` changes nothing while it is on.
+- **The editor knows.** The manifest lists the claimed languages, so the language server does not warn of them either.
 
 `compile()` takes `plugins` as well. It writes `module` as the import specifier exactly as given.
 
@@ -2261,7 +2290,7 @@ Each `mermaid` fence is drawn as a diagram, by [pele](https://pele.run) or by [m
 
 **With mermaid** the server renders the code and the browser loads mermaid on a page that has a diagram and draws it in place of the code. Without JavaScript the reader sees the code.
 
-The plugin wraps each `mermaid` fence in a `diagram` directive, so the code still renders through whatever replaces `pre`, as the source in a closed "Diagram source" disclosure under the drawing. The `title` and `caption` of the fence go around the diagram, and `accTitle:` and `accDescr:` name it for screen readers. The highlighter has no mermaid grammar, so the build warns once per file that the code renders plain.
+The plugin wraps each `mermaid` fence in a `diagram` directive, so the code still renders through whatever replaces `pre`, as the source in a closed "Diagram source" disclosure under the drawing. The `title` and `caption` of the fence go around the diagram, and `accTitle:` and `accDescr:` name it for screen readers. The plugin [claims](docs#plugins) the `mermaid` language, so the highlighter never sees these fences, the code renders plain and nothing warns.
 
 ### Anchors
 
@@ -2957,7 +2986,7 @@ interface HighlightOptions {
 
 - `languages` adds languages and aliases, merged over the bundled ones. See [languages](docs#languages).
 - `default_language` highlights fences that name no language.
-- `on_unknown_language` decides what happens to a language mdsvex doesn't have. `'plain'`, the default, renders it as plain code and warns once per file and language. `'throw'` fails the build.
+- `on_unknown_language` decides what happens to a language mdsvex doesn't have. `'plain'`, the default, renders it as plain code and warns once per file and language. `'throw'` fails the build. A language a plugin [claims](docs#plugins), such as `mermaid` with `@mdsvex/plugin-diagram`, is never looked up, so it neither warns nor throws.
 - `line_numbers` numbers every fence's lines, `{ start: 10 }` from 10. A fence's own meta overrides it.
 - `annotations` lists the [code directives](docs#code-directives). Leave it out for the defaults, or pass `false` for none.
 - `render` is twinkleplop's render options under every fence's own, such as `indent_guides`, `whitespace` or the `line` and `token` hooks. See [twinkleplop's render options](https://twinkleplop.pngwn.at/docs/render_options).
@@ -3215,6 +3244,7 @@ type Highlighter = (
 
 - `lang` is the fence's language, `""` when it names none, and `meta` the rest of the info string.
 - `inline` is `true` for a [code span with ` #! `](docs#inline-code). Plain code spans never reach the highlighter.
+- A fence in a language a plugin [claims](docs#plugins) never reaches it either, the plugin renders that fence.
 - It returns a whole `<pre>` for a fence, or a `<code>` for inline code. `null` or `undefined` renders that code plain.
 - It must be synchronous. Do any async setup before `mdsvex()` is called, with top-level `await` in your Vite config.
 - It returns ordinary HTML. Don't escape it for Svelte, with `escapeSvelte` or anything else, and don't wrap it in `{@html}`. mdsvex escapes every brace in what you return, so a `{@html …}` wrapper would show up as text.

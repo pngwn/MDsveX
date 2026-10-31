@@ -46,7 +46,8 @@ export interface DiagramOptions {
 /**
  * draws each `mermaid` fence as a diagram, with pele at build time or with
  * mermaid in the browser, the fence is wrapped in a `diagram` directive so it
- * still renders as code, through any `pre`, as the source and the fallback
+ * still renders as plain code, through any `pre`, as the source and the
+ * fallback, the plugin claims the language so it is never highlighted
  *
  * pele and mermaid are optional peer dependencies, install the one to use
  *
@@ -66,6 +67,7 @@ export function diagram(options: DiagramOptions = {}): Bundle {
 			engine +
 			(options.css === false ? '/unstyled' : ''),
 		directives: { diagram: {} },
+		fences: ['mermaid'],
 		parse: {
 			code_fence: {
 				parse(node, ctx) {

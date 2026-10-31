@@ -42,6 +42,7 @@ import { PLUGIN_DATA_EXPORT, plugin_data_export } from './plugin_data.js';
 import type { PluginData, PluginDataContext } from './plugin_data.js';
 import { scope_of } from './root_scope.js';
 import { highlight_run, plain_run } from './highlight_run.js';
+import { claim_fences, FenceClaims } from './fence_claims.js';
 export { highlight_error_at, MathError } from './highlight_run.js';
 import type {
 	HighlightOption,
@@ -105,6 +106,7 @@ export {
 	PluginTaskError,
 } from '@mdsvex/parse';
 export { fence_meta } from './code_meta.js';
+export { FenceOwnerError } from './fence_claims.js';
 export type { FenceMeta, MetaInfo } from './code_meta.js';
 export type { PluginData, PluginDataContext };
 export { DirectiveError } from '@mdsvex/render/html-cursor';
@@ -222,6 +224,15 @@ export interface Bundle {
 	parse?: ParsePlugin;
 	/** element replacements, below those of the components option */
 	components?: ComponentSource;
+	/**
+	 * the languages of the fences the plugin renders itself, as written in
+	 * the info string, the highlighter never sees such a fence, so it renders
+	 * as plain code and warns of no unknown language, a language has one owner
+	 *
+	 * @example
+	 * fences: ['mermaid']
+	 */
+	fences?: string[];
 }
 
 export interface CompileOptions
@@ -752,6 +763,8 @@ interface Unpacked {
 	components: Merge<ComponentSource>;
 	/** the document wide plugin of each bundle that has one */
 	parse: Merge<ParsePlugin>;
+	/** the fence languages the bundles claim, null when none does */
+	fences: FenceClaims | null;
 }
 
 const unpacked = new WeakMap<Bundle[], Unpacked>();
@@ -787,6 +800,7 @@ function unpack(bundles: Bundle[]): Unpacked {
 	const components: ComponentSource[] = [];
 	const parse: ParsePlugin[] = [];
 	const owners = new Map<string, string>();
+	let fences: Map<string, string> | null = null;
 	for (let i = 0; i < bundles.length; i++) {
 		const bundle = bundles[i];
 		if (!is_record(bundle))
@@ -847,6 +861,14 @@ function unpack(bundles: Bundle[]): Unpacked {
 					: { ...bundle.parse, name: bundle.name }
 			);
 		}
+		if (bundle.fences !== undefined) {
+			const bad = claim_fences(
+				bundle.fences,
+				bundle.name,
+				(fences ??= new Map())
+			);
+			if (bad !== null) throw bundle_error(i, bundle, bad);
+		}
 	}
 	const out: Unpacked = {
 		handlers: has_directive_handlers(tables) ? tables : undefined,
@@ -854,6 +876,7 @@ function unpack(bundles: Bundle[]): Unpacked {
 		directives: new Merge(directives),
 		components: new Merge(components),
 		parse: new Merge(parse),
+		fences: fences === null ? null : new FenceClaims(fences),
 	};
 	unpacked.set(bundles, out);
 	return out;
@@ -880,6 +903,7 @@ function unbundled(inputs: CompileInputs): CompileInputs {
 	out.directive_handlers =
 		u.handlers ??
 		(parse === undefined || parse.length === 0 ? undefined : u.owners);
+	if (u.fences !== null) out.highlight = u.fences.with(inputs.highlight);
 	return out;
 }
 

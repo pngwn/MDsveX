@@ -329,6 +329,23 @@ describe("document options from a manifest", () => {
 		);
 	});
 
+	it("leaves the fences a plugin claims to it, as the build does", () => {
+		const claimed: MdsvexManifest = {
+			...m,
+			plugins: [{ name: "diagram", directives: null, components: null, fences: ["mermaid"] }],
+		};
+		const source = "```mermaid\ngraph TD\n```\n\n```nope\nx\n```\n";
+		const options = document_options(claimed, "/app/a.svx").compile!;
+		const { code, warnings } = compile(source, options);
+		expect(warnings?.map((w) => [w.code, w.start.line])).toEqual([["unknown_language", 5]]);
+		expect(code).toContain('<pre><code class="language-mermaid">graph TD</code></pre>');
+		expect(document_options(claimed, "/app/b.svx").compile!.plugins).toBe(options.plugins);
+		expect("plugins" in document_options(m, "/app/a.svx").compile!).toBe(false);
+		expect(
+			compile(source, document_options(m, "/app/a.svx").compile).warnings?.map((w) => w.code),
+		).toEqual(["unknown_language", "unknown_language"]);
+	});
+
 	it("reports directives and frontmatter only when nothing at build could handle them", () => {
 		const opts = document_options(m, "/app/a.svx");
 		expect(opts.report_directives).toBe(true);

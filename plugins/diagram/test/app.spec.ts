@@ -5,7 +5,12 @@ import { fileURLToPath } from 'node:url';
 import { diagram } from '@mdsvex/plugin-diagram';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { mdsvex } from 'mdsvex';
-import { createServer, createServerModuleRunner, normalizePath } from 'vite';
+import {
+	createLogger,
+	createServer,
+	createServerModuleRunner,
+	normalizePath,
+} from 'vite';
 import type { Plugin, ViteDevServer } from 'vite';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
@@ -28,11 +33,17 @@ const FILES = {
 	),
 };
 
+/** what vite warned of, without colours */
+const warned: string[] = [];
+
 async function serve(root: string, main: Plugin[]): Promise<ViteDevServer> {
+	const logger = createLogger('silent');
+	logger.warn = (message) =>
+		void warned.push(message.replace(/\u001b\[[0-9;]*m/g, ''));
 	return createServer({
 		root,
 		configFile: false,
-		logLevel: 'silent',
+		customLogger: logger,
 		appType: 'custom',
 		cacheDir: join(root, '.vite'),
 		optimizeDeps: { noDiscovery: true, include: [] },
@@ -92,11 +103,12 @@ describe('with pele in a vite app', () => {
 			'<title id="diagram-title">How a page is built</title>'
 		);
 		expect(html).toMatch(
-			/<details class="diagram-source"><summary>Diagram source<\/summary> <figure class="twinkleplop-block" data-language="mermaid">.*graph TD/s
+			/<details class="diagram-source"><summary>Diagram source<\/summary> <pre><code class="language-mermaid">graph TD/
 		);
 		expect(html).toMatch(
 			/<div class="diagram-caption">How it goes<\/div><\/figure>$/
 		);
+		expect(warned.filter((m) => m.includes('no highlighter'))).toEqual([]);
 	});
 
 	test('a diagram that can not be drawn shows why and its source', async () => {
@@ -147,9 +159,10 @@ describe('with mermaid in a vite app', () => {
 	test('the server renders the code in a figure, the diagram is drawn on the client', async () => {
 		const html = await ssr(server, '/src/flow.svx');
 		expect(html).toMatch(
-			/^<figure class="diagram diagram-mermaid"><figcaption class="diagram-title">Flow<\/figcaption>\s*<figure class="twinkleplop-block" data-language="mermaid">.*graph TD.*<div class="diagram-caption">How it goes<\/div><\/figure>$/s
+			/^<figure class="diagram diagram-mermaid"><figcaption class="diagram-title">Flow<\/figcaption>\s*<pre><code class="language-mermaid">graph TD.*<div class="diagram-caption">How it goes<\/div><\/figure>$/s
 		);
 		expect(html).not.toContain('<svg');
+		expect(warned.filter((m) => m.includes('no highlighter'))).toEqual([]);
 	});
 
 	test('the library is imported from the component, lazily, and only by its module', async () => {

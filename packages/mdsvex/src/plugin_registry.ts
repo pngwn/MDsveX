@@ -138,12 +138,18 @@ export function plugin_registry(written: readonly Bundle[]) {
 			for (let i = 0; i < written.length; i++) {
 				const own = manifest_module(directives[i]);
 				const replaced = manifest_module(components[i]);
-				if (own === null && replaced === null) continue;
-				out.push({
+				const fences = written[i].fences;
+				const claims =
+					Array.isArray(fences) && fences.length !== 0 ? fences : null;
+				if (own === null && replaced === null && claims === null) continue;
+				const entry: ManifestPlugin = {
 					name: written[i].name,
 					directives: own,
 					components: replaced,
-				});
+				};
+				// left out when it claims none, as an entry from before the option is
+				if (claims !== null) entry.fences = [...claims];
+				out.push(entry);
 			}
 			return out;
 		},
