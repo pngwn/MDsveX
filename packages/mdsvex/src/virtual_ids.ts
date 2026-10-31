@@ -13,3 +13,5 @@ export const PLUGIN_COMPONENTS_ID = 'mdsvex:plugin-components/';
 export const METADATA_ID = 'mdsvex:metadata:';
 /** a document imported with ?data, the path of the document and .js follow */
 export const DATA_ID = 'mdsvex:data:';
+/** a document imported with ?text, the path of the document and .js follow */
+export const TEXT_ID = 'mdsvex:text:';

@@ -14,11 +14,13 @@ export {
 	PLUGIN_ID,
 	TEMPLATE_DIRECTIVES_ID,
 	TEMPLATE_ID,
+	TEXT_ID,
 } from './virtual_ids.js';
 export {
 	data_module,
 	metadata_module,
 	read_metadata,
+	text_module,
 } from './query_modules.js';
 export { CONFIG_FILE, read_json_config } from './json_config.js';
 export { template_module } from './template_module.js';
