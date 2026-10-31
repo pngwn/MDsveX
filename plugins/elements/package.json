@@ -1,6 +1,6 @@
 {
 	"name": "@mdsvex/plugin-elements",
-	"version": "0.0.1",
+	"version": "0.1.0-next.0",
 	"description": "Directives over html elements for mdsvex: details, accordions, keys, ruby, badges, marks, insertions and abbreviations",
 	"type": "module",
 	"scripts": {

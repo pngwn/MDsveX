@@ -1,5 +1,12 @@
 # @mdsvex/language-server
 
+## 0.1.0-next.3
+
+### Patch Changes
+
+- Updated dependencies [[`eddbaa4`](https://github.com/pngwn/MDsveX/commit/eddbaa482c7ae775020f147e9a10ecdccb81025a)]:
+  - @mdsvex/language-core@0.1.0-next.3
+
 ## 0.1.0-next.2
 
 ### Patch Changes

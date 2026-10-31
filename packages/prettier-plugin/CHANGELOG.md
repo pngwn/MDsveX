@@ -1,5 +1,14 @@
 # @mdsvex/prettier-plugin
 
+## 0.1.0-next.1
+
+### Patch Changes
+
+- [#1241](https://github.com/pngwn/MDsveX/pull/1241) [`22e8562`](https://github.com/pngwn/MDsveX/commit/22e85628a68e3557707a5b34488822d5ceb63657) Thanks [@pngwn](https://github.com/pngwn)! - Documents with a lot of HTML parse about 8% faster, render to HTML about 30% faster and compile about 12% faster. The `attributes` of an HTML node's metadata are now built the first time they are read, so a spread of the metadata, `Object.keys` and `Object.entries` leave them out. Read `meta.attributes` directly instead.
+
+- Updated dependencies [[`ba7f8dd`](https://github.com/pngwn/MDsveX/commit/ba7f8dd3d8441edfeb529b34b07dac80058de35a), [`22e8562`](https://github.com/pngwn/MDsveX/commit/22e85628a68e3557707a5b34488822d5ceb63657)]:
+  - @mdsvex/parse@1.0.0-next.3
+
 ## 0.1.0-next.0
 
 ### Minor Changes

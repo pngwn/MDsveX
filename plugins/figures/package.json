@@ -1,6 +1,6 @@
 {
 	"name": "@mdsvex/plugin-figures",
-	"version": "0.0.1",
+	"version": "0.1.0-next.0",
 	"description": "Figures for mdsvex: a figure directive around an image or anything else, with its caption",
 	"type": "module",
 	"scripts": {

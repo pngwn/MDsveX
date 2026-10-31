@@ -1,5 +1,66 @@
 # mdsvex
 
+## 1.0.0-next.3
+
+### Minor Changes
+
+- [#1234](https://github.com/pngwn/MDsveX/pull/1234) [`ba7f8dd`](https://github.com/pngwn/MDsveX/commit/ba7f8dd3d8441edfeb529b34b07dac80058de35a) Thanks [@pngwn](https://github.com/pngwn)! - A plugin can observe a directive another plugin owns. `observe` on a parse plugin, or on the `parse` of a plugin, takes entries by directive name as a plugin's own `directives` do, with `parse`, `children` and `descendants`:
+
+  ```js
+  const numbering = {
+  	name: 'numbering',
+  	observe: {
+  		figure: {
+  			parse(figure, ctx) {
+  				const number = (ctx.scratch.figures = (ctx.scratch.figures ?? 0) + 1);
+  				return () => ctx.set('target:' + figure.attrs.args.id, { number });
+  			},
+  		},
+  	},
+  };
+  ```
+
+  An observer runs after the owner's handlers, at the open and at the close, whoever owns the name or renders the directive, in the fused pass. It writes plugin data, warns, takes ids, uses its scratch and defers, and changes no node: a write to one, from its handlers, its close callbacks or a task it deferred, throws a `TypeError` that names the directive and its owner.
+
+  A directive has one owner. Two plugins that bind the same directive name throw a `DirectiveOwnerError` with `directive` and both plugin names at setup, where the later one used to take the name silently, and so do two `directive_handlers` tables in the parse package.
+
+- [#1238](https://github.com/pngwn/MDsveX/pull/1238) [`eddbaa4`](https://github.com/pngwn/MDsveX/commit/eddbaa482c7ae775020f147e9a10ecdccb81025a) Thanks [@pngwn](https://github.com/pngwn)! - Markdown images are optimised when `@sveltejs/enhanced-img` is installed. With `enhancedImages()` in the Vite plugins, `import_images` imports every image enhanced-img can optimise (avif, gif, heif, jpeg, jpg, png, tiff, webp) with `?enhanced`, and the image renders as the `<picture>` enhanced-img would give it: a `<source>` for each format, then an `<img>` with the `width` and `height` of the file and the image's `alt` and `title`. A replaced `img` gets the imported picture as its `src` prop. An `.svg`, an image with a query of its own such as `?url`, a root url and a remote url are left as they are. Without enhanced-img nothing changes.
+
+  The image now sits inside a `<picture>`, so CSS such as `p > img` no longer matches it, and the first build is slower while sharp makes the formats. `import_images: { enhanced: false }` keeps plain imports, and `{ enhanced: true }` fails at startup when `enhancedImages()` is missing. `compile()` takes `{ enhanced: true }` too, off by default. A `UrlSource` of `@mdsvex/render` can be `{ type: 'picture', value }`.
+
+- [#1240](https://github.com/pngwn/MDsveX/pull/1240) [`6f92236`](https://github.com/pngwn/MDsveX/commit/6f9223665b799344096fedfb050f8dd6db9b9e8c) Thanks [@pngwn](https://github.com/pngwn)! - A new `wrap_static` option wraps each run of two or more top level blocks that hold no Svelte in a `<div style="display: contents">`. Hydration then steps over the whole run as one node instead of visiting every block, which cuts the first hydration of a long, mostly static page by up to a quarter. It is off by default, because child and sibling selectors such as `.prose > p` or `h2 + p` no longer match across a wrapper.
+
+  ```js
+  mdsvex({ wrap_static: true });
+  ```
+
+  ```html
+  <!-- before -->
+  <h2>Install</h2>
+  <p>Run the command.</p>
+  <Demo />
+  <p>Done.</p>
+  <p>Next steps.</p>
+  <!-- after -->
+  <div style="display: contents">
+  	<h2>Install</h2>
+  	<p>Run the command.</p>
+  </div>
+  <Demo />
+  <div style="display: contents">
+  	<p>Done.</p>
+  	<p>Next steps.</p>
+  </div>
+  ```
+
+### Patch Changes
+
+- [#1241](https://github.com/pngwn/MDsveX/pull/1241) [`22e8562`](https://github.com/pngwn/MDsveX/commit/22e85628a68e3557707a5b34488822d5ceb63657) Thanks [@pngwn](https://github.com/pngwn)! - Documents with a lot of HTML parse about 8% faster, render to HTML about 30% faster and compile about 12% faster. The `attributes` of an HTML node's metadata are now built the first time they are read, so a spread of the metadata, `Object.keys` and `Object.entries` leave them out. Read `meta.attributes` directly instead.
+
+- Updated dependencies [[`ba7f8dd`](https://github.com/pngwn/MDsveX/commit/ba7f8dd3d8441edfeb529b34b07dac80058de35a), [`eddbaa4`](https://github.com/pngwn/MDsveX/commit/eddbaa482c7ae775020f147e9a10ecdccb81025a), [`22e8562`](https://github.com/pngwn/MDsveX/commit/22e85628a68e3557707a5b34488822d5ceb63657), [`6f92236`](https://github.com/pngwn/MDsveX/commit/6f9223665b799344096fedfb050f8dd6db9b9e8c)]:
+  - @mdsvex/parse@1.0.0-next.3
+  - @mdsvex/render@1.0.0-next.3
+
 ## 1.0.0-next.2
 
 ### Minor Changes

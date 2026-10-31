@@ -1,6 +1,6 @@
 {
 	"name": "@mdsvex/plugin-code-blocks",
-	"version": "0.0.1",
+	"version": "0.1.0-next.0",
 	"description": "Code blocks for mdsvex with a copy button that announces the result, the title and the caption",
 	"type": "module",
 	"scripts": {
