@@ -1,5 +1,33 @@
 # parse
 
+## 1.0.0-next.3
+
+### Minor Changes
+
+- [#1234](https://github.com/pngwn/MDsveX/pull/1234) [`ba7f8dd`](https://github.com/pngwn/MDsveX/commit/ba7f8dd3d8441edfeb529b34b07dac80058de35a) Thanks [@pngwn](https://github.com/pngwn)! - A plugin can observe a directive another plugin owns. `observe` on a parse plugin, or on the `parse` of a plugin, takes entries by directive name as a plugin's own `directives` do, with `parse`, `children` and `descendants`:
+
+  ```js
+  const numbering = {
+  	name: 'numbering',
+  	observe: {
+  		figure: {
+  			parse(figure, ctx) {
+  				const number = (ctx.scratch.figures = (ctx.scratch.figures ?? 0) + 1);
+  				return () => ctx.set('target:' + figure.attrs.args.id, { number });
+  			},
+  		},
+  	},
+  };
+  ```
+
+  An observer runs after the owner's handlers, at the open and at the close, whoever owns the name or renders the directive, in the fused pass. It writes plugin data, warns, takes ids, uses its scratch and defers, and changes no node: a write to one, from its handlers, its close callbacks or a task it deferred, throws a `TypeError` that names the directive and its owner.
+
+  A directive has one owner. Two plugins that bind the same directive name throw a `DirectiveOwnerError` with `directive` and both plugin names at setup, where the later one used to take the name silently, and so do two `directive_handlers` tables in the parse package.
+
+### Patch Changes
+
+- [#1241](https://github.com/pngwn/MDsveX/pull/1241) [`22e8562`](https://github.com/pngwn/MDsveX/commit/22e85628a68e3557707a5b34488822d5ceb63657) Thanks [@pngwn](https://github.com/pngwn)! - Documents with a lot of HTML parse about 8% faster, render to HTML about 30% faster and compile about 12% faster. The `attributes` of an HTML node's metadata are now built the first time they are read, so a spread of the metadata, `Object.keys` and `Object.entries` leave them out. Read `meta.attributes` directly instead.
+
 ## 1.0.0-next.2
 
 ### Minor Changes
@@ -712,10 +740,14 @@
 
 - [#931](https://github.com/pngwn/MDsveX/pull/931) [`7900bf2`](https://github.com/pngwn/MDsveX/commit/7900bf24137c24de5ff749e65bf98e5f5fa18ec9) Thanks [@pngwn](https://github.com/pngwn)! - A doubled `~~~~` nests two strikethroughs before punctuation, a link or a code span, as it does before a letter, and tildes with nothing between them stay literal text. Neither produces an empty strikethrough any more.
 
-  ```md
+  ````md
   ```(x)~~~~ and a ~~~~ b
 
   ```
+  ````
+
+  ```
+
   ```
 
 - [#1012](https://github.com/pngwn/MDsveX/pull/1012) [`3343943`](https://github.com/pngwn/MDsveX/commit/3343943f3907da8ce45488c2da3d78023bd68851) Thanks [@pngwn](https://github.com/pngwn)! - A leaf or container directive opens inside an html element, as it does at the root and in a block quote.

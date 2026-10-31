@@ -1,6 +1,6 @@
 {
 	"name": "@mdsvex/plugin-link-check",
-	"version": "0.0.1",
+	"version": "0.1.0-next.0",
 	"description": "Link checking for mdsvex, warns about #anchors and links to other documents that go nowhere",
 	"type": "module",
 	"scripts": {

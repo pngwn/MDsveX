@@ -1,5 +1,18 @@
 # @mdsvex/language-core
 
+## 0.1.0-next.3
+
+### Minor Changes
+
+- [#1238](https://github.com/pngwn/MDsveX/pull/1238) [`eddbaa4`](https://github.com/pngwn/MDsveX/commit/eddbaa482c7ae775020f147e9a10ecdccb81025a) Thanks [@pngwn](https://github.com/pngwn)! - The editor types a replaced `img`'s `src` as enhanced-img's `Picture` when the Vite plugin imports images with `?enhanced`. An `mdsvex.config.json` turns this on with `import_images: { "enhanced": true }`.
+
+### Patch Changes
+
+- Updated dependencies [[`ba7f8dd`](https://github.com/pngwn/MDsveX/commit/ba7f8dd3d8441edfeb529b34b07dac80058de35a), [`eddbaa4`](https://github.com/pngwn/MDsveX/commit/eddbaa482c7ae775020f147e9a10ecdccb81025a), [`22e8562`](https://github.com/pngwn/MDsveX/commit/22e85628a68e3557707a5b34488822d5ceb63657), [`6f92236`](https://github.com/pngwn/MDsveX/commit/6f9223665b799344096fedfb050f8dd6db9b9e8c)]:
+  - mdsvex@1.0.0-next.3
+  - @mdsvex/render@1.0.0-next.3
+  - @mdsvex/source-map@0.1.0-next.3
+
 ## 0.1.0-next.2
 
 ### Minor Changes

@@ -1,6 +1,6 @@
 {
 	"name": "@mdsvex/plugin-numbering",
-	"version": "0.0.1",
+	"version": "0.1.0-next.0",
 	"description": "Numbering for mdsvex, numbered figures, tables, equations and sections, and :ref[fig:x] references that read as the number",
 	"type": "module",
 	"scripts": {
