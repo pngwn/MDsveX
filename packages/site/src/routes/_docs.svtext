@@ -4,6 +4,9 @@
 [subpath]: https://nodejs.org/api/packages.html#subpath-imports
 [yaml]: https://eemeli.org/yaml/
 [smol-toml]: https://github.com/squirrelchat/smol-toml
+[flexsearch]: https://github.com/nextapps-de/flexsearch
+[pagefind]: https://pagefind.app
+[llms-txt]: https://llmstxt.org
 [sv-migrate]: https://svelte.dev/docs/cli/sv-migrate
 [twinkleplop]: https://twinkleplop.pngwn.at
 [temml]: https://temml.org
@@ -596,6 +599,8 @@ An entry of `directives` can hold handlers. They are bound to that directive, so
 | `descendants` | nodes at any depth inside it, by node type |
 | `parse` | the directive itself, in any of its three forms |
 
+An entry can also say what its directive reads as in the [text of a page](docs#text-with-compile), with `text`.
+
 Each handler gets the node and a context:
 
 - `ctx.directive` is the directive it is bound to.
@@ -848,7 +853,7 @@ const titles = {
 
 - **The task gets a node and a `ctx` of its own** and changes the document through them. Its changes apply once it has finished and the parser is sure of the node. If the parser takes the node back, they are dropped.
 - **A task changes its own node** and what is inside it, and writes data for it. Anything else throws a `TypeError`. So the result does not depend on which task finishes first.
-- **The Vite plugin waits** for deferred work before it renders the document, and so does a `?data` import. With `compile`, use [`compile_async`](docs#compile_async). In dev it warns when a document has waited five seconds, naming the plugin and the document.
+- **The Vite plugin waits** for deferred work before it renders the document, and so do `?data` and [`?text`](docs#search-feeds-and-llmstxt) imports. With `compile`, use [`compile_async`](docs#compile_async). In dev it warns when a document has waited five seconds, naming the plugin and the document.
 - **What a task adds compiles as if it were written.** An image whose `src` a task set is imported, and a fence it adds with `src=` shows its file, and the same goes for a `document` hook.
 
 Work that needs the whole document goes in a `document` hook. It runs once, after the parse and after every deferred task, and gets the root of the tree. It may be async:
@@ -873,7 +878,7 @@ Hooks run in plugin order, each awaited before the next. One that returns a prom
 
 A plugin loads what it needs itself, and tells mdsvex what it read:
 
-- **`ctx.depend(path)`** names a file the output depends on, by its absolute path. When it changes, the Vite plugin compiles the document again, and its `?data` import, in dev and in a watch build, and it watches files outside the project root too. `compile` returns them as `dependencies` for any other host to watch.
+- **`ctx.depend(path)`** names a file the output depends on, by its absolute path. When it changes, the Vite plugin compiles the document again, and its `?data` and `?text` imports, in dev and in a watch build, and it watches files outside the project root too. `compile` returns them as `dependencies` for any other host to watch.
 - **`ctx.read(path)`** reads a file and depends on it. **`ctx.resolve(specifier)`** resolves a specifier as an import from the document would. The Vite plugin supplies both. With `compile_async`, pass `read` and `resolve` options, `mdsvex/compile` reads no files itself.
 - **`ctx.cached(key, load)`** shares one load between documents: a bibliography read once for every page. A key that is a path is a dependency, and the Vite plugin drops it when that file changes, so a dev server never serves a stale copy.
 
@@ -1494,6 +1499,210 @@ title = "TOML Example"
 [owner]
 name = "some name"
 ---
+```
+
+## Search, feeds and llms.txt
+
+A search index, an RSS feed and an `llms.txt` file all want the words of a page without its markup. Import a document with the `?text` query and you get the text a reader sees, split at each heading, with nothing compiled to Svelte:
+
+```js
+import text from './guide.svx?text';
+
+text.title; // 'Getting started', the first # heading
+text.text; // every block of the page, a blank line between two
+text.sections; // [{ id: 'install', heading: 'Install', depth: 2, text: 'Run pnpm add mdsvex.' }, ...]
+```
+
+Each section starts at a heading and runs to the next one. With [`heading_ids`](docs#heading_ids) on, it carries the heading's `id`, so a search hit links to `page#id`. Text before the first heading is a section of its own, with an empty `heading` and `depth` 0, and only when there is some. `title` is the text of the first `#` heading outside any container, and is left out when there is none. It does not read the frontmatter, which is what [`?metadata`](docs#frontmatter-1) is for. The whole value is plain JSON.
+
+A `?text` import parses the document and runs its plugins, and waits for the work they [defer](docs#deferred-work), as `?data` does, so the text has what plugins wrote: emoji, the text of links `references` made, citation labels. In dev an edit reloads what imports it only when the text changed, so an edit of the frontmatter alone leaves it be. For TypeScript, `mdsvex/globals` types it as `DocumentText`.
+
+### Query imports
+
+| import | gives | reads | an edit reloads it when |
+| --- | --- | --- | --- |
+| `./post.svx` | the component, `metadata`, `plugin_data` | everything, and compiles it | anything changed |
+| [`?metadata`](docs#frontmatter-1) | `metadata` | the frontmatter | the frontmatter changed |
+| [`?data`](docs#plugin-data) | `metadata` and `plugin_data` | the document, with plugins, no render | either changed |
+| `?text` | the text, by section | the document, with plugins, no render | the text changed |
+| `?raw`, from Vite | the source as a string | the file | anything changed |
+
+Each works with `import.meta.glob`: `import.meta.glob('./*.svx', { query: '?text', import: 'default', eager: true })`.
+
+### What counts as text
+
+| written | in the text |
+| --- | --- |
+| paragraphs, headings, list items, block quotes | their text, each a block |
+| table cells | a row is a block, its cells on one line |
+| emphasis, links, `~~strikethrough~~`, `^sup^`, `~sub~` | their text, a link without its url |
+| images | the alt text, where the image is |
+| code spans and inline math | as written, they are part of the sentence |
+| code fences, `math` fences, `<pre>` | as written, each a block, lines kept. `text: { code_blocks: false }` leaves them out |
+| footnotes | each referenced footnote at the end, in the order the page numbers them, the reference marks left out |
+| directives | the label, and what a container holds. A plugin can say what its directive reads as, `:cite[key]` reads `[1]` |
+| HTML elements and components | their text. A block element such as `<div>` or `<p>`, and a component among blocks, is a block |
+| `{#if}`, `{#each}` and other blocks | the text of every branch, as which one shows is only known when the page runs |
+| `{expression}`, `{@html}`, `{@render}` | nothing, they are only known when the page runs |
+| frontmatter, `<script>`, `<style>`, `<svelte:head>`, comments | nothing |
+
+Runs of spaces and line ends inside a block are one space, a hard break (a backslash at the end of a line) is a line end, blocks are apart by a blank line, and no line ends in a space. Character references such as `&amp;`, `&#233;` and the common named ones are their characters. Punctuation is as typed: [`smart_punctuation`](docs#smart_punctuation) changes the page only, so the text has the straight `'` a search box gets where the page shows a curly one.
+
+### A search index
+
+Build the records once, at build time, and load them into [FlexSearch][flexsearch] in the page that searches. Each section is a record, so a hit goes to its heading:
+
+```js
+// src/routes/search.json/+server.js
+import { json } from '@sveltejs/kit';
+
+const pages = import.meta.glob('../docs/**/+page.svx', {
+	query: '?text',
+	import: 'default',
+	eager: true
+});
+
+export const prerender = true;
+
+export function GET() {
+	const records = [];
+	for (const [path, { title, sections }] of Object.entries(pages)) {
+		const route = path.slice('..'.length, -'/+page.svx'.length);
+		for (const section of sections) {
+			records.push({
+				href: section.id ? `${route}#${section.id}` : route,
+				title,
+				heading: section.heading,
+				text: section.text
+			});
+		}
+	}
+	return json(records);
+}
+```
+
+```js
+// in the search component
+import { Document } from 'flexsearch';
+
+const index = new Document({
+	document: { id: 'href', index: ['heading', 'text'], store: ['title', 'heading'] }
+});
+const records = await (await fetch('/search.json')).json();
+for (const record of records) index.add(record);
+
+const hits = index.search(query, { enrich: true, merge: true });
+```
+
+[Pagefind][pagefind] indexes the built HTML instead, and needs none of this.
+
+### An RSS feed
+
+`?metadata` gives the title and date, `?text` the body:
+
+```js
+// src/routes/rss.xml/+server.js
+const metadata = import.meta.glob('../blog/*/+page.svx', {
+	query: '?metadata',
+	import: 'metadata',
+	eager: true
+});
+const texts = import.meta.glob('../blog/*/+page.svx', {
+	query: '?text',
+	import: 'default',
+	eager: true
+});
+
+export const prerender = true;
+
+const escape = (text) =>
+	text.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+
+export function GET({ url }) {
+	const items = Object.keys(metadata).map((path) => {
+		const { title, date } = metadata[path];
+		const link = `${url.origin}/blog/${path.split('/')[2]}`;
+		return `<item>
+	<title>${escape(title)}</title>
+	<link>${link}</link>
+	<guid>${link}</guid>
+	<pubDate>${new Date(date).toUTCString()}</pubDate>
+	<description>${escape(texts[path].text)}</description>
+</item>`;
+	});
+	return new Response(
+		`<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel>
+<title>My blog</title>
+<link>${url.origin}</link>
+<description>Posts</description>
+${items.join('\n')}
+</channel></rss>`,
+		{ headers: { 'content-type': 'application/rss+xml' } }
+	);
+}
+```
+
+An Atom feed is the same with `<entry>` and `<summary>`. For a feed with the HTML of each post, render the component with `render` from `svelte/server` instead.
+
+### llms.txt
+
+[`llms.txt`][llms-txt] is markdown: a title, a summary and a list of links. `?text` gives each link its title and a first paragraph:
+
+```js
+// src/routes/llms.txt/+server.js
+const pages = import.meta.glob('../docs/**/+page.svx', {
+	query: '?text',
+	import: 'default',
+	eager: true
+});
+
+export const prerender = true;
+
+export function GET({ url }) {
+	const links = Object.entries(pages).map(([path, { title, sections }]) => {
+		const route = path.slice('..'.length, -'/+page.svx'.length);
+		const summary = sections[0]?.text.split('\n\n')[0];
+		return `- [${title ?? route}](${url.origin}${route})${summary ? ': ' + summary : ''}`;
+	});
+	return new Response(
+		`# My site\n\n> What the site is for, in a sentence.\n\n## Docs\n\n${links.join('\n')}\n`,
+		{ headers: { 'content-type': 'text/plain; charset=utf-8' } }
+	);
+}
+```
+
+For `llms-full.txt`, which holds whole pages, the markdown itself usually reads better than plain text, as it keeps the headings, lists and code. Vite's `?raw` already gives the source of a document, frontmatter and Svelte included. Use `?text` there when you want only what a reader sees.
+
+### Text with `compile`
+
+`compile_text` from `mdsvex/compile` gives the same value without Vite. It takes the options `compile` takes, and `code_blocks`, and waits for deferred work as `compile_async` does:
+
+```js
+import { compile_text } from 'mdsvex/compile';
+
+const { title, text, sections } = await compile_text(source, {
+	heading_ids: true,
+	plugins: [citations()],
+	code_blocks: false
+});
+```
+
+Compiling [in steps](docs#compiling-in-steps), `parsed_text(parsed, { plugins })` reads a `Parsed` once it settled, and the document can still render afterwards. `text_module` from `mdsvex/host` makes the module a `?text` import loads from that value.
+
+A plugin says what one of its directives reads as with `text` beside its handlers. It gets the directive's args once the plugins settled, and the text of its label, and returns a string, or `undefined` to read the label and what the directive holds. A leaf or a container reads the string as blocks, apart where it has a blank line:
+
+```js
+{
+	name: 'cite',
+	module: '@acme/cite/directives',
+	directives: {
+		cite: {
+			text: (args, label) => (args.number ? `[${args.number}]` : label),
+			parse(node, ctx) { /* sets args.number */ }
+		}
+	}
+}
 ```
 
 ## Templates
@@ -2725,6 +2934,7 @@ citations({
 - **The file** is the `bibliography` key of the frontmatter, relative to the document, or the `bibliography` option, absolute or relative to the working directory. It is read once for every document and read again when it changes, in the dev server too. A document that cites with no file named fails with a `CitationsError`.
 - **An unknown key** is a warning at the citation, which shows the key as written, without a link.
 - **BibTeX** is not read. Zotero, JabRef and `pandoc refs.bib -t csljson -o refs.json` export CSL JSON.
+- **In the [text](docs#search-feeds-and-llmstxt)** of a page a citation reads as the page shows it, `[2, 1]`, and the bibliography as its label and then an entry to a block.
 
 The citations and their entries are [plugin data](docs#plugin-data), `plugin_data.citations`, so a template can render the list itself with the `Bibliography` component:
 
@@ -3925,6 +4135,7 @@ Import the compiler from `mdsvex/compile`, highlighting from `mdsvex/highlight` 
 | plugins that [load files](docs#loading-files) | `read` and `resolve`, with `compile_async` |
 | rebuilding when a file changes | watching `dependencies` on the result, see [below](docs#files-and-plugins-that-wait) |
 | [plugin data](docs#plugin-data) | nothing, it is `data` on the result |
+| [the text of a page](docs#text-with-compile) | `compile_text`, or `parsed_text` when compiling in steps |
 | a template for one import | the `template` option of that compile, in place of `?template=` |
 
 ### Finding the names a module exports
@@ -3945,11 +4156,11 @@ For a `.svelte` file it reads the `<script module>`. Without a stripper it reads
 
 `names` includes `default`. Leave it out for a template, whose default export is the template itself. For a [document used as a template](docs#documents-as-templates), read the exports of its compiled `code` and leave out `metadata` as well.
 
-### Virtual ids, `?metadata` and `?data`
+### Virtual ids, `?metadata`, `?data` and `?text`
 
 The Vite plugin writes `mdsvex:components`, `mdsvex:template/<name>` and the other `mdsvex:*` ids in place of real paths and resolves them itself. `compile` writes whatever specifier you give it, so a host can use real paths and skip this. To match the plugin's output, `mdsvex/host` exports the prefixes (`COMPONENTS_ID`, `DIRECTIVES_ID`, `TEMPLATE_ID`, `TEMPLATE_DIRECTIVES_ID`, `PLUGIN_ID`, `PLUGIN_COMPONENTS_ID`), and `manifest_resolver(manifest)` returns the file an id and an imported name stand for.
 
-A [`?metadata`](docs#frontmatter) or [`?data`](docs#plugin-data) import loads a module made from the document. `metadata_module(source, parse)` builds the first from the text of the document, with your [frontmatter parser](docs#custom-frontmatter-parsers) or `undefined`, and `data_module(result.metadata, result.data)` the second from a compile of it.
+A [`?metadata`](docs#frontmatter), [`?data`](docs#plugin-data) or [`?text`](docs#search-feeds-and-llmstxt) import loads a module made from the document. `metadata_module(source, parse)` builds the first from the text of the document, with your [frontmatter parser](docs#custom-frontmatter-parsers) or `undefined`, `data_module(result.metadata, result.data)` the second from a compile of it, and `text_module(await compile_text(source, options))` the third.
 
 ### The editor manifest
 
@@ -3960,7 +4171,7 @@ The editor reads `node_modules/.mdsvex/manifest.json`, which the Vite plugin wri
 These need a dev server or Vite's config, so they stay with the plugin:
 
 - **`links.base: true`**, which reads Vite's `base`. Give `compile` the base as a string, or as `{ import, from }` for a base known when the page renders.
-- **The checks on `?metadata` and `?data` imports.** In dev the plugin serves a document only when Vite would serve the file, so a request can't read files outside the project.
+- **The checks on `?metadata`, `?data` and `?text` imports.** In dev the plugin serves a document only when Vite would serve the file, so a request can't read files outside the project.
 - **Source maps back to markdown.** `compile` with `sourcemap: true` maps its own output, and `mappings_to_v3` from `@mdsvex/render/sourcemap` turns that into a v3 map. Chaining it with the Svelte compiler's map is up to your bundler.
 - **`?template=`** on an import. Use the `template` option of the compile.
 - **Hot update** of documents, of the files a fence shows and of template and component modules. A host that rebuilds watches `dependencies` instead, see below.
@@ -4180,6 +4391,7 @@ mdsvex 0.x ran remark and rehype, and took their plugins in `remarkPlugins` and 
 | `remark-math` with `rehype-katex`, `rehype-katex-svelte` or `rehype-mathjax` | built in | a [`math` fence and `` $`x`$ ``](docs#math-1), rendered by Temml or, with `math: { renderer: 'katex' }`, KaTeX. For MathJax pass a [function](docs#custom-math-renderers). The migrator rewrites `$x$` when you pass `math: true` |
 | `remark-code-import` | built in | [`src=./file.ts#L5-L20`](docs#code-from-a-file) on a fence, the migrator renames `file=` |
 | `remark-breaks` | nothing, on purpose | a line end is a space. End a line with a backslash for a break |
+| `remark-strip-html`, `strip-markdown`, `remark-unlink`, `remark-plain-text` | built in | a [`?text` import](docs#search-feeds-and-llmstxt), or `compile_text`, gives the text of a page without markup, elements or link urls, by section, for a search index, a feed or `llms.txt`. The page itself keeps its markup |
 | `rehype-raw` | not needed | HTML in a document is always real markup |
 
 ### Now an option
