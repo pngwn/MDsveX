@@ -1,0 +1,46 @@
+{
+	"name": "@mdsvex/tree-sitter",
+	"version": "0.0.0",
+	"description": "Tree-sitter grammar for mdsvex (Penguin-Flavoured Markdown)",
+	"private": true,
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/pngwn/MDsveX",
+		"directory": "language-tools/tree-sitter"
+	},
+	"keywords": [
+		"tree-sitter",
+		"parser",
+		"mdsvex",
+		"markdown",
+		"svelte"
+	],
+	"author": "pngwn <hello@pngwn.io>",
+	"license": "MIT",
+	"files": [
+		"grammar.js",
+		"tree-sitter.json",
+		"src/**",
+		"queries/**"
+	],
+	"tree-sitter": [
+		{
+			"scope": "text.html.pfm",
+			"file-types": [
+				"svx",
+				"pfm"
+			],
+			"injection-regex": "^(mdsvex|svx|pfm)$",
+			"highlights": "queries/highlights.scm",
+			"injections": "queries/injections.scm"
+		}
+	],
+	"scripts": {
+		"generate": "tree-sitter generate",
+		"test": "tree-sitter test",
+		"parse": "tree-sitter parse"
+	},
+	"devDependencies": {
+		"tree-sitter-cli": "^0.27.1"
+	}
+}

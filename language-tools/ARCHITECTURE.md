@@ -62,6 +62,10 @@ A TypeScript Server Plugin that teaches `tsserver` how to resolve `.pfm` imports
 
 The VS Code extension. Registers the PFM language, starts the language server as a child process, and configures the TypeScript plugin. The build step bundles the language server into a single `server.cjs` file and the extension into `extension.cjs`. This is the only package that ships to users.
 
+### `tree-sitter`
+
+A tree-sitter grammar for PFM, for editors that highlight with tree-sitter (Neovim, Helix, Zed) rather than the TextMate grammar in `vscode-pfm`. It stands apart from the Volar stack and from `@mdsvex/parse`: it is a separate parser of the same spec, with its own README listing where its trees differ.
+
 ## Key dependencies
 
 - **`mdsvex`** (`packages/mdsvex`): core `compile()`, which `pfm_to_svelte` runs, and the manifest types. It exports from `dist/`, so it must be built before the language tools. `pnpm build:ls` from the repo root handles the full chain.

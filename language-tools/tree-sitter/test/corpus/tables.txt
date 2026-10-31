@@ -1,0 +1,94 @@
+========================================
+A pipe table
+========================================
+| a | b |
+|---|:-:|
+| 1 | *2* |
+| `x \| y` | ok |
+
+----------------------------------------
+
+(document
+  (pipe_table
+    (pipe_table_header
+      (pipe_table_cell)
+      (pipe_table_cell))
+    (pipe_table_delimiter_row)
+    (pipe_table_row
+      (pipe_table_cell)
+      (pipe_table_cell
+        (strong_emphasis
+          (emphasis_delimiter)
+          (emphasis_delimiter))))
+    (pipe_table_row
+      (pipe_table_cell
+        (code_span
+          (code_span_delimiter)
+          (code_span_content)
+          (code_span_delimiter)))
+      (pipe_table_cell))))
+
+========================================
+Header columns and merged cells
+========================================
+| maybe || title |
+|-------||-------|
+| hello || > |
+| ^ || text |
+
+----------------------------------------
+
+(document
+  (pipe_table
+    (pipe_table_header
+      (pipe_table_cell)
+      (pipe_table_cell))
+    (pipe_table_delimiter_row)
+    (pipe_table_row
+      (pipe_table_cell)
+      (pipe_table_cell))
+    (pipe_table_row
+      (pipe_table_cell)
+      (pipe_table_cell))))
+
+========================================
+A table ends where a paragraph would
+========================================
+| a |
+|---|
+| b |
+# Heading
+
+----------------------------------------
+
+(document
+  (pipe_table
+    (pipe_table_header
+      (pipe_table_cell))
+    (pipe_table_delimiter_row)
+    (pipe_table_row
+      (pipe_table_cell)))
+  (atx_heading
+    (atx_h1_marker)
+    (heading_content)))
+
+========================================
+A table in a block quote
+========================================
+> | a |
+> |---|
+> | b |
+
+----------------------------------------
+
+(document
+  (block_quote
+    (block_quote_marker)
+    (pipe_table
+      (pipe_table_header
+        (pipe_table_cell))
+      (block_continuation)
+      (pipe_table_delimiter_row)
+      (block_continuation)
+      (pipe_table_row
+        (pipe_table_cell)))))

@@ -1,0 +1,23 @@
+========================================
+Frontmatter and imports
+========================================
+---
+title: Hello
+---
+import A from './A.svelte'
+import { b } from "b";
+
+# Hi
+
+----------------------------------------
+
+(document
+  (frontmatter
+    (frontmatter_delimiter)
+    (frontmatter_content)
+    (frontmatter_delimiter))
+  (import_statement)
+  (import_statement)
+  (atx_heading
+    (atx_h1_marker)
+    (heading_content)))

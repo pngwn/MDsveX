@@ -151,6 +151,12 @@ importers:
         specifier: ^5.0.0
         version: 5.9.3
 
+  language-tools/tree-sitter:
+    devDependencies:
+      tree-sitter-cli:
+        specifier: ^0.27.1
+        version: 0.27.1
+
   language-tools/typescript-plugin:
     dependencies:
       '@mdsvex/language-core':
@@ -5346,6 +5352,11 @@ packages:
   tr46@6.0.0:
     resolution: {integrity: sha512-bLVMLPtstlZ4iMQHpFHTR7GAGj2jxi8Dg0s2h2MafAE4uSWF98FC/3MomU51iQAMf8/qDUbKWf5GxuvvVcXEhw==}
     engines: {node: '>=20'}
+
+  tree-sitter-cli@0.27.1:
+    resolution: {integrity: sha512-WFPEjxwscCjZP9uYj0rxT2TyGBkDcXUkGTthrMpxZFGvzXEYsbC3J0633Ps8dd2mMsdsbU8oVwmQ148lLHI7Xw==}
+    engines: {node: '>=12.0.0'}
+    hasBin: true
 
   trim-lines@3.0.1:
     resolution: {integrity: sha512-kRj8B+YHZCc9kQYdWfJB2/oUl9rA99qbowYYBtr4ui4mZyAQ2JpvVBd/6U2YloATfqBhBTSMhTpgBHtU0Mf3Rg==}
@@ -10600,6 +10611,8 @@ snapshots:
     dependencies:
       punycode: 2.3.1
     optional: true
+
+  tree-sitter-cli@0.27.1: {}
 
   trim-lines@3.0.1: {}
 
