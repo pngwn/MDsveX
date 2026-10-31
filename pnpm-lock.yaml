@@ -264,6 +264,12 @@ importers:
       '@mdsvex/render':
         specifier: workspace:^
         version: link:../render
+      '@rsvelte/compiler':
+        specifier: 0.12.6
+        version: 0.12.6(svelte@5.55.1)
+      '@rsvelte/vite-plugin-svelte-native':
+        specifier: 0.3.17
+        version: 0.3.17
       '@types/node':
         specifier: ^20.12.7
         version: 20.19.19
@@ -2501,6 +2507,45 @@ packages:
     resolution: {integrity: sha512-bf9PtUa0u8IXDVxzRToFQKsNCRz9qLYfR/MpECxl4mRoWYjAeFjgxj1XdZr2M/GNVpT05p+LgQOHopYDlUu6/w==}
     cpu: [x64]
     os: [win32]
+
+  '@rsvelte/compiler@0.12.6':
+    resolution: {integrity: sha512-XT5kqbtR+z/s0l49rEinAAc9JkxTFfeSaOvSJ3g1+SAUehGVbp8noks2WQEPnEiwgvS+JE1npfHPizJ6/SbRPw==}
+    hasBin: true
+    peerDependencies:
+      svelte: ^5.0.0
+    peerDependenciesMeta:
+      svelte:
+        optional: true
+
+  '@rsvelte/vite-plugin-svelte-native-darwin-arm64@0.3.17':
+    resolution: {integrity: sha512-U4NhU93zo2U9wtNRnT75w3Xz1bTpGcvQcoihepV8nIkv2deRA1xKu0XAle33V8Ich/LF8YAms3pqO8oO9eA3DQ==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@rsvelte/vite-plugin-svelte-native-darwin-x64@0.3.17':
+    resolution: {integrity: sha512-NPNngQO1KALZ1o5naSt1lENn5qrrLanvx4cVOiKRWZwM/XICcwK/eVzGH2CGIHUbekDxuvOf4mw/X8CFNXjoOw==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@rsvelte/vite-plugin-svelte-native-linux-arm64-gnu@0.3.17':
+    resolution: {integrity: sha512-qoZ+3QMbyXp/DgxN5aA6yhaHrxCYWUNmngocwOMnAC9PQMKBzITEUDxQ99COGf0Ujisz+pgnys7QYFnFM/knOw==}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  '@rsvelte/vite-plugin-svelte-native-linux-x64-gnu@0.3.17':
+    resolution: {integrity: sha512-wB/iSONex7bITBVe/lxoBY3Tfs6WlQ9zeyhhsZ7y2lyr/NgsbZqUIjac+A/TqLdg+4FKF37DxuAGtcd5m4UY/w==}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  '@rsvelte/vite-plugin-svelte-native-win32-x64-msvc@0.3.17':
+    resolution: {integrity: sha512-uoWT4g6S6FWVXgkXk4EWMt+e+Vjej8U1Y5tHqkPPgdSXtOnvjpihDc6c3/wIDGYzZDLOG0kgd4CdlYpKbOhcmg==}
+    cpu: [x64]
+    os: [win32]
+
+  '@rsvelte/vite-plugin-svelte-native@0.3.17':
+    resolution: {integrity: sha512-za5HUQRqpiNssw1268dvfmGqKDLFd0nHFe2WKJJirzJyhpwcgbyKjfJ8Hf1mElEidzBD2mhsnZ7H1skCKm3wEA==}
 
   '@sinclair/typebox@0.27.8':
     resolution: {integrity: sha512-+Fj43pSMwJs4KRrH/938Uf+uAELIgVBmQzg/q1YG10djyfA3TnrU8N8XzqCh/okZdszqBQTZf96idMfE5lnwTA==}
@@ -6954,6 +6999,33 @@ snapshots:
 
   '@rollup/rollup-win32-x64-msvc@4.52.4':
     optional: true
+
+  '@rsvelte/compiler@0.12.6(svelte@5.55.1)':
+    optionalDependencies:
+      svelte: 5.55.1
+
+  '@rsvelte/vite-plugin-svelte-native-darwin-arm64@0.3.17':
+    optional: true
+
+  '@rsvelte/vite-plugin-svelte-native-darwin-x64@0.3.17':
+    optional: true
+
+  '@rsvelte/vite-plugin-svelte-native-linux-arm64-gnu@0.3.17':
+    optional: true
+
+  '@rsvelte/vite-plugin-svelte-native-linux-x64-gnu@0.3.17':
+    optional: true
+
+  '@rsvelte/vite-plugin-svelte-native-win32-x64-msvc@0.3.17':
+    optional: true
+
+  '@rsvelte/vite-plugin-svelte-native@0.3.17':
+    optionalDependencies:
+      '@rsvelte/vite-plugin-svelte-native-darwin-arm64': 0.3.17
+      '@rsvelte/vite-plugin-svelte-native-darwin-x64': 0.3.17
+      '@rsvelte/vite-plugin-svelte-native-linux-arm64-gnu': 0.3.17
+      '@rsvelte/vite-plugin-svelte-native-linux-x64-gnu': 0.3.17
+      '@rsvelte/vite-plugin-svelte-native-win32-x64-msvc': 0.3.17
 
   '@sinclair/typebox@0.27.8': {}
 
