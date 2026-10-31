@@ -118,10 +118,10 @@ The server renders the fence as code. Once the page has mounted, the component i
 
 ## Both engines
 
-- **The fence is wrapped, not replaced.** Each `mermaid` fence is put inside a `diagram` directive, so the code still renders through the highlighter and whatever replaces `pre`, such as `@mdsvex/plugin-code-blocks`, and the plugin works inside a code group of `@mdsvex/plugin-tabs`.
-- **The `title` and `caption` of the fence** go above and below the diagram, and the stylesheet hides the copies the highlighter or a code block put around the code.
+- **The fence is wrapped, not replaced.** Each `mermaid` fence is put inside a `diagram` directive, so the code still renders through whatever replaces `pre`, such as `@mdsvex/plugin-code-blocks`, and the plugin works inside a code group of `@mdsvex/plugin-tabs`.
+- **The plugin claims the `mermaid` language** ([`fences`](https://mdsvex.pngwn.io/docs#plugins)), so the highlighter, built in or your own, never sees these fences. The code renders as plain `<pre><code class="language-mermaid">`, as it does with `highlight: false`, and the build gives no warning about the language.
+- **The `title` and `caption` of the fence** go above and below the diagram, and the stylesheet hides the copies a code block puts around the code.
 - **Name a diagram for screen readers** with `accTitle:` and `accDescr:`, which become the title and description of the SVG.
-- **The built in highlighter has no grammar for mermaid**, so the code renders plain and the build warns once per file that there is no highlighter for the language.
 
 ## Styles
 

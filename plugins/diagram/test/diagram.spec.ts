@@ -1,6 +1,8 @@
 import { diagram, DiagramError } from '@mdsvex/plugin-diagram';
 import { tabs } from '@mdsvex/plugin-tabs';
 import { compile } from 'mdsvex';
+import type { CodeInfo } from 'mdsvex';
+import { create_highlight, load_default_languages } from 'mdsvex/highlight';
 import { describe, expect, test } from 'vitest';
 
 import {
@@ -140,6 +142,54 @@ describe('with pele', () => {
 	test('a fence in another language is left alone', () => {
 		expect(tree('```js\nx\n```\n', 'pele')).toEqual(['root', 'code_fence']);
 		expect(warnings('```js\nx\n```\n')).toEqual([]);
+	});
+});
+
+describe('highlighting', () => {
+	const ENGINES = ['pele', 'mermaid'] as const;
+
+	test('a mermaid fence is not highlighted and gives no warning, with either engine', async () => {
+		const highlight = create_highlight({
+			languages: await load_default_languages(),
+		});
+		for (const engine of ENGINES) {
+			const { code, warnings: found } = compile(FLOW, {
+				plugins: [diagram({ engine })],
+				highlight,
+			});
+			expect(found, engine).toBeUndefined();
+			expect(code).toContain(
+				'<pre><code class="language-mermaid">graph LR\n  A&#123;Start&#125;'
+			);
+			expect(code).not.toContain('twinkleplop');
+		}
+	});
+
+	test('a highlighter function never sees a mermaid fence', () => {
+		const seen: string[] = [];
+		const highlight = (_code: string, { lang }: CodeInfo) => {
+			seen.push(lang);
+			return null;
+		};
+		for (const engine of ENGINES)
+			compile(FLOW + '\n```js\nx\n```\n', {
+				plugins: [diagram({ engine })],
+				highlight,
+			});
+		expect(seen).toEqual(['js', 'js']);
+	});
+
+	test('another unknown language still warns', async () => {
+		const highlight = create_highlight({
+			languages: await load_default_languages(),
+		});
+		const { warnings: found } = compile(FLOW + '\n```nope\nx\n```\n', {
+			plugins: [diagram()],
+			highlight,
+		});
+		expect(found?.map((w) => [w.code, w.start.line])).toEqual([
+			['unknown_language', 6],
+		]);
 	});
 });
 

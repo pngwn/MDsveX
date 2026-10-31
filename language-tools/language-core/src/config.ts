@@ -10,6 +10,7 @@ import type * as TS from 'typescript';
 
 import temml from 'temml';
 import type {
+	Bundle,
 	CompileOptions,
 	HighlightConfig,
 	MathRenderer,
@@ -179,6 +180,8 @@ export function document_options(
 		highlight: highlight_of(manifest),
 	};
 	if (Object.keys(templates).length !== 0) compile.templates = templates;
+	const claims = claims_of(manifest);
+	if (claims !== undefined) compile.plugins = claims;
 	if (manifest.unwrap_images === true) compile.unwrap_images = true;
 	// a replaced img gets the import as its src, typed as typescript resolves it
 	if (manifest.import_images === true)
@@ -209,6 +212,25 @@ export function document_options(
 		declare_plugin_data: manifest.plugin_data === true,
 		report_missing_pre: true,
 	};
+}
+
+const claimed = new WeakMap<MdsvexManifest, Bundle[]>();
+
+/**
+ * the fence languages plugins render themselves, as plugins that only claim
+ * them, so the editor warns of no unknown language there, as the build does
+ * not, one array per manifest as compile caches by it
+ */
+function claims_of(manifest: MdsvexManifest): Bundle[] | undefined {
+	let out = claimed.get(manifest);
+	if (out === undefined) {
+		out = [];
+		for (const p of manifest.plugins ?? [])
+			if (p.fences !== undefined && p.fences.length !== 0)
+				out.push({ name: p.name, fences: p.fences });
+		claimed.set(manifest, out);
+	}
+	return out.length === 0 ? undefined : out;
 }
 
 let twinkleplop: HighlightConfig | null = null;
