@@ -1,0 +1,165 @@
+---
+title: Parse plugins
+order: 21
+group: Writing plugins
+---
+
+[plugins-md]: https://github.com/pngwn/MDsveX/blob/next/packages/parse/PLUGINS.md
+# Parse plugins
+
+## `parse_plugins`
+
+```ts
+parse_plugins: ParsePlugin[];
+```
+
+Parse plugins change the tree as the parser builds it. A plugin is an object keyed by node type. Each `parse` function gets the node, and can return a function that runs when the node closes, once everything inside it is known:
+
+```js
+const external_links = {
+	link: {
+		parse(node) {
+			return () => {
+				if (/^https?:/.test(node.href)) node.attrs.rel = 'noopener';
+			};
+		}
+	}
+};
+
+mdsvex({ parse_plugins: [external_links] });
+```
+
+A plugin with `sequential: true` runs over the finished tree instead, after [`heading_ids`](/docs/reference/options#heading_ids) has set its ids.
+
+A sequential plugin can also rewrite text. Its `text` function is called for each run of text in the document, and `run.replace` puts text or a node in place of a range of it:
+
+```js
+const issues = {
+	sequential: true,
+	text(run) {
+		for (const match of run.text.matchAll(/#(\d+)/g)) {
+			const end = match.index + match[0].length;
+			run
+				.replace(match.index, end, 'link', { href: `/issues/${match[1]}` })
+				.append('text', match[0]);
+		}
+	}
+};
+```
+
+A run is whole however the tree split the text, and the text around a replacement stays as you wrote it. Code, math, urls, attribute values and `{expressions}` are never in a run, and a character you escaped with a backslash is left out of it.
+
+Elements a plugin creates count as markdown, so a [replacement](/docs/guides/components) for `mark` also replaces the `<mark>` a highlight plugin adds.
+
+`parse_plugins` is the short way to add a few handlers from your config. To ship them with directives and components, or under a name, put the same object in the `parse` key of a [plugin](/docs/plugins/writing/bundles).
+
+## Plugin handlers
+
+Every handler, in `parse_plugins` or in a [plugin](/docs/plugins/writing/bundles), gets a node and a context. Handlers are keyed by node type:
+
+`paragraph`, `heading`, `emphasis`, `strong_emphasis`, `strikethrough`, `superscript`, `subscript`, `code_span`, `code_fence`, `link`, `image`, `block_quote`, `list`, `list_item`, `table`, `table_header`, `table_row`, `table_cell`, `thematic_break`, `hard_break`, `soft_break`, `html`, `html_comment`, `mustache`, `svelte_tag`, `svelte_block`, `svelte_branch`, `directive_inline`, `directive_leaf`, `directive_container`, `directive_label`, `frontmatter` and `import_statement`.
+
+An element or a component is an `html` node, with its name in `attrs.tag` and what was written on it in `attrs.attributes` once it has closed. An expression is a `mustache`.
+
+The node is a view of the tree as it is being built:
+
+| member | what it is |
+| --- | --- |
+| `type` | the node type. Writing it changes what the node renders as |
+| `attrs` | its attributes. Writing one sets it on the element, or passes it to a [replacement](/docs/guides/components) as a prop |
+| `text_content` | the text inside it |
+| `parent`, `first_child`, `last_child`, `next`, `prev` | its neighbours, each a node or `null` |
+| `depth`, `href`, `title`, `info`, `math`, `ordered`, `start`, `tight` | what its type has: the depth of a heading, the url of a link, the info string of a fence |
+| `position` | `{ start, end }`, each with an `offset`, a `line` and a `column`. `end` is not set until the node closes |
+| `pending` | `true` while the parser may still take the node back |
+| `prepend(type, attrs)`, `append(type, attrs)` | adds a child and returns it. For `'text'` the second argument is the text |
+| `wrap_inner(type, attrs)` | puts a new node between the node and its children |
+| `wrap_from(type, attrs)` | puts a new node around the node and every sibling after it, until you call `close()` on what it returns |
+| `remove()` | takes the node out of the tree |
+
+A new `html` node takes its element name as `tag`. This wraps each `##` heading and what follows it in a `<section>`:
+
+```js
+const sections = {
+	name: 'sections',
+	heading: {
+		parse(node, ctx) {
+			if (node.depth !== 2 || node.parent?.type !== 'root') return;
+			ctx.scratch.section?.close();
+			ctx.scratch.section = node.wrap_from('html', { tag: 'section' });
+		}
+	}
+};
+
+mdsvex({ parse_plugins: [sections] });
+```
+
+```svx
+## One
+
+First.
+
+## Two
+
+Second.
+```
+
+```html
+<section><h2>One</h2><p>First.</p></section>
+<section><h2>Two</h2><p>Second.</p></section>
+```
+
+The context is new for each document. What a plugin keeps between its handlers goes in `ctx.scratch`, as the open section does above:
+
+- **One object for each plugin name and document.** Every handler, close callback, deferred task and document hook of the plugin gets the same one, so the bound handlers of a plugin can leave something for its document hook. It needs a `name`.
+- **It is the plugin's own.** Anything can go in it, and it never reaches the page or `plugin_data`.
+- **The parser does not take it back.** When the parser takes a node back, what its handlers put in the scratch stays. Keep there what that can't make wrong, such as directives and headings, and write what must follow it with `ctx.set` and `ctx.add`.
+
+The context also has:
+
+| member | what it is |
+| --- | --- |
+| `ctx.filename` | the path of the document |
+| `ctx.frontmatter` | the parsed frontmatter, `undefined` when the document has none. Don't write to it |
+| `ctx.warn(code, message, node)` | reports a problem. The build prints it with the line of the node |
+| `ctx.set(key, value)`, `ctx.add(key, value)` | write what the plugin leaves for the page, see [plugin data](/docs/plugins/writing/plugin-data). They need a `name` |
+| `ctx.data` | what the plugin has written so far, read-only |
+
+```js
+const one_title = {
+	name: 'one_title',
+	parse: {
+		heading: {
+			parse(node, ctx) {
+				if (node.depth === 1 && ctx.frontmatter?.title !== undefined) {
+					ctx.warn('two_titles', `${ctx.filename} has a title and a # heading`, node);
+				}
+			}
+		}
+	}
+};
+
+mdsvex({ plugins: [one_title] });
+```
+
+A handler [bound to a directive](/docs/plugins/writing/bundles) has the same members beside `directive`, `index` and `state`. Its `children` table also takes `'*'`, a handler for a child of any type, which runs after the one for its type.
+
+Things to know:
+
+- **Handlers run while the document is read.** The parser opens some nodes on a guess, such as an emphasis before it has seen the closing `_` or a link before its url. When the guess is wrong it takes the node back, and everything a handler did for that node is undone. `node.pending` is `true` for such a node.
+- **`wrap_from` needs a node that is not pending.** Headings and block directives never are. For a link or an emphasis, call it from the function the handler returns, which runs once the node has closed.
+- **`remove()` works where nothing can ask for the node back**: in the function a handler returns, for a node that is not pending, or anywhere in a `sequential` plugin. A node removes itself or something inside it.
+
+```js
+// comments do not reach the page
+const no_comments = {
+	html_comment: {
+		parse: (node) => () => node.remove()
+	}
+};
+```
+
+- **Handlers are synchronous.** For work that waits, see [deferred work](/docs/plugins/writing/deferred-work) below. A plugin can't add syntax either, only change the tree the parser made.
+- **A plugin sees the text as written.** [`smart_punctuation`](/docs/reference/options#smart_punctuation) is applied when the page renders, after every handler.
+
+[`PLUGINS.md`][plugins-md] in the repository has the whole API, with what a revoke undoes and how handlers run over a stream.

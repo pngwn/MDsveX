@@ -1,0 +1,102 @@
+---
+title: Images
+order: 2
+---
+
+[enhanced-img]: https://svelte.dev/docs/kit/images#sveltejs-enhanced-img
+# `import_images`
+
+```ts
+import_images: boolean | { enhanced?: boolean } = true;
+```
+
+A markdown image with a relative url is imported, and the image gets what the import gives. Vite then hashes the file, inlines a small one, and fails the build when the file is missing.
+
+```svx
+![A chart](./chart.png)
+```
+
+```svelte
+<script>
+	import __mdsvex_img_0 from './chart.png';
+</script>
+
+<p><img src={__mdsvex_img_0} alt="A chart" /></p>
+```
+
+The path is relative to the document, as it is on GitHub and in an editor preview. Which urls are imported:
+
+| url | imported as |
+| --- | --- |
+| `./chart.png`, `../img/chart.png` | as written |
+| `chart.png`, `img/chart.png` | `./chart.png`, `./img/chart.png` |
+| `$lib/chart.png`, `#lib/chart.png`, `@/chart.png`, `~/chart.png` | as written, so Vite resolves the alias |
+| `./chart.png?url`, `./sprite.svg#icon` | as written, the query and the fragment stay on the import |
+| `./my%20chart.png` | `./my chart.png`, the path is decoded to name the file |
+| `/chart.png` | not imported |
+| `https://example.com/chart.png`, `//example.com/chart.png`, `data:…` | not imported |
+| `#section`, `?query` | not imported |
+| `{src}`, `./{name}.png` | not imported, a url with a Svelte expression is left to Svelte |
+
+A file used twice is imported once. An alias has to start with `$`, `#`, `@` or `~`. Any other bare path is a file beside the document, so `images/chart.png` is `./images/chart.png` even when `images` is an alias in your Vite config.
+
+A query reaches Vite, so `![A chart](./chart.png?url)` and `?inline` work as they do in any import. With a query that makes the import something other than a url, such as `?w=400` from an imagetools plugin, an `img` [replacement](/docs/guides/components) decides what to do with the value. It gets the imported value as its `src` prop.
+
+A file in `static` or `public` is served from the root, so write it as `/chart.png`. Only markdown images are imported. An `<img src="./chart.png">` you type as HTML, a link to an image, and a url in frontmatter stay as written.
+
+Set `import_images: false` to leave every url as written:
+
+```js
+mdsvex({ import_images: false });
+```
+
+## Optimised images
+
+With [`@sveltejs/enhanced-img`][enhanced-img] in your Vite plugins, markdown images are optimised with nothing more to write. mdsvex sees `enhancedImages()` and imports every image it can optimise (avif, gif, heif, jpeg, jpg, png, tiff and webp) with `?enhanced`:
+
+```js
+// vite.config.js
+import { enhancedImages } from '@sveltejs/enhanced-img';
+import { sveltekit } from '@sveltejs/kit/vite';
+import { mdsvex } from 'mdsvex';
+
+export default {
+	plugins: [mdsvex(), enhancedImages(), sveltekit()],
+};
+```
+
+The image renders as the `<picture>` enhanced-img gives an `<enhanced:img>`: a `<source>` for each format it made, avif, webp and the format of the file, then an `<img>` with the `width` and `height` of the file, so the page doesn't shift as it loads. The `alt` and `title` stay on the `<img>`.
+
+```svx
+![A chart](./chart.png)
+```
+
+```svelte
+<script>
+	import __mdsvex_img_0 from './chart.png?enhanced';
+</script>
+
+<p>
+	<picture>
+		{#each Object.entries(__mdsvex_img_0.sources) as [format, srcset]}
+			<source {srcset} type={'image/' + format} />
+		{/each}
+		<img src={__mdsvex_img_0.img.src} width={__mdsvex_img_0.img.w} height={__mdsvex_img_0.img.h} alt="A chart" />
+	</picture>
+</p>
+```
+
+Some things change when you turn it on:
+
+- The `<img>` sits inside a `<picture>`, so a selector such as `p > img` no longer matches it. Write `p img` or `picture img`.
+- The first build is slower, as sharp makes every format and size of every image. imagetools keeps them in `node_modules/.cache/imagetools` for later builds.
+- An `img` [replacement](/docs/guides/components) gets the imported picture as its `src` prop, `{ sources, img: { src, w, h } }`, and renders it as it likes. That is where `loading="lazy"` or `decoding="async"` go. mdsvex doesn't add them, nor does enhanced-img.
+- An `.svg`, and any image with a query of its own, such as `?url` or `?w=400`, is imported as written. A query is how you take one image out.
+
+Set `enhanced: false` to keep plain imports with enhanced-img installed, or `enhanced: true` to make a build fail when `enhancedImages()` is missing:
+
+```js
+mdsvex({ import_images: { enhanced: false } });
+```
+
+`compile()` takes the option too. It is off there by default, because the import only means something to a bundler that takes image files, and `{ enhanced: true }` turns the pictures on, as compile can't see your Vite plugins. The editor reads the option from the manifest the plugin writes, or from `import_images` in an `mdsvex.config.json`, where it is on unless it is `false`, and `{ "enhanced": true }` says enhanced-img is in the plugins. A replaced `img` then gets the type of the import as its `src`, as TypeScript resolves it: `vite/client` declares the common image types and `?url`, `?raw` and `?inline`, and `@sveltejs/enhanced-img` declares `?enhanced` as its `Picture`. An import TypeScript can't resolve reports nothing, and its `src` is `any`.

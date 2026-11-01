@@ -1,0 +1,179 @@
+---
+title: Custom components
+order: 3
+---
+# Custom components
+
+Custom components replace the elements markdown produces. A `## heading` can render your `Heading.svelte`, and a fenced code block your `CodeBlock.svelte`.
+
+## Replacing elements in a template
+
+A template's `<script module>` exports replace elements by name, in the documents it wraps:
+
+```svelte
+<!-- src/lib/templates/Docs.svelte -->
+<script module>
+	export { default as h2 } from './docs/Heading.svelte';
+	export { default as pre } from './docs/CodeBlock.svelte';
+</script>
+
+<script>
+	let { title, children } = $props();
+</script>
+
+<main class="docs">
+	<h1>{title}</h1>
+	{@render children()}
+</main>
+```
+
+The export name is the element name. mdsvex reads the names without running the module, so export each one by name. A name `export *` re-exports can't be seen, and mdsvex warns about it.
+
+For a template you can't edit, such as one from a package, give the replacements in a module of their own. They are merged over the template's own:
+
+```js
+mdsvex({
+	templates: {
+		theme: {
+			component: '@acme/theme/Layout.svelte',
+			components: '#lib/theme-overrides.js'
+		}
+	}
+});
+```
+
+## The `components` option
+
+`components` names one or more modules whose exports replace elements in every document, including documents with no template:
+
+```js
+// src/lib/markdown.js
+export { default as img } from './Image.svelte';
+export { default as a } from './Link.svelte';
+```
+
+```js
+mdsvex({ components: '#lib/markdown.js' });
+```
+
+See the [templates playground example](/playground/templates), which uses both.
+
+## Precedence
+
+For each element, mdsvex uses the first match from:
+
+1. the document's template, including its `components` override module;
+2. the `components` modules, the last module in the list winning;
+3. no match, the plain element.
+
+`template: false` documents only use the `components` modules.
+
+Markdown inside a component you use, such as `<Aside>`, uses the same replacements as the rest of the document.
+
+## Element props
+
+Every replacement gets the element's attributes as props, including any a parse plugin added, such as an `id`. Unless the element is void, it gets its content as `children`. Some elements get more:
+
+| element | extra props |
+| --- | --- |
+| `h1` to `h6` | `level`, a number from 1 to 6 |
+| `a` | `href`, `title` |
+| `img` | `src`, `alt`, `title`, and no `children` |
+| `pre` | `lang`, `meta`, `code`, `title`, `caption` and meta props, see [code block components](/docs/reference/highlighting#code-block-components) |
+| `code` | inline code only, its text as `children`, and `lang` when it is [highlighted](/docs/reference/highlighting#inline-code) |
+| `ol` | `start` |
+| `li` | `checked`, `true` or `false` on a task list item (`- [x] done`), and no checkbox in its `children` |
+| `th`, `td` | `align`, `"left"`, `"right"` or `"center"` |
+
+`hr` and `br` are void too. For a fenced code block, `children` is the whole highlighted `<pre>` element.
+
+One component can serve several elements:
+
+```svelte
+<!-- src/lib/templates/docs/Heading.svelte -->
+<script>
+	let { level, id, children } = $props();
+</script>
+
+<svelte:element this={`h${level}`} {id}>
+	<a href="#{id}">#</a>
+	{@render children()}
+</svelte:element>
+```
+
+```js
+export { default as h2, default as h3 } from './docs/Heading.svelte';
+```
+
+Svelte ignores props a component doesn't declare, so a replacement only reads what it needs.
+
+## `component_mode: 'all'`
+
+By default, only elements written as markdown are replaced, so typing HTML such as `<a>` gets you the plain element. With `component_mode: 'all'`, lowercase HTML you type is replaced as well:
+
+```js
+mdsvex({
+	components: '#lib/markdown.js',
+	component_mode: 'all'
+});
+```
+
+```svx
+<a href="/about">Replaced by the a export</a>
+
+<svelte:element this={'a'} href="/about">Never replaced</svelte:element>
+```
+
+- `<svelte:element this={'a'}>` is the escape hatch, it is never replaced.
+- `<svelte:*>` elements and capitalised components are never replaced.
+- An element with a directive, such as `bind:`, `on:`, `use:`, `class:`, `style:`, `transition:`, `in:`, `out:`, `animate:` or `let:`, stays a plain element even when it has a replacement, because a component can't take a directive. mdsvex warns, naming the element and the directive. Event attributes such as `onclick` are plain props and are passed along.
+
+## Lowercase custom tags
+
+With `component_mode: 'all'`, a lowercase tag matching an export is replaced too. A `warning` export gives every document a `<warning>` tag, with no import:
+
+```js
+// src/lib/markdown.js
+export { default as warning } from './Warning.svelte';
+```
+
+```svx
+<warning type="tip">
+
+Markdown *inside* still works.
+
+</warning>
+```
+
+A tag name that isn't a JavaScript identifier, such as `<info-box>`, matches a string export: `export { default as 'info-box' } from './InfoBox.svelte'`. Capitalised tags are always plain Svelte components, imported as usual. See the [all mode playground example](/playground/all-mode).
+
+## Nested scopes
+
+Markdown inside a component always uses the document's replacements, never ones the wrapping component supplies. Letting `<Aside>` change how the markdown inside it renders is deferred for now.
+
+Until then, move that markdown into a document of its own, and give it a template with the replacements you want. Here that is an `aside` entry in `templates`, which `?template=` picks on the import:
+
+```svelte
+<!-- src/lib/templates/Aside.svelte -->
+<script module>
+	export { default as p } from './aside/Paragraph.svelte';
+</script>
+
+<script>
+	let { children } = $props();
+</script>
+
+{@render children()}
+```
+
+```svx
+<script>
+	import AsideText from './aside-text.svx?template=aside';
+</script>
+
+## Header 2
+
+<aside>
+	<AsideText />
+</aside>
+```

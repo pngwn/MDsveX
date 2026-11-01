@@ -1,0 +1,172 @@
+---
+title: Markdown
+order: 3
+---
+
+[svelte]: https://svelte.dev/
+[pfm]: https://github.com/pngwn/MDsveX/blob/next/PFM.md
+# Markdown
+
+mdsvex reads its own flavour of markdown, [Penguin-Flavoured Markdown][pfm]. It is CommonMark with the ambiguous parts taken out, the GFM additions most people use, and a few of its own. Most of a document reads as it does anywhere else. This section covers the rest.
+
+Coming from 0.x, the [migrator](/docs/guides/migrating-from-0x#run-the-migrator) rewrites your documents for you.
+
+## Different from CommonMark
+
+| you write | in CommonMark | in mdsvex |
+| --- | --- | --- |
+| `_text_` | emphasis | emphasis |
+| `*text*` | emphasis | strong |
+| `**text**`, `__text__` | strong | strong inside strong, and emphasis inside emphasis. Write `*text*` |
+| a line of `===` or `---` under a title | a heading | a paragraph, and `---` is a thematic break. Write `# Title` |
+| `## Title ##` | the closing `#` are dropped | they are text |
+| four spaces of indent | a code block | nothing, indentation means nothing. Use a fence |
+| `~~~` | a code fence | text. A fence is three or more backticks |
+| two spaces at the end of a line | a line break | nothing. End the line with a backslash |
+| a line without `>` after a quoted line | still in the quote | the quote has ended |
+| `[text]` with a definition somewhere | a link | text. Write `[text][]`, with the definition above it |
+| `https://example.com`, as GFM links it | a link | text. Write `<https://example.com>` |
+| `{` and `}` | text | a Svelte expression. Write `\{` for a brace |
+
+A link reference definition comes before the first link that uses it. That lets a document render while it is still arriving, since nothing later in it can change what came before.
+
+```svx
+[svelte]: https://svelte.dev
+
+Made with [svelte][], see [the site][svelte].
+```
+
+A `_` or `*` opens after a space or punctuation and closes before one, so `snake_case_name` and `2*3*4` are text. To mark part of a word, put a `|` on the side that touches a letter. The `|` is not rendered:
+
+```svx
+fan|_tas_|tic
+```
+
+```html
+<p>fan<em>tas</em>tic</p>
+```
+
+Curly quotes, dashes and other Unicode punctuation count as punctuation there. Chinese, Japanese and Korean text needs no marker, `这是*重要*的` is strong.
+
+## Added to CommonMark
+
+| you write | you get |
+| --- | --- |
+| `H~2~O` | subscript, H<sub>2</sub>O |
+| `x^2^` | superscript, x<sup>2</sup> |
+| `~~gone~~` | strikethrough |
+| `- [x] done` | a [task list](/docs/learn/markdown#task-lists) |
+| a pipe table | a [table](/docs/learn/markdown#tables), with header columns and merged cells |
+| `:name[text]`, `::name`, `:::name` | a [directive](/docs/guides/directives), your own component |
+| a `math` fence, `` $`x^2`$ `` | [math](/docs/reference/math) |
+| `[^1]` in the text and `[^1]: a note` | a [footnote](/docs/reference/footnotes) |
+| `import` lines at the top | [imports](/docs/learn/markdown#svelte-in-markdown) without a `<script>` |
+
+## Task lists
+
+A list item that starts with `[ ]` or `[x]` and a space is a task:
+
+```svx
+- [x] write the docs
+- [ ] ship it
+```
+
+```html
+<ul>
+	<li><input type="checkbox" checked disabled /> write the docs</li>
+	<li><input type="checkbox" disabled /> ship it</li>
+</ul>
+```
+
+It works in bulleted and numbered lists at any depth. The marker needs text after it on its line, so `[x]done` and a bare `- [ ]` are text, and so is a marker anywhere but the start of an item. Write `- \[x] text` to start an item with those characters. A [replaced `li`](/docs/guides/components#element-props) gets `checked` and no checkbox.
+
+## Tables
+
+Tables are GFM pipe tables. A `:` in the delimiter row aligns a column, and `\|` is a bar inside a cell, in a code span too.
+
+A `||` in the header and delimiter rows makes the columns on one side of it row headers:
+
+```svx
+| option || type | default |
+| --- || --- | --- |
+| `extensions` || `string[]` | `['.svx']` |
+```
+
+```html
+<tr>
+	<th scope="row"><code>extensions</code></th>
+	<td><code>string[]</code></td>
+	<td><code>['.svx']</code></td>
+</tr>
+```
+
+A cell that holds only `>` joins the cell to its left, and one that holds only `^` joins the cell above:
+
+```svx
+| a | > | c |
+| --- | --- | --- |
+| 1 | 2 | 3 |
+| ^ | 4 | 5 |
+```
+
+```html
+<thead>
+	<tr>
+		<th colspan="2">a</th>
+		<th>c</th>
+	</tr>
+</thead>
+<tbody>
+	<tr>
+		<td rowspan="2">1</td>
+		<td>2</td>
+		<td>3</td>
+	</tr>
+	<tr>
+		<td>4</td>
+		<td>5</td>
+	</tr>
+</tbody>
+```
+
+Write `\>` or `\^` for a cell of that one character. A row is one line, and a table ends at a blank line or at any line that would end a paragraph, such as a heading.
+
+## Svelte in markdown
+
+Components, elements, expressions and blocks go anywhere, and markdown works inside them with no blank lines around it:
+
+```svx
+<Box>
+# A title
+</Box>
+
+{#if published}
+Some *strong* text.
+{/if}
+```
+
+```svelte
+<Box><h1>A title</h1></Box>{#if published}
+<p>Some <strong>strong</strong> text.</p>{/if}
+```
+
+A block quote, a list item, an element, a Svelte block and a container directive all hold the same blocks the document does, so a table or a `{#if}` is the same thing inside a list item as at the top.
+
+- **A paragraph of only tags gets no `<p>`.** `<Chart />` on a line of its own is the component and nothing else, and `<Badge /> new today` is a paragraph.
+- **A block level element that starts a line is a block.** `<div>one</div> two` is the `<div>` and then a paragraph, `two`.
+- **`<script>`, `<style>`, `<pre>` and `<textarea>` hold text.** Nothing inside them is markdown.
+- **Imports can stand at the top**, after any frontmatter, without a `<script>`. They go into the document's script:
+
+```svx
+import Chart from './Chart.svelte'
+
+<Chart />
+```
+
+```svelte
+<script>
+import Chart from './Chart.svelte'
+</script><Chart />
+```
+
+- **A brace is an expression.** For a brace as text, write `\{`, use `&#123;`, or put it in code, where a brace is always text.

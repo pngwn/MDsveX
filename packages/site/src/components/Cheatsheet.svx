@@ -243,10 +243,121 @@
 
 </style>
 
-<script>
-  import cheatsheet from './_cheatsheet.svtext';
-</script>
-
 <div class="cheatsheet">
-  {@html cheatsheet}
+
+<div class="container">
+  <div class="box install">
+    <h2><a href="/docs/learn/quick-start#install-it">Install</a></h2>
+
+Quick installation instructions.
+
+```bash
+npm i -D mdsvex@next
+```
+
+```bash
+pnpm add -D mdsvex@next
+```
+
+  </div>
+  <div class="box use">
+    <h2><a href="/docs/learn/quick-start#use-it">Use</a></h2>
+
+Add mdsvex to your Vite config
+
+```js
+plugins: [
+  mdsvex(config),
+  sveltekit()
+]
+```
+  </div>
+  <div class="box config">
+    <h2><a href="/docs/reference/options">Configure</a></h2>
+
+    <dl>
+      <dt>
+        <a href="/docs/reference/options#extensions"><span>extensions</span></a>
+      </dt>
+      <dd>use custom extensions</dd>
+      <dt>
+        <a href="/docs/reference/options#frontmatter"><span>frontmatter</span></a>
+      </dt>
+      <dd>change frontmatter language</dd>
+      <dt>
+        <a href="/docs/reference/options#templates"><span>templates</span></a>
+      </dt>
+      <dd>wrap documents</dd>
+      <dt>
+        <a href="/docs/reference/options#select_template"><span>select_template</span></a>
+      </dt>
+      <dd>pick templates by path</dd>
+      <dt>
+        <a href="/docs/reference/options#components"><span>components</span></a>
+      </dt>
+      <dd>replace elements everywhere</dd>
+      <dt>
+        <a href="/docs/reference/options#component_mode"><span>component_mode</span></a>
+      </dt>
+      <dd>replace typed html too</dd>
+      <dt>
+        <a href="/docs/plugins/writing/parse-plugins#parse_plugins"><span>parse_plugins</span></a>
+      </dt>
+      <dd>change the markdown tree</dd>
+    </dl>
+
+  </div>
+
+  <div class="box layouts">
+    <h2><a href="/docs/guides/templates">Templates</a></h2>
+
+Wrap mdsvex documents in components.
+
+<h3><a href="/docs/guides/templates#choosing-a-template">named templates</a></h3>
+
+Pick a template by name.
+
+```svx
+---
+template: blog
+---
+```
+
+<h3><a href="/docs/guides/templates#opting-out">opting out</a></h3>
+
+Render a document without one.
+
+```svx
+---
+template: false
+---
+```
+
+<h3><a href="/docs/guides/components">custom components</a></h3>
+
+<p class="keep">Replace HTML elements with custom components.</p>
+
+  </div>
+
+  <div class="box frontmatter">
+    <h2><a href="/docs/guides/frontmatter">Frontmatter</a></h2>
+
+Frontmatter is exported as metadata.
+
+```mdsvex
+---
+title: Fabuloso
+---
+
+# {metadata.title}
+```
+
+  </div>
+
+  <div class="box integrations">
+    <h2><a href="/docs/guides/directives">Directives</a></h2>
+    <p class="keep">Markdown syntax for your own components</p>
+  </div>
+</div>
+
 </div>

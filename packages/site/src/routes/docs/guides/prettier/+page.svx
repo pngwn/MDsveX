@@ -1,0 +1,56 @@
+---
+title: Formatting with Prettier
+order: 5
+---
+# Formatting with Prettier
+
+`@mdsvex/prettier-plugin` formats documents with [Prettier](https://prettier.io):
+
+```bash
+pnpm add --save-dev prettier @mdsvex/prettier-plugin@next
+```
+
+```json
+{
+	"plugins": ["@mdsvex/prettier-plugin"]
+}
+```
+
+Prettier picks the plugin for `.svx` and `.pfm` files from their extension. For another extension in `extensions`, add an override that sets `"parser": "mdsvex"` for it.
+
+The plugin formats the Svelte in a document as [prettier-plugin-svelte](https://github.com/sveltejs/prettier-plugin-svelte) formats a component. A tag that does not fit on a line puts its attributes one to a line, the children of elements, components and blocks such as `{#if}` are indented, markdown included, and scripts move to the top and styles to the end as `svelteSortOrder` says. The markdown is formatted as Prettier formats markdown: `-` bullets, ordered lists counted from their start, padded and aligned tables, a blank line between blocks, list items lined up with their content and `> ` on every line of a quote. Emphasis stays as PFM writes it, `_` for emphasis and `*` for strong. `proseWrap` works as it does for markdown, `always` fills the line and `never` puts a paragraph on one line.
+
+The code in a document is formatted with your Prettier options:
+
+| part | formatted |
+| --- | --- |
+| frontmatter | as yaml, unless the project parses it with [`frontmatter.parse`](/docs/guides/frontmatter#custom-frontmatter-parsers) |
+| imports, `<script>`, `<style>` | as code, TypeScript with `lang="ts"`, scss or less with `lang` |
+| `{expression}`, `{@html}`, `{@render}`, `{@const}` | on one line |
+| the heads of `{#if}`, `{#each}`, `{#await}`, `{#key}`, `{#snippet}` | on one line |
+| attribute expressions | on one line, the tag keeps its line breaks and the order of its attributes |
+| code fences | kept as written, see `mdsvexFormatFences` below |
+
+A part that does not parse is kept as written.
+
+## Plugin options
+
+| option | default | what it does |
+| --- | --- | --- |
+| `mdsvexFormatFences` | `false` | formats a fence whose info string is only a language Prettier knows. A fence with meta, such as a line range, or with an annotation is still kept, as its line numbers count the lines of the code |
+| `mdsvexFrontmatter` | `"auto"` | `"auto"` formats frontmatter as yaml unless the manifest the Vite plugin writes says the project parses it itself, `"yaml"` always formats it and `"keep"` never does |
+
+## Leaving parts alone
+
+```svx
+<!-- prettier-ignore -->
+{items.map((item)=>item.name)}
+
+<!-- prettier-ignore-start -->
+| kept | as  |
+| ---- | --- |
+| it   | is  |
+<!-- prettier-ignore-end -->
+```
+
+`<!-- prettier-ignore -->` keeps the block after it, or the next node when it sits in a paragraph. Everything between `<!-- prettier-ignore-start -->` and `<!-- prettier-ignore-end -->` at the top of a document is kept. `<!-- @format -->` at the top, or after the frontmatter, works with `--require-pragma` and `--insert-pragma`.
