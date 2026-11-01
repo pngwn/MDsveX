@@ -1,0 +1,23 @@
+---
+title: Diagrams
+order: 7
+---
+# Diagrams
+
+```bash
+pnpm add --save-dev @mdsvex/plugin-diagram@next pele
+```
+
+```js
+import { diagram } from '@mdsvex/plugin-diagram';
+
+mdsvex({ plugins: [diagram()] });
+```
+
+Each `mermaid` fence is drawn as a diagram, by [pele](https://pele.run) or by [mermaid](https://mermaid.js.org). Both are optional peer dependencies, install the one you want. `engine: 'auto'`, the default, takes pele when it is installed and mermaid otherwise, and the choice is made once, when `diagram()` runs, so the page never imports a package you didn't install. With neither installed it throws a `DiagramError` that says what to install.
+
+**With pele** the diagram is drawn at build time and the page ships the SVG, with no script, so it shows without JavaScript too. It is themed by CSS variables such as `--pele-bg` and `--pele-fg`, with dark values for a reader whose system is dark, so light and dark need no second render. A diagram pele can't draw is a `diagram_error` warning at its fence and shows its source, and `diagram({ strict: true })` fails the build there instead. `pele` passes [render options](https://pele.run/api) such as `fontFamily`. pele reads Mermaid syntax with its own layout, and has no Mermaid themes, no HTML labels and no JavaScript click callbacks.
+
+**With mermaid** the server renders the code and the browser loads mermaid on a page that has a diagram and draws it in place of the code. Without JavaScript the reader sees the code.
+
+The plugin wraps each `mermaid` fence in a `diagram` directive, so the code still renders through whatever replaces `pre`, as the source in a closed "Diagram source" disclosure under the drawing. The `title` and `caption` of the fence go around the diagram, and `accTitle:` and `accDescr:` name it for screen readers. The plugin [claims](/docs/plugins/writing/bundles) the `mermaid` language, so the highlighter never sees these fences, the code renders plain and nothing warns.

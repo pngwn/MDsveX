@@ -1,0 +1,59 @@
+---
+title: Emoji
+order: 12
+---
+# Emoji
+
+```bash
+pnpm add --save-dev @mdsvex/plugin-emoji@next
+```
+
+```js
+import { emoji } from '@mdsvex/plugin-emoji';
+
+mdsvex({ plugins: [emoji()] });
+```
+
+Turns a shortcode into its emoji:
+
+```svx
+We shipped it :tada: and nobody was paged :+1:
+```
+
+```html
+<p>We shipped it 🎉 and nobody was paged 👍</p>
+```
+
+The shortcodes are the ones GitHub uses, 1913 names for 1870 emoji. The table is part of the package, built from [`gemoji`](https://github.com/wooorm/gemoji) (MIT), so there is nothing else to install.
+
+A shortcode is replaced in prose and nowhere else: not in code, math, a url, the value of an attribute or an `{expression}`. What is not a shortcode stays as you wrote it:
+
+- a name the table does not have, such as `:not_an_emoji:`
+- a name that touches a letter or a digit, so `10:30:00` and `1:100:1` are safe although `:100:` is an emoji
+- a shortcode you escaped, `\:tada:`
+- an inline directive, `:tada[text]`, whose name is followed by a bracket and not a colon
+
+```ts
+emoji({
+	table: Record<string, string>,
+	extend: Record<string, string | null>,
+	label: boolean | ((emoji: string, name: string | undefined) => string | undefined),
+	attrs: Record<string, string>
+});
+```
+
+- **`extend`** adds shortcodes to the table, replaces one of the same name, and takes one out with `null`: `{ shipit: '...', 100: null }`.
+- **`table`** is the whole table in place of the built in one.
+- **`label`** wraps each emoji in a `<span>` with a name for a screen reader. `true` uses the Unicode name of the emoji, and a function gives the name, for a page that is not in English. Emoji you typed as characters are wrapped as well:
+
+```js
+emoji({ label: true });
+```
+
+```html
+<p>We shipped it <span role="img" aria-label="party popper">🎉</span></p>
+```
+
+- **`attrs`** are attributes for a `<span>` around each emoji, such as a class, with or without a label.
+
+It writes the character and adds no image set, and emoticons such as `:)` are left alone. A [heading id](/docs/reference/options#heading_ids) is made from what you wrote, so `## Done :tada:` gets `done-tada`. The plugin reads the finished tree, so put it after a plugin that turns urls into links, such as [references](/docs/plugins/references) with `linkify`.

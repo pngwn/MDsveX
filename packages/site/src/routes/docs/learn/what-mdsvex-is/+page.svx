@@ -1,0 +1,32 @@
+---
+title: What mdsvex is
+order: 1
+---
+
+[svelte]: https://svelte.dev/
+[mdx]: https://mdxjs.com/
+# mdsvex
+
+mdsvex is a markdown preprocessor for [Svelte][svelte] components. Basically [MDX][mdx] for Svelte.
+
+This preprocessor allows you to use Svelte components in your markdown, or markdown in your Svelte components.
+
+mdsvex supports all Svelte syntax and its own flavour of markdown, which differs from CommonMark in a few places. See [Markdown](/docs/learn/markdown) for what is different and [limitations](/docs/reference/limitations) for what is missing.
+
+You can do this:
+
+```svx
+<script>
+	import Chart from '#lib/Chart.svelte';
+</script>
+
+# Here’s a chart
+
+The chart is rendered inside our mdsvex document.
+
+<Chart />
+```
+
+mdsvex has its own markdown parser, and [parse plugins](/docs/plugins/writing/parse-plugins#parse_plugins) can change the tree it builds.
+
+[Try it](/playground)

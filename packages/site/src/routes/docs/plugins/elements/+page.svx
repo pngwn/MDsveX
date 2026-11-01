@@ -1,0 +1,50 @@
+---
+title: Elements
+order: 3
+---
+# Elements
+
+```bash
+pnpm add --save-dev @mdsvex/plugin-elements@next
+```
+
+```js
+import { elements } from '@mdsvex/plugin-elements';
+
+mdsvex({ plugins: [elements()] });
+```
+
+Directives over plain HTML elements. A document imports only the ones it uses, none loads a script, and each works without JavaScript:
+
+| directive | renders |
+| --- | --- |
+| `:::details[Summary]` | a `<details>` with the bracket text as its summary, `(open=true)` opens it |
+| `:::accordion` | a `<details>` for each heading written directly inside it |
+| `:kbd[Ctrl]` | a `<kbd>` |
+| `:ruby[漢字](rt=かんじ)` | a `<ruby>` with the reading in `<rt>` and `<rp>` fallbacks |
+| `:badge[new](tone=tip)` | a `<span class="badge">`, tinted by `note`, `tip`, `warning` or `danger` |
+| `:mark[text]` | a `<mark>` |
+| `:ins[text](datetime=2026-10-28)` | an `<ins>`, with the `datetime` and `cite` of the element |
+| `:abbr[HTML](title="HyperText Markup Language")` | an `<abbr>` with what it stands for in `title` |
+
+An accordion splits like [tabs](/docs/plugins/tabs): the first heading written directly inside sets the depth, and each heading of that depth starts an item whose summary is the text of the heading, so it gets no id and no place in a table of contents. `(name=faq)` gives every item the `name` of a `<details>`, so opening one closes the others. A `:::details` written directly inside is an item too.
+
+````svx
+:::accordion(name=faq)
+
+## Is it free?
+
+Yes.
+
+## Does it work without JavaScript?
+
+Every part of it.
+
+:::
+````
+
+A `<details>` is a disclosure the browser already makes accessible, a button in the tab order that announces whether it is expanded. Most screen readers say nothing of a `<mark>` or an `<ins>`, so the text has to carry what matters, and a `title` is read by only some, so spell an abbreviation out in the text where the reader needs it.
+
+The build warns, with the line, about an accordion with no items (`no_items`), content before its first item (`content_before_first_item`), an empty heading in one (`item_without_label`), a `:ruby` with no `rt` (`ruby_without_rt`) and an `:abbr` with no `title` (`abbr_without_title`). A title with a space or a comma needs quotes.
+
+The stylesheet has selectors with no specificity and reads `--elements-line`, `--elements-radius` and `--elements-padding` from `.details` and `.accordion`, `--kbd-line` from `.kbd`, `--badge-color` from `.badge` and `--mark-color` from `.mark`, a tint behind text that keeps its colour. `elements({ css: false })` leaves it out and keeps the markup. To change the markup, export a component under the name of the directive from a [directives module](/docs/guides/directives#declaring-directives). It gets the args as string props, and `label` and `children`. The plugin's own are exported as `@mdsvex/plugin-elements/Details.svelte` and so on.

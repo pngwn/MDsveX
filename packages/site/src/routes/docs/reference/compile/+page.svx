@@ -1,0 +1,89 @@
+---
+title: Compile API
+order: 4
+---
+# `compile`
+
+`compile` turns one document into Svelte component source without Vite. It is synchronous and never touches the filesystem, so it also runs in a browser.
+
+In a browser or worker, import it from `mdsvex/compile`. That entry holds only the compiler, so a bundler never sees the Vite plugin or its lazy imports of Vite and Node builtins.
+
+```js
+import { compile } from 'mdsvex';
+
+const { code, metadata } = compile(`---
+title: Hello
+---
+
+# {metadata.title}
+`);
+```
+
+The result has:
+
+- `code`, the Svelte 5 component source;
+- `metadata`, the parsed frontmatter, or `undefined` when there is none;
+- `template`, the name of the template wrapping the document, or `undefined`;
+- `warnings`, or `undefined` when there are none.
+
+`compile` resolves nothing. Templates, components and directives are given as the import specifier to write plus the names that module exports. Finding those names is what the Vite plugin does for you.
+
+```js
+compile(source, {
+	templates: {
+		default: { specifier: '/src/Post.svelte', components: ['h2', 'p'] }
+	},
+	components: [{ specifier: '/src/markdown.js', names: ['img'] }],
+	directives: [{ specifier: '/src/directives.js', names: ['Callout'] }]
+});
+```
+
+The output imports from those specifiers exactly as written.
+
+`default_template` names the template of a document whose frontmatter and `select_template` pick none, in place of the `default` entry:
+
+```js
+compile(source, {
+	templates: { post: { specifier: '/src/Post.svelte', components: [] } },
+	default_template: 'post'
+});
+```
+
+`compile` doesn't highlight code unless you pass `highlight`, see [highlighting with `compile`](/docs/reference/highlighting#highlighting-with-compile).
+
+A directive with no component is an error. For a preview or an editor, pass `strict_directives: false` to render it as its children instead.
+
+## `compile_async`
+
+A plugin that waits for something, a file or an endpoint, [defers](/docs/plugins/writing/deferred-work) that work, and `compile` throws a `PluginAsyncError` when one does. `compile_async` takes the same options, waits for that work, and gives the same result once it applied:
+
+```js
+import { compile_async } from 'mdsvex/compile';
+
+const { code, data } = await compile_async(source, { plugins: [citations()] });
+```
+
+A document whose plugins defer nothing compiles exactly as it does with `compile`. A task that fails rejects with a `PluginTaskError` that names the plugin and the line of the node, with the task's error as its `cause`.
+
+Given `read` and `resolve` options, `compile_async` reads the files fences show with `src=` itself, resolved from `filename`, so a host that is not Vite needs no `sources`. The result's `dependencies` then name those files and the module of the template, beside what plugins read, for the host to watch:
+
+```js
+const { code, dependencies } = await compile_async(source, {
+	filename: '/site/post.svx',
+	read: (path) => fs.readFile(path, 'utf8'),
+	resolve: (specifier, from) => path.resolve(path.dirname(from), specifier)
+});
+```
+
+What plugins load with [`ctx.cached`](/docs/plugins/writing/deferred-work#loading-files) is kept between calls for as long as you pass the same `plugins` array, which suits a build that runs once. A host that compiles again when files change passes a `CompilerSession` of its own as the third argument, and calls its `invalidate` with the paths that changed before compiling the documents whose `dependencies` list them:
+
+```js
+import { CompilerSession, compile_async } from 'mdsvex/compile';
+
+const session = new CompilerSession();
+const { code, dependencies } = await compile_async(source, options, session);
+
+// later, when a watched file changes
+session.invalidate([changed]);
+await compile_async(source, options, session);
+```

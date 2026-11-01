@@ -1,0 +1,112 @@
+---
+title: Quick start
+order: 2
+---
+
+[kit3]: https://svelte.dev/docs/kit/migrating-to-sveltekit-3
+[subpath]: https://nodejs.org/api/packages.html#subpath-imports
+[twinkleplop]: https://twinkleplop.pngwn.at
+# Quick start
+
+## Install it
+
+Install it as a dev-dependency.
+
+With `npm`:
+
+```bash
+npm i --save-dev mdsvex@next
+```
+
+With `pnpm`:
+
+```bash
+pnpm add --save-dev mdsvex@next
+```
+
+mdsvex needs Svelte 5 and Vite 6 or later.
+
+## Use it
+
+mdsvex is a Vite plugin. It turns markdown files into Svelte components, and the Svelte plugin compiles them like any other component.
+
+### SvelteKit
+
+SvelteKit 3 has no `svelte.config.js`, so mdsvex goes in `vite.config.js`, beside `sveltekit()`:
+
+```js
+// vite.config.js
+import { sveltekit } from '@sveltejs/kit/vite';
+import { mdsvex } from 'mdsvex';
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+	plugins: [mdsvex({ extensions: ['.svx', '.md'] }), sveltekit()]
+});
+```
+
+Declare the extensions once, in `mdsvex()`. It registers them with SvelteKit, so you don't repeat them in `sveltekit({ extensions })`. The order of the two plugins doesn't matter.
+
+Any markdown file is now a component, and a `+page.svx` is a route:
+
+```
+src/routes/
+├── +page.svelte
+└── blog/
+    └── hello/
+        └── +page.svx
+```
+
+Options that point at a file, such as [`templates`](/docs/reference/options#templates) and [`components`](/docs/reference/options#components), resolve the way an import from your project root would. That includes aliases, packages, relative paths and SvelteKit 3's `#lib` [subpath imports][subpath], which replace `$lib` (see the [SvelteKit 3 migration guide][kit3]):
+
+```json
+{
+	"imports": {
+		"#lib/*": "./src/lib/*"
+	}
+}
+```
+
+```js
+mdsvex({
+	templates: { default: '#lib/templates/Post.svelte' }
+});
+```
+
+Imports inside a document work the same way, `import Chart from '#lib/Chart.svelte'`. Subpath imports need the file extension.
+
+### Vite without SvelteKit
+
+With `@sveltejs/vite-plugin-svelte` on its own, add the extensions to `svelte()` as well. mdsvex can't register them there. If one is missing, the build stops with an error that names it.
+
+```js
+// vite.config.js
+import { svelte } from '@sveltejs/vite-plugin-svelte';
+import { mdsvex } from 'mdsvex';
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+	plugins: [mdsvex(), svelte({ extensions: ['.svelte', '.svx'] })]
+});
+```
+
+### Highlighting code
+
+Fenced code is highlighted by default, with [twinkleplop][twinkleplop]. mdsvex adds no CSS, so install a theme and import it once, in your root layout:
+
+```bash
+npm i --save-dev @twinkleplop/theme-github
+```
+
+```svelte
+<!-- src/routes/+layout.svelte -->
+<script>
+	import '@twinkleplop/theme-github';
+
+	let { children } = $props();
+</script>
+
+{@render children()}
+```
+
+Without a theme, code renders in one colour. The theme gives light colours, and dark ones under a `.dark` class. To follow the reader's system setting instead, see [themes](/docs/reference/highlighting#themes).

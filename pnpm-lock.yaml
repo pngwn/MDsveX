@@ -703,6 +703,9 @@ importers:
       '@mdsvex/plugin-anchors':
         specifier: workspace:*
         version: link:../../plugins/anchors
+      '@mdsvex/plugin-link-check':
+        specifier: workspace:*
+        version: link:../../plugins/link-check
       '@mdsvex/repl':
         specifier: workspace:*
         version: link:../repl
