@@ -10,7 +10,9 @@ The 1.0 design foundation, phase 0 of `design/SITE_PLAN.md`. `design/SCORE.md` i
 | `pfm.ts` | `pfm_tree` and `pfm_stream`, the real parser in the browser |
 | `score/` | the engine: `reading.ts` (what the parser said), `layout.ts` (where it goes), `kinds.ts` (names and tones per parser kind), `Score.svelte`, and `player.svelte.ts` to play a stream |
 | `penguin/` | the line bird (`Pngwn`), `Perch` to stand it at the end of a line, `BirdsEye` for held characters |
-| `Frame.svelte` | the page frame: paper, faces, texture, a `nav` slot, a footer, `theme` of `auto`, `light` or `dark` |
+| `Frame.svelte` | the page frame: paper, faces, texture, a `nav` slot, a footer, `theme` of `auto`, `light` or `dark`. The root layout puts every page but the playground in it |
+| `base.css`, `code.css`, `prose.css` | the page under the frame; code in the mono with riso, highlighted in the score's colours; `.prose`, the docs' long reading type |
+| `theme.svelte.ts` | the frame's theme in context, `use_theme()` to read or set it; `?theme=dark` on any page sets it |
 
 ## Score
 
@@ -25,6 +27,14 @@ The 1.0 design foundation, phase 0 of `design/SITE_PLAN.md`. `design/SCORE.md` i
 - `stream`, a bar index. When given, the source is fed a character at a time and that bar is drawn, with guesses, revokes and the bird's eye. Bar `i` is the reading after `i + 1` characters; the last bar is the finished document. `new Player(() => source)` plays one.
 - `focus`, bindable, the lit phrase `{ start, end, kind }`, for output beside the score to light with it. `tone(focus.kind)` from `kinds.ts` gives its colour as `var(--line-<tone>)`.
 - `label`, the figure's accessible name. The source is also given whole to screen readers; the drawing is hidden from them.
+
+A docs page doesn't import it. It flags a fence, and `packages/site/build/examples.js` makes the fence an `example` directive at build time (`src/lib/docs/Example.svelte`):
+
+````md
+```svx score       the score, the source a click away
+```svx result      you write beside you get, the score a click away
+```svx result score   both, opening on the score
+````
 
 Sizing is custom properties on any parent: `--size`, `--track`, `--row`, `--name-size`, `--quiet-row`, `--line-gap`, `--block-gap`, `--underlay-gap`, `--inset`, `--margin`. The defaults are v12's, and below 600px the size, tracking, inset and names step down the way v12's page did.
 
@@ -45,10 +55,7 @@ Added: `stream` and the streaming marks, which were Engraving's (round three) an
 
 ## Where the code departs from, or fills in, SCORE.md
 
-- **Staves.** "What a score is" still says one thin line per tree depth; v12, the pick, draws none.
-- **Names.** SCORE.md says short names, the full word when a page has room; v12 draws full names everywhere, including at 375px.
-- **Text lines.** SCORE.md's table gives text "quiet" (`#5d606b`); v12 draws text lines in `#8b8e99` (`--quiet-line`, 3.15:1), and so does this.
-- **Kinds SCORE.md doesn't name.** Strikethrough, superscript and subscript take emphasis's tone; image and footnote reference take link's; import takes expression's; table rows and cells take the fence's; a thematic break, a definition, a footnote definition and an HTML comment take the ink (`kinds.ts`).
-- **Streaming on v12's bars.** SCORE.md's marks were written for round three's dots: "its opening bar hollow" is drawn as a hollow 4px bar. A guess is raised by a third of a row and can sit on the row above's line; that reads, but is tight. At the end of a stream, ghosts stay drawn, and a tight list's paragraphs are revoked at the finish, so the finished bar shows struck paragraphs the settled reading doesn't have.
-- **`local("Berkeley Mono")`** doesn't match the installed desktop cuts, whose full names carry the style (`design/FONTS.md`).
-- **Dark mode.** SCORE.md has no dark palette. The proposal is in `tokens.css`; cvd's dark values are lifted the same way but not yet checked under CVD simulation.
+Phase 2 brought SCORE.md in line with v12: no staves, full names, text lines in `#8b8e99`, the kinds it didn't name, the Berkeley Mono `local()` names, and the streaming fixes below. What is left:
+
+- **Dark mode** is a proposal (SCORE.md "Dark mode, a proposal"); cvd's dark values are not yet checked under CVD simulation.
+- **Streaming on v12's bars.** A guess's row grows by its raise, so a raised name keeps its clearance from the row above. A list item's paragraph, revoked when a tight list closes, leaves no ghost (`reading.ts`); every other revoked guess stays struck to the end.
