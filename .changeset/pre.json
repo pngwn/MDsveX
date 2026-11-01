@@ -43,7 +43,8 @@
     "@mdsvex/plugin-embeds": "0.0.1",
     "@mdsvex/plugin-figures": "0.0.1",
     "@mdsvex/plugin-link-check": "0.0.1",
-    "@mdsvex/plugin-numbering": "0.0.1"
+    "@mdsvex/plugin-numbering": "0.0.1",
+    "@mdsvex/tree-sitter": "0.0.0"
   },
   "changesets": [
     "any-child-handler",
@@ -100,6 +101,7 @@
     "definition-title-parens",
     "delimiter-closes-after-expression",
     "destination-backslash-line-end",
+    "diagram-claims-mermaid",
     "directive-args-strings",
     "directive-args",
     "directive-components",
@@ -114,6 +116,7 @@
     "editor-code-from-a-file",
     "editor-code-that-runs",
     "editor-config-manifest",
+    "editor-fence-claims",
     "editor-grammar",
     "editor-live-code",
     "editor-plugin-data",
@@ -292,6 +295,7 @@
     "plugin-embeds",
     "plugin-emoji",
     "plugin-external-links",
+    "plugin-fence-claims",
     "plugin-fence-code",
     "plugin-figures",
     "plugin-node-mappings",

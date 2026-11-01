@@ -1,5 +1,16 @@
 # @mdsvex/plugin-diagram
 
+## 0.1.0-next.1
+
+### Minor Changes
+
+- [#1245](https://github.com/pngwn/MDsveX/pull/1245) [`09100bf`](https://github.com/pngwn/MDsveX/commit/09100bf02b7aa771c8bea99b61fa4b40508c8147) Thanks [@pngwn](https://github.com/pngwn)! - `diagram()` claims the `mermaid` language, so the build no longer warns once per file that there is no highlighter for it, with either engine. The highlighter never sees a mermaid fence, so the diagram's source renders as a plain `<pre><code class="language-mermaid">`, as it does with `highlight: false`, rather than an empty twinkleplop block.
+
+### Patch Changes
+
+- Updated dependencies [[`09100bf`](https://github.com/pngwn/MDsveX/commit/09100bf02b7aa771c8bea99b61fa4b40508c8147)]:
+  - mdsvex@1.0.0-next.4
+
 ## 0.1.0-next.0
 
 ### Minor Changes
