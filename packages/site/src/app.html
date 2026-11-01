@@ -4,20 +4,15 @@
 		<meta content="width=device-width, initial-scale=1.0" name="viewport" />
 		<meta charset="utf-8" />
 
-		<link rel="stylesheet" href="/global.css" />
-		<link rel="manifest" href="/manifest.json" />
-		<link rel="preload" as="image" href="/penguin.gif" />
-		<link rel="preload" as="image" href="/penguin_static.gif" />
+		<meta name="color-scheme" content="light dark" />
+		<meta name="theme-color" media="(prefers-color-scheme: light)" content="#fbfbf8" />
+		<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#15161b" />
 
-		<link
-			rel="icon"
-			type="image/png"
-			sizes="192x192"
-			href="/android-icon-192x192.png"
-		/>
-		<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-		<link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
-		<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+		<link rel="manifest" href="/manifest.json" />
+		<!-- the line bird, design/SCORE.md; the svg follows the reader's scheme -->
+		<link rel="icon" href="/favicon.ico" sizes="32x32" />
+		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
 		<!-- Primary Meta Tags -->
 		<meta name="title" content="mdsvex - svelte in markdown" />
@@ -50,8 +45,18 @@
 	</head>
 
 	<body>
-		<div id="main">%sveltekit.body%</div>
-    
-    <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "590d70c530b74f41b117351532dd6809"}'></script><!-- End Cloudflare Web Analytics -->
+		<div style="display: contents">%sveltekit.body%</div>
+
+		<!-- Cloudflare Web Analytics, on the real site only: from localhost its
+		     reports fail CORS and fill the console -->
+		<script>
+			if (!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
+				const beacon = document.createElement("script");
+				beacon.defer = true;
+				beacon.src = "https://static.cloudflareinsights.com/beacon.min.js";
+				beacon.dataset.cfBeacon = '{"token": "590d70c530b74f41b117351532dd6809"}';
+				document.body.append(beacon);
+			}
+		</script>
 	</body>
 </html>

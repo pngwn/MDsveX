@@ -134,6 +134,8 @@
 		placed: Named[];
 		/** only text phrases, so no names: the row closes up */
 		quiet: boolean;
+		/** it holds a guess, raised, so the row is taller by the raise */
+		raised: boolean;
 	}
 
 	interface Bracket {
@@ -169,6 +171,7 @@
 					key: `h${m.key}`,
 					header: true,
 					quiet: false,
+					raised: !!m.pending,
 					placed: [{ stroke: m, x0: m.start - sys.start, x1, head: true, tail: false, name: m.name, header: true }],
 				});
 			}
@@ -181,7 +184,13 @@
 			}
 			for (const depth of [...by_depth.keys()].sort((a, b) => a - b)) {
 				const placed = named(by_depth.get(depth)!);
-				rows.push({ key: `d${depth}`, header: false, quiet: placed.every((p) => p.stroke.ink === 'text'), placed });
+				rows.push({
+					key: `d${depth}`,
+					header: false,
+					quiet: placed.every((p) => p.stroke.ink === 'text'),
+					raised: placed.some((p) => p.stroke.pending),
+					placed,
+				});
 			}
 
 			const brackets: Bracket[] = [];
@@ -292,7 +301,7 @@
 			class:fine={sys.fine}
 			aria-hidden="true"
 			style:--cols={cols}
-			style:--template={rows.map((r) => (r.quiet ? 'var(--_quiet-row)' : 'var(--_row)')).join(' ')}
+			style:--template={rows.map((r) => (r.quiet ? 'var(--_quiet-row)' : r.raised ? 'var(--_raised-row)' : 'var(--_row)')).join(' ')}
 		>
 			{#each rows as row, r (row.key)}
 				{#each row.placed as p (p.stroke.key)}
@@ -376,6 +385,10 @@
 		--_name-size: var(--name-size, 0.875rem);
 		/* a row of text phrases alone, no names over it, only its bars to clear */
 		--_quiet-row: var(--quiet-row, 0.6rem);
+		/* how far a guess is raised while streaming, and its row grows by as much,
+		   so a raised name never reaches the line of the row above */
+		--_raise: calc(var(--_row) * 0.32);
+		--_raised-row: calc(var(--_row) + var(--_raise));
 		/* the gap after a system whose block goes on, and after one where a block ends */
 		--_line-gap: var(--line-gap, 1.4rem);
 		--_block-gap: var(--block-gap, 2.5rem);
@@ -638,7 +651,7 @@
 	/* streaming, only given a stream. A guess is written small, raised and
 	   dashed, its opening bar hollow */
 	.pending {
-		translate: 0 calc(var(--_row) * -0.32);
+		translate: 0 calc(var(--_raise) * -1);
 	}
 
 	.pending .line {

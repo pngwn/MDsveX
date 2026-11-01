@@ -1,16 +1,14 @@
 {
-	"background_color": "#ffffff",
-	"theme_color": "#333333",
 	"name": "mdsvex",
 	"short_name": "mdsvex",
+	"description": "Markdown with Svelte in it",
+	"background_color": "#fbfbf8",
+	"theme_color": "#fbfbf8",
 	"display": "minimal-ui",
 	"start_url": "/",
 	"icons": [
-		{
-			"src": "/android-icon-192x192.png",
-			"sizes": "192x192",
-			"type": "image/png",
-			"density": "4.0"
-		}
+		{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" },
+		{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+		{ "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
 	]
 }

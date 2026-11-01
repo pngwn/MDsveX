@@ -8,14 +8,18 @@ Follow it. If your page shows a rule here is wrong, change it in your own folder
 
 ## What a score is
 
-A score is the parser's reading of a source, drawn over the source. It is always there, with all three parts. A page that only uses the vocabulary, with no staves, no phrases and no underlay, is not a score. That is what went wrong with 05's round two.
+A score is the parser's reading of a source, drawn over the source. It is always there, with both parts: the phrases and the underlay. A page that only uses the vocabulary, with no phrases over a real underlay, is not a score. That is what went wrong with 05's round two.
+
+This is v12 (`/experiments/05-surprise/v12` on the archive), the pick, as `lib/design/score/Score.svelte` draws it.
 
 - **Underlay.** The source, set in letterspaced mono, as written. Every character keeps its own cell, so the phrases above line up with it.
-- **Staves.** One thin line per tree depth, the outermost node at the top, the deepest just above the underlay. Draw a stave only where a phrase sits on it.
-- **Phrases.** One per node, from its first character to its last: a line on its stave, a short vertical bar where the node opens and a matching one where it closes, both centred on the line, and its name in small italic in the corner the opening bar makes with the line.
+- **Rows, not staves.** There are no stave lines. Phrases sit in rows by tree depth, the outermost node at the top, the deepest just above the underlay; a row exists only where a phrase sits in it, and position alone shows the nesting.
+- **Phrases.** One per node, from its first character to its last: a line, a short vertical bar where the node opens and a matching one where it closes, both centred on the line, and its name in small italic in the corner the opening bar makes with the line.
   - Lines, bars and brackets are 1.5px. Bars are about 0.7rem tall. Don't go heavier: 2px reads more clearly but loses the score's lightness.
-  - Text nodes are phrases too, so the reading is complete, but quiet: a 1px line in quiet ink, 0.4rem bars, and no name. `# md{"sv"}ex` is a heading phrase over everything, and under it a text line, an `expr.` and a text line.
+  - Text nodes are phrases too, so the reading is complete, but quiet: a 1px line in `#8b8e99` (`--quiet-line`, 3.15:1 on the paper), 0.4rem bars, and no name. `# md{"sv"}ex` is a heading phrase over everything, and under it a text line, an `expression` and a text line.
   - A row that holds only text phrases has no names to clear, so it closes up to about 0.6rem.
+- **Nesting.** A block that takes more than one system is drawn once, over its first, as wide as its widest line, with a bracket down the margin to the foot of its last line, one step in for each block around it.
+- **Bar lines.** A thin bar line just past the last character of a block, and the double bar at the end of the piece.
 
 ## Type
 
@@ -25,7 +29,8 @@ Chosen by pngwn on 2026-11-01, after comparing faces at `/experiments/type` (not
 - **Playfair italic at 14px** for phrase names. The same family as the titles, at a size its small optical sizes hold.
 - **Source Serif 4** for body text: docs prose, ledes, descriptions.
 - **Berkeley Mono** for the underlay and all code. Also for meta (nav, captions, labels) unless a page shows that needs a sans: one mono for source, code and labels ties the system together.
-  - pngwn owns a licence, and it covers web embedding (confirmed 2026-11-01), so the public site self-hosts it. Never commit its files; they are added at deploy time. In the experiments, load it with `local("Berkeley Mono")`. The site's `@font-face` is in `lib/design/type.css`, and `design/FONTS.md` says how the files reach the deploy.
+  - pngwn owns a licence, and it covers web embedding (confirmed 2026-11-01), so the public site self-hosts it. Never commit its files; they are added at deploy time. The site's `@font-face` is in `lib/design/type.css`, and `design/FONTS.md` says how the files reach the deploy.
+  - Before the files, `local()` finds an installed copy. A face named "Berkeley Mono" hides the installed family of that name, so `local()` names each installed face by its full name and its PostScript name, as the desktop cuts carry them: `local("Berkeley Mono Regular")`, `local("BerkeleyMono-Regular")` (plus plain `local("Berkeley Mono")`, which a build whose regular has that name matches); `local("Berkeley Mono Italic")`, `local("BerkeleyMono-Italic")`; `local("Berkeley Mono Bold")`, `local("BerkeleyMono-Bold")`. `local("Berkeley Mono")` alone misses the desktop cuts.
   - Fall back to IBM Plex Mono from Google Fonts, which has the same 0.6em advance, so a visitor without Berkeley Mono still gets a sound underlay.
   - It comes in Regular, Italic, Bold and Bold Italic only, with no 500 or 300. A weight in between falls back to 400. So set syntax apart from content by voice colour, or by bold where colour isn't enough, never by an in-between weight.
 - At display sizes the underlay is tracked wide, around 0.5em at the Title's size. The tracking is what makes the Title's notation easy to read, so keep it wide, and tighten it only as the size comes down (about 0.25em at 16 to 20px, never under 0.2em).
@@ -34,7 +39,7 @@ Google Fonts link for the rest: `family=Playfair:ital,opsz,wdth,wght@0,5..1200,8
 
 ## Colour
 
-Paper `#fbfbf8`, ink `#121318`, quiet `#5d606b`, staff lines `#b9bac2`.
+Paper `#fbfbf8`, ink `#121318`, quiet `#5d606b`, rules `#b9bac2` (a table's, the frame's; the score has no staff lines), text lines `#8b8e99`.
 
 Each kind of construct has its own colour, chosen by pngwn on 2026-11-01 from the v12 palettes (`/experiments/05-surprise/v12`). A construct's colour paints its phrase and the syntax characters it owns; content characters stay ink, and text is quiet. The voices are still the families the kinds fall into (block, inline, Svelte, directive, document), but colour now tells constructs apart rather than voices, because a list, its items and their paragraphs drawn in one blue were hard to tell apart.
 
@@ -60,7 +65,19 @@ The palette is RISO drum inks, at the riso-colors list's screen values, which su
 | component, html | lake | `#235ba8` | `#235ba8` |
 | logic block, branch | indigo | `#484d7a` | `#484d7a` |
 | directive | turquoise | `#00a18b` | `#00816f` |
-| text, frontmatter | | quiet | quiet |
+| text, frontmatter | | `#8b8e99` | quiet `#5d606b` |
+
+The parser has more kinds than the table's constructs. Each takes the colour of the construct it reads as (`lib/design/score/kinds.ts`):
+
+| Kind | Colour of |
+|---|---|
+| strikethrough, superscript, subscript | emphasis |
+| image, footnote reference | link |
+| import | expression |
+| table header, table row, table cell | fence, table |
+| element (`html`, a typed tag or component) | component |
+| directive label | directive |
+| thematic break, definition, footnote definition, HTML comment, line break | ink |
 
 Riso is not colour blind safe. Under protan vision quote and item collapse (ΔE 2) and so do list and paragraph (5). The accessible alternative is Okabe and Ito's colours (`?palette=cvd` on v12; in `lib/design/tokens.css`, and `<Score palette="cvd">`), where no nested pair falls under 11 for normal, protan or deutan vision. Colour is never the only cue, since every structural phrase is named and nesting shows by position, but a page that leans on colour should offer the alternative.
 
@@ -74,11 +91,11 @@ Chosen by pngwn on 2026-11-01, from the plates on `/experiments/01-wordmark/v7` 
 - **Berkeley Mono: riso.** Grain and paper flecks, like a typewriter, for the underlay, code and meta.
 - **Source Serif 4: plain.** Body text stays clean for reading.
 
-Every face keeps its own colour; the texture shows as gaps where the paper comes through. Phrase names are Playfair, so they take linen; at 14px the weave is faint and doesn't muddy them. Staves and phrase lines are rules, not type, and stay plain. The mono gets no dark specks; they can't show on black.
+Every face keeps its own colour; the texture shows as gaps where the paper comes through. Phrase names are Playfair, so they take linen; at 14px the weave is faint and doesn't muddy them. Phrase lines, bars and rules are not type, and stay plain. The mono gets no dark specks; they can't show on black.
 
 ## Phrase names
 
-Short, italic, lowercase, in the construct's name tone: `head.`, `para.`, `expr.`, `emph.`, `str.`, `link`, `code`, `list`, `item`, `quote`, `fence`, `table`, `dir.`, `comp.`, `front.`. When a page has room, use the full word. Text phrases are not named.
+Full words, italic, lowercase, in the construct's name tone, everywhere, 375px included: `heading`, `paragraph`, `expression`, `emphasis`, `strong`, `link`, `code`, `list`, `item`, `quote`, `code block`, `table`, `table cell`, `logic block`, `tag`, `frontmatter`. An element is named by its tag, `<Counter>` or `<div>`, and a directive by its name, `note directive`. v12 drew full names and they read; the short forms (`head.`, `para.`) are retired. Text phrases are not named. Where two names in a row would collide, the later one is left out; a phrase that carries on from the system before takes its name in brackets, `(paragraph)`.
 
 A name hugs the corner of its opening bar and its line, so it reads as that line's and not the row's above:
 - Its left edge sits 2px past the bar.
@@ -89,11 +106,12 @@ A name hugs the corner of its opening bar and its line, so it reads as that line
 
 ## Streaming, only where it is the subject
 
-These marks belong to pages about incremental parsing:
+These marks belong to pages about incremental parsing, and `Score.svelte` draws them only when it is given a `stream`:
 
-- a guess (a pending node) is written small, raised and dashed, its opening bar hollow;
-- a revoked guess is struck through, and its delimiter turns back to ink;
-- held characters (fed, not yet in any node) sit under a fermata.
+- a guess (a pending node) is written small, raised and dashed, its opening bar a hollow 4px bar. It is raised by a third of a row, and its row grows by as much, so its name never reaches the line of the row above;
+- a revoked guess is struck through, and its delimiter turns back to ink. It stays struck to the end of the stream, so the change can be read;
+- a list item's paragraph is a guess that the list is loose, settled when the list closes. A loose list commits it; a tight list revokes it. That revoke gives nothing back (a paragraph has no delimiters, and its text stays in the item), so it leaves no struck ghost: the guess goes, as a committed one's dashes do, and the finished bar matches the settled reading;
+- held characters (fed, not yet in any node) sit under a fermata, with the bird's eye.
 
 Everywhere else the score shows the settled reading.
 
@@ -115,4 +133,13 @@ Chosen by pngwn on 2026-11-01, from `/experiments/penguin`. Two pieces go in; th
   - Only a phrase's own row points at it. Its bars and name hang over the rows next to it and must not catch the pointer.
   - Two nodes can cover the same characters, a list and its only item, so the wash matches on kind as well as range.
 - Real parser output only: `pfm_tree` or `pfm_stream` from `packages/site/src/lib/design/pfm.ts`.
-- Works at 375px. A long source wraps by systems, as a score does, with the stave lines continued.
+- Works at 375px. A long source wraps by systems, as a score does, a nested block's bracket running down the margin across them. Below 600px the underlay steps down to 15px at 0.2em tracking and the names to 13px.
+
+## Dark mode, a proposal
+
+Not decided: pngwn has not reviewed it. `lib/design/tokens.css` carries a dark palette, and the site follows the reader's setting (`?theme=dark` forces it). It is made by this page's own contrast rule:
+
+- Paper `#15161b`, ink `#e8e6de`, quiet `#9b9eaa`, rules `#3d3f48`, text lines `#6e717c`.
+- Each construct's line and name tone is its light ink where that holds 3:1 (a line) or 4.5:1 (a name) on the dark paper, and lightened in OKLCH only as far as it needs to. Most line tones are unchanged; most name tones are the line ink itself.
+- Okabe and Ito's colours are lifted the same way, but not yet checked under colour blind simulation.
+- To check: the riso and linen masks were tuned on the light paper. On the dark one their gaps show the paper through light ink, as darker flecks. Highlighted code uses the same tokens, so it follows.
