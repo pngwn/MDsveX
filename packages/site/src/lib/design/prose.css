@@ -14,8 +14,9 @@
 	max-width: var(--prose-measure);
 }
 
+/* the whole column, never past it: a wider table scrolls inside itself */
 .prose > :is(.wide, table, figure) {
-	max-width: none;
+	max-width: 100%;
 }
 
 .prose :is(h1, h2, h3, h4) {
