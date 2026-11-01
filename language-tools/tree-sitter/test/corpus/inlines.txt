@@ -1,0 +1,313 @@
+========================================
+Emphasis, strong and their nesting
+========================================
+_em_ *strong* *_both_* _*both*_
+
+----------------------------------------
+
+(document
+  (paragraph
+    (emphasis
+      (emphasis_delimiter)
+      (emphasis_delimiter))
+    (strong_emphasis
+      (emphasis_delimiter)
+      (emphasis_delimiter))
+    (strong_emphasis
+      (emphasis_delimiter)
+      (emphasis
+        (emphasis_delimiter)
+        (emphasis_delimiter))
+      (emphasis_delimiter))
+    (emphasis
+      (emphasis_delimiter)
+      (strong_emphasis
+        (emphasis_delimiter)
+        (emphasis_delimiter))
+      (emphasis_delimiter))))
+
+========================================
+Intraword emphasis needs the pipe marker
+========================================
+snake_case_name fan|_tas_|tic
+
+----------------------------------------
+
+(document
+  (paragraph
+    (emphasis
+      (emphasis_delimiter)
+      (emphasis_delimiter))))
+
+========================================
+Delimiters with nothing between them stay text
+========================================
+foo *****
+
+----------------------------------------
+
+(document
+  (paragraph))
+
+========================================
+A doubled delimiter nests
+========================================
+**(x)**
+
+----------------------------------------
+
+(document
+  (paragraph
+    (strong_emphasis
+      (emphasis_delimiter)
+      (strong_emphasis
+        (emphasis_delimiter)
+        (emphasis_delimiter))
+      (emphasis_delimiter))))
+
+========================================
+Strikethrough, subscript and superscript
+========================================
+~~gone~~ x~1~ Coming Soon ^TM^
+
+----------------------------------------
+
+(document
+  (paragraph
+    (strikethrough
+      (emphasis_delimiter)
+      (emphasis_delimiter))
+    (subscript
+      (emphasis_delimiter)
+      (emphasis_delimiter))
+    (superscript
+      (emphasis_delimiter)
+      (emphasis_delimiter))))
+
+========================================
+Emphasis over lines
+========================================
+some _emphasis
+over two lines_ here
+
+----------------------------------------
+
+(document
+  (paragraph
+    (emphasis
+      (emphasis_delimiter)
+      (emphasis_delimiter))))
+
+========================================
+Crossed delimiters stay text
+========================================
+*foo _bar* baz_
+
+----------------------------------------
+
+(document
+  (paragraph
+    (emphasis
+      (emphasis_delimiter)
+      (emphasis_delimiter))))
+
+========================================
+Code spans
+========================================
+`a` ``b ` c`` `unclosed
+
+----------------------------------------
+
+(document
+  (paragraph
+    (code_span
+      (code_span_delimiter)
+      (code_span_content)
+      (code_span_delimiter))
+    (code_span
+      (code_span_delimiter)
+      (code_span_content)
+      (code_span_delimiter))))
+
+========================================
+Inline math
+========================================
+math $`e^{i\pi}`$ and $5 and $`x` and `y`$
+
+----------------------------------------
+
+(document
+  (paragraph
+    (inline_math
+      (math_delimiter)
+      (code_span_delimiter)
+      (math_content)
+      (code_span_delimiter)
+      (math_delimiter))
+    (code_span
+      (code_span_delimiter)
+      (code_span_content)
+      (code_span_delimiter))
+    (code_span
+      (code_span_delimiter)
+      (code_span_content)
+      (code_span_delimiter))))
+
+========================================
+Inline links and images
+========================================
+[a](/u "t") ![alt](/i.png) [b](<c d>)
+
+----------------------------------------
+
+(document
+  (paragraph
+    (inline_link
+      (link_text)
+      (link_destination)
+      (link_title))
+    (image
+      (image_description)
+      (link_destination))
+    (inline_link
+      (link_text)
+      (link_destination))))
+
+========================================
+Link destinations with parens and escapes
+========================================
+[a](foo(and(bar))) [b](/u\)v)
+
+----------------------------------------
+
+(document
+  (paragraph
+    (inline_link
+      (link_text)
+      (link_destination))
+    (inline_link
+      (link_text)
+      (link_destination))))
+
+========================================
+Reference links need a definition above them
+========================================
+[x][ref] [ref][]
+
+[ref]: /url "Title"
+
+[x][ref] [ref][] [y][REF]
+
+----------------------------------------
+
+(document
+  (paragraph)
+  (link_reference_definition
+    (link_label)
+    (link_destination)
+    (link_title))
+  (paragraph
+    (full_reference_link
+      (link_text)
+      (link_label))
+    (collapsed_reference_link
+      (link_text))
+    (full_reference_link
+      (link_text)
+      (link_label))))
+
+========================================
+Link reference definition over lines
+========================================
+[foo]:
+/url
+"title"
+
+----------------------------------------
+
+(document
+  (link_reference_definition
+    (link_label)
+    (link_destination)
+    (link_title)))
+
+========================================
+Brackets that open no link are text
+========================================
+[a] and [b] (c)
+
+----------------------------------------
+
+(document
+  (paragraph))
+
+========================================
+Footnote references and definitions
+========================================
+A claim[^1].
+
+[^1]: The source.
+
+    More of the note.
+out
+
+----------------------------------------
+
+(document
+  (paragraph
+    (footnote_reference))
+  (footnote_definition
+    (footnote_label)
+    (paragraph)
+    (paragraph)))
+
+========================================
+Autolinks
+========================================
+<https://example.com> <mailto:a@b.c>
+
+----------------------------------------
+
+(document
+  (paragraph
+    (uri_autolink)
+    (uri_autolink)))
+
+========================================
+Backslash escapes and hard breaks
+========================================
+a \* b\
+c
+
+----------------------------------------
+
+(document
+  (paragraph
+    (backslash_escape)
+    (hard_line_break)))
+
+========================================
+A backslash before a blank line is text
+========================================
+hello\
+
+world
+
+----------------------------------------
+
+(document
+  (paragraph)
+  (paragraph))
+
+========================================
+Entity and numeric references
+========================================
+&amp; &#123; &#x7D; &nope
+
+----------------------------------------
+
+(document
+  (paragraph
+    (entity_reference)
+    (numeric_character_reference)
+    (numeric_character_reference)))

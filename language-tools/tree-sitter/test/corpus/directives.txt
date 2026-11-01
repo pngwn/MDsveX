@@ -1,0 +1,163 @@
+========================================
+Leaf directives
+========================================
+::youtube[A video](id=abc, start="12")
+::toc
+::name(k=v)
+
+----------------------------------------
+
+(document
+  (leaf_directive
+    (directive_marker)
+    (directive_name)
+    (directive_label)
+    (directive_arguments
+      (directive_argument
+        (argument_name)
+        (argument_value))
+      (directive_argument
+        (argument_name)
+        (argument_value))))
+  (leaf_directive
+    (directive_marker)
+    (directive_name))
+  (leaf_directive
+    (directive_marker)
+    (directive_name)
+    (directive_arguments
+      (directive_argument
+        (argument_name)
+        (argument_value)))))
+
+========================================
+Container directives
+========================================
+:::note[Heads up]
+Some *text*.
+:::
+
+----------------------------------------
+
+(document
+  (container_directive
+    (directive_marker)
+    (directive_name)
+    (directive_label)
+    (paragraph
+      (strong_emphasis
+        (emphasis_delimiter)
+        (emphasis_delimiter)))
+    (directive_marker)))
+
+========================================
+Container directives nest by colon count
+========================================
+::::outer
+:::inner
+Content.
+:::
+::::
+
+----------------------------------------
+
+(document
+  (container_directive
+    (directive_marker)
+    (directive_name)
+    (container_directive
+      (directive_marker)
+      (directive_name)
+      (paragraph)
+      (directive_marker))
+    (directive_marker)))
+
+========================================
+A close with the wrong colon count is text
+========================================
+::::note
+Text.
+:::
+More.
+::::
+
+----------------------------------------
+
+(document
+  (container_directive
+    (directive_marker)
+    (directive_name)
+    (paragraph)
+    (directive_marker)))
+
+========================================
+Inline directives
+========================================
+See :abbr[HTML](title="Hyper Text") and :outer[has :inner[x] inside].
+
+----------------------------------------
+
+(document
+  (paragraph
+    (inline_directive
+      (directive_marker)
+      (directive_name)
+      (directive_label)
+      (directive_arguments
+        (directive_argument
+          (argument_name)
+          (argument_value))))
+    (inline_directive
+      (directive_marker)
+      (directive_name)
+      (directive_label
+        (inline_directive
+          (directive_marker)
+          (directive_name)
+          (directive_label))))))
+
+========================================
+Links stay text in a directive
+========================================
+:d[see [docs](/d)]
+
+----------------------------------------
+
+(document
+  (paragraph
+    (inline_directive
+      (directive_marker)
+      (directive_name)
+      (directive_label))))
+
+========================================
+Malformed directive lines are paragraphs
+========================================
+::name some text
+:::name [text]
+::x(a=1, a=2)
+
+----------------------------------------
+
+(document
+  (paragraph))
+
+========================================
+Directives in containers
+========================================
+> :::tip
+> Inside
+> :::
+
+----------------------------------------
+
+(document
+  (block_quote
+    (block_quote_marker)
+    (container_directive
+      (directive_marker)
+      (directive_name)
+      (block_continuation)
+      (paragraph)
+      (block_continuation)
+      (directive_marker))))

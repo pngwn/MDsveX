@@ -1,0 +1,26 @@
+# Title _here_
+<!-- <- punctuation.special -->
+<!--   ^ markup.heading -->
+<!--      ^ markup.italic -->
+
+Some *strong* and `code` with [a link](/url).
+<!--  ^ markup.strong -->
+<!--               ^ markup.raw -->
+<!--                             ^ markup.link.label -->
+<!--                                     ^ markup.link.url -->
+
+10. [x] done
+<!-- <- markup.list -->
+<!-- ^ markup.list.checked -->
+
+<Chart data={points} />
+<!-- ^ type -->
+<!--   ^ attribute -->
+
+::note[hi](k=v)
+<!-- ^ function -->
+<!--       ^ variable.parameter -->
+<!--         ^ string -->
+
+   {#if open}
+<!-- ^ keyword -->

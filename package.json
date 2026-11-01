@@ -57,7 +57,8 @@
 	},
 	"pnpm": {
 		"onlyBuiltDependencies": [
-			"esbuild"
+			"esbuild",
+			"tree-sitter-cli"
 		],
 		"overrides": {
 			"@lezer/common": "^1.5.3"

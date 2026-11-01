@@ -1,0 +1,39 @@
+{
+	"$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/config.schema.json",
+	"grammars": [
+		{
+			"name": "mdsvex",
+			"camelcase": "Mdsvex",
+			"title": "mdsvex",
+			"scope": "text.html.pfm",
+			"file-types": ["svx", "pfm"],
+			"injection-regex": "^(mdsvex|svx|pfm)$",
+			"highlights": "queries/highlights.scm",
+			"injections": "queries/injections.scm",
+			"class-name": "TreeSitterMdsvex"
+		}
+	],
+	"metadata": {
+		"version": "0.0.0",
+		"license": "MIT",
+		"description": "Tree-sitter grammar for mdsvex (Penguin-Flavoured Markdown)",
+		"authors": [
+			{
+				"name": "pngwn",
+				"email": "hello@pngwn.io"
+			}
+		],
+		"links": {
+			"repository": "https://github.com/pngwn/MDsveX"
+		}
+	},
+	"bindings": {
+		"c": false,
+		"go": false,
+		"node": false,
+		"python": false,
+		"rust": false,
+		"swift": false,
+		"zig": false
+	}
+}

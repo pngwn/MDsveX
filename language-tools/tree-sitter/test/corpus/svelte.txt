@@ -1,0 +1,151 @@
+========================================
+Expressions and tags
+========================================
+Count {count + 1} and {@html "<b>x</b>"} {@render child()}
+
+----------------------------------------
+
+(document
+  (paragraph
+    (svelte_expression
+      (expression))
+    (svelte_tag
+      (tag_keyword)
+      (expression))
+    (svelte_tag
+      (tag_keyword)
+      (expression))))
+
+========================================
+Expressions with braces in strings and templates
+========================================
+A {fn({ a: "}" }, `${b}`)} B
+
+----------------------------------------
+
+(document
+  (paragraph
+    (svelte_expression
+      (expression))))
+
+========================================
+A Svelte block holds blocks
+========================================
+{#if user}
+# Hi {user.name}
+{:else if guest}
+Guest
+{:else}
+Nobody
+{/if}
+
+----------------------------------------
+
+(document
+  (svelte_block
+    (svelte_block_start
+      (block_keyword)
+      (expression))
+    (atx_heading
+      (atx_h1_marker)
+      (heading_content
+        (svelte_expression
+          (expression))))
+    (svelte_branch
+      (svelte_block_branch
+        (block_keyword)
+        (expression))
+      (paragraph))
+    (svelte_branch
+      (svelte_block_branch
+        (block_keyword))
+      (paragraph))
+    (svelte_block_end
+      (block_keyword))))
+
+========================================
+Each, await and key blocks
+========================================
+{#each items as item, i (item.id)}
+- {item}
+{/each}
+
+{#await p}
+wait
+{:then v}
+{v}
+{/await}
+
+----------------------------------------
+
+(document
+  (svelte_block
+    (svelte_block_start
+      (block_keyword)
+      (expression))
+    (list
+      (list_item
+        (list_marker_minus)
+        (paragraph
+          (svelte_expression
+            (expression)))))
+    (svelte_block_end
+      (block_keyword)))
+  (svelte_block
+    (svelte_block_start
+      (block_keyword)
+      (expression))
+    (paragraph)
+    (svelte_branch
+      (svelte_block_branch
+        (block_keyword)
+        (expression))
+      (paragraph
+        (svelte_expression
+          (expression))))
+    (svelte_block_end
+      (block_keyword))))
+
+========================================
+Svelte blocks inline
+========================================
+Say {#if a}yes{:else}no{/if} now
+
+----------------------------------------
+
+(document
+  (paragraph
+    (svelte_block_start
+      (block_keyword)
+      (expression))
+    (svelte_block_branch
+      (block_keyword))
+    (svelte_block_end
+      (block_keyword))))
+
+========================================
+A Svelte block left open
+========================================
+{#if x}
+yes
+
+----------------------------------------
+
+(document
+  (svelte_block
+    (svelte_block_start
+      (block_keyword)
+      (expression))
+    (paragraph)))
+
+========================================
+Escaped braces are text
+========================================
+a \{1 + 1\} b
+
+----------------------------------------
+
+(document
+  (paragraph
+    (backslash_escape)
+    (backslash_escape)))
