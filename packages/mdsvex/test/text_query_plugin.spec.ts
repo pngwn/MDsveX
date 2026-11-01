@@ -137,7 +137,13 @@ async function serve(
 		appType: 'custom',
 		cacheDir: join(root, '.vite'),
 		optimizeDeps: { noDiscovery: true, include: [] },
-		server: { middlewareMode: true, hmr: false, watch: null },
+		server: {
+			middlewareMode: true,
+			hmr: false,
+			watch: null,
+			// a background transform could load a document after an edit the test made
+			preTransformRequests: false,
+		},
 		plugins,
 	});
 }
@@ -263,6 +269,7 @@ describe('?text in dev', () => {
 		for (const env of [ssr, client]) {
 			await env.transformRequest('/src/list.js');
 			await env.transformRequest(id);
+			await env.transformRequest(metadata_id);
 		}
 		const module_of = (env: typeof ssr, of = id) =>
 			env.moduleGraph.getModuleById(of)!;
