@@ -23,7 +23,7 @@ The 1.0 design foundation, phase 0 of `design/SITE_PLAN.md`. `design/SCORE.md` i
 ```
 
 - `source`, the PFM to read.
-- `palette`, `riso` (default) or `cvd`.
+- `palette`, `riso` (default), `cvd`, or `voice` to colour by family (blue blocks, rose inlines, orange Svelte, green directives) as a Title does.
 - `stream`, a bar index. When given, the source is fed a character at a time and that bar is drawn, with guesses, revokes and the bird's eye. Bar `i` is the reading after `i + 1` characters; the last bar is the finished document. `new Player(() => source)` plays one.
 - `focus`, bindable, the lit phrase `{ start, end, kind }`, for output beside the score to light with it. `tone(focus.kind)` from `kinds.ts` gives its colour as `var(--line-<tone>)`.
 - `label`, the figure's accessible name. The source is also given whole to screen readers; the drawing is hidden from them.

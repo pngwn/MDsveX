@@ -96,3 +96,38 @@
 	--line-directive: light-dark(#7f5600, #855c0c);
 	--name-directive: light-dark(#7f5600, #a37832);
 }
+
+/* by voice, for a Title or a small mark, design/SCORE.md "Colour": every
+   construct takes its family's colour, line and name alike, since the voices
+   hold 4.5:1 already. Blocks are blue, inlines rose, Svelte orange, directives
+   green; the kinds SCORE.md leaves out keep the ink */
+[data-palette='voice'] {
+	--line-list: var(--voice-blue);
+	--name-list: var(--voice-blue);
+	--line-item: var(--voice-blue);
+	--name-item: var(--voice-blue);
+	--line-para: var(--voice-blue);
+	--name-para: var(--voice-blue);
+	--line-quote: var(--voice-blue);
+	--name-quote: var(--voice-blue);
+	--line-heading: var(--voice-blue);
+	--name-heading: var(--voice-blue);
+	--line-fence: var(--voice-blue);
+	--name-fence: var(--voice-blue);
+	--line-emph: var(--voice-rose);
+	--name-emph: var(--voice-rose);
+	--line-strong: var(--voice-rose);
+	--name-strong: var(--voice-rose);
+	--line-code: var(--voice-rose);
+	--name-code: var(--voice-rose);
+	--line-link: var(--voice-rose);
+	--name-link: var(--voice-rose);
+	--line-expr: var(--voice-orange);
+	--name-expr: var(--voice-orange);
+	--line-comp: var(--voice-orange);
+	--name-comp: var(--voice-orange);
+	--line-logic: var(--voice-orange);
+	--name-logic: var(--voice-orange);
+	--line-directive: var(--voice-green);
+	--name-directive: var(--voice-green);
+}

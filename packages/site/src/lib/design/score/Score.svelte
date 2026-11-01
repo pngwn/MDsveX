@@ -32,8 +32,11 @@
 	interface Props {
 		/** the PFM source to read */
 		source: string;
-		/** riso, pngwn's pick, or Okabe and Ito's colour blind safe colours */
-		palette?: 'riso' | 'cvd';
+		/**
+		 * riso, pngwn's pick, or Okabe and Ito's colour blind safe colours, or the
+		 * four voices, colouring by family rather than construct, for a Title
+		 */
+		palette?: 'riso' | 'cvd' | 'voice';
 		/**
 		 * streams the source a character at a time and draws this bar of it, with
 		 * the streaming marks: bar i is the reading after i + 1 characters, the
