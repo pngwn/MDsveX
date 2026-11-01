@@ -12,6 +12,7 @@ afterNavigate(({ to }) => to && theme.from(to.url));
 
 const links = [
 	["/docs", "docs"],
+	["/atlas", "atlas"],
 	["/playground", "playground"],
 	["https://github.com/pngwn/mdsvex", "github"],
 ];

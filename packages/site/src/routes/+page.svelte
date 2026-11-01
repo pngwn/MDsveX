@@ -2,7 +2,6 @@
 	// the home page: 01's Title (v7) on the one engine, then a short, quiet way
 	// into the docs. The paper is 01's dots, linen on Playfair, riso on the mono,
 	// the body plain, design/SCORE.md "Ink texture"
-	import Frame from '$lib/design/Frame.svelte';
 	import Title from '$lib/design/title/Title.svelte';
 	import { config, install } from './quick-start';
 
@@ -19,73 +18,46 @@
 
 <svelte:head>
 	<title>mdsvex, svelte in markdown</title>
-	<!-- until phase 2's shell lands, the root layout still loads global.css, whose
-	     62.5% root makes a rem 10px, and draws the old Nav. This page undoes both
-	     while it is mounted, as /design does -->
-	<style>
-		html {
-			font-size: 100%;
-		}
-		body {
-			background: var(--paper);
-		}
-		#main {
-			max-width: none;
-		}
-		#main > nav {
-			display: none;
-		}
-	</style>
 </svelte:head>
 
-<Frame>
-	{#snippet nav()}
-		<nav class="top" aria-label="Site">
-			<a href="/docs">Docs</a>
-			<a href="/playground">Playground</a>
-			<a href="https://github.com/pngwn/MDsveX">GitHub</a>
-		</nav>
-	{/snippet}
+<div class="home">
+	<section class="cover">
+		<!-- a title page: the edition at the left, the dialect where a composer goes -->
+		<p class="credits linen">
+			<span>1.0</span>
+			<span>Penguin-Flavoured Markdown</span>
+		</p>
+		<Title />
+		<p class="sub linen">Svelte in markdown.</p>
+	</section>
 
-	<div class="home">
-		<section class="cover">
-			<!-- a title page: the edition at the left, the dialect where a composer goes -->
-			<p class="credits linen">
-				<span>1.0</span>
-				<span>Penguin-Flavoured Markdown</span>
-			</p>
-			<Title />
-			<p class="sub linen">Svelte in markdown.</p>
-		</section>
+	<section class="start" aria-labelledby="start">
+		<p class="lede">Use Svelte components in your markdown, or markdown in your Svelte components.</p>
 
-		<section class="start" aria-labelledby="start">
-			<p class="lede">Use Svelte components in your markdown, or markdown in your Svelte components.</p>
+		<h2 id="start">Quick start</h2>
+		<p>Install it as a dev-dependency.</p>
+		<pre class="riso"><code>{install}</code></pre>
+		<p>mdsvex is a Vite plugin. In SvelteKit it goes in <code class="riso">vite.config.js</code>, beside <code class="riso">sveltekit()</code>:</p>
+		<pre class="riso"><code>{config}</code></pre>
+		<p>
+			Any markdown file is now a component, and a <code class="riso">+page.svx</code> is a route. The
+			<a href="/docs/learn/quick-start">quick start</a> covers Vite without SvelteKit, templates and components.
+		</p>
+	</section>
 
-			<h2 id="start">Quick start</h2>
-			<p>Install it as a dev-dependency.</p>
-			<pre class="riso"><code>{install}</code></pre>
-			<p>mdsvex is a Vite plugin. In SvelteKit it goes in <code class="riso">vite.config.js</code>, beside <code class="riso">sveltekit()</code>:</p>
-			<pre class="riso"><code>{config}</code></pre>
-			<p>
-				Any markdown file is now a component, and a <code class="riso">+page.svx</code> is a route. The
-				<a href="/docs/learn/quick-start">quick start</a> covers Vite without SvelteKit, templates and components.
-			</p>
-		</section>
-
-		<section class="contents" aria-labelledby="contents">
-			<h2 id="contents">Contents</h2>
-			<ol>
-				{#each sections as [name, href, line], i (name)}
-					<li>
-						<span class="num linen" aria-hidden="true">{ROMAN[i]}</span>
-						<a class="mv linen" {href}>{name}</a>
-						<span class="tempo">{line}</span>
-					</li>
-				{/each}
-			</ol>
-		</section>
-	</div>
-</Frame>
+	<section class="contents" aria-labelledby="contents">
+		<h2 id="contents">Contents</h2>
+		<ol>
+			{#each sections as [name, href, line], i (name)}
+				<li>
+					<span class="num linen" aria-hidden="true">{ROMAN[i]}</span>
+					<a class="mv linen" {href}>{name}</a>
+					<span class="tempo">{line}</span>
+				</li>
+			{/each}
+		</ol>
+	</section>
+</div>
 
 <style>
 	/* 01's paper, pngwn.at's light paper: two sets of fine rings from different
@@ -99,22 +71,6 @@
 			radial-gradient(at 50% 0%, light-dark(rgb(18 19 24 / 0.04), rgb(0 0 0 / 0.2)), transparent 45%),
 			radial-gradient(at 50% 100%, light-dark(rgb(18 19 24 / 0.05), rgb(0 0 0 / 0.25)), transparent 50%);
 		background-attachment: fixed;
-	}
-
-	.top {
-		display: flex;
-		justify-content: flex-end;
-		gap: 1.25rem;
-	}
-
-	.top a {
-		color: inherit;
-		text-decoration: none;
-	}
-
-	.top a:hover {
-		text-decoration: underline;
-		text-underline-offset: 0.2em;
 	}
 
 	.cover {
@@ -185,9 +141,7 @@
 		font: inherit;
 	}
 
-	/* global.css underlines links with a border, gone with phase 2's shell */
 	a {
-		border: 0;
 		color: inherit;
 		text-decoration-thickness: 1px;
 		text-underline-offset: 0.2em;

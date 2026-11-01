@@ -5,9 +5,8 @@
 	// compile of it (+page.server.ts). The PFM Reference links here by anchor,
 	// /atlas#<construct>, listed in design/atlas-anchors.md.
 	//
-	// ?palette=cvd and ?theme=dark|light set the switches, as on /design
+	// ?palette=cvd sets the colours; ?theme, read by the root layout, the theme
 	import { onMount } from 'svelte';
-	import Frame from '$lib/design/Frame.svelte';
 	import Score from '$lib/design/score/Score.svelte';
 	import { by_id, constructs, FAMILIES } from '$lib/design/atlas/constructs';
 	import Entry from '$lib/design/atlas/Entry.svelte';
@@ -18,7 +17,6 @@
 	const title = '# The _construct_ atlas';
 
 	let palette = $state<'riso' | 'cvd'>('riso');
-	let theme = $state<'auto' | 'light' | 'dark'>('auto');
 	let current = $state(constructs[0].id);
 
 	function set_palette(next: 'riso' | 'cvd') {
@@ -32,8 +30,6 @@
 	onMount(() => {
 		const params = new URL(location.href).searchParams;
 		if (params.get('palette') === 'cvd') palette = 'cvd';
-		const t = params.get('theme');
-		if (t === 'light' || t === 'dark') theme = t;
 
 		const id = location.hash.slice(1);
 		if (by_id.has(id)) current = id;
@@ -53,122 +49,61 @@
 <svelte:head>
 	<title>The construct atlas, mdsvex</title>
 	<meta name="description" content="Every construct of Penguin-Flavoured Markdown, as the parser reads it and as mdsvex compiles it." />
-	<!-- until phase 2's root layout lands: global.css makes a rem 10px and the old
-	     Nav sits over the page, so this page undoes both while it is mounted, as
-	     /design does -->
-	<style>
-		html {
-			font-size: 100%;
-		}
-		body {
-			background: var(--paper);
-		}
-		#main {
-			max-width: none;
-		}
-		#main > nav {
-			display: none;
-		}
-		.design-frame :is(h1, h2, h3) {
-			color: inherit;
-		}
-		.design-frame a {
-			padding: 0;
-			border-bottom: 0;
-			color: inherit;
-			user-select: auto;
-			transition: none;
-		}
-	</style>
 </svelte:head>
 
-<Frame {theme}>
-	{#snippet nav()}
-		<nav class="bar" aria-label="Site">
-			<a class="home" href="/">mdsvex</a>
-			<a href="/docs">docs</a>
-			<a href="/atlas" aria-current="page">atlas</a>
-			<a href="/playground">playground</a>
-		</nav>
-	{/snippet}
+<header class="hero">
+	<div class="title-score">
+		<Score source={title} {palette} label="The construct atlas, as a heading with emphasis" />
+	</div>
+	<h1 class="rag">The <em>construct</em> atlas</h1>
+	<p class="sub">Penguin-Flavoured Markdown, one construct at a time.</p>
+</header>
 
-	{#snippet footer()}
-		<div class="colophon">
-			<p>
-				Every score on this page is <code>@mdsvex/parse</code> reading its source, and every output is mdsvex’s
-				<code>compile</code>, run when the site is built. Nothing is drawn by hand.
-			</p>
-			<p>Set in Playfair, Source Serif 4 and Berkeley Mono, with IBM Plex Mono where Berkeley is not installed.</p>
-		</div>
-	{/snippet}
-
-	<header class="hero">
-		<div class="title-score">
-			<Score source={title} {palette} label="The construct atlas, as a heading with emphasis" />
-		</div>
-		<h1 class="rag">The <em>construct</em> atlas</h1>
-		<p class="sub">Penguin-Flavoured Markdown, one construct at a time.</p>
-	</header>
-
-	<section class="intro" aria-label="How to read the atlas">
-		<p class="lede">
-			Every mdsvex document is built from these {constructs.length} constructs, in {FAMILIES.length} families. Each plate takes a
-			real source and shows what the parser reads in it and what mdsvex makes of it, with the edges where the syntax stops holding and
-			where it parts from CommonMark.
+<section class="intro" aria-label="How to read the atlas">
+	<p class="lede">
+		Every mdsvex document is built from these {constructs.length} constructs, in {FAMILIES.length} families. Each plate takes a
+		real source and shows what the parser reads in it and what mdsvex makes of it, with the edges where the syntax stops holding and
+		where it parts from CommonMark.
+	</p>
+	<div class="key">
+		<p>
+			<strong>Reading a score.</strong> Each line over the source is one node, from its first character to its last, with a bar where
+			it opens and one where it closes, and its name in the corner. Quiet unnamed lines are text. Each construct has its own colour.
 		</p>
-		<div class="key">
-			<p>
-				<strong>Reading a score.</strong> Each line over the source is one node, from its first character to its last, with a bar where
-				it opens and one where it closes, and its name in the corner. Quiet unnamed lines are text. Each construct has its own colour.
-			</p>
-			<p>Point at a phrase, or at the output, to light the two together.</p>
-			<div class="pick" role="group" aria-label="Colours">
-				<button type="button" aria-pressed={palette === 'riso'} onclick={() => set_palette('riso')}>Riso inks</button>
-				<button type="button" aria-pressed={palette === 'cvd'} onclick={() => set_palette('cvd')}>Colour blind safe</button>
-			</div>
-		</div>
-	</section>
-
-	<div class="atlas" data-palette={palette}>
-		<div class="index-col">
-			<Index {current} />
-		</div>
-		<div class="plates">
-			{#each data.entries as entry, i (entry.id)}
-				<Entry
-					construct={by_id.get(entry.id)!}
-					compiled={entry.compiled}
-					notes={entry.notes}
-					{palette}
-					perch={i === data.entries.length - 1}
-				/>
-			{/each}
+		<p>Point at a phrase, or at the output, to light the two together.</p>
+		<div class="pick" role="group" aria-label="Colours">
+			<button type="button" aria-pressed={palette === 'riso'} onclick={() => set_palette('riso')}>Riso inks</button>
+			<button type="button" aria-pressed={palette === 'cvd'} onclick={() => set_palette('cvd')}>Colour blind safe</button>
 		</div>
 	</div>
-</Frame>
+</section>
+
+<div class="atlas" data-palette={palette}>
+	<div class="index-col">
+		<Index {current} />
+	</div>
+	<div class="plates">
+		{#each data.entries as entry, i (entry.id)}
+			<Entry
+				construct={by_id.get(entry.id)!}
+				compiled={entry.compiled}
+				notes={entry.notes}
+				{palette}
+				perch={i === data.entries.length - 1}
+			/>
+		{/each}
+	</div>
+</div>
+
+<footer class="colophon riso">
+	<p>
+		Every score on this page is <code>@mdsvex/parse</code> reading its source, and every output is mdsvex’s
+		<code>compile</code>, run when the site is built. Nothing is drawn by hand.
+	</p>
+	<p>Set in Playfair, Source Serif 4 and Berkeley Mono, with IBM Plex Mono where Berkeley is not installed.</p>
+</footer>
 
 <style>
-	.bar {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.5rem 1.5rem;
-	}
-
-	.bar a {
-		color: var(--quiet);
-		text-decoration: none;
-	}
-
-	.bar a:hover,
-	.bar a[aria-current] {
-		color: var(--ink);
-	}
-
-	.bar .home {
-		margin-right: auto;
-		color: var(--ink);
-	}
-
 	/* v7's hero: the title notated over its own typeset line */
 	.hero {
 		display: grid;
@@ -319,6 +254,9 @@
 	}
 
 	.colophon {
+		margin-top: clamp(4rem, 9vw, 7rem);
+		color: var(--quiet);
+		font: 400 0.8125rem / 1.5 var(--face-mono);
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
 		gap: 0.5rem 3rem;
