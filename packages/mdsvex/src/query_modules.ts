@@ -1,8 +1,13 @@
 /**
- * the modules a ?metadata and a ?data import load, made from the source of the
+ * the modules a ?metadata, a ?data and a ?text import load, made from the source of the
  * document with nothing read from disk
  */
-import { metadata_export, parse_frontmatter } from './frontmatter.js';
+import type { DocumentText } from './document_text.js';
+import {
+	metadata_export,
+	parse_frontmatter,
+	script_json,
+} from './frontmatter.js';
 import type { FrontmatterOptions } from './frontmatter.js';
 import { PLUGIN_DATA_EXPORT, plugin_data_export } from './plugin_data.js';
 import type { PluginData } from './plugin_data.js';
@@ -81,4 +86,9 @@ export function data_module(
 			: plugin_data_export(data)) +
 		`\nexport default { metadata, ${PLUGIN_DATA_EXPORT} };\n`
 	);
+}
+
+/** the module a ?text import loads, its default export is the text as parsed_text gives it */
+export function text_module(text: DocumentText): string {
+	return 'export default ' + script_json(text) + ';\n';
 }

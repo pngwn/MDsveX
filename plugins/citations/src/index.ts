@@ -9,7 +9,14 @@ import type {
 import { read_csl } from './csl.js';
 import type { CitationEntry } from './csl.js';
 import { CitationsError, PACKAGE } from './error.js';
-import { citation_id, citation_label, entry_id, first_cited } from './list.js';
+import {
+	bibliography_of,
+	citation_id,
+	citation_label,
+	entry_id,
+	entry_parts,
+	first_cited,
+} from './list.js';
 import type { CitationsData, CitationStyle } from './list.js';
 
 export { CitationsError } from './error.js';
@@ -205,6 +212,42 @@ function find(parent: NodeView, citations: NodeView[]): void {
 	}
 }
 
+/** a json arg as its value, undefined when it is missing or no json */
+function parsed<T>(json: string | undefined): T | undefined {
+	if (json === undefined) return undefined;
+	try {
+		return JSON.parse(json) as T;
+	} catch {
+		return undefined;
+	}
+}
+
+/** a citation in plain text, as Cite renders it */
+function cite_text(args: Readonly<Record<string, string>>): string {
+	const cites = parsed<Cited[]>(args.cites) ?? [];
+	if (cites.length === 0) return '';
+	const labels = cites.map((cite) => cite.label);
+	return args.style === 'author-date'
+		? '(' + labels.join('; ') + ')'
+		: '[' + labels.join(', ') + ']';
+}
+
+/** the bibliography in plain text, its label and then an entry to a block, as Bibliography renders it */
+function bibliography_text(
+	args: Readonly<Record<string, string>>,
+	label: string
+): string {
+	const style = args.style === 'author-date' ? 'author-date' : 'numeric';
+	const entries = bibliography_of(parsed<CitationsData>(args.data), style);
+	if (entries.length === 0) return '';
+	const blocks = entries.map((entry) =>
+		entry_parts(entry, style)
+			.map((part) => part.text)
+			.join(' ')
+	);
+	return (label === '' ? blocks : [label, ...blocks]).join('\n\n');
+}
+
 /**
  * citations from a CSL JSON bibliography, `:cite[key]` and `:cite[a, b]` in
  * the text, and a `::bibliography` that lists every entry the document
@@ -230,6 +273,7 @@ export function citations(options: CitationsOptions = {}): Bundle {
 		module: `${PACKAGE}/directives`,
 		directives: {
 			cite: {
+				text: cite_text,
 				parse(node, ctx) {
 					if (node.type !== 'directive_inline') {
 						ctx.warn(
@@ -281,6 +325,7 @@ export function citations(options: CitationsOptions = {}): Bundle {
 				},
 			},
 			bibliography: {
+				text: bibliography_text,
 				parse(node, ctx) {
 					if (node.type !== 'directive_leaf') {
 						ctx.warn(
