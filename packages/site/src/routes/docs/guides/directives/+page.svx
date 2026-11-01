@@ -6,7 +6,7 @@ order: 4
 
 Directives give markdown a syntax for your own components, without writing HTML. Each one renders a Svelte component:
 
-```svx
+```svx score
 :::Callout[Heads up](kind=warn)
 Body *markdown*
 :::

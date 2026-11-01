@@ -69,13 +69,30 @@
 
 	const place = () => (at = find());
 
+	// a score shown or hidden, or one laying itself out again, can leave the box
+	// its size, so changes inside it are watched too, once a frame at most
+	let frame = 0;
+	const soon = () => {
+		cancelAnimationFrame(frame);
+		frame = requestAnimationFrame(place);
+	};
+
 	onMount(() => {
 		place();
 		// scores measure themselves once their fonts load and reflow on resize
 		document.fonts?.ready.then(place);
 		const watch = new ResizeObserver(place);
 		watch.observe(box);
-		return () => watch.disconnect();
+		const changes = new MutationObserver((records) => {
+			// the bird moving is a change in the box too
+			if (records.some((r) => !bird.contains(r.target))) soon();
+		});
+		changes.observe(box, { childList: true, subtree: true });
+		return () => {
+			watch.disconnect();
+			changes.disconnect();
+			cancelAnimationFrame(frame);
+		};
 	});
 
 	$effect(() => {

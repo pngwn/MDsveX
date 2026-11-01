@@ -6,25 +6,14 @@ order: 7
 
 A footnote is a reference in the text and a definition anywhere in the document:
 
-```md
+```md result
 A claim[^1], and a second one[^smith].
 
 [^1]: The source, with a [link](https://example.com).
 [^smith]: Smith, 2020.
 ```
 
-The reference renders as a number that links to the note, and the notes are collected at the end of the document, in the order they are first referred to:
-
-```html
-<p>A claim<sup><a href="#fn-1" id="fnref-1" role="doc-noteref">1</a></sup>, and a second one<sup><a href="#fn-smith" id="fnref-2" role="doc-noteref">2</a></sup>.</p>
-
-<section class="footnotes" role="doc-endnotes" aria-label="Footnotes">
-<ol>
-<li id="fn-1"><p>The source, with a <a href="https://example.com">link</a>. <a href="#fnref-1" role="doc-backlink" aria-label="Back to reference 1">&#8617;</a></p></li>
-<li id="fn-smith"><p>Smith, 2020. <a href="#fnref-2" role="doc-backlink" aria-label="Back to reference 2">&#8617;</a></p></li>
-</ol>
-</section>
-```
+The reference renders as a number that links to the note, and the notes are collected at the end of the document, in the order they are first referred to.
 
 - **A label** is any run of characters without whitespace, brackets or `^`. Labels match exactly, case included. The number a reader sees comes from the order of the references, not from the label, so `[^smith]` is as good a label as `[^2]`.
 - **A definition** is a line that starts with `[^label]:` and has text after it, or text on the lines below indented by four spaces, which is how Prettier writes a long one. It may hold links, emphasis, code and references to other notes. It can be written anywhere: under the paragraph that cites it, at the end of the document, inside a block quote or a list item. Wherever it is, it renders in the section at the end.
