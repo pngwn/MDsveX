@@ -21,10 +21,13 @@ onMount(() => {
 });
 </script>
 
-<main>
-	<Cheatsheet />
+<div class="index">
+	<header class="prose">
+		<h1 class="rag">Docs</h1>
+		<p class="lede">mdsvex is markdown with Svelte in it. Learn the language, follow a guide, add a plugin, or look something up.</p>
+	</header>
 
-	<div class="sections">
+	<nav class="sections riso" aria-label="Docs">
 		{#each nav as section}
 			<section>
 				<h2>{section.title}</h2>
@@ -40,23 +43,76 @@ onMount(() => {
 				{/each}
 			</section>
 		{/each}
-	</div>
-</main>
+	</nav>
+
+	<section class="quick" aria-labelledby="at-a-glance">
+		<h2 id="at-a-glance" class="label">At a glance</h2>
+		<Cheatsheet />
+	</section>
+</div>
 
 <style>
+	.index {
+		padding-top: clamp(1.5rem, 4vw, 3.5rem);
+	}
+
+	.lede {
+		color: var(--quiet);
+		font-size: 1.25rem;
+	}
+
 	.sections {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
-		gap: 3rem;
-		margin: 0 65px 65px;
+		grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+		gap: 2rem clamp(1.5rem, 4vw, 3rem);
+		margin: clamp(2rem, 5vw, 3.5rem) 0;
+		font: 400 0.875rem / 1.5 var(--face-mono);
+		font-variant-ligatures: none;
+	}
+
+	.sections h2,
+	.label {
+		margin: 0 0 0.6rem;
+		/* a mono label: the nav's riso, not the linen texture.css gives headings */
+		mask-image: none;
+		font: 400 0.8125rem / 1.4 var(--face-mono);
+		color: var(--quiet);
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+
+	.sections h3 {
+		margin: 1rem 0 0.35rem;
+		mask-image: none;
+		font: italic 400 0.8125rem / 1.4 var(--face-mono);
+		color: var(--quiet);
 	}
 
 	ul {
-		list-style: none;
+		margin: 0;
 		padding: 0;
+		list-style: none;
 	}
 
 	li {
-		margin: 0.5rem 0;
+		margin: 0.25rem 0;
+	}
+
+	.sections a {
+		color: var(--ink);
+		text-decoration: none;
+	}
+
+	.sections a:hover {
+		text-decoration: underline 1px;
+		text-underline-offset: 0.3em;
+	}
+
+	.quick {
+		margin-top: clamp(2.5rem, 6vw, 4.5rem);
+	}
+
+	.label {
+		margin-bottom: 1.25rem;
 	}
 </style>

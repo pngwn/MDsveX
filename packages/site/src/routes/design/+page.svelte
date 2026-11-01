@@ -1,10 +1,10 @@
 <script lang="ts">
 	// phase 0's demo: lib/design on one plain page. A few scores from source
 	// strings, one streamed, the faces, the texture, the palette and the perched
-	// penguin, in the frame. ?palette=cvd and ?theme=dark|light set the switches
+	// penguin, in the site's frame. ?palette=cvd and ?theme=dark|light set the switches
 	import { onMount } from 'svelte';
-	import Frame from '$lib/design/Frame.svelte';
 	import Perch from '$lib/design/penguin/Perch.svelte';
+	import { use_theme } from '$lib/design/theme.svelte';
 	import Score from '$lib/design/score/Score.svelte';
 	import { Player } from '$lib/design/score/player.svelte';
 	import type { Tone } from '$lib/design/score/kinds';
@@ -52,13 +52,12 @@
 	const player = new Player(() => streamed);
 
 	let palette = $state<'riso' | 'cvd'>('riso');
-	let theme = $state<'auto' | 'light' | 'dark'>('auto');
+	// the root layout's frame; ?theme is read there
+	const theme = use_theme()!;
 
 	onMount(() => {
 		const params = new URL(location.href).searchParams;
 		if (params.get('palette') === 'cvd') palette = 'cvd';
-		const t = params.get('theme');
-		if (t === 'light' || t === 'dark') theme = t;
 		if (matchMedia('(prefers-reduced-motion: reduce)').matches) player.pos = player.last;
 		else player.play();
 		return () => player.stop();
@@ -85,34 +84,7 @@
 
 <svelte:head>
 	<title>mdsvex 1.0, the design foundation</title>
-	<!-- phase 0 only: the root layout still loads global.css, whose 62.5% root
-	     makes a rem 10px, and draws the old Nav. Phase 2 replaces both; until then
-	     this page undoes them while it is mounted -->
-	<style>
-		html {
-			font-size: 100%;
-		}
-		body {
-			background: var(--paper);
-		}
-		#main {
-			max-width: none;
-		}
-		#main > nav {
-			display: none;
-		}
-	</style>
 </svelte:head>
-
-<Frame {theme}>
-	{#snippet nav()}
-		<nav class="bar" aria-label="Site">
-			<a class="home" href="/">mdsvex</a>
-			<a href="/docs">docs</a>
-			<a href="/playground">playground</a>
-			<a href="/design" aria-current="page">design</a>
-		</nav>
-	{/snippet}
 
 	<header class="intro">
 		<h1 class="rag">The score</h1>
@@ -127,9 +99,9 @@
 				<button type="button" aria-pressed={palette === 'cvd'} onclick={() => (palette = 'cvd')}>Colour blind safe</button>
 			</div>
 			<div class="pick" role="group" aria-label="Theme, dark is a proposal">
-				<button type="button" aria-pressed={theme === 'auto'} onclick={() => (theme = 'auto')}>Auto</button>
-				<button type="button" aria-pressed={theme === 'light'} onclick={() => (theme = 'light')}>Light</button>
-				<button type="button" aria-pressed={theme === 'dark'} onclick={() => (theme = 'dark')}>Dark</button>
+				<button type="button" aria-pressed={theme.value === 'auto'} onclick={() => (theme.value = 'auto')}>Auto</button>
+				<button type="button" aria-pressed={theme.value === 'light'} onclick={() => (theme.value = 'light')}>Light</button>
+				<button type="button" aria-pressed={theme.value === 'dark'} onclick={() => (theme.value = 'dark')}>Dark</button>
 			</div>
 		</div>
 	</header>
@@ -219,31 +191,8 @@
 			</div>
 		</Perch>
 	</section>
-</Frame>
 
 <style>
-	.bar {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.25rem 1.25rem;
-	}
-
-	.bar a {
-		color: var(--ink);
-		text-decoration: none;
-		border: 0;
-		padding: 0;
-	}
-
-	.bar a[aria-current='page'] {
-		text-decoration: underline 1px;
-		text-underline-offset: 0.3em;
-	}
-
-	.bar .home {
-		margin-right: auto;
-	}
-
 	.intro h1 {
 		margin: clamp(2.5rem, 7vw, 5rem) 0 0;
 		font: 700 clamp(2.75rem, 7vw, 5.5rem) / 0.95 var(--face-display);

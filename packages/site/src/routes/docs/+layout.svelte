@@ -1,224 +1,201 @@
 <script>
 import { page } from "$app/state";
+import Perch from "$lib/design/penguin/Perch.svelte";
 import { nav, pages } from "./nav.js";
 
 let { children } = $props();
 
 const current = $derived(pages.find((p) => p.href === page.url.pathname));
+const section = $derived(nav.find((s) => s.key === current?.section));
 </script>
 
 <svelte:head>
 	<title>{current ? `${current.title} · mdsvex docs` : "mdsvex docs"}</title>
 </svelte:head>
 
+{#snippet contents()}
+	{#each nav as s (s.key)}
+		<h2>{s.title}</h2>
+		{#each s.groups as group}
+			{#if group.title}
+				<h3>{group.title}</h3>
+			{/if}
+			<ul>
+				{#each group.pages as p (p.href)}
+					<li>
+						<a href={p.href} aria-current={p === current ? "page" : undefined}>{p.title}</a>
+					</li>
+				{/each}
+			</ul>
+		{/each}
+	{/each}
+{/snippet}
+
 {#if page.url.pathname === "/docs"}
 	{@render children()}
 {:else}
-	<div class="container">
-		<nav aria-label="docs">
-			<a class="index" href="/docs">docs</a>
-			{#each nav as section}
-				<h2>{section.title}</h2>
-				{#each section.groups as group}
-					{#if group.title}
-						<h3>{group.title}</h3>
-					{/if}
-					<ul>
-						{#each group.pages as p}
-							<li>
-								<a href={p.href} aria-current={p === current ? "page" : undefined}>{p.title}</a>
-							</li>
-						{/each}
-					</ul>
-				{/each}
-			{/each}
-			<a class="index" href="/playground">playground</a>
+	<div class="docs">
+		<!-- a column beside the page, and on a phone a list to open over it -->
+		<nav class="side riso" aria-label="Docs">
+			<a class="index" href="/docs">All docs</a>
+			{@render contents()}
 		</nav>
 
-		<article>
-			{@render children()}
-		</article>
+		<details class="drawer riso">
+			<summary>
+				<span class="where">{section?.title ?? "Docs"}</span>
+				<span class="what">{current?.title ?? ""}</span>
+			</summary>
+			<nav aria-label="Docs">
+				<a class="index" href="/docs">All docs</a>
+				{@render contents()}
+			</nav>
+		</details>
+
+		<!-- the line bird stands on the double bar of the page's last score, if it has one -->
+		{#key page.url.pathname}
+			<Perch>
+				<article class="prose">
+					{@render children()}
+				</article>
+			</Perch>
+		{/key}
 	</div>
 {/if}
 
 <style>
-	.container {
+	.docs {
+		--column: 13rem;
 		display: grid;
-		grid-template-columns: 24rem minmax(0, 1fr);
-		gap: 4rem;
-		margin: 8rem auto 0;
-		padding: 0 3rem;
-		max-width: 120rem;
+		grid-template-columns: var(--column) minmax(0, 1fr);
+		column-gap: clamp(2.5rem, 5vw, 5rem);
+		padding-top: clamp(1.5rem, 4vw, 3.5rem);
 	}
 
+	/* the nav is meta, in the mono with riso; SCORE.md: one mono for labels */
 	nav {
+		font: 400 0.8125rem / 1.45 var(--face-mono);
+		font-variant-ligatures: none;
+	}
+
+	.side {
 		position: sticky;
-		top: 2rem;
+		top: 1.5rem;
 		align-self: start;
-		max-height: calc(100vh - 4rem);
+		max-height: calc(100svh - 3rem);
 		overflow-y: auto;
-		font-size: 1.5rem;
+		overscroll-behavior: contain;
+		padding-bottom: 2rem;
+		scrollbar-width: thin;
 	}
 
 	nav h2 {
-		margin: 2.5rem 0 0.5rem;
-		font-size: 1.4rem;
+		margin: 1.75rem 0 0.5rem;
+		/* a mono label: the nav's riso, not the linen texture.css gives headings */
+		mask-image: none;
+		font: inherit;
+		color: var(--quiet);
+		letter-spacing: 0.08em;
 		text-transform: uppercase;
 	}
 
 	nav h3 {
-		margin: 1.5rem 0 0.5rem;
-		font-size: 1.4rem;
+		margin: 1rem 0 0.35rem;
+		mask-image: none;
+		font: italic 400 0.8125rem / 1.45 var(--face-mono);
+		color: var(--quiet);
 	}
 
 	nav ul {
-		list-style: none;
 		margin: 0;
 		padding: 0;
+		list-style: none;
 	}
 
 	nav li {
-		margin: 0.4rem 0;
+		margin: 0.2rem 0;
 	}
 
 	nav a {
-		border: none;
-		color: #777;
+		color: var(--quiet);
+		text-decoration: none;
 	}
 
-	nav a:hover,
-	nav a[aria-current="page"] {
-		color: #000;
+	nav a:hover {
+		color: var(--ink);
 	}
 
 	nav a[aria-current="page"] {
-		font-weight: bold;
+		color: var(--ink);
+		font-weight: 700;
 	}
 
 	.index {
-		display: block;
-		margin: 2rem 0;
-		font-family: "fira-full";
+		color: var(--ink);
 	}
 
-	@media (max-width: 800px) {
-		.container {
+	.drawer {
+		display: none;
+	}
+
+	/* a phone: the column goes, its list opens from a line above the page */
+	@media (max-width: 860px) {
+		.docs {
 			grid-template-columns: minmax(0, 1fr);
+			padding-top: 0.5rem;
 		}
 
-		nav {
-			position: static;
-			max-height: none;
+		.side {
+			display: none;
 		}
-	}
 
-	/* the article styles of the one page docs, as they were */
+		.drawer {
+			display: block;
+			margin-bottom: 1.5rem;
+			border-block: 1px solid var(--staff);
+			font: 400 0.8125rem / 1.45 var(--face-mono);
+		}
 
-	article :global(h1) {
-		margin-bottom: 4.6rem;
-		font-family: 'roboto-sub';
-		font-weight: 100;
-		font-size: 4rem;
-	}
+		summary {
+			display: flex;
+			gap: 0.75rem;
+			padding: 0.65rem 0;
+			cursor: pointer;
+			list-style: none;
+		}
 
-	article :global(h2) {
-		margin: 5rem 0 3rem 0;
-		border-bottom: 1px solid #ccc;
-		font-family: 'roboto-bold-full';
-	}
+		summary::-webkit-details-marker {
+			display: none;
+		}
 
-	article :global(h3) {
-		margin-bottom: 2rem;
-		margin-top: 3rem;
-		font-family: 'roboto-bold-full';
-	}
+		summary::after {
+			content: "+";
+			margin-left: auto;
+			color: var(--quiet);
+		}
 
-	article :global(h4) {
-		margin-top: 2rem;
-		margin-bottom: 2rem;
-		font-family: 'roboto-bold-full';
-	}
+		.drawer[open] summary::after {
+			content: "−";
+		}
 
-	article :global(p) {
-		font-family: 'roboto-full';
-	}
+		.where {
+			color: var(--quiet);
+			letter-spacing: 0.08em;
+			text-transform: uppercase;
+		}
 
-	article > :global(ul) {
-		margin-left: 5rem !important;
-	}
+		.what {
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
 
-	article :global(code) {
-		font-family: 'fira-full';
-		position: relative;
-		border-radius: 0.3rem;
-		color: #333;
-		-webkit-font-smoothing: initial;
-		background: #eee;
-		padding: 0.2rem 0.4rem 0rem 0.4rem;
-		white-space: pre;
-		word-spacing: normal;
-		word-break: normal;
-		word-wrap: normal;
-		font-size: 1.4rem;
-	}
+		.drawer nav {
+			padding-bottom: 1rem;
+		}
 
-	article :global(pre code) {
-		white-space: pre;
-		background: none;
-		color: #cbccc6;
-		padding: 0;
-		tab-size: 2rem;
-	}
-
-	article :global(pre) {
-		background: #1f2430;
-		color: #cbccc6;
-		border-radius: 3px;
-		padding: 1rem 2rem;
-		margin: 0rem 0 4rem 0;
-		font-size: 1.4rem;
-		white-space: pre;
-		word-spacing: normal;
-		word-break: normal;
-		word-wrap: normal;
-		line-height: 2.5rem;
-	}
-
-	article :global(blockquote) {
-		border: 1px solid #bebebe;
-	}
-
-	article :global(blockquote p) {
-		color: #222;
-		font-size: 1.8rem;
-	}
-
-	article :global(h3 code) {
-		font-size: 2.2rem;
-	}
-
-	article :global(h4 code) {
-		font-size: 1.8rem;
-		margin-bottom: 2rem;
-	}
-
-	article :global(a) {
-		color: #777;
-		border-bottom: 1px solid #999;
-	}
-
-	article :global(a:hover) {
-		color: #333;
-		border-bottom: 1px solid #333;
-	}
-
-	article :global(h1 a),
-	article :global(h2 a),
-	article :global(h3 a),
-	article :global(h4 a) {
-		display: block;
-		height: 100%;
-		width: 0;
-		padding-top: 1.23rem;
+		.drawer nav h2:first-of-type {
+			margin-top: 1rem;
+		}
 	}
 </style>

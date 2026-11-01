@@ -1,7 +1,7 @@
 <script lang="ts">
 	// the page frame every 1.0 page sits in: paper, the faces, the texture, a slot
-	// for the nav and a footer, in light or dark. Phase 2 swaps it in for the root
-	// layout's global.css and Nav; until then a page opts in by wrapping itself.
+	// for the nav and a footer, in light or dark. The root layout puts every page
+	// in it but the playground, which owns the viewport.
 	//
 	// Dark is a proposal: SCORE.md gives no dark palette, so tokens.css carries one
 	// made by SCORE.md's own contrast rule. `auto` follows the visitor's setting
@@ -9,8 +9,13 @@
 	import { google_fonts } from './fonts';
 	import { RAG, RAG_SCALE, texture_style } from './texture';
 	import './tokens.css';
+	import './base.css';
 	import './type.css';
 	import './texture.css';
+	// the class rules for highlighted code; code.css gives them the score's colours
+	import '@twinkleplop/theme-ayu/light';
+	import './code.css';
+	import './prose.css';
 
 	interface Props {
 		children: Snippet;

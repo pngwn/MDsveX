@@ -56,8 +56,7 @@
 /* the mono never ligates: every character keeps its own cell, in the underlay
    and in code. Berkeley Mono's desktop cuts carry 158 ligatures in calt.
    A `font` shorthand resets this (and font-feature-settings), so a rule that
-   sets the mono with `font:` says it again after. Scoped to the frame until it
-   replaces global.css in phase 2 */
+   sets the mono with `font:` says it again after */
 .mono,
 .design-frame :is(code, kbd, samp, pre) {
 	font-family: var(--face-mono);
