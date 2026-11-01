@@ -29,6 +29,7 @@ interface MdsvexOptions {
 	footnotes?: { label?: string; back_label?: string; strict?: boolean };
 	unwrap_images?: boolean;
 	import_images?: boolean | { enhanced?: boolean };
+	wrap_static?: boolean;
 	links?: {
 		routes?: string;
 		base?: true | string | { import: string; from: string };
@@ -176,6 +177,32 @@ Sales grew all year.
 Several images in one paragraph are all unwrapped, on one line or on lines of their own. So is an image inside a link, such as `[![A chart](/chart.png)](/full.png)`, where the link stays around the image. A paragraph with any text beside the image keeps its `<p>`, and so does one with a hard line break between two images. It works the same inside block quotes, list items, directives and HTML elements.
 
 `compile()` takes the option too, and the editor reads it from the manifest the plugin writes, or from `unwrap_images` in an `mdsvex.config.json`.
+
+## `wrap_static`
+
+```ts
+wrap_static: boolean = false;
+```
+
+Wraps each run of two or more top level blocks with no Svelte in them in a `<div style="display: contents">`, so hydration steps over the run as one node instead of one node for each block:
+
+```svx
+# Title
+
+Some text.
+
+<Counter />
+
+More {count}.
+```
+
+```html
+<div style="display: contents"><h1>Title</h1><p>Some text.</p></div>
+<Counter />
+<p>More {count}.</p>
+```
+
+The page looks the same, but a child selector such as `article > p` no longer matches a block inside a wrapper, and a sibling selector such as `h1 + p` doesn't match across the edge of one. `compile()` takes the option too.
 
 ## `heading_ids`
 

@@ -40,6 +40,15 @@ compile(source, {
 
 The output imports from those specifiers exactly as written.
 
+`default_template` names the template of a document whose frontmatter and `select_template` pick none, in place of the `default` entry:
+
+```js
+compile(source, {
+	templates: { post: { specifier: '/src/Post.svelte', components: [] } },
+	default_template: 'post'
+});
+```
+
 `compile` doesn't highlight code unless you pass `highlight`, see [highlighting with `compile`](/docs/reference/highlighting#highlighting-with-compile).
 
 A directive with no component is an error. For a preview or an editor, pass `strict_directives: false` to render it as its children instead.

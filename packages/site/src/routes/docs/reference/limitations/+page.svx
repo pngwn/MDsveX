@@ -30,5 +30,4 @@ A fence can be indented, inside an element or not. Its code keeps the indent it 
 ## Not possible yet
 
 - **Replacements of its own for a component.** Markdown inside a component uses the document's replacements, see [nested scopes](/docs/guides/components#nested-scopes) for the way around it.
-- **A plugin that waits.** Handlers are synchronous and can't read files, so a plugin can't fetch an embed or read a bibliography.
 - **A plugin that adds syntax.** A plugin changes the tree the parser made, and can rewrite text, but what is markdown is fixed.
