@@ -5,7 +5,9 @@
 // - phrase, one node the parser opened, from the character it starts on to the
 //   one it ends on, drawn as a line over the text it covers
 // - guess, a phrase still pending, the parser may take it back
-// - ghost, a phrase it took back, kept struck through so the change can be read
+// - ghost, a phrase it took back, kept struck through so the change can be
+//   read; a list item's paragraph, unwrapped when its list turns out tight,
+//   leaves none
 // - held, characters fed that no node accounts for yet, under a fermata
 // - marks, the characters a phrase owns as syntax rather than text, a `*` or `{`
 // - voice, the family a node belongs to
@@ -183,7 +185,13 @@ function parse(source: string, stream: boolean): Reading {
 			if (op.op === 'close') ends.set(op.id, op.end);
 			if (op.op === 'revoke') {
 				const last = seen.get(op.id);
-				if (last) ghosts.push({ ...last, end: ends.get(op.id) ?? last.end ?? frame.fed, revoked_at: frame.fed });
+				// a list item's paragraph is a guess that the list is loose, settled when
+				// the list closes: committed if it is, revoked if it's tight. That revoke
+				// gives nothing back, a paragraph has no delimiters and its text stays in
+				// the item, so it leaves no ghost: the guess goes, as a committed one's
+				// dashes go, and the finished bar is the settled reading
+				if (last && last.kind !== 'paragraph')
+					ghosts.push({ ...last, end: ends.get(op.id) ?? last.end ?? frame.fed, revoked_at: frame.fed });
 			}
 		}
 
