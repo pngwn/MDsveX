@@ -176,7 +176,9 @@
 		font-size: 1.5rem;
 	}
 
-	.prose pre {
+	/* a code block of the page's own runs to the screen's edge; one in an
+	   example keeps its rule beside the example's labels */
+	.prose > pre {
 		margin-inline: calc(var(--gutter, 1rem) * -1) 0;
 		padding-left: calc(var(--gutter, 1rem) - 1.5px);
 		border-left: 0;
