@@ -697,6 +697,9 @@ importers:
 
   packages/site:
     dependencies:
+      '@mdsvex/parse':
+        specifier: workspace:*
+        version: link:../parse
       '@mdsvex/plugin-anchors':
         specifier: workspace:*
         version: link:../../plugins/anchors

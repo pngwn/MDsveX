@@ -1,0 +1,65 @@
+/* the faces, design/SCORE.md "Type". Playfair, Source Serif 4 and the IBM Plex
+   Mono fallback come from Google Fonts (the link is in fonts.ts). Berkeley Mono
+   is self-hosted: the files are never in git, they are copied into
+   static/fonts/berkeley-mono/ at deploy (design/FONTS.md). Until then, and on a
+   machine that has it installed, local() finds it first.
+
+   An @font-face named "Berkeley Mono" hides an installed family of the same name,
+   so local() has to name the installed faces themselves: their full names and
+   PostScript names, as the desktop cuts carry them. "Berkeley Mono" alone, as
+   SCORE.md writes it, only matches a build whose regular is named that */
+
+@font-face {
+	font-family: 'Berkeley Mono';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src:
+		local('Berkeley Mono'),
+		local('Berkeley Mono Regular'),
+		local('BerkeleyMono-Regular'),
+		url('/fonts/berkeley-mono/BerkeleyMono-Regular.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Berkeley Mono';
+	font-style: italic;
+	font-weight: 400;
+	font-display: swap;
+	src:
+		local('Berkeley Mono Italic'),
+		local('BerkeleyMono-Italic'),
+		url('/fonts/berkeley-mono/BerkeleyMono-Italic.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Berkeley Mono';
+	font-style: normal;
+	font-weight: 700;
+	font-display: swap;
+	src:
+		local('Berkeley Mono Bold'),
+		local('BerkeleyMono-Bold'),
+		url('/fonts/berkeley-mono/BerkeleyMono-Bold.woff2') format('woff2');
+}
+
+:root {
+	/* Playfair 2: titles, the typeset mdsvex, and in italic at 14px the phrase names */
+	--face-display: 'Playfair', Georgia, serif;
+	/* Source Serif 4: docs prose, ledes, descriptions */
+	--face-text: 'Source Serif 4', Georgia, serif;
+	/* Berkeley Mono: the underlay, all code, and meta. IBM Plex Mono has the
+	   same 0.6em advance, so the underlay's cells hold without it */
+	--face-mono: 'Berkeley Mono', 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+/* the mono never ligates: every character keeps its own cell, in the underlay
+   and in code. Berkeley Mono's desktop cuts carry 158 ligatures in calt.
+   A `font` shorthand resets this (and font-feature-settings), so a rule that
+   sets the mono with `font:` says it again after. Scoped to the frame until it
+   replaces global.css in phase 2 */
+.mono,
+.design-frame :is(code, kbd, samp, pre) {
+	font-family: var(--face-mono);
+	font-variant-ligatures: none;
+}

@@ -13,6 +13,7 @@
 	},
 	"private": "true",
 	"dependencies": {
+		"@mdsvex/parse": "workspace:*",
 		"@mdsvex/plugin-anchors": "workspace:*",
 		"@mdsvex/repl": "workspace:*",
 		"@twinkleplop/theme-ayu": "^0.1.3",
