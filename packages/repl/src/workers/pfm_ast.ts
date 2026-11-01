@@ -22,8 +22,10 @@ export function pfm_ast(input: string, syntax?: SyntaxOptions): PfmNode {
 		const node = nodes.get_node(index);
 		const out: PfmNode = { type: node.kind, start: node.start, end: node.end };
 
+		// a list start is its first number, so a key the node already has is prefixed with its kind
 		for (const [key, value] of Object.entries(node.metadata ?? {})) {
-			if (value !== undefined) out[key] = value;
+			if (value === undefined) continue;
+			out[key in out ? `${node.kind}_${key}` : key] = value;
 		}
 
 		if (node.children.length > 0) {
