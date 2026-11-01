@@ -130,6 +130,10 @@ function markup(root: LiveNode, fed: number, length: number): (Voice | null)[] {
 			for (let i = node.start; i < end; i++) marks[i] = voice;
 		const value = node.attrs.value;
 		if (Array.isArray(value)) for (let i = value[0]; i < value[1]; i++) text[i] = true;
+		// fed whole, a fence or a code span gives its content as a range and no text op
+		const { value_start, value_end } = node.attrs;
+		if (typeof value_start === 'number' && typeof value_end === 'number')
+			for (let i = value_start; i < value_end; i++) text[i] = true;
 		node.children.forEach(visit);
 	};
 	visit(root);
