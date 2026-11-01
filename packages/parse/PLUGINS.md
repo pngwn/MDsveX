@@ -574,6 +574,7 @@ code_fence: {
 - **It is the whole line after the fence**, the language and what follows it. The parser does not split it. In `mdsvex`, `fence_meta(node.info)` from `mdsvex/compile` reads it the way a compile does: the language, a `[name]` or `title="..."`, a caption, `src=`, and the `key=value` pairs and flags.
 - **While the document streams**, the handlers run once the line of the opening fence is complete. Over the wire a fence with an empty info string is sent none, and its handlers run when its first text or its close arrives.
 - **Any other node has no `info`**, it reads `undefined`.
+- **A plugin that renders a language itself** says so in `mdsvex` with `fences: ['mermaid']` on its bundle, and the highlighter never sees those fences, so they render plain and warn of no unknown language. Its handlers, and those of every other plugin, still see the fence. See the design in `design/plugin-directives.md`, 3.6.
 
 ### The code of a fence a plugin makes
 

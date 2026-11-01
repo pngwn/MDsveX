@@ -34,13 +34,15 @@ export interface ManifestTemplate {
 	directives: ManifestModule[];
 }
 
-/** an entry of the plugins option that brings components */
+/** an entry of the plugins option that brings components or claims fences */
 export interface ManifestPlugin {
 	name: string;
 	/** the module its directive components come from, mdsvex:plugin/<index>, null without directives */
 	directives: ManifestModule | null;
 	/** its element replacements, mdsvex:plugin-components/<index>, null without any */
 	components: ManifestModule | null;
+	/** the fence languages it renders itself, which an editor does not highlight, left out for none */
+	fences?: string[];
 }
 
 export interface MdsvexManifest {
@@ -83,9 +85,9 @@ export interface MdsvexManifest {
 	 */
 	enhanced_images?: boolean;
 	/**
-	 * the plugins that bring components, lowest precedence first, their
-	 * directives sit below directives and their components below components,
-	 * a manifest without it has none
+	 * the plugins that bring components or claim fences, lowest precedence
+	 * first, their directives sit below directives and their components below
+	 * components, a manifest without it has none
 	 */
 	plugins?: ManifestPlugin[];
 	/** true when heading_ids is on in any form, a manifest without it means off */
