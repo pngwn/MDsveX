@@ -1,23 +1,26 @@
 <script lang="ts">
-	// the home page: 01's Title (v7) on the one engine, then a short, quiet way
-	// into the docs. The paper is 01's dots, linen on Playfair, riso on the mono,
-	// the body plain, design/SCORE.md "Ink texture"
+	// the home page: 01's v7 (lib/experiments/01-wordmark/v7 on
+	// p/mdsvex-1.0-design), laid out like a title page, the opening, then the
+	// lede, the install line and the contents. The paper is 01's dots, linen on
+	// Playfair, riso on the mono, the body plain
 	import Title from '$lib/design/title/Title.svelte';
-	import { config, install } from './quick-start';
 
-	const sections = [
-		['Learn', '/docs/learn/what-mdsvex-is', 'What mdsvex is, the quick start, and the markdown it reads.'],
-		['Guides', '/docs/guides/frontmatter', 'Frontmatter, templates, components, directives, and moving from 0.x.'],
-		['Plugins', '/docs/plugins', 'The first-party plugins, and writing your own.'],
-		['Reference', '/docs/reference/options', 'Options, the compile API, and the details of every construct.'],
-		['Atlas', '/atlas', 'Every construct, with the parser’s reading of it.'],
-		['Playground', '/playground', 'Write mdsvex in the browser.'],
+	const movements = [
+		['Getting started', 'Install it, then add it to Vite or SvelteKit.', '/docs/learn/quick-start'],
+		['Markdown', 'PFM, and where it parts from CommonMark.', '/docs/learn/markdown'],
+		['Svelte in markdown', 'Expressions, components and blocks, anywhere.', '/docs/learn/markdown#svelte-in-markdown'],
+		['Frontmatter', 'YAML, checked against the template’s props.', '/docs/guides/frontmatter'],
+		['Templates', 'A component that wraps the document.', '/docs/guides/templates'],
+		['Custom components', 'Replace any element with your own.', '/docs/guides/components'],
+		['Directives', 'A name and its args, mapped to a component.', '/docs/guides/directives'],
+		['Plugins', 'Act on the document as it is parsed.', '/docs/plugins'],
+		['Tooling', 'Editor, formatter and grammar read PFM alike.', '/docs/guides/prettier'],
 	];
-	const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI'];
+	const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'];
 </script>
 
 <svelte:head>
-	<title>mdsvex, svelte in markdown</title>
+	<title>mdsvex, markdown with Svelte in it</title>
 </svelte:head>
 
 <div class="home">
@@ -28,29 +31,25 @@
 			<span>Penguin-Flavoured Markdown</span>
 		</p>
 		<Title />
-		<p class="sub linen">Svelte in markdown.</p>
+		<p class="sub linen">Markdown with Svelte in it.</p>
 	</section>
 
-	<section class="start" aria-labelledby="start">
-		<p class="lede">Use Svelte components in your markdown, or markdown in your Svelte components.</p>
-
-		<h2 id="start">Quick start</h2>
-		<p>Install it as a dev-dependency.</p>
-		<pre class="riso"><code>{install}</code></pre>
-		<p>mdsvex is a Vite plugin. In SvelteKit it goes in <code class="riso">vite.config.js</code>, beside <code class="riso">sveltekit()</code>:</p>
-		<pre class="riso"><code>{config}</code></pre>
-		<p>
-			Any markdown file is now a component, and a <code class="riso">+page.svx</code> is a route. The
-			<a href="/docs/learn/quick-start">quick start</a> covers Vite without SvelteKit, templates and components.
+	<section class="first">
+		<p class="lede">
+			Write documents in markdown, put Svelte components and expressions anywhere in them, and get a Svelte component
+			out.
 		</p>
+		<!-- riso on the line, as v7 had it: the mask clips to the line box, so the
+		     rule under the code is cut off and the command stands alone -->
+		<p class="install riso"><code>pnpm add -D mdsvex</code></p>
 	</section>
 
 	<section class="contents" aria-labelledby="contents">
 		<h2 id="contents">Contents</h2>
 		<ol>
-			{#each sections as [name, href, line], i (name)}
+			{#each movements as [name, line, href], i (name)}
 				<li>
-					<span class="num linen" aria-hidden="true">{ROMAN[i]}</span>
+					<span class="num linen">{ROMAN[i]}</span>
 					<a class="mv linen" {href}>{name}</a>
 					<span class="tempo">{line}</span>
 				</li>
@@ -73,88 +72,86 @@
 		background-attachment: fixed;
 	}
 
+	/* v7 set its page at 16px with the browser's line height */
+	.home {
+		font-size: 1rem;
+		line-height: normal;
+	}
+
 	.cover {
 		display: flex;
 		flex-direction: column;
+		align-items: center;
 		justify-content: center;
-		min-height: calc(100svh - 4.5rem);
-		padding-bottom: 4rem;
+		min-height: calc(100svh - 5rem);
+		/* v7's header stood two of its gutters and a line of 14px mono tall, the
+		   site nav (the frame's 1.25rem padding and 13px at 1.4) is shorter on a
+		   desktop and taller on a phone; the difference puts the opening where v7's was */
+		margin-top: calc(2 * clamp(1rem, 3vw, 2.5rem) + 1rem - (2.5rem + 0.8125rem * 1.4));
+		padding: 0 0 4rem;
 		text-align: center;
+		--u: clamp(1.3rem, 3.4vw, 2.9rem);
+		--track: 0.6em;
+		--phrase-h: 1.55rem;
+		--stave-gap: 0.2em;
+		--title: min(22vw, 36svh);
 	}
 
 	.credits {
 		display: flex;
 		justify-content: space-between;
-		margin: 0 0 clamp(2.5rem, 7svh, 4.5rem);
-		font: 400 clamp(1rem, 1.4vw, 1.25rem) / 1.3 var(--face-display);
+		align-self: stretch;
+		margin: 0 0 clamp(2rem, 6svh, 4rem);
+		font-family: var(--face-display);
+		font-size: clamp(1rem, 1.4vw, 1.25rem);
 	}
 
 	.sub {
 		margin: 1.5rem 0 0;
-		font: italic 400 clamp(1.25rem, 2.6vw, 2rem) / 1.3 var(--face-display);
+		font-family: var(--face-display);
+		font-size: clamp(1.25rem, 2.6vw, 2rem);
+		font-style: italic;
 	}
 
-	.start {
-		max-width: 40rem;
-		margin: 0 auto;
-		padding-top: clamp(1rem, 4vw, 3rem);
-	}
-
-	.lede {
-		margin: 0 0 clamp(3rem, 7vw, 5rem);
-		font-size: clamp(1.1875rem, 2vw, 1.5rem);
-		line-height: 1.45;
+	.first {
+		display: grid;
+		justify-items: center;
+		gap: 1.75rem;
+		padding: clamp(2rem, 6vw, 4rem) 0 0;
 		text-align: center;
 	}
 
-	h2 {
-		margin: 0 0 1.25rem;
-		color: var(--ink);
-		font: 500 clamp(1.75rem, 3.5vw, 2.5rem) / 1.15 var(--face-display);
+	.lede {
+		max-width: 34ch;
+		margin: 0;
+		font-size: clamp(1.1875rem, 2vw, 1.5rem);
+		line-height: 1.45;
 	}
 
-	.start h2 {
-		text-align: left;
+	.install {
+		margin: 0;
 	}
 
-	.start p {
-		margin: 0 0 1rem;
-	}
-
-	pre {
-		margin: 0 0 1.5rem;
-		padding: 1rem 0;
-		overflow-x: auto;
-		border-top: 1px solid var(--staff);
+	.install code {
+		padding-bottom: 0.3rem;
 		border-bottom: 1px solid var(--staff);
-		font: 400 0.875rem / 1.6 var(--face-mono);
-		font-variant-ligatures: none;
-		tab-size: 2;
-	}
-
-	code {
-		font: 400 0.9em / 1 var(--face-mono);
-		font-variant-ligatures: none;
-	}
-
-	pre code {
-		font: inherit;
-	}
-
-	a {
-		color: inherit;
-		text-decoration-thickness: 1px;
-		text-underline-offset: 0.2em;
+		font-family: var(--face-mono);
+		font-size: 1rem;
+		letter-spacing: 0.08em;
 	}
 
 	.contents {
 		max-width: 52rem;
 		margin: 0 auto;
-		padding-top: clamp(4rem, 9vw, 7rem);
+		padding: clamp(3rem, 8vw, 6rem) 0 0;
 	}
 
-	.contents h2 {
-		margin-bottom: 2rem;
+	h2 {
+		margin: 0 0 2rem;
+		font-family: var(--face-display);
+		font-size: clamp(1.75rem, 3.5vw, 2.75rem);
+		font-weight: 500;
+		line-height: normal;
 		text-align: center;
 	}
 
@@ -173,30 +170,37 @@
 		border-top: 1px solid var(--staff);
 	}
 
-	li:last-child {
-		border-bottom: 1px solid var(--staff);
-	}
-
 	.num {
-		font: 400 1rem / 1 var(--face-display);
+		font-family: var(--face-display);
+		font-size: 1rem;
 		color: var(--quiet);
 	}
 
 	.mv {
 		justify-self: start;
-		font: 600 clamp(1.25rem, 2.2vw, 1.75rem) / 1.2 var(--face-display);
+		font-family: var(--face-display);
+		font-size: clamp(1.25rem, 2.2vw, 1.75rem);
+		font-weight: 600;
+		color: inherit;
 		text-decoration: none;
 	}
 
 	.mv:hover {
-		text-decoration: underline;
+		text-decoration: underline 1px;
+		text-underline-offset: 0.2em;
 	}
 
 	.tempo {
+		font-size: 1rem;
 		color: var(--quiet);
 	}
 
 	@media (max-width: 640px) {
+		.cover {
+			--track: 0.45em;
+			--u: 1.2rem;
+		}
+
 		li {
 			grid-template-columns: 2.5rem minmax(0, 1fr);
 		}
