@@ -2,11 +2,11 @@
 	// 01's v7 score of one source (lib/experiments/01-wordmark/Score.svelte on
 	// p/mdsvex-1.0-design, with `names="full" ruled`): a stave per depth with its
 	// phrases, over the source as underlay. The staves run out to the edges of
-	// the page, as on ruled paper, a phrase opens on a dot and closes on a tick,
-	// and text phrases are named. A source too long for its measure wraps by
-	// systems, a phrase that runs on loses its dot or its tick at the break.
-	// Pointing at or focusing a phrase lights its range, a click pins it, so
-	// touch has the wash too
+	// the page, as on ruled paper, and text phrases are named. A phrase opens
+	// and closes on a bar, v12's marks in place of v7's dot and tick. A source
+	// too long for its measure wraps by systems, a phrase that runs on loses a
+	// bar at the break. Pointing at or focusing a phrase lights its range, a
+	// click pins it, so touch has the wash too
 	import type { Lit, Phrase, Reading } from './reading';
 	import { covers } from './reading';
 
@@ -187,37 +187,31 @@
 		border-bottom-color: var(--staff);
 	}
 
-	/* a dot where the node opens, a tick where it closes */
-	.phrase::before {
-		content: '';
-		position: absolute;
-		left: -0.24rem;
-		bottom: -0.3rem;
-		width: 0.5rem;
-		height: 0.5rem;
-		border-radius: 50%;
-		background: var(--voice);
-	}
-
+	/* a bar where the node opens and one where it closes, v12's marks (pngwn's
+	   pick over v7's dot and tick), 1.5px like the line and centred on it */
+	.phrase::before,
 	.phrase::after {
 		content: '';
 		position: absolute;
-		right: 0;
-		bottom: -0.32rem;
+		bottom: calc(0.75px - 0.35rem);
 		width: 1.5px;
-		height: 0.64rem;
+		height: 0.7rem;
 		background: var(--voice);
 	}
 
-	.phrase.text::before {
-		width: 0.38rem;
-		height: 0.38rem;
-		left: -0.18rem;
-		bottom: -0.22rem;
+	.phrase::before {
+		left: 0;
 	}
 
+	.phrase::after {
+		right: 0;
+	}
+
+	.phrase.text::before,
 	.phrase.text::after {
+		bottom: calc(0.5px - 0.2rem);
 		width: 1px;
+		height: 0.4rem;
 	}
 
 	/* a phrase carried across a break runs to the edge of the system */

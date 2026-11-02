@@ -5,7 +5,8 @@
 	// knows the source character it came from, so a lit phrase washes the
 	// letters it becomes. Printed as v7's `?ink=mix&plate=linen`: the black
 	// letters take the frame's linen knock, the Svelte letters the linen plate,
-	// both with a ragged edge. The line bird perches on the heading's line
+	// both with a ragged edge. The line bird perches on the heading's stave, at
+	// the right margin (lib/experiments/penguin/perch/title)
 	import Perch from '../penguin/Perch.svelte';
 	import Staves from './Staves.svelte';
 	import { covers, read, type Lit } from './reading';
@@ -26,7 +27,9 @@
 </script>
 
 <div class="staves">
-	<Perch on=".phrase[data-kind='heading']">
+	<!-- on the top stave out at the page's margin, past the heading's closing
+	     bar and clear of it, as the penguin's perch page tested it -->
+	<Perch on=".stave" edge="box" inset="0px">
 		<Staves {reading} bind:lit label="The source of the title" />
 	</Perch>
 </div>
