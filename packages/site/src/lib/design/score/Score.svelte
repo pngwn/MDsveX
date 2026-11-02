@@ -11,7 +11,8 @@
 	// the score, design/SCORE.md: the parser's reading of a source drawn over the
 	// source. From 05's Notation.svelte with v12's choices as its only behaviour:
 	//
-	// - no stave rules, only the phrases over the underlay
+	// - no stave rules, only the phrases over the underlay, unless given `staves`:
+	//   then each row of phrases sits on a stave as long as its line, as 02's v7 drew it
 	// - nested: a block that takes more than one system is drawn once, over its
 	//   first, as wide as its widest line, with a bracket down the margin
 	// - a bar where a phrase opens and one where it closes, 1.5px like its line
@@ -45,10 +46,19 @@
 		stream?: number;
 		/** the lit phrase, bindable so the output beside the score can light with it */
 		focus?: Focus | null;
+		/** draw a stave under each row of phrases, the length of its line */
+		staves?: boolean;
 		label?: string;
 	}
 
-	let { source, palette = 'riso', stream, focus = $bindable(null), label = 'The parser’s reading of the source' }: Props = $props();
+	let {
+		source,
+		palette = 'riso',
+		stream,
+		focus = $bindable(null),
+		staves = false,
+		label = 'The parser’s reading of the source',
+	}: Props = $props();
 
 	const NBSP = String.fromCharCode(160);
 
@@ -306,6 +316,17 @@
 			style:--cols={cols}
 			style:--template={rows.map((r) => (r.quiet ? 'var(--_quiet-row)' : r.raised ? 'var(--_raised-row)' : 'var(--_row)')).join(' ')}
 		>
+			{#if staves}
+				{#each rows as row, r (row.key)}
+					<!-- as long as its line, or as the phrases on it when they run further -->
+					<i
+						class="stave"
+						style:grid-row={r + 1}
+						style:grid-column="2 / {Math.max(sys.end - sys.start + 2, ...row.placed.map((p) => end_of(p, to)))}"
+					></i>
+				{/each}
+			{/if}
+
 			{#each rows as row, r (row.key)}
 				{#each row.placed as p (p.stroke.key)}
 					{@const s = p.stroke}
@@ -492,6 +513,15 @@
 		border-right-width: 3.5px;
 		border-left: 1px solid var(--ink, #121318);
 		padding-left: 3px;
+	}
+
+	/* a stave sits under its row's phrases, centred on their lines and in their insets */
+	.stave {
+		align-self: end;
+		margin: 0 calc(var(--_track) * 0.5);
+		border-bottom: 1px solid var(--staff, #b9bac2);
+		translate: 0 0.5px;
+		pointer-events: none;
 	}
 
 	/* --at and --past are lengths in the underlay's cells, which are 1ch and an em
