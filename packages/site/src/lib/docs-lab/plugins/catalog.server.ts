@@ -160,8 +160,23 @@ function exports_of(m: Manifest) {
 
 const NOT_SORTED: Authored = { concerns: [], syntax: [], example: { source: '' }, docs: '/docs/plugins' };
 
+/**
+ * what can't be read from the code: a package's own `mdsvex` field where it has
+ * one, as PLUGINS.md proposes, over authored.ts, which stands in until then
+ */
+function declared(m: Manifest): Authored {
+	const base = authored[m.name] ?? NOT_SORTED;
+	const own = (m.mdsvex ?? {}) as { concerns?: Authored['concerns']; syntax?: string[]; needs?: Authored['needs'] };
+	return {
+		...base,
+		...(own.concerns && { concerns: own.concerns }),
+		...(own.syntax && { syntax: own.syntax.map((mark) => base.syntax.find((s) => s.mark === mark) ?? { mark }) }),
+		...(own.needs && { needs: own.needs }),
+	};
+}
+
 async function plugin_of(dir: string, m: Manifest, strict: boolean): Promise<Plugin> {
-	const a = authored[m.name] ?? NOT_SORTED;
+	const a = declared(m);
 	const entry = sources[entry_of(dir)] ?? '';
 	const factory = factory_of(entry);
 	// the interface may live in any file of the package

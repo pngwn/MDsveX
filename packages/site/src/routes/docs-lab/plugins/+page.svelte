@@ -122,7 +122,7 @@
 			bind:value={query}
 			oninput={sync}
 			type="search"
-			placeholder="a task, a syntax or an option"
+			placeholder="a task, a syntax, an option"
 			autocomplete="off"
 			spellcheck="false"
 			aria-describedby="tries"
@@ -304,6 +304,13 @@
 		font: 400 1.0625rem / 1.3 var(--face-mono);
 		letter-spacing: 0.04em;
 		font-variant-ligatures: none;
+	}
+
+	@media (max-width: 40rem) {
+		input {
+			font-size: 0.9375rem;
+			letter-spacing: 0.01em;
+		}
 	}
 
 	input::placeholder {

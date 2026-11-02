@@ -39,8 +39,9 @@
 
 	const also = $derived(CONCERNS.filter((c) => p.concerns.includes(c.id) && c.id !== under));
 	const needs = $derived(
-		[p.needs?.heading_ids && 'heading_ids', p.needs?.unwrap_images && 'unwrap_images', ...p.peers.map((x) => x.name)].filter(Boolean) as string[],
+		[p.needs?.heading_ids && 'heading_ids', p.needs?.unwrap_images && 'unwrap_images', ...p.peers.filter((x) => !x.optional).map((x) => x.name)].filter(Boolean) as string[],
 	);
+	const optional = $derived(p.peers.filter((x) => x.optional).map((x) => x.name));
 </script>
 
 <details class="result" id={p.id} bind:open>
@@ -63,6 +64,7 @@
 			{/if}
 			{#each reads_line(p) as r (r)}<span>{r}</span>{/each}
 			{#if needs.length}<span>needs {needs.join(', ')}</span>{/if}
+			{#if optional.length}<span>with {optional.join(' or ')}, optional peers</span>{/if}
 			{#if p.async}<span>waits, as {p.async}</span>{/if}
 			{#if also.length}<span>{under ? 'also' : 'for'} {also.map((c) => c.name.toLowerCase()).join(', ')}</span>{/if}
 		</span>
@@ -76,7 +78,7 @@
 					<a href="/docs-lab/plugins/{p.id}">The {p.title} plugin page</a>
 				{/if}
 				<a href={p.docs}>Its docs today</a>
-				<code>pnpm add -D {p.package}@next{p.peers.length ? ` ${p.peers.map((x) => x.name).join(' ')}` : ''}</code>
+				<code>pnpm add -D {p.package}@next{needs.filter((n) => p.peers.some((x) => x.name === n)).map((n) => ` ${n}`).join('')}</code>
 			</p>
 		</div>
 	{:else}

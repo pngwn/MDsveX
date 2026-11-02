@@ -25,7 +25,8 @@
 	// the mark, the first syntax with what is written in its brackets left out: `::toc[]`, `[](#id)`
 	const glyph = $derived(first ? first.mark.replace(/\[[^\]]*\]/g, '[]').replace(/\[\]\(([^)]*)\)/, '[]($1)').replace(/\(([^)]*)=[^)]*\)/, '') : '·');
 	const concerns = $derived(CONCERNS.filter((c) => p.concerns.includes(c.id)));
-	const install = $derived(['pnpm add -D', `${p.package}@next`, ...p.peers.map((x) => x.name)].join(' '));
+	const install = $derived(['pnpm add -D', `${p.package}@next`, ...p.peers.filter((x) => !x.optional).map((x) => x.name)].join(' '));
+	const optional = $derived(p.peers.filter((x) => x.optional).map((x) => x.name));
 	const config = $derived.by(() => {
 		const parts = [p.needs?.heading_ids && 'heading_ids: true', p.needs?.unwrap_images && 'unwrap_images: true', `plugins: [${p.factory}()]`].filter(Boolean);
 		return `import { ${p.factory} } from '${p.package}';\n\nmdsvex({ ${parts.join(', ')} });`;
@@ -58,6 +59,9 @@
 			<div>
 				<h2>Install</h2>
 				<pre class="code riso"><code>{install}</code></pre>
+				{#if optional.length}
+					<p class="note">With {#each optional as name, i (name)}{i ? ' or ' : ''}<code>{name}</code>{/each}, its optional peers, installed beside it.</p>
+				{/if}
 			</div>
 			<div>
 				<h2>Turn it on</h2>
@@ -110,10 +114,10 @@
 
 		<footer class="parts riso">
 			{#if p.exports.components.length}
-				<p><span class="label">Components</span> {#each p.exports.components as c (c)}<code>{p.package}/{c}</code> {/each}</p>
+				<p><span class="label">Components</span> {#each p.exports.components as c, i (c)}{i ? ', ' : ''}<code>{p.package}/{c}</code>{/each}</p>
 			{/if}
 			{#if p.exports.css.length}
-				<p><span class="label">Stylesheet</span> {#each p.exports.css as c (c)}<code>{p.package}/{c}</code> {/each}<span class="quiet">, or <code>{p.factory}({'{'} css: false {'}'})</code> for none</span></p>
+				<p><span class="label">Stylesheet</span> {#each p.exports.css as c, i (c)}{i ? ', ' : ''}<code>{p.package}/{c}</code>{/each}<span class="quiet">, or <code>{p.factory}({'{'} css: false {'}'})</code> for none</span></p>
 			{/if}
 			<p><a href={p.docs}>Its docs page today</a></p>
 		</footer>
