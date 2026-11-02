@@ -1,8 +1,8 @@
 <script lang="ts">
-	// one construct's plate, 02's round one plate in the score (v7): the mark and
-	// the name over a hairline, the parser's reading of a real source beside what
-	// mdsvex compiles it to, then the notes. The score and the output share one
-	// focus, so pointing at either washes both
+	// one construct's plate, 02's v7 plate: its mark set big beside its name over
+	// a hairline, the parser's reading of a real source on its staves and what
+	// mdsvex compiles it to under it, then the notes. The score and the output
+	// share one focus, so pointing at either washes both
 	import Perch from '../penguin/Perch.svelte';
 	import Score, { type Focus } from '../score/Score.svelte';
 	import { tone } from '../score/kinds';
@@ -26,31 +26,26 @@
 	const own = $derived(tone(c.kinds[0]));
 	const family = $derived(FAMILIES.find((f) => f.id === c.family)!);
 	const related = $derived((c.related ?? []).map((id) => by_id.get(id)!).filter(Boolean));
-	// a source whose longest line would wrap beside the output takes the plate's width, its output under it
-	const long = $derived(Math.max(...c.source.split('\n').map((line) => line.length)) > 24);
+	// the score is set as large as the plate holds its longest line, as v7 set its specimen
+	const cols = $derived(Math.max(8, ...c.source.split('\n').map((line) => line.length + 1)));
 </script>
 
 {#snippet score()}
-	<Score source={c.source} {palette} bind:focus label="{c.name}, as the parser reads it" />
+	<Score source={c.source} {palette} staves bind:focus label="{c.name}, as the parser reads it" />
 {/snippet}
 
 <article class="plate" id={c.id} style:--own-line="var(--line-{own})" style:--own-name="var(--name-{own})" aria-labelledby="{c.id}-name">
 	<header class="head">
-		<div class="mark" aria-hidden="true">
-			<span class="glyph">{c.glyph}</span>
-		</div>
+		<span class="glyph" class:long={c.glyph.length > 3} aria-hidden="true">{c.glyph}</span>
 		<div class="title">
-			<p class="kicker">
-				<em class="family" data-family={c.family}>{family.name.toLowerCase()}</em>
-				<span class="kinds">{c.kinds.join(' · ')}</span>
-			</p>
+			<p class="kicker"><em class="family" data-family={c.family}>{family.name.toLowerCase()}</em></p>
 			<h2 id="{c.id}-name"><a href="#{c.id}">{c.name}</a></h2>
 			<p class="what">{@html notes.what}</p>
 		</div>
 	</header>
 
-	<div class="figure" class:long>
-		<div class="reading">
+	<div class="figure">
+		<div class="reading" style:--cols={cols}>
 			<p class="label">As the parser reads it</p>
 			{#if perch}
 				<Perch>{@render score()}</Perch>
@@ -94,50 +89,35 @@
 		scroll-margin-top: 1.5rem;
 	}
 
+	/* v7's head: the mark set big in its colour, the name beside it, both on the hairline */
 	.head {
 		display: grid;
-		grid-template-columns: 7.5rem minmax(0, 1fr);
+		grid-template-columns: auto minmax(0, 1fr);
+		align-items: end;
+		gap: clamp(1rem, 3vw, 2.5rem);
+		padding: clamp(1rem, 3vw, 2rem) clamp(1rem, 3cqi, 2.25rem);
 		border-bottom: 1px solid var(--ink);
 	}
 
-	/* the mark, as its cell in round one's grid, with a short bar of its colour
-	   under it where round one's header kept its swatch */
-	.mark {
-		position: relative;
-		display: grid;
-		place-items: center;
-		border-right: 1px solid var(--ink);
-		padding: 1.5rem 0.5rem 2rem;
-	}
-
-	.mark::after {
-		content: '';
-		position: absolute;
-		left: 1rem;
-		right: 1rem;
-		bottom: 1rem;
-		height: 0.375rem;
-		background: var(--own-line);
-	}
-
 	.glyph {
-		font: 400 2rem / 1 var(--face-mono);
+		font: 400 clamp(4rem, 11vw, 9rem) / 0.8 var(--face-mono);
 		font-variant-ligatures: none;
+		letter-spacing: 0.02em;
 		color: var(--own-name);
 		white-space: nowrap;
 	}
 
+	/* four characters or more would push the name off the plate */
+	.glyph.long {
+		font-size: clamp(2rem, 4.5vw, 3.75rem);
+	}
+
 	.title {
-		padding: 1.5rem clamp(1rem, 3cqi, 2.25rem) 1.5rem;
 		min-width: 0;
 	}
 
 	.kicker {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: baseline;
-		gap: 0.25rem 0.875rem;
-		margin: 0 0 0.25rem;
+		margin: 0 0 0.5rem;
 	}
 
 	.family {
@@ -160,15 +140,9 @@
 		color: var(--ink);
 	}
 
-	.kinds {
-		font: 400 0.75rem / 1.3 var(--face-mono);
-		color: var(--quiet);
-		overflow-wrap: anywhere;
-	}
-
 	h2 {
 		margin: 0;
-		font: 400 clamp(2.25rem, 7cqi, 3.75rem) / 1.02 var(--face-display);
+		font: 500 clamp(2.5rem, 5.5vw, 4.5rem) / 0.95 var(--face-display);
 		letter-spacing: -0.01em;
 	}
 
@@ -185,10 +159,11 @@
 
 	.what {
 		max-width: 52ch;
-		margin: 0.625rem 0 0;
+		margin: 0.75rem 0 0;
+		font-size: 1.125rem;
 	}
 
-	/* the score and its output side by side when the plate is wide, else one over the other */
+	/* the score takes the plate's width, its output under it, as in v7 */
 	.figure {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
@@ -197,15 +172,16 @@
 		border-bottom: 1px solid var(--ink);
 	}
 
-	@container (min-width: 46rem) {
-		.figure:not(.long) {
-			grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-			gap: 2.25rem;
-		}
-	}
-
+	/* v7's specimen: the underlay as large as the longest line allows, up to 2.6rem,
+	   tracked a little tighter as it gets smaller. The score's bracket margin and its
+	   spare cell come off the width first. Its floor is 0.8125rem, not v7's 0.7rem:
+	   a line too long for the plate wraps to the next system here rather than
+	   scrolling, so a smaller floor would only shrink it */
 	.reading {
+		container-type: inline-size;
 		min-width: 0;
+		--size: clamp(0.8125rem, calc((100cqi - 2.5rem) / (var(--cols) + 2)), 2.6rem);
+		--track: clamp(0.2em, calc(var(--size) * 0.5 - 0.3rem), 0.5em);
 	}
 
 	.label {
@@ -244,6 +220,10 @@
 	h3 {
 		margin: 0 0 0.5rem;
 		font: italic 400 1rem / 1.2 var(--face-display);
+	}
+
+	.notes :is(ul, p:not(.related)) {
+		font-size: 1.125rem;
 	}
 
 	.notes ul {
@@ -295,23 +275,46 @@
 		text-decoration-color: var(--ink);
 	}
 
-	@container (max-width: 30rem) {
+	/* v7 on a phone: the head is one row, the mark and the name, the line under both */
+	@container (max-width: 36rem) {
 		.head {
-			grid-template-columns: 4.5rem minmax(0, 1fr);
+			align-items: center;
+			gap: 0.25rem 1rem;
+			padding: 1rem;
 		}
 
 		.glyph {
-			font-size: 1.375rem;
+			font-size: 3rem;
 		}
 
-		.mark {
-			padding: 1rem 0.25rem 1.75rem;
+		.glyph.long {
+			font-size: 1.5rem;
 		}
 
-		.mark::after {
-			left: 0.75rem;
-			right: 0.75rem;
-			bottom: 0.875rem;
+		.title {
+			display: contents;
+		}
+
+		.kicker {
+			display: none;
+		}
+
+		h2 {
+			font-size: 2.25rem;
+		}
+
+		.what {
+			grid-column: 1 / -1;
+			margin-top: 0.25rem;
+			font-size: 1.0625rem;
+		}
+
+		.figure {
+			padding: 1.25rem 0.75rem 1.5rem;
+		}
+
+		.notes :is(ul, p:not(.related)) {
+			font-size: 1.0625rem;
 		}
 	}
 </style>

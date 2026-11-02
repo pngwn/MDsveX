@@ -11,6 +11,7 @@
 	import { by_id, constructs, FAMILIES } from '$lib/design/atlas/constructs';
 	import Entry from '$lib/design/atlas/Entry.svelte';
 	import Index from '$lib/design/atlas/Index.svelte';
+	import Strip from '$lib/design/atlas/Strip.svelte';
 
 	let { data } = $props();
 
@@ -51,25 +52,36 @@
 	<meta name="description" content="Every construct of Penguin-Flavoured Markdown, as the parser reads it and as mdsvex compiles it." />
 </svelte:head>
 
+<!-- v7's first screen: the title notated over the line it sets, in the four
+     voices on its staves, and at its foot the strip of every mark beside the lede -->
 <header class="hero">
-	<div class="title-score">
-		<Score source={title} {palette} label="The construct atlas, as a heading with emphasis" />
+	<div class="title">
+		<div class="title-score">
+			<Score source={title} palette="voice" staves label="The construct atlas, as a heading with emphasis" />
+		</div>
+		<h1 class="rag">The <em>construct</em> atlas</h1>
+		<p class="sub">Penguin-Flavoured Markdown, one construct at a time.</p>
 	</div>
-	<h1 class="rag">The <em>construct</em> atlas</h1>
-	<p class="sub">Penguin-Flavoured Markdown, one construct at a time.</p>
+	<div class="foot">
+		<Strip />
+		<div class="lede">
+			<p>
+				Every mdsvex document is built from these {constructs.length} constructs, in {FAMILIES.length} families. Each plate takes a
+				real source and shows what the parser reads in it and what mdsvex makes of it, with the edges where the syntax stops
+				holding and where it parts from CommonMark.
+			</p>
+			<a href="#reading">Open the atlas</a>
+		</div>
+	</div>
 </header>
 
-<section class="intro" aria-label="How to read the atlas">
-	<p class="lede">
-		Every mdsvex document is built from these {constructs.length} constructs, in {FAMILIES.length} families. Each plate takes a
-		real source and shows what the parser reads in it and what mdsvex makes of it, with the edges where the syntax stops holding and
-		where it parts from CommonMark.
+<section class="intro" id="reading" aria-label="How to read the atlas">
+	<p class="key-lead">
+		<strong>Reading a score.</strong> Each line over the source is one node, from its first character to its last, with a bar where it
+		opens and one where it closes, and its name in the corner. Each row of lines sits on a stave. Quiet unnamed lines are text. Each
+		construct has its own colour.
 	</p>
 	<div class="key">
-		<p>
-			<strong>Reading a score.</strong> Each line over the source is one node, from its first character to its last, with a bar where
-			it opens and one where it closes, and its name in the corner. Quiet unnamed lines are text. Each construct has its own colour.
-		</p>
 		<p>Point at a phrase, or at the output, to light the two together.</p>
 		<div class="pick" role="group" aria-label="Colours">
 			<button type="button" aria-pressed={palette === 'riso'} onclick={() => set_palette('riso')}>Riso inks</button>
@@ -105,41 +117,46 @@
 
 <style>
 	/* v7's hero: the title notated over its own typeset line */
+	/* v7's first screen: the title in the middle of it, the strip and the lede at its foot */
 	.hero {
 		display: grid;
-		justify-items: center;
-		padding: clamp(3rem, 9vw, 7rem) 0 clamp(2.5rem, 6vw, 4.5rem);
-		text-align: center;
+		grid-template-rows: 1fr auto;
+		gap: clamp(2rem, 5vh, 3.5rem);
+		min-height: calc(100svh - 4.5rem);
+		padding-bottom: clamp(1.5rem, 4vh, 3rem);
 	}
 
+	.title {
+		align-self: center;
+		display: grid;
+		justify-items: center;
+		padding-top: clamp(2rem, 6vh, 4rem);
+		text-align: center;
+		min-width: 0;
+	}
+
+	/* v7's title score: as large as the viewport holds its 24 cells, up to 2rem,
+	   tracked a little tighter as it gets smaller, on staves 1.35rem apart */
 	.title-score {
-		--size: clamp(1.0625rem, 2.4vw, 1.75rem);
-		--track: 0.42em;
-		--row: 1.6rem;
-		--name-size: 1rem;
+		--size: clamp(0.95rem, calc((100vw - 2.5rem) / 24), 2rem);
+		--track: clamp(0.2em, calc(var(--size) * 0.5 - 0.3rem), 0.5em);
+		--row: 1.35rem;
+		--name-size: 0.875rem;
 		/* as wide as the title's cells and their margin, so it sits centred */
 		font: 400 var(--size) / 1 var(--face-mono);
 		width: min(100%, calc(26 * (1ch + var(--track))));
 		text-align: left;
 	}
 
-	@media (max-width: 600px) {
-		.title-score {
-			--size: 0.9375rem;
-			--track: 0.2em;
-			--name-size: 0.8125rem;
-			--row: 1.25rem;
-		}
-	}
-
 	h1 {
-		margin: clamp(1rem, 3vw, 2rem) 0 0;
+		margin: clamp(1rem, 3vh, 2rem) 0 0;
 		font: 400 clamp(3rem, 11vw, 9.5rem) / 0.95 var(--face-display);
 		letter-spacing: -0.015em;
 	}
 
+	/* the emphasis in the score's inline voice, as the phrase over it */
 	h1 em {
-		color: var(--name-emph);
+		color: var(--voice-rose);
 	}
 
 	.sub {
@@ -148,19 +165,53 @@
 		color: var(--quiet);
 	}
 
+	.foot {
+		display: grid;
+		grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+		gap: 1rem 3rem;
+		align-items: end;
+		padding-top: 1rem;
+		border-top: 1px solid var(--ink);
+	}
+
+	@media (max-width: 48rem) {
+		.foot {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+
+	.lede p {
+		max-width: 46ch;
+		margin: 0 0 0.75rem;
+		font-size: clamp(1.0625rem, 1.3vw, 1.1875rem);
+		line-height: 1.5;
+	}
+
+	.lede a {
+		font-weight: 600;
+		color: var(--ink);
+		text-decoration-thickness: 1px;
+		text-underline-offset: 0.2em;
+	}
+
 	.intro {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
-		gap: 1.5rem 4rem;
+		gap: 0.75rem 4rem;
+		align-items: start;
 		padding: 2rem 0 clamp(2rem, 5vw, 3.5rem);
 		border-top: 1.5px solid var(--ink);
+		scroll-margin-top: 1rem;
 	}
 
-	.lede {
-		max-width: 40ch;
+	.key-lead {
+		max-width: 52ch;
 		margin: 0;
-		font-size: clamp(1.125rem, 1.8vw, 1.3125rem);
-		line-height: 1.5;
+		font-size: 0.9375rem;
+	}
+
+	.key-lead strong {
+		font-weight: 600;
 	}
 
 	.key {
