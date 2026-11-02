@@ -13,6 +13,9 @@
 		on?: string;
 		/** how far in from the end of a line the bird stands, a CSS length */
 		inset?: string;
+		/** measure from the right of the line, or the right of this box, for
+		 * staves ruled out to the page's edge */
+		edge?: 'line' | 'box';
 	}
 
 	interface Spot {
@@ -21,7 +24,7 @@
 		y: number;
 	}
 
-	let { children, on, inset = '1.5rem' }: Props = $props();
+	let { children, on, inset = '1.5rem', edge = 'line' }: Props = $props();
 
 	let box: HTMLDivElement;
 	let bird: HTMLSpanElement;
@@ -44,7 +47,7 @@
 		const root = box.getBoundingClientRect();
 		const gap = probe.getBoundingClientRect().width;
 		const width = bird.getBoundingClientRect().width;
-		const end_of = (r: DOMRect) => r.right - root.left - gap - width;
+		const end_of = (r: DOMRect) => (edge === 'box' ? root.right : r.right) - root.left - gap - width;
 
 		if (on) {
 			const rule = [...box.querySelectorAll(on)].find(visible);
@@ -98,6 +101,7 @@
 	$effect(() => {
 		void on;
 		void inset;
+		void edge;
 		queueMicrotask(place);
 	});
 </script>
