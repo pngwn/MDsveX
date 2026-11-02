@@ -6,7 +6,8 @@
 	// CommonMark are set as an edition sets variant readings: one text, and
 	// what each witness, CommonMark and mdsvex, makes of it.
 	//
-	// The running head is the strip: the page's marks in a line, each a link
+	// The running head is the strip: the page's marks in a line, each a link,
+	// under the docs drawer, which holds the folio
 	import Shell from '../Shell.svelte';
 	import Pair from '../Pair.svelte';
 	import ReadingSwitch from '../ReadingSwitch.svelte';
@@ -33,7 +34,6 @@
 
 <Shell current={page.href} nav="top" direction="Margins">
 	<div class="running riso">
-		<span class="folio">{page.kicker} · {page.title}</span>
 		<nav class="signs" aria-label="On this page">
 			{#if page.slug === 'markdown'}
 				{#each marks as m (m.id)}
@@ -147,13 +147,13 @@
 </Shell>
 
 <style>
-	/* the running head: the folio, the page's marks, the switch, under a hairline */
+	/* the running head: the page's marks and the switch, under a hairline */
 	.running {
 		position: sticky;
 		top: 0;
 		z-index: 4;
 		display: grid;
-		grid-template-columns: auto minmax(0, 1fr) auto;
+		grid-template-columns: minmax(0, 1fr) auto;
 		align-items: baseline;
 		gap: 1.5rem;
 		margin: 0 calc(var(--gutter) * -1);
@@ -162,13 +162,6 @@
 		border-bottom: 1px solid var(--ink);
 		font: 400 0.75rem / 1.4 var(--face-mono);
 		font-variant-ligatures: none;
-	}
-
-	.folio {
-		color: var(--quiet);
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		white-space: nowrap;
 	}
 
 	.signs {
@@ -210,15 +203,9 @@
 		white-space: nowrap;
 	}
 
-	/* a phone: the marks scroll beside the switch, the folio is the drawer above */
 	@media (max-width: 759px) {
 		.running {
-			grid-template-columns: minmax(0, 1fr) auto;
 			gap: 1rem;
-		}
-
-		.folio {
-			display: none;
 		}
 	}
 
