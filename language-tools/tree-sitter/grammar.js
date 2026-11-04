@@ -1,5 +1,5 @@
 /**
- * @file tree-sitter grammar for mdsvex, PFM.md at the repo root is the spec
+ * @file tree-sitter grammar for pfm, PFM.md at the repo root is the spec
  * @license MIT
  */
 
@@ -18,7 +18,7 @@ const LIST_KINDS = ['minus', 'plus', 'star', 'dot', 'parenthesis'];
 const tag_body = ($) => repeat(choice($._tag_whitespace, $.attribute));
 
 module.exports = grammar({
-	name: 'mdsvex',
+	name: 'pfm',
 
 	// container prefixes are read at the start of every line, wherever the parse is
 	extras: ($) => [$.block_continuation, $._indent],

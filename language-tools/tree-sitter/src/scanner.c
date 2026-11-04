@@ -1,4 +1,4 @@
-// external scanner for mdsvex, PFM.md at the repo root is the spec
+// external scanner for pfm, PFM.md at the repo root is the spec
 //
 // the lexer never moves back, so a lookahead marks the token end first, and a failed
 // check at a line start returns a zero width token so the next call reads the line again
@@ -2208,7 +2208,7 @@ static bool scan_inline(Scanner *s, TSLexer *lexer, const bool *valid) {
 	}
 }
 
-void *tree_sitter_mdsvex_external_scanner_create(void) {
+void *tree_sitter_pfm_external_scanner_create(void) {
 	Scanner *s = ts_calloc(1, sizeof(Scanner));
 	array_init(&s->open);
 	array_init(&s->brackets);
@@ -2219,7 +2219,7 @@ void *tree_sitter_mdsvex_external_scanner_create(void) {
 	return s;
 }
 
-void tree_sitter_mdsvex_external_scanner_destroy(void *payload) {
+void tree_sitter_pfm_external_scanner_destroy(void *payload) {
 	Scanner *s = payload;
 	array_delete(&s->open);
 	array_delete(&s->brackets);
@@ -2228,7 +2228,7 @@ void tree_sitter_mdsvex_external_scanner_destroy(void *payload) {
 	ts_free(s);
 }
 
-unsigned tree_sitter_mdsvex_external_scanner_serialize(void *payload, char *buffer) {
+unsigned tree_sitter_pfm_external_scanner_serialize(void *payload, char *buffer) {
 	Scanner *s = payload;
 	unsigned i = 0;
 	buffer[i++] = (char)s->matched;
@@ -2260,7 +2260,7 @@ unsigned tree_sitter_mdsvex_external_scanner_serialize(void *payload, char *buff
 	return i;
 }
 
-void tree_sitter_mdsvex_external_scanner_deserialize(void *payload, const char *buffer,
+void tree_sitter_pfm_external_scanner_deserialize(void *payload, const char *buffer,
                                                      unsigned length) {
 	Scanner *s = payload;
 	array_clear(&s->open);
@@ -2309,7 +2309,7 @@ void tree_sitter_mdsvex_external_scanner_deserialize(void *payload, const char *
 	s->definitions.size = definitions;
 }
 
-bool tree_sitter_mdsvex_external_scanner_scan(void *payload, TSLexer *lexer,
+bool tree_sitter_pfm_external_scanner_scan(void *payload, TSLexer *lexer,
                                               const bool *valid) {
 	Scanner *s = payload;
 	if (valid[ERROR_SENTINEL]) return false;
