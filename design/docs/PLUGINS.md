@@ -2,6 +2,22 @@
 
 2026-11-02. A prototype at `/docs-lab/plugins` on a branch cut from `p/site-1.0`. The pages at `docs/plugins/**` are unchanged. pngwn's brief: "That section should be about helping users find the thing they want/need."
 
+## In the docs, 2026-11-09
+
+pngwn approved the finder ("plugins look good and we can move forward with that, needs tweaks i think but that can come later"), and it moved out of the lab. The sections below record the prototype; this one says what is true now.
+
+- **`/docs/plugins` is the finder,** replacing the "Using plugins" landing page, whose config snippet now follows the finder on the same page. `/docs-lab/plugins` is gone.
+- **Every plugin page is a plate over its own prose.** `docs/plugins/+layout.svelte` puts `PluginPage.svelte` round each page whose frontmatter names a `package`. The plate is the name, install, config, what it reads and the example; after the prose come its options, read from its types, and the parts it exports. The pages lost their `#` title and their install and config blocks, which the plate draws from the package. The rest of each page's prose is unchanged.
+- **The metadata lives where the proposal put it.**
+  - Each plugin's `package.json` has the `mdsvex` field (`concerns`, `syntax`, `needs`, `waits`), with a changeset for the 16 packages.
+  - The example is in the docs page's frontmatter (`example: { source, options, files, with }`), so the site stays canonical for it.
+  - `authored.ts` is gone.
+- **The plugins are `workspace:*` dependencies of `@mdsvex/site`.** The registry lists every `@mdsvex/plugin-*` in the site's `package.json` and reads each from its built package in `node_modules`: its `package.json`, its `dist` modules, and its `.d.ts` for the options. Nothing reads `plugins/*/src` by path any more.
+- **A strict build fails** when a plugin the site depends on has no docs page naming it, when a syntax sample compiles the same without the plugin, or when an example doesn't compile.
+- **Live in the browser:** 15 of 16, checked on the production build, diagram still static for the same reason.
+- **The embeds page's example is a YouTube player,** not Vimeo. The plugin's Vimeo frame has no `encrypted-media` in its `allow` list, so Vimeo's player logs a permissions policy violation on every load. That is a one-word fix to `plugins/embeds/src/Vimeo.svelte`, left for pngwn to approve.
+- **Code** is in `packages/site/src/lib/docs/plugins/`. Screenshots are in `design/screenshots/docs-plugins/`; `docs-lab-plugins/` keeps the prototype's.
+
 ## What is built
 
 - **`/docs-lab/plugins`, the finder.**
