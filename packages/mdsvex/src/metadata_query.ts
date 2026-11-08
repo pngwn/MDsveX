@@ -5,7 +5,7 @@ import type {
 	Rollup,
 } from 'vite';
 import type { FrontmatterOptions } from './frontmatter.js';
-import { DATA_ID, METADATA_ID, clean_id } from './ids.js';
+import { DATA_ID, METADATA_ID, TEXT_ID, clean_id } from './ids.js';
 import { metadata_module } from './query_modules.js';
 
 export {
@@ -13,6 +13,7 @@ export {
 	frontmatter_bounds,
 	metadata_module,
 	read_metadata,
+	text_module,
 } from './query_modules.js';
 
 // vite-plugin-svelte compiles any id that ends in a document extension, even after
@@ -22,6 +23,7 @@ const METADATA_QUERY = /[?&]metadata(?:&|$)/;
 /** the query of an import that parses a document for what its plugins left */
 export const DATA_QUERY = 'data';
 const DATA_QUERY_TEST = new RegExp(`[?&]${DATA_QUERY}(?:&|$)`);
+const TEXT_QUERY = /[?&]text(?:&|$)/;
 
 /** vite sets environment, the rollup type has none */
 type Context = Rollup.PluginContext & {
@@ -78,6 +80,14 @@ export interface QueryModule {
  */
 export function data_query(extensions: string[], build: QueryModule) {
 	return document_query(extensions, DATA_ID, DATA_QUERY_TEST, build);
+}
+
+/**
+ * documents imported with ?text, which parse without a render, settle their
+ * plugins and load the plain text a reader sees
+ */
+export function text_query(extensions: string[], build: QueryModule) {
+	return document_query(extensions, TEXT_ID, TEXT_QUERY, build);
 }
 
 /** documents imported with a query that loads a module made from their source */

@@ -69,6 +69,18 @@ const nav = [
 		],
 	],
 	[
+		"Search and feeds",
+		"docs#search-feeds-and-llmstxt",
+		[
+			["query imports", "docs#query-imports", false],
+			["what counts as text", "docs#what-counts-as-text", false],
+			["a search index", "docs#a-search-index", false],
+			["an RSS feed", "docs#an-rss-feed", false],
+			["llms.txt", "docs#llmstxt", false],
+			["with compile", "docs#text-with-compile", false],
+		],
+	],
+	[
 		"Templates",
 		"docs#templates-1",
 		[

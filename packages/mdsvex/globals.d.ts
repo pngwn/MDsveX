@@ -17,3 +17,9 @@ declare module '*?data' {
 	};
 	export default exports;
 }
+
+declare module '*?text' {
+	/** the plain text a reader of the document sees, by section, with its plugins settled */
+	const text: import('mdsvex').DocumentText;
+	export default text;
+}

@@ -14,6 +14,7 @@ import {
 	compile,
 	compile_async,
 	compile_inputs,
+	compile_text,
 	CompilerSession,
 	PluginAsyncError,
 	PluginTaskError,
@@ -868,5 +869,43 @@ describe('every parser path', () => {
 		expect(labels_of(found.args)).toEqual([
 			'cite-1:Turing 1936,cite-2:Lovelace 1843',
 		]);
+	});
+});
+
+describe('plain text', () => {
+	const text_of = (source: string, options?: CitationsOptions) =>
+		compile_text(source, {
+			filename: '/site/doc.svx',
+			plugins: [citations(options)],
+			read,
+		});
+
+	test('a citation reads as its labels and the bibliography as its entries', async () => {
+		const { text } = await text_of(
+			HEAD +
+				'See :cite[turing1936, lovelace1843] and :cite[nobody].\n\n::bibliography[References]\n'
+		);
+		expect(text).toBe(
+			[
+				'See [1, 2] and [nobody].',
+				'References',
+				'Alan Turing. On Computable Numbers. 1936. https://doi.org/10.1112/plms/s2-42.1.230',
+				'Ada Lovelace. Notes on the Analytical Engine. Scientific Memoirs 3, 666-731. 1843.',
+			].join('\n\n')
+		);
+	});
+
+	test('author-date reads as the page does', async () => {
+		const { text } = await text_of(
+			HEAD + 'See :cite[turing1936, babbage1864].\n\n::bibliography\n',
+			{ style: 'author-date' }
+		);
+		expect(text.split('\n\n')[0]).toBe('See (Turing 1936; Babbage 1864).');
+		expect(text.split('\n\n').length).toBe(3);
+	});
+
+	test('a document that cites nothing lists nothing', async () => {
+		const { text } = await text_of(HEAD + 'No citations.\n\n::bibliography\n');
+		expect(text).toBe('No citations.');
 	});
 });
