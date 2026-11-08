@@ -1,5 +1,12 @@
 # @mdsvex/source-map
 
+## 0.1.0-next.4
+
+### Patch Changes
+
+- Updated dependencies [[`09100bf`](https://github.com/pngwn/MDsveX/commit/09100bf02b7aa771c8bea99b61fa4b40508c8147), [`cabe59c`](https://github.com/pngwn/MDsveX/commit/cabe59ce286d42306de75c4f650ffc589758eda8)]:
+  - mdsvex@1.0.0-next.4
+
 ## 0.1.0-next.3
 
 ### Patch Changes

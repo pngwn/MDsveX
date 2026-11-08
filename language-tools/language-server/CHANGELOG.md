@@ -1,5 +1,14 @@
 # @mdsvex/language-server
 
+## 0.1.0-next.4
+
+### Patch Changes
+
+- [#1251](https://github.com/pngwn/MDsveX/pull/1251) [`c62c8e8`](https://github.com/pngwn/MDsveX/commit/c62c8e8fb198adf9db22bfcc51948e43318f33ce) Thanks [@pngwn](https://github.com/pngwn)! - Editors that follow the language server protocol strictly, such as Zed, no longer log an error each time they ask the server for colors. The server answered with `null` where the protocol wants a list.
+
+- Updated dependencies [[`09100bf`](https://github.com/pngwn/MDsveX/commit/09100bf02b7aa771c8bea99b61fa4b40508c8147)]:
+  - @mdsvex/language-core@0.1.0-next.4
+
 ## 0.1.0-next.3
 
 ### Patch Changes

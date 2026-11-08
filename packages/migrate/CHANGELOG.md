@@ -1,5 +1,11 @@
 # @mdsvex/migrate
 
+## 0.2.0-next.4
+
+### Patch Changes
+
+- [#1246](https://github.com/pngwn/MDsveX/pull/1246) [`cabe59c`](https://github.com/pngwn/MDsveX/commit/cabe59ce286d42306de75c4f650ffc589758eda8) Thanks [@pngwn](https://github.com/pngwn)! - `migrate_config` leaves a note for `remark-strip-html`, `remark-unlink`, `strip-markdown` and `remark-plain-text` that points at `?text` imports and `compile_text`.
+
 ## 0.2.0-next.3
 
 ### Patch Changes
