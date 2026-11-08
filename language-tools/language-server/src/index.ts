@@ -170,6 +170,18 @@ export function start(): void {
 		);
 	};
 
+	// volar answers null without colors, the protocol and zed want a list
+	for (const method of ["onDocumentColor", "onColorPresentation"] as const) {
+		const register = connection[method].bind(connection) as (
+			handler: Function,
+		) => unknown;
+		(connection as any)[method] = (handler: Function) =>
+			register(
+				async (params: any, token: any) =>
+					(await handler(params, token)) ?? [],
+			);
+	}
+
 	const server = createServer(connection);
 
 	connection.listen();
