@@ -27,7 +27,7 @@
 	<title>{page.title} · plates · docs lab</title>
 </svelte:head>
 
-<Shell current={page.href} direction="Plates">
+<Shell current={page.href} direction="Plates" bleed>
 	<header class="page-head">
 		<p class="kicker riso">{page.kicker}</p>
 		<h1 class="rag">{page.title}</h1>
@@ -58,7 +58,7 @@
 				<div class="added">
 					{#each s.added as a (a.id)}
 						<div class="add" id={a.id} style:--own-line="var(--line-{a.tone})" style:--own-name="var(--name-{a.tone})">
-							<span class="add-mark" aria-hidden="true">{a.mark}</span>
+							<span class="add-mark" class:long={a.mark.length > 3} aria-hidden="true">{a.mark}</span>
 							<span class="add-write">{@html a.write}</span>
 							<span class="add-get">{@html a.get}</span>
 						</div>
@@ -171,7 +171,7 @@
 
 	.contrasts {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(min(100%, 30rem), 1fr));
 		gap: 1rem;
 		margin-bottom: 1.5rem;
 	}
@@ -206,6 +206,10 @@
 		padding-bottom: 0.4rem;
 		justify-self: start;
 		white-space: nowrap;
+	}
+
+	.add-mark.long {
+		font-size: 0.875rem;
 	}
 
 	.add-write {

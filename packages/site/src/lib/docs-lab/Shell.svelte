@@ -15,10 +15,16 @@
 		nav?: 'side' | 'top';
 		/** which direction this is, said over the page */
 		direction: string;
+		/**
+		 * run the page's right edge out to the page's gutter on a screen wider
+		 * than the frame's measure, so its plates keep growing; the nav stays
+		 * where the frame puts it, under the site's own
+		 */
+		bleed?: boolean;
 		children: Snippet;
 	}
 
-	let { current, nav = 'side', direction, children }: Props = $props();
+	let { current, nav = 'side', direction, bleed = false, children }: Props = $props();
 
 	const here = $derived(
 		sections.flatMap((s) => s.groups.flatMap((g) => g.pages.map((p) => ({ ...p, section_title: s.title })))).find((p) => p.href === current),
@@ -41,7 +47,7 @@
 
 <p class="lab riso"><a href="/docs-lab">Docs lab</a> <span aria-hidden="true">/</span> {direction}</p>
 
-<div class="docs" class:with-side={nav === 'side'} class:with-top={nav === 'top'}>
+<div class="docs" class:with-side={nav === 'side'} class:with-top={nav === 'top'} class:bleed>
 	{#if nav === 'side'}
 		<nav class="side riso" aria-label="Docs">
 			<a class="index" href="/docs">All docs</a>
@@ -87,6 +93,13 @@
 
 	.docs.with-side {
 		grid-template-columns: var(--column) minmax(0, 1fr);
+	}
+
+	/* main is the frame's measure, centred; a percentage margin is of main's
+	   width, so this is how far main's right edge sits in from the page's
+	   gutter, nothing below the measure */
+	.docs.bleed {
+		margin-right: min(0px, calc(50% - 50vw + var(--gutter)));
 	}
 
 	nav {

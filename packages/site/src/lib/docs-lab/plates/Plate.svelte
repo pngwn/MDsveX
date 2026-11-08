@@ -211,6 +211,15 @@
 		border-bottom: 0;
 	}
 
+	/* the plate runs the page's width; the room goes to what you write, where a
+	   score wraps by systems, and what you get keeps the rest */
+	@container (min-width: 50rem) {
+		.figure :global(.pair.side) {
+			grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+			column-gap: clamp(2rem, 3cqi, 3.5rem);
+		}
+	}
+
 	.label {
 		margin: 0 0 0.5rem;
 		font: 400 0.75rem / 1.4 var(--face-mono);
@@ -254,6 +263,11 @@
 		font-size: 1rem;
 	}
 
+	/* the notes are prose, at a reading measure however wide the plate */
+	.notes section > * {
+		max-width: 62ch;
+	}
+
 	h4 {
 		margin: 0 0 0.5rem;
 		font: italic 400 1rem / 1.2 var(--face-display);
@@ -279,15 +293,10 @@
 		font-style: italic;
 	}
 
-	.see {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.25rem 0.75rem;
-		align-items: baseline;
-	}
-
+	/* a sentence, so it flows as one: the label set before it like a kicker */
 	.see .label {
-		margin: 0;
+		display: inline;
+		margin: 0 0.5rem 0 0;
 	}
 
 	.error-pair {

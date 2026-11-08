@@ -54,6 +54,13 @@ Lessons. Each concept with an example is a numbered lesson: the brief on the lef
 - the Workbook's bench as the plate's pair, since embeds waking on touch is already decided (docs plan decision 7), with no nudges and no lessons;
 - the Margins treatment for Internals' explanation pages, which are arguments rather than concepts and would be hurt by being cut into sheets.
 
+**Decided 2026-11-09: Plates, full width.** pngwn picked Plates with one change, now in the lab:
+- A plate takes the whole content area, from the nav's edge to the page's right gutter. Past the frame's 92rem measure it keeps growing, while the nav stays under the site's own (`Shell`'s `bleed`).
+- Inside a plate, the title, the lede and the notes keep a reading measure, and the extra width goes to the pair: "you write", where a score wraps, takes 1.4 parts to "you get"'s 1.
+- Prose between plates stays in the 46rem column, so the page alternates between a narrow text column and wide plates.
+- At 1440 the plate already reached the gutter (1048px beside the nav), so what changes there is the split inside it. At 1920 the plate grows from 1184px to 1352px.
+- Screenshots: `plates-*-{1440,1920,375}-light.jpg`.
+
 ## What it takes to apply Plates to all 42 pages
 
 1. **Code, once.** Move the lab's pieces into `lib/docs`:
