@@ -121,8 +121,11 @@
 
 <style>
 	/* inside the docs' .prose article: every rule is under .plugin, so it outranks .prose's */
+	/* every grid here has a minmax(0, 1fr) column: code.css sets a block's code
+	   to max-content, and an auto column would grow to it, past the page */
 	.plugin {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: 2.25rem;
 	}
 
@@ -265,6 +268,11 @@
 		overflow-wrap: anywhere;
 	}
 
+	/* code.css's max-content would keep the line whole; here it wraps in its block */
+	.plugin .setup pre > code {
+		width: auto;
+	}
+
 	.plugin .note {
 		margin: 0.625rem 0 0;
 		font-size: 0.9375rem;
@@ -296,6 +304,7 @@
 	.plugin .options dl {
 		margin: 0;
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: 1rem;
 	}
 

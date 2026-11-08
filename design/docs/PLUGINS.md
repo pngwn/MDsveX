@@ -16,6 +16,7 @@ pngwn approved the finder ("plugins look good and we can move forward with that,
 - **A strict build fails** when a plugin the site depends on has no docs page naming it, when a syntax sample compiles the same without the plugin, or when an example doesn't compile.
 - **Live in the browser:** 15 of 16, checked on the production build, diagram still static for the same reason.
 - **The embeds page's example is a YouTube player,** not Vimeo. The plugin's Vimeo frame has no `encrypted-media` in its `allow` list, so Vimeo's player logs a permissions policy violation on every load. That is a one-word fix to `plugins/embeds/src/Vimeo.svelte`, left for pngwn to approve.
+- **Every grid in the plate and the finder has a `minmax(0, 1fr)` column.** `code.css` sets a code block's `code` to `max-content`. An auto column grows to fit it, so on a phone the plate was 631px wide in a 343px column, its right side cut off by the frame's `overflow-x: clip`. That clip also hides the overflow from `scrollWidth`, which is why the earlier "no overflow" check passed. The check now measures every element's right edge against the docs column, skipping anything inside its own scroller. The install and config code wraps inside its block. `code.css` is unchanged, since the atlas relies on it.
 - **Code** is in `packages/site/src/lib/docs/plugins/`. Screenshots are in `design/screenshots/docs-plugins/`; `docs-lab-plugins/` keeps the prototype's.
 
 ## What is built

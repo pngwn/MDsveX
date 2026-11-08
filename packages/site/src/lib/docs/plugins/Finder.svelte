@@ -223,8 +223,10 @@
 
 <style>
 	/* inside the docs' .prose article: every rule is under .finder, so it outranks .prose's */
+	/* a minmax(0, 1fr) column, so nothing inside, a block of code, can widen the finder past the page */
 	.finder {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: 0;
 	}
 
@@ -450,6 +452,7 @@
 
 	.finder .results {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: 2.5rem;
 		padding-top: 1rem;
 	}
