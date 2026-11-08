@@ -396,6 +396,7 @@
 		padding: 0;
 		list-style: none;
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: 0.5rem;
 		font: 400 0.8125rem / 1.45 var(--face-mono);
 	}
