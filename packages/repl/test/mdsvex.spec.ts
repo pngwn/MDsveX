@@ -606,6 +606,14 @@ describe('pfm_ast', () => {
 		expect(strong.children![0]).toMatchObject({ type: 'text', value: 'text' });
 		expect(() => structuredClone(root)).not.toThrow();
 	});
+
+	test("keeps a list's offsets and shows its first number as list_start", () => {
+		const source = 'para\n\n3. a\n4. b';
+		const list = pfm_ast(source).children!.find((n) => n.type === 'list')!;
+
+		expect(list).toMatchObject({ start: 6, list_start: 3, ordered: true });
+		expect(source.slice(list.start, list.end)).toBe('3. a\n4. b');
+	});
 });
 
 describe('heading_ids', () => {
