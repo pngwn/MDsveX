@@ -1,19 +1,13 @@
 ---
 title: Anchors
 order: 8
+package: '@mdsvex/plugin-anchors'
+example:
+  source: |
+    ## Getting started
+
+    Every heading with an id links to itself.
 ---
-# Anchors
-
-```bash
-pnpm add --save-dev @mdsvex/plugin-anchors@next
-```
-
-```js
-import { anchors } from '@mdsvex/plugin-anchors';
-
-mdsvex({ heading_ids: true, plugins: [anchors()] });
-```
-
 Puts a link to itself on every heading that has an id:
 
 ```html

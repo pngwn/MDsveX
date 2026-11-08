@@ -703,9 +703,51 @@ importers:
       '@mdsvex/plugin-anchors':
         specifier: workspace:*
         version: link:../../plugins/anchors
+      '@mdsvex/plugin-citations':
+        specifier: workspace:*
+        version: link:../../plugins/citations
+      '@mdsvex/plugin-code-blocks':
+        specifier: workspace:*
+        version: link:../../plugins/code-blocks
+      '@mdsvex/plugin-diagram':
+        specifier: workspace:*
+        version: link:../../plugins/diagram
+      '@mdsvex/plugin-elements':
+        specifier: workspace:*
+        version: link:../../plugins/elements
+      '@mdsvex/plugin-embeds':
+        specifier: workspace:*
+        version: link:../../plugins/embeds
+      '@mdsvex/plugin-emoji':
+        specifier: workspace:*
+        version: link:../../plugins/emoji
+      '@mdsvex/plugin-external-links':
+        specifier: workspace:*
+        version: link:../../plugins/external-links
+      '@mdsvex/plugin-figures':
+        specifier: workspace:*
+        version: link:../../plugins/figures
       '@mdsvex/plugin-link-check':
         specifier: workspace:*
         version: link:../../plugins/link-check
+      '@mdsvex/plugin-numbering':
+        specifier: workspace:*
+        version: link:../../plugins/numbering
+      '@mdsvex/plugin-page-data':
+        specifier: workspace:*
+        version: link:../../plugins/page-data
+      '@mdsvex/plugin-references':
+        specifier: workspace:*
+        version: link:../../plugins/references
+      '@mdsvex/plugin-steps':
+        specifier: workspace:*
+        version: link:../../plugins/steps
+      '@mdsvex/plugin-tabs':
+        specifier: workspace:*
+        version: link:../../plugins/tabs
+      '@mdsvex/plugin-toc':
+        specifier: workspace:*
+        version: link:../../plugins/toc
       '@mdsvex/repl':
         specifier: workspace:*
         version: link:../repl

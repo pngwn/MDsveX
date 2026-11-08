@@ -1,19 +1,21 @@
 ---
 title: Tabs
 order: 2
+package: '@mdsvex/plugin-tabs'
+example:
+  source: |
+    :::tabs(group=pm)
+
+    ```sh [npm]
+    npm install mdsvex
+    ```
+
+    ```sh [pnpm]
+    pnpm add mdsvex
+    ```
+
+    :::
 ---
-# Tabs
-
-```bash
-pnpm add --save-dev @mdsvex/plugin-tabs@next
-```
-
-```js
-import { tabs } from '@mdsvex/plugin-tabs';
-
-mdsvex({ plugins: [tabs()] });
-```
-
 Each heading written directly inside `:::tabs` starts a tab. The text of the heading is its label, and what follows, up to the next such heading, is its panel:
 
 ````svx

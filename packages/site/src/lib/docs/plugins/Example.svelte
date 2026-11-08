@@ -9,7 +9,7 @@
 	import type { Plugin } from './types';
 
 	// the plugins' own stylesheets, so their output looks as it does on a site
-	import.meta.glob('../../../../../../plugins/*/src/*.css', { eager: true });
+	import.meta.glob('/node_modules/@mdsvex/plugin-*/dist/*.css', { eager: true });
 
 	interface Props {
 		plugin: Plugin;

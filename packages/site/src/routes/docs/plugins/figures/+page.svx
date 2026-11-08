@@ -1,19 +1,15 @@
 ---
 title: Figures
 order: 5
+package: '@mdsvex/plugin-figures'
+example:
+  source: |
+    :::figure[The score of a heading](id=fig:score)
+
+    ![A heading drawn as its score](/favicon.svg)
+
+    :::
 ---
-# Figures
-
-```bash
-pnpm add --save-dev @mdsvex/plugin-figures@next
-```
-
-```js
-import { figures } from '@mdsvex/plugin-figures';
-
-mdsvex({ unwrap_images: true, plugins: [figures()] });
-```
-
 `:::figure` puts what is written inside it, an image, a code block, a table or a diagram, in a `<figure>` with the bracket text as its `<figcaption>`. It is the one way to make a figure: a lone image stays an image, unwrapped by [`unwrap_images`](/docs/reference/options#unwrap_images).
 
 ````svx

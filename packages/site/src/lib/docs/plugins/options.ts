@@ -85,6 +85,6 @@ export function options_of(source: string, name: string): Option[] {
 
 /** the factory a plugin exports, and the name of the options interface it takes */
 export function factory_of(source: string): { name: string; options: string | null } | null {
-	const fn = /export function (\w+)\(\s*(?:\w+\??\s*:\s*(\w+))?[^)]*\)\s*:\s*Bundle\b/.exec(source);
+	const fn = /export (?:declare )?function (\w+)\(\s*(?:\w+\??\s*:\s*(\w+))?[^)]*\)\s*:\s*Bundle\b/.exec(source);
 	return fn ? { name: fn[1], options: fn[2] ?? null } : null;
 }

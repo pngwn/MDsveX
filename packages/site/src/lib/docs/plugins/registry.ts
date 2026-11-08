@@ -1,13 +1,12 @@
-// the first-party plugins, found by their folders under plugins/: a new one
-// with a package.json is in the finder on the next build, with no list here.
+// the first-party plugins, as the site depends on them: every
+// `@mdsvex/plugin-*` in the site's package.json, read from its built package in
+// node_modules. A new plugin is in the finder once the site depends on it, with
+// no list here.
 //
-// The site doesn't depend on the plugin packages, so this reads their source
-// by path, and Vite compiles it with the site. A real docs section would add
-// them as workspace dependencies and import them by name; the module a
-// compile names, `@mdsvex/plugin-tabs/directives`, is mapped to the file its
-// package's exports point at either way
-
-const ROOT = '../../../../../../plugins/';
+// The module a compile names, `@mdsvex/plugin-tabs/directives`, is the file its
+// package's exports point at, so the build and the browser load the same files
+// a site that installs the plugin would
+import site from '../../../../package.json';
 
 /** the fields of a plugin's package.json the finder reads */
 export interface Manifest {
@@ -18,40 +17,40 @@ export interface Manifest {
 	exports?: Record<string, string | Record<string, string>>;
 	peerDependencies?: Record<string, string>;
 	peerDependenciesMeta?: Record<string, { optional?: boolean }>;
-	/** the field PLUGINS.md proposes, read when a package has it */
-	mdsvex?: Record<string, unknown>;
+	/** what can't be read from its code, design/docs/PLUGINS.md */
+	mdsvex?: {
+		concerns?: string[];
+		syntax?: (string | { mark: string; source: string })[];
+		needs?: { heading_ids?: true; unwrap_images?: true };
+		waits?: string;
+	};
 }
 
-const manifests = import.meta.glob<Manifest>('../../../../../../plugins/*/package.json', { eager: true, import: 'default' });
+export const ROOT = '/node_modules/';
 
-/** by folder name, `tabs` */
+const manifests = import.meta.glob<Manifest>('/node_modules/@mdsvex/plugin-*/package.json', { eager: true, import: 'default' });
+
+/** by package name, the site's own plugin dependencies, sorted */
 export const packages: Map<string, Manifest> = new Map(
-	Object.entries(manifests)
-		.map(([path, manifest]) => [path.slice(ROOT.length).split('/')[0], manifest] as const)
-		.filter(([, m]) => m.name?.startsWith('@mdsvex/plugin-'))
-		.sort(([a], [b]) => a.localeCompare(b)),
+	Object.keys(site.dependencies)
+		.filter((name) => name.startsWith('@mdsvex/plugin-'))
+		.sort()
+		.map((name) => {
+			const manifest = manifests[`${ROOT}${name}/package.json`];
+			if (!manifest) throw new Error(`the site depends on ${name}, and node_modules has no package.json for it`);
+			return [name, manifest] as const;
+		}),
 );
 
-const by_name = new Map([...packages].map(([dir, m]) => [m.name, dir]));
-
-/** the folder of a package, from its name */
-export const folder_of = (name: string) => by_name.get(name);
-
-/**
- * the source file a specifier names, `@mdsvex/plugin-tabs/directives` to
- * `plugins/tabs/src/directives.ts`: its exports entry, with `dist` read as
- * `src` and `.js` as `.ts`, the build every plugin package shares
- */
-export function source_of(specifier: string): string | null {
+/** the file of a package a specifier names, `@mdsvex/plugin-tabs/directives` to its `dist/directives.js` */
+export function file_of(specifier: string): string | null {
 	const m = /^(@mdsvex\/plugin-[\w-]+)(\/.*)?$/.exec(specifier);
-	if (!m) return null;
-	const dir = by_name.get(m[1]);
-	if (!dir) return null;
-	const entry = packages.get(dir)!.exports?.[`.${m[2] ?? ''}`];
+	const manifest = m && packages.get(m[1]);
+	if (!manifest) return null;
+	const entry = manifest.exports?.[`.${m[2] ?? ''}`];
 	const target = typeof entry === 'string' ? entry : (entry?.svelte ?? entry?.default);
-	if (!target) return null;
-	return `${ROOT}${dir}/${target.replace(/^\.\/dist\//, 'src/').replace(/\.js$/, '.ts')}`;
+	return target ? `${ROOT}${m[1]}/${target.replace(/^\.\//, '')}` : null;
 }
 
-/** the entry of a plugin, where its factory is */
-export const entry_of = (dir: string) => `${ROOT}${dir}/src/index.ts`;
+/** the types of a package, where its factory and options are declared */
+export const types_of = (name: string) => `${ROOT}${name}/dist/`;

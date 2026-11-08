@@ -6,17 +6,17 @@
 // It runs in the page, not in the playground's sandboxed iframe, so it only
 // ever runs what the reader typed on this page; a shared link would need the
 // sandbox
-import type { Example } from './authored';
 import { imports_of, link, type Modules } from './link';
-import { entry_of, folder_of, source_of } from './registry';
-import type { Output } from './types';
+import { file_of } from './registry';
+import type { Example, Needs, Output } from './types';
 
-// every plugin's modules, each loaded when an example needs it. Diagram is left
-// out: its engine.ts imports node:module when it loads, which a browser bundle
-// can't take, so the catalog marks it static (live_blocker in catalog.server.ts)
+// every plugin's built modules, each loaded when an example needs it. Diagram
+// is left out: its engine.js imports node:module when it loads, which a
+// browser bundle can't take, so the catalog marks it static (live_blocker in
+// catalog.server.ts)
 const plugin_modules = import.meta.glob<Record<string, unknown>>([
-	'../../../../../../plugins/*/src/*.ts',
-	'!../../../../../../plugins/diagram/**',
+	'/node_modules/@mdsvex/plugin-*/dist/**/*.js',
+	'!/node_modules/@mdsvex/plugin-diagram/**',
 ]);
 
 let tools: Promise<{
@@ -53,9 +53,7 @@ async function module_at(path: string | null) {
 }
 
 async function bundle_of(name: string, options: Record<string, unknown> = {}) {
-	const dir = folder_of(name);
-	if (!dir) throw new Error(`no plugin ${name}`);
-	const entry = await module_at(entry_of(dir));
+	const entry = await module_at(file_of(name));
 	// the factory is the function, not a class, whose result has a name, as a Bundle does
 	for (const fn of Object.values(entry)) {
 		if (typeof fn !== 'function' || /^class\s/.test(String(fn))) continue;
@@ -94,7 +92,7 @@ export async function run(
 	name: string,
 	source: string,
 	example: Example,
-	needs: { heading_ids?: true; unwrap_images?: true } | undefined,
+	needs: Needs | undefined,
 	target: HTMLElement,
 ): Promise<Run> {
 	const t = await load_tools();
@@ -112,7 +110,7 @@ export async function run(
 		const modules: Modules = { ...t.runtime };
 		for (const spec of imports_of(js.code)) {
 			if (modules[spec] || !spec.startsWith('@mdsvex/plugin-')) continue;
-			modules[spec] = await module_at(source_of(spec));
+			modules[spec] = await module_at(file_of(spec));
 		}
 		const component = link(js.code, modules) as any;
 		target.replaceChildren();

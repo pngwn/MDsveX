@@ -1,23 +1,19 @@
 ---
 title: Link check
 order: 15
+package: '@mdsvex/plugin-link-check'
+example:
+  source: |
+    # Install
+
+    See [the setup](#setup), [install](#install)
+    and [the guide](./guide.svx#usage).
+  files:
+    ./guide.svx: |
+      # Guide
+
+      ## Use it
 ---
-# Link check
-
-```bash
-pnpm add --save-dev @mdsvex/plugin-link-check@next
-```
-
-```js
-import { link_check } from '@mdsvex/plugin-link-check';
-
-mdsvex({
-	heading_ids: true,
-	links: { routes: 'src/routes' },
-	plugins: [link_check({ routes: 'src/routes' })]
-});
-```
-
 Warns at every link that goes nowhere, with the line of the link, as the compile warns about anything else:
 
 ```svx

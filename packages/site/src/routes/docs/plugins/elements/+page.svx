@@ -1,19 +1,15 @@
 ---
 title: Elements
 order: 3
+package: '@mdsvex/plugin-elements'
+example:
+  source: |
+    :::details[Does it need JavaScript?]
+    No, it is a `<details>`.
+    :::
+
+    Press :kbd[Ctrl] :kbd[K] to search. :badge[new](tone=tip)
 ---
-# Elements
-
-```bash
-pnpm add --save-dev @mdsvex/plugin-elements@next
-```
-
-```js
-import { elements } from '@mdsvex/plugin-elements';
-
-mdsvex({ plugins: [elements()] });
-```
-
 Directives over plain HTML elements. A document imports only the ones it uses, none loads a script, and each works without JavaScript:
 
 | directive | renders |

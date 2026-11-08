@@ -1,19 +1,17 @@
 ---
 title: Page data
 order: 11
+package: '@mdsvex/plugin-page-data'
+example:
+  source: |
+    # Moving to runes
+
+    Signals changed how I write components.
+
+    <!-- more -->
+
+    Here is what I learned, in order.
 ---
-# Page data
-
-```bash
-pnpm add --save-dev @mdsvex/plugin-page-data@next
-```
-
-```js
-import { page_data } from '@mdsvex/plugin-page-data';
-
-mdsvex({ plugins: [page_data()] });
-```
-
 Works out facts about each document and leaves them in its [plugin data](/docs/plugins/writing/plugin-data), under one key:
 
 ```js

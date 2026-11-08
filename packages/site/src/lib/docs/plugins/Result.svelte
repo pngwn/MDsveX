@@ -21,7 +21,7 @@
 	// one plugin in the finder: a line of what it is for and the syntax it
 	// reads, which opens on its example. A <details>, so it opens without
 	// JavaScript, and the example's output is in the page from the build
-	import { CONCERNS } from './authored';
+	import { CONCERNS } from './concerns';
 	import Example from './Example.svelte';
 	import Syntax from './Syntax.svelte';
 	import type { Hit } from './search';
@@ -50,7 +50,7 @@
 			<span class="name">{p.title}</span>
 			<code class="package">{p.package}</code>
 		</span>
-		<span class="what">{p.description.replace(/ for mdsvex\b/, '')}</span>
+		<span class="what">{p.description}</span>
 		<span class="syntax" aria-label="Syntax it reads">
 			{#each p.syntax as s (s.mark)}
 				<Syntax sample={s} />
@@ -65,7 +65,7 @@
 			{#each reads_line(p) as r (r)}<span>{r}</span>{/each}
 			{#if needs.length}<span>needs {needs.join(', ')}</span>{/if}
 			{#if optional.length}<span>with {optional.join(' or ')}, optional peers</span>{/if}
-			{#if p.async}<span>waits, as {p.async}</span>{/if}
+			{#if p.waits}<span>waits, as {p.waits}</span>{/if}
 			{#if also.length}<span>{under ? 'also' : 'for'} {also.map((c) => c.name.toLowerCase()).join(', ')}</span>{/if}
 		</span>
 	</summary>
@@ -74,10 +74,7 @@
 		<div class="body">
 			<Example plugin={p} />
 			<p class="links riso">
-				{#if p.page}
-					<a href="/docs-lab/plugins/{p.id}">The {p.title} plugin page</a>
-				{/if}
-				<a href={p.docs}>Its docs today</a>
+				<a href={p.href}>{p.title}, the whole page</a>
 				<code>pnpm add -D {p.package}@next{needs.filter((n) => p.peers.some((x) => x.name === n)).map((n) => ` ${n}`).join('')}</code>
 			</p>
 		</div>

@@ -1,19 +1,14 @@
 ---
 title: External links
 order: 9
+package: '@mdsvex/plugin-external-links'
+example:
+  source: |
+    Read [the spec](https://example.com/spec), then [the guide](/guide).
+  options:
+    target: "_blank"
+    new_tab_label: "opens in a new tab"
 ---
-# External links
-
-```bash
-pnpm add --save-dev @mdsvex/plugin-external-links@next
-```
-
-```js
-import { external_links } from '@mdsvex/plugin-external-links';
-
-mdsvex({ plugins: [external_links()] });
-```
-
 Sets `rel`, and `target` when you ask for one, on every markdown link that leaves the site:
 
 ```svx

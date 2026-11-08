@@ -1,19 +1,13 @@
 ---
 title: References
 order: 13
+package: '@mdsvex/plugin-references'
+example:
+  source: |
+    Thanks @ada for #123, which also closes sveltejs/kit#45.
+  options:
+    repo: "sveltejs/svelte"
 ---
-# References
-
-```bash
-pnpm add --save-dev @mdsvex/plugin-references@next
-```
-
-```js
-import { references } from '@mdsvex/plugin-references';
-
-mdsvex({ plugins: [references({ repo: 'sveltejs/svelte' })] });
-```
-
 Turns the references people write in prose into links:
 
 ```svx

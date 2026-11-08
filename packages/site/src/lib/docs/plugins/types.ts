@@ -1,5 +1,22 @@
 // what the build gives the finder and the plugin pages, catalog.server.ts makes it
-import type { Authored, ConcernId, Example } from './authored';
+import type { ConcernId } from './concerns';
+
+/** what a plugin needs from mdsvex beside it, from its package's `mdsvex` field */
+export interface Needs {
+	heading_ids?: true;
+	unwrap_images?: true;
+}
+
+/** a plugin's example, from the frontmatter of its docs page */
+export interface Example {
+	source: string;
+	/** the plugin's own options */
+	options?: Record<string, unknown>;
+	/** files the example reads, by path from the example */
+	files?: Record<string, string>;
+	/** other first-party plugins it runs with, by package name, ahead of this one */
+	with?: string[];
+}
 
 export interface Option {
 	name: string;
@@ -55,11 +72,15 @@ export interface Sample {
 }
 
 export interface Plugin {
-	/** the folder under plugins/, the url of a plugin page */
+	/** the folder of its docs page under docs/plugins, its anchor in the finder */
 	id: string;
+	/** its docs page */
+	href: string;
 	package: string;
-	/** the plugin's short name, `tabs`, from the factory */
+	/** its docs page's title, `Table of contents` */
 	title: string;
+	/** its package without the scope, `toc` */
+	short: string;
 	factory: string;
 	description: string;
 	keywords: string[];
@@ -68,17 +89,14 @@ export interface Plugin {
 	syntax: Sample[];
 	reads: Reads;
 	options: Option[];
-	/** optional peers to install beside it, `pele` */
+	/** peers to install beside it, `pele`, optional or not */
 	peers: { name: string; optional: boolean }[];
 	/** components and stylesheets the package exports */
 	exports: { components: string[]; css: string[] };
-	needs: Authored['needs'];
-	async?: string;
+	needs: Needs | undefined;
+	/** why a document that uses it needs compile_async or the Vite plugin */
+	waits?: string;
 	example: Example & { output: Output };
-	docs: string;
-	edges: string[];
-	/** a plugin page exists in the prototype */
-	page: boolean;
 	/** what blocks the example running in the browser, null when it can */
 	live: string | null;
 }

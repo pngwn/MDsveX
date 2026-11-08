@@ -1,68 +1,27 @@
 ---
-title: Using plugins
+title: Find a plugin
 order: 0
 ---
-# Plugins
+<script>
+	import { page } from '$app/state';
+	import Finder from '$lib/docs/plugins/Finder.svelte';
+</script>
 
-The first-party plugins are packages of their own, named `@mdsvex/plugin-*`. Each exports a function, and what it returns goes in the [`plugins`](/docs/plugins/writing/bundles) option:
+<Finder plugins={page.data.plugins} terms={page.data.terms} />
+
+## Using plugins
+
+The first-party plugins are packages of their own, named `@mdsvex/plugin-*`. Each exports a function, and what it returns goes in the [`plugins`](/docs/plugins/writing/bundles) option, in the order they should run:
 
 ```js
 import { mdsvex } from 'mdsvex';
-import { anchors } from '@mdsvex/plugin-anchors';
-import { citations } from '@mdsvex/plugin-citations';
-import { code_blocks } from '@mdsvex/plugin-code-blocks';
-import { diagram } from '@mdsvex/plugin-diagram';
-import { emoji } from '@mdsvex/plugin-emoji';
-import { external_links } from '@mdsvex/plugin-external-links';
-import { elements } from '@mdsvex/plugin-elements';
-import { embeds } from '@mdsvex/plugin-embeds';
-import { figures } from '@mdsvex/plugin-figures';
-import { link_check } from '@mdsvex/plugin-link-check';
-import { numbering } from '@mdsvex/plugin-numbering';
-import { page_data } from '@mdsvex/plugin-page-data';
-import { references } from '@mdsvex/plugin-references';
-import { steps } from '@mdsvex/plugin-steps';
-import { tabs } from '@mdsvex/plugin-tabs';
 import { toc } from '@mdsvex/plugin-toc';
+import { tabs } from '@mdsvex/plugin-tabs';
 
 mdsvex({
 	heading_ids: true,
-	plugins: [
-		steps(),
-		tabs(),
-		elements(),
-		embeds(),
-		figures(),
-		code_blocks(),
-		diagram(),
-		anchors(),
-		external_links(),
-		toc(),
-		page_data(),
-		references({ repo: 'you/site' }),
-		emoji(),
-		citations(),
-		numbering(),
-		link_check({ routes: 'src/routes' })
-	]
+	plugins: [tabs(), toc()]
 });
 ```
 
-| package | what it adds |
-| --- | --- |
-| [`@mdsvex/plugin-steps`](/docs/plugins/steps) | numbered steps, one for each heading inside `:::steps` |
-| [`@mdsvex/plugin-tabs`](/docs/plugins/tabs) | tabs and code groups, one tab for each heading or code fence inside `:::tabs` |
-| [`@mdsvex/plugin-elements`](/docs/plugins/elements) | details, accordions, keys, ruby, badges, marks, insertions and abbreviations, each a directive over an HTML element |
-| [`@mdsvex/plugin-embeds`](/docs/plugins/embeds) | YouTube and Vimeo players named by their title |
-| [`@mdsvex/plugin-code-blocks`](/docs/plugins/code-blocks) | a `pre` with a copy button, the title and the caption of the fence |
-| [`@mdsvex/plugin-diagram`](/docs/plugins/diagrams) | `mermaid` fences drawn by pele at build time or by mermaid in the browser |
-| [`@mdsvex/plugin-figures`](/docs/plugins/figures) | `:::figure[Caption]` around an image or anything else, numbered when a numbering plugin asks |
-| [`@mdsvex/plugin-anchors`](/docs/plugins/anchors) | a link to itself on every heading that has an id |
-| [`@mdsvex/plugin-external-links`](/docs/plugins/external-links) | `rel` and `target` on every link that leaves the site |
-| [`@mdsvex/plugin-toc`](/docs/plugins/toc) | the headings of a document as data, and a `::toc` directive that lists them |
-| [`@mdsvex/plugin-page-data`](/docs/plugins/page-data) | a reading time, an excerpt, an inferred title, an edit url and a last modified date for each document |
-| [`@mdsvex/plugin-emoji`](/docs/plugins/emoji) | emoji shortcodes, `:tada:` becomes the emoji, with an optional label for screen readers |
-| [`@mdsvex/plugin-references`](/docs/plugins/references) | links for `@user`, `#123`, `owner/repo#123` and commits, and for bare urls when asked |
-| [`@mdsvex/plugin-citations`](/docs/plugins/citations) | `:cite[key]` from a CSL JSON bibliography, and a `::bibliography` that lists what a document cites |
-| [`@mdsvex/plugin-link-check`](/docs/plugins/link-check) | a warning at every link to an id or a document that is not there |
-| [`@mdsvex/plugin-numbering`](/docs/plugins/numbering) | numbered figures, tables, equations and sections, and `:ref[fig:x]` references that read as the number |
+Every plugin here is read from its package: its name, what it owns and acts on, and its options with their docs. Every output is the plugin's own compile, run when the site is built, and an edited example compiles in your browser with the same plugin.
