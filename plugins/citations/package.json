@@ -43,6 +43,22 @@
 		"bibliography",
 		"csl"
 	],
+	"mdsvex": {
+		"concerns": [
+			"cite"
+		],
+		"syntax": [
+			{
+				"mark": ":cite[key]",
+				"source": "---\nbibliography: ./refs.json\n---\n\nAs shown :cite[lovelace1843].\n"
+			},
+			{
+				"mark": "::bibliography",
+				"source": "---\nbibliography: ./refs.json\n---\n\nAs shown :cite[lovelace1843].\n\n::bibliography\n"
+			}
+		],
+		"waits": "it reads the bibliography the frontmatter names"
+	},
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"peerDependencies": {

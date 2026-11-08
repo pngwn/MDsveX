@@ -36,6 +36,18 @@
 		"title",
 		"last-modified"
 	],
+	"mdsvex": {
+		"concerns": [
+			"data"
+		],
+		"syntax": [
+			{
+				"mark": "<!-- more -->",
+				"source": "An excerpt.\n\n<!-- more -->\n\nThe rest.\n"
+			},
+			"# Title"
+		]
+	},
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"peerDependencies": {

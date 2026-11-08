@@ -34,6 +34,17 @@
 		"links",
 		"external-links"
 	],
+	"mdsvex": {
+		"concerns": [
+			"links"
+		],
+		"syntax": [
+			{
+				"mark": "[text](https://…)",
+				"source": "[the spec](https://example.com)\n"
+			}
+		]
+	},
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"peerDependencies": {

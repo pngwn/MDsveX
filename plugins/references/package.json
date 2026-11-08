@@ -37,6 +37,17 @@
 		"linkify",
 		"autolink"
 	],
+	"mdsvex": {
+		"concerns": [
+			"links",
+			"text"
+		],
+		"syntax": [
+			"@user",
+			"#123",
+			"owner/repo#45"
+		]
+	},
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"peerDependencies": {

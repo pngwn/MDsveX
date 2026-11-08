@@ -42,6 +42,22 @@
 		"toc",
 		"table-of-contents"
 	],
+	"mdsvex": {
+		"concerns": [
+			"navigate",
+			"data"
+		],
+		"syntax": [
+			{
+				"mark": "::toc[On this page]",
+				"source": "::toc[On this page]\n\n## Install\n"
+			},
+			"## Heading"
+		],
+		"needs": {
+			"heading_ids": true
+		}
+	},
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"peerDependencies": {

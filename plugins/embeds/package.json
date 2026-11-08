@@ -55,6 +55,21 @@
 		"youtube",
 		"vimeo"
 	],
+	"mdsvex": {
+		"concerns": [
+			"media"
+		],
+		"syntax": [
+			{
+				"mark": "::youtube[Title](id=…)",
+				"source": "::youtube[A talk](id=AdNJ3fydeao)\n"
+			},
+			{
+				"mark": "::vimeo[Title](id=…)",
+				"source": "::vimeo[A film](id=76979871)\n"
+			}
+		]
+	},
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"peerDependencies": {
