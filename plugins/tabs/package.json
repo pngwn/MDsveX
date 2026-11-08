@@ -54,6 +54,22 @@
 		"tabs",
 		"code-group"
 	],
+	"mdsvex": {
+		"concerns": [
+			"layout",
+			"code"
+		],
+		"syntax": [
+			{
+				"mark": ":::tabs",
+				"source": ":::tabs\n\n## macOS\n\nBrew.\n\n:::\n"
+			},
+			{
+				"mark": ":::tabs(group=pm)",
+				"source": ":::tabs(group=pm)\n\n```sh [npm]\nnpm i mdsvex\n```\n\n:::\n"
+			}
+		]
+	},
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"peerDependencies": {

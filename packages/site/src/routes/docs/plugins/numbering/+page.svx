@@ -1,20 +1,17 @@
 ---
 title: Numbering
 order: 16
+package: '@mdsvex/plugin-numbering'
+example:
+  source: |
+    :::figure[Sales by month](id=fig:sales)
+    A chart.
+    :::
+
+    Sales rose in March, as :ref[fig:sales] shows.
+  with:
+    - '@mdsvex/plugin-figures'
 ---
-# Numbering
-
-```bash
-pnpm add --save-dev @mdsvex/plugin-numbering@next
-```
-
-```js
-import { figures } from '@mdsvex/plugin-figures';
-import { numbering } from '@mdsvex/plugin-numbering';
-
-mdsvex({ heading_ids: true, plugins: [figures(), numbering()] });
-```
-
 Numbers figures, tables, equations and sections, and turns `:ref[id]` into a link that reads as the number, in the way of [pandoc-crossref](https://lierdakil.github.io/pandoc-crossref/). The prefix of an id says what it is:
 
 ````svx

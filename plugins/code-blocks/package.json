@@ -51,6 +51,17 @@
 		"copy-button",
 		"pre"
 	],
+	"mdsvex": {
+		"concerns": [
+			"code"
+		],
+		"syntax": [
+			{
+				"mark": "```js title=\"a.js\"",
+				"source": "```js title=\"a.js\"\nlet a = 1;\n```\n"
+			}
+		]
+	},
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"peerDependencies": {

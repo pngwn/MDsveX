@@ -1,17 +1,9 @@
 ---
 title: Embeds
 order: 4
+package: '@mdsvex/plugin-embeds'
+example:
+  source: |
+    ::youtube[Rethinking reactivity, by Rich Harris](id=AdNJ3fydeao)
 ---
-# Embeds
-
-```bash
-pnpm add --save-dev @mdsvex/plugin-embeds@next
-```
-
-```js
-import { embeds } from '@mdsvex/plugin-embeds';
-
-mdsvex({ plugins: [embeds()] });
-```
-
 `::youtube[Title](id=...)` is a lazy YouTube player from `youtube-nocookie.com`, which sets no cookie until the video plays, and `::vimeo[Title](id=...)` a lazy Vimeo player with `dnt=1`. `start` is a time in seconds. The bracket text is the title of the frame, which is what a screen reader announces, and `(title=...)` sets it instead. The build warns about an embed with no id or one that is no id on its site (`embed_id`), and one with no title (`embed_without_title`). `embeds({ css: false })` leaves the stylesheet out, and a `youtube` or `vimeo` from a [directives module](/docs/guides/directives#declaring-directives) replaces the plugin's component.

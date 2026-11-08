@@ -1,19 +1,19 @@
 ---
 title: Table of contents
 order: 10
+package: '@mdsvex/plugin-toc'
+example:
+  source: |
+    # Guide
+
+    ::toc[On this page]
+
+    ## Install
+
+    ### With pnpm
+
+    ## Configure
 ---
-# Table of contents
-
-```bash
-pnpm add --save-dev @mdsvex/plugin-toc@next
-```
-
-```js
-import { toc } from '@mdsvex/plugin-toc';
-
-mdsvex({ heading_ids: true, plugins: [toc()] });
-```
-
 Leaves the headings of each document in its [plugin data](/docs/plugins/writing/plugin-data), as a flat list in the order they are written:
 
 ```js

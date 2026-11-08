@@ -1,19 +1,21 @@
 ---
 title: Steps
 order: 1
+package: '@mdsvex/plugin-steps'
+example:
+  source: |
+    :::steps
+
+    ## Install
+
+    Add the package.
+
+    ## Configure
+
+    Put it in `plugins`.
+
+    :::
 ---
-# Steps
-
-```bash
-pnpm add --save-dev @mdsvex/plugin-steps@next
-```
-
-```js
-import { steps } from '@mdsvex/plugin-steps';
-
-mdsvex({ plugins: [steps()] });
-```
-
 Each heading written directly inside `:::steps` starts a step. The heading is its title, and what follows, up to the next such heading, is its body:
 
 ````svx

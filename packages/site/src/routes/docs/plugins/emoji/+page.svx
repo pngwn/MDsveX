@@ -1,19 +1,11 @@
 ---
 title: Emoji
 order: 12
+package: '@mdsvex/plugin-emoji'
+example:
+  source: |
+    We shipped it :tada: and nobody was paged :+1:
 ---
-# Emoji
-
-```bash
-pnpm add --save-dev @mdsvex/plugin-emoji@next
-```
-
-```js
-import { emoji } from '@mdsvex/plugin-emoji';
-
-mdsvex({ plugins: [emoji()] });
-```
-
 Turns a shortcode into its emoji:
 
 ```svx

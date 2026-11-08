@@ -1,19 +1,20 @@
 ---
 title: Citations
 order: 14
+package: '@mdsvex/plugin-citations'
+example:
+  source: |
+    ---
+    bibliography: ./refs.json
+    ---
+
+    The engine could do more than count :cite[lovelace1843].
+
+    ::bibliography[References]
+  files:
+    ./refs.json: |
+      [{"id": "lovelace1843", "type": "article-journal", "title": "Notes on the Analytical Engine", "author": [{"family": "Lovelace", "given": "Ada"}], "container-title": "Scientific Memoirs", "issued": {"date-parts": [[1843]]}}]
 ---
-# Citations
-
-```bash
-pnpm add --save-dev @mdsvex/plugin-citations@next
-```
-
-```js
-import { citations } from '@mdsvex/plugin-citations';
-
-mdsvex({ plugins: [citations()] });
-```
-
 Cites entries of a [CSL JSON](https://citeproc-js.readthedocs.io/en/latest/csl-json/markup.html) file, which the frontmatter names, and lists the entries the document cites where you write `::bibliography`:
 
 ```svx

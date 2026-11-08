@@ -36,6 +36,14 @@
 		"gemoji",
 		"shortcodes"
 	],
+	"mdsvex": {
+		"concerns": [
+			"text"
+		],
+		"syntax": [
+			":tada:"
+		]
+	},
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"peerDependencies": {
