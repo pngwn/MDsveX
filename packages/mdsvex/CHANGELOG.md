@@ -1,5 +1,37 @@
 # mdsvex
 
+## 1.0.0-next.4
+
+### Minor Changes
+
+- [#1245](https://github.com/pngwn/MDsveX/pull/1245) [`09100bf`](https://github.com/pngwn/MDsveX/commit/09100bf02b7aa771c8bea99b61fa4b40508c8147) Thanks [@pngwn](https://github.com/pngwn)! - A plugin can claim the fence languages it renders itself with `fences` on its bundle. The highlighter never sees a claimed fence, twinkleplop or a highlighter function, so it renders as plain code, as with `highlight: false`, still through a replaced `pre`, and there is no `unknown_language` warning for it:
+
+  ```js
+  {
+  	name: 'diagram',
+  	fences: ['mermaid'],
+  	parse: { code_fence: { parse(node) {} } },
+  }
+  ```
+
+  A language has one owner. Two plugins that claim the same language throw a `FenceOwnerError` with `language` and both plugin names as `plugins` when the config loads. A claim only applies to fences, a code span with a `#!` hint is highlighted as before. The editor manifest lists the languages each plugin claims.
+
+- [#1246](https://github.com/pngwn/MDsveX/pull/1246) [`cabe59c`](https://github.com/pngwn/MDsveX/commit/cabe59ce286d42306de75c4f650ffc589758eda8) Thanks [@pngwn](https://github.com/pngwn)! - A document imported with `?text` gives the text a reader sees, by section, without its component. Use it for a search index, an RSS body or `llms.txt`:
+
+  ```js
+  const pages = import.meta.glob('./*/+page.svx', {
+  	query: '?text',
+  	import: 'default',
+  	eager: true,
+  });
+  // pages['./intro/+page.svx'].title, .text, and .sections
+  // each section is { id, heading, depth, text }, with the id of its heading when heading_ids is on
+  ```
+
+  It parses the document and runs its plugins, waits for what they defer, and renders nothing, so emoji, references and citation labels are in the text. Code, alt text, link text, directive labels, footnotes and the text of every branch of a Svelte block are read. Frontmatter, comments, `<script>`, `<style>` and `{expressions}` are not. `text: { code_blocks: false }` in the plugin options leaves out fences, math fences and `<pre>`. In dev an edit reloads what imports it only when the text changed. For TypeScript, `mdsvex/globals` types it as `DocumentText`.
+
+  `compile_text(source, options)` in `mdsvex/compile` gives the same value without Vite, `parsed_text(parsed)` reads a document compiled in steps, and `text_module` in `mdsvex/host` builds the module. A plugin says what one of its directives reads as with a `text` function beside its handlers.
+
 ## 1.0.0-next.3
 
 ### Minor Changes

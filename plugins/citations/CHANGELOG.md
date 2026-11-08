@@ -1,5 +1,16 @@
 # @mdsvex/plugin-citations
 
+## 0.1.0-next.1
+
+### Minor Changes
+
+- [#1246](https://github.com/pngwn/MDsveX/pull/1246) [`cabe59c`](https://github.com/pngwn/MDsveX/commit/cabe59ce286d42306de75c4f650ffc589758eda8) Thanks [@pngwn](https://github.com/pngwn)! - In the text of a page, from a `?text` import or `compile_text`, a citation reads as the page shows it, `[1, 2]` or `(Turing 1936; Lovelace 1843)`, and `::bibliography` as its label and then an entry to a block.
+
+### Patch Changes
+
+- Updated dependencies [[`09100bf`](https://github.com/pngwn/MDsveX/commit/09100bf02b7aa771c8bea99b61fa4b40508c8147), [`cabe59c`](https://github.com/pngwn/MDsveX/commit/cabe59ce286d42306de75c4f650ffc589758eda8)]:
+  - mdsvex@1.0.0-next.4
+
 ## 0.1.0-next.0
 
 ### Minor Changes
