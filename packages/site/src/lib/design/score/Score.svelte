@@ -49,6 +49,11 @@
 		/** draw a stave under each row of phrases, the length of its line */
 		staves?: boolean;
 		label?: string;
+		/**
+		 * source ranges the page points at, `[start, end)`, ruled under their cells
+		 * in the ink: the characters a docs contrast turns on, a space included
+		 */
+		cue?: [number, number][];
 	}
 
 	let {
@@ -58,6 +63,7 @@
 		focus = $bindable(null),
 		staves = false,
 		label = 'The parser’s reading of the source',
+		cue = [],
 	}: Props = $props();
 
 	const NBSP = String.fromCharCode(160);
@@ -265,6 +271,10 @@
 		return streaming && !!bar.held && i >= bar.held[0] && i < bar.held[1];
 	}
 
+	function cued(i: number) {
+		return cue.some(([a, b]) => i >= a && i < b);
+	}
+
 	function lit(i: number) {
 		return !!focus && i >= focus.start && i < focus.end;
 	}
@@ -382,6 +392,7 @@
 						class:unread={at >= fed}
 						class:held={is_held(at)}
 						class:lit={lit(at)}
+						class:cued={cued(at)}
 						style:--c={marked ? `var(--name-${owner[at] ?? 'other'})` : undefined}
 						data-start={at}
 						style:grid-column={i + 1}>{ch === ' ' ? NBSP : ch}</span
@@ -665,6 +676,12 @@
 	/* Berkeley Mono has no 500, syntax is set apart by its construct's colour alone */
 	.ch.markup {
 		color: var(--c);
+	}
+
+	/* a character the page points at, ruled under its cell in the ink, so a
+	   space or an indent shows as well as a star */
+	.ch.cued {
+		box-shadow: inset 0 calc(var(--_w) * -1) 0 var(--ink, #121318);
 	}
 
 	/* pointing at a phrase washes its characters in its own colour, pale, and

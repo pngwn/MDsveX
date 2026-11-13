@@ -1,12 +1,22 @@
 <script>
 import { page } from "$app/state";
 import Perch from "$lib/design/penguin/Perch.svelte";
+import ReadingSwitch from "$lib/docs/ReadingSwitch.svelte";
+import { provide_reading } from "$lib/docs/reading.svelte";
 import { nav, pages } from "./nav.js";
 
 let { children } = $props();
 
 const current = $derived(pages.find((p) => p.href === page.url.pathname));
 const section = $derived(nav.find((s) => s.key === current?.section));
+
+// "Show the reading", off in Learn, Guides and Plugins, where the score is a
+// detail, on in Reference and Internals, where it is the point; a reader's
+// choice is kept per section
+const reading = provide_reading(page.url.pathname.split("/")[2] || "learn");
+$effect(() => {
+	if (current) reading.enter(current.section);
+});
 </script>
 
 <svelte:head>
@@ -52,14 +62,19 @@ const section = $derived(nav.find((s) => s.key === current?.section));
 			</nav>
 		</details>
 
-		<!-- the line bird stands on the double bar of the page's last score, if it has one -->
-		{#key page.url.pathname}
-			<Perch>
-				<article class="prose">
-					{@render children()}
-				</article>
-			</Perch>
-		{/key}
+		<div class="page">
+			<!-- over a page with an example; a page without one hides it (below) -->
+			<div class="tools"><ReadingSwitch /></div>
+
+			<!-- the line bird stands on the double bar of the page's last score, if it has one -->
+			{#key page.url.pathname}
+				<Perch>
+					<article class="prose">
+						{@render children()}
+					</article>
+				</Perch>
+			{/key}
+		</div>
 	</div>
 {/if}
 
@@ -70,6 +85,25 @@ const section = $derived(nav.find((s) => s.key === current?.section));
 		grid-template-columns: var(--column) minmax(0, 1fr);
 		column-gap: clamp(2.5rem, 5vw, 5rem);
 		padding-top: clamp(1.5rem, 4vw, 3.5rem);
+		/* the page runs out to the page's gutter on a screen wider than the
+		   frame's measure, so its plates keep growing; the nav stays under the
+		   site's own. main is the measure, centred, and a percentage margin is of
+		   its width: this is how far main's edge sits in from the gutter */
+		margin-right: min(0px, calc(50% - 50vw + var(--gutter)));
+	}
+
+	.page {
+		min-width: 0;
+	}
+
+	.tools {
+		display: flex;
+		justify-content: flex-end;
+		margin-bottom: 0.5rem;
+	}
+
+	.page:not(:has(:is(.pair, .contrast))) .tools {
+		display: none;
 	}
 
 	/* the nav is meta, in the mono with riso; SCORE.md: one mono for labels */

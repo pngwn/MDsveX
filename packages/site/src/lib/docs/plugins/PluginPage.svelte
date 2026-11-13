@@ -4,8 +4,10 @@
 	// does, how to install and turn it on, the syntax it reads, and its example,
 	// built with the plugin on. Under the prose, its options from its types and
 	// the parts its package exports. docs/plugins/+layout.svelte puts it round
-	// every page whose frontmatter names a package
+	// every page whose frontmatter names a package. Both plates are the docs'
+	// one Plate, so a change to the plate changes these and every docs plate
 	import type { Snippet } from 'svelte';
+	import Plate from '../Plate.svelte';
 	import { tone } from '$lib/design/score/kinds';
 	import { CONCERNS } from './concerns';
 	import Example from './Example.svelte';
@@ -38,20 +40,13 @@
 </script>
 
 <div class="wide plugin" style:--own-line="var(--line-{own})" style:--own-name="var(--name-{own})">
-	<section class="plate" aria-labelledby="plugin-name">
-		<header class="head">
-			<div class="sigil" aria-hidden="true">
-				<span class="glyph" style:font-size={glyph.length > 7 ? '1.25rem' : undefined}>{glyph}</span>
-			</div>
-			<div class="title">
-				<p class="kicker">
-					{#each concerns as c, i (c.id)}<a class="concern" href="/docs/plugins?for={c.id}"><em>{c.name.toLowerCase()}</em></a>{i < concerns.length - 1 ? ' ' : ''}{/each}
-					<code class="pkg">{p.package}@{p.version}</code>
-				</p>
-				<h1 id="plugin-name">{p.title}</h1>
-				<p class="what">{p.description}</p>
-			</div>
-		</header>
+	<Plate id="plugin" mark={glyph} tone={own} title={p.title} level="h1" size="page">
+		{#snippet kicker()}
+			{#each concerns as c, i (c.id)}<a class="concern" href="/docs/plugins?for={c.id}"><em>{c.name.toLowerCase()}</em></a>{i < concerns.length - 1 ? ' ' : ''}{/each}
+			<code class="pkg">{p.package}@{p.version}</code>
+		{/snippet}
+
+		<div class="plate-lede"><p class="what">{p.description}</p></div>
 
 		<div class="setup">
 			<div>
@@ -82,14 +77,14 @@
 			<p class="label-h">An example</p>
 			<Example plugin={p} bare />
 		</div>
-	</section>
+	</Plate>
 
 	<div class="prose-body">
 		{@render children()}
 	</div>
 
-	<section class="plate tail" aria-label="Options and parts">
-		<div class="options">
+	<Plate size="page">
+		<section class="options" aria-label="Options">
 			<p class="label-h">Options, from its types <span class="count">{p.options.length}</span></p>
 			{#if p.options.length}
 				<dl>
@@ -105,81 +100,33 @@
 			{:else}
 				<p class="none">None.</p>
 			{/if}
-		</div>
+		</section>
 
-		<footer class="parts riso">
-			{#if p.exports.components.length}
-				<p><span class="label">Components</span> {#each p.exports.components as c, i (c)}{i ? ', ' : ''}<code>{p.package}/{c}</code>{/each}</p>
-			{/if}
-			{#if p.exports.css.length}
-				<p><span class="label">Stylesheet</span> {#each p.exports.css as c, i (c)}{i ? ', ' : ''}<code>{p.package}/{c}</code>{/each}<span class="quiet">, or <code>{p.factory}({'{'} css: false {'}'})</code> for none</span></p>
-			{/if}
-			<p><a href="/docs/plugins">Find another plugin</a> · <a href="/docs/plugins/writing/bundles">Write your own</a></p>
+		<!-- the texture inside: a mask on the part would clip its hairline -->
+		<footer class="parts">
+			<div class="riso">
+				{#if p.exports.components.length}
+					<p><span class="label">Components</span> {#each p.exports.components as c, i (c)}{i ? ', ' : ''}<code>{p.package}/{c}</code>{/each}</p>
+				{/if}
+				{#if p.exports.css.length}
+					<p><span class="label">Stylesheet</span> {#each p.exports.css as c, i (c)}{i ? ', ' : ''}<code>{p.package}/{c}</code>{/each}<span class="quiet">, or <code>{p.factory}({'{'} css: false {'}'})</code> for none</span></p>
+				{/if}
+				<p><a href="/docs/plugins">Find another plugin</a> · <a href="/docs/plugins/writing/bundles">Write your own</a></p>
+			</div>
 		</footer>
-	</section>
+	</Plate>
 </div>
 
 <style>
-	/* inside the docs' .prose article: every rule is under .plugin, so it outranks .prose's */
+	/* inside the docs' .prose article: every rule is under .plugin, so it outranks
+	   .prose's. The plates themselves, their head and the hairlines between
+	   their parts, are Plate.svelte's */
 	/* every grid here has a minmax(0, 1fr) column: code.css sets a block's code
 	   to max-content, and an auto column would grow to it, past the page */
 	.plugin {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
 		gap: 2.25rem;
-	}
-
-	.plugin .plate {
-		container-type: inline-size;
-		border: 1px solid var(--ink);
-		background: var(--paper);
-		min-width: 0;
-		font-size: 1rem;
-		line-height: 1.55;
-	}
-
-	.plugin .head {
-		display: grid;
-		grid-template-columns: 9rem minmax(0, 1fr);
-		border-bottom: 1px solid var(--ink);
-	}
-
-	.plugin .sigil {
-		position: relative;
-		display: grid;
-		place-items: center;
-		border-right: 1px solid var(--ink);
-		padding: 1.5rem 0.5rem 2rem;
-	}
-
-	.plugin .sigil::after {
-		content: '';
-		position: absolute;
-		left: 1rem;
-		right: 1rem;
-		bottom: 1rem;
-		height: 0.375rem;
-		background: var(--own-line);
-	}
-
-	.plugin .glyph {
-		font: 400 1.75rem / 1 var(--face-mono);
-		font-variant-ligatures: none;
-		color: var(--own-name);
-		white-space: nowrap;
-	}
-
-	.plugin .title {
-		padding: 1.5rem clamp(1rem, 3cqi, 2.25rem);
-		min-width: 0;
-	}
-
-	.plugin .kicker {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: baseline;
-		gap: 0.25rem 0.875rem;
-		margin: 0 0 0.25rem;
 	}
 
 	.plugin .concern {
@@ -204,30 +151,10 @@
 		overflow-wrap: anywhere;
 	}
 
-	.plugin h1 {
-		margin: 0;
-		font: 400 clamp(2.25rem, 7cqi, 3.5rem) / 1.02 var(--face-display);
-		letter-spacing: -0.01em;
-	}
-
 	.plugin .what {
 		max-width: 52ch;
 		margin: 0.625rem 0 0;
 		font-size: 1.0625rem;
-	}
-
-	.plugin .setup,
-	.plugin .reads,
-	.plugin .example,
-	.plugin .options,
-	.plugin .parts {
-		padding: 1.25rem clamp(1rem, 3cqi, 2.25rem) 1.5rem;
-		min-width: 0;
-	}
-
-	.plugin .setup,
-	.plugin .reads {
-		border-bottom: 1px solid var(--ink);
 	}
 
 	.plugin .example {
@@ -350,7 +277,6 @@
 	}
 
 	.plugin .parts {
-		border-top: 1px solid var(--ink);
 		font: 400 0.8125rem / 1.5 var(--face-mono);
 		color: var(--ink);
 	}
@@ -377,25 +303,5 @@
 		color: var(--ink);
 		text-decoration: underline 1px var(--staff);
 		text-underline-offset: 0.2em;
-	}
-
-	@container (max-width: 30rem) {
-		.plugin .head {
-			grid-template-columns: 5rem minmax(0, 1fr);
-		}
-
-		.plugin .glyph {
-			font-size: 1rem !important;
-		}
-
-		.plugin .sigil {
-			padding: 1rem 0.25rem 1.75rem;
-		}
-
-		.plugin .sigil::after {
-			left: 0.75rem;
-			right: 0.75rem;
-			bottom: 0.875rem;
-		}
 	}
 </style>

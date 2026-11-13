@@ -14,7 +14,7 @@ import * as svelte from 'svelte';
 import { compile as compile_svelte } from 'svelte/compiler';
 import * as server from 'svelte/internal/server';
 import { render } from 'svelte/server';
-import { pretty } from '../../../../build/examples.js';
+import { pretty } from '../render.js';
 import { pfm_tree } from '$lib/design/pfm';
 import { CONCERNS, type ConcernId } from './concerns';
 import { link, type Modules } from './link';
