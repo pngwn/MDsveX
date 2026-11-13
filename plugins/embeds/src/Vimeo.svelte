@@ -26,7 +26,7 @@
 			{src}
 			title={title || 'Vimeo video'}
 			loading="lazy"
-			allow="autoplay; fullscreen; picture-in-picture; clipboard-write"
+			allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
 			referrerpolicy="strict-origin-when-cross-origin"
 			allowfullscreen
 		></iframe>
