@@ -767,6 +767,12 @@ importers:
       '@sveltejs/vite-plugin-svelte':
         specifier: ^6.2.1
         version: 6.2.1(svelte@5.57.1(@typescript-eslint/types@8.57.2))(vite@7.1.9(@types/node@24.7.1)(lightningcss@1.33.0)(terser@5.44.0))
+      micromark:
+        specifier: ^4.0.2
+        version: 4.0.2
+      micromark-extension-gfm:
+        specifier: ^3.0.0
+        version: 3.0.0
       npm-run-all:
         specifier: ^4.1.5
         version: 4.1.5
@@ -10853,7 +10859,7 @@ snapshots:
   vite-node@1.6.1(@types/node@20.19.19)(lightningcss@1.33.0)(terser@5.44.0):
     dependencies:
       cac: 6.7.14
-      debug: 4.4.0
+      debug: 4.4.3
       pathe: 1.1.2
       picocolors: 1.1.1
       vite: 5.4.20(@types/node@20.19.19)(lightningcss@1.33.0)(terser@5.44.0)

@@ -1,17 +1,27 @@
 // the docs' examples at build time: every svx and md fence must compile, and a
-// fence can ask to be drawn as its score or shown with what it compiles to.
+// fence can ask to be drawn as its score, shown with what it compiles to, or
+// read by CommonMark beside mdsvex.
 //
-//   ```svx score     the parser's score of the example, the source a click away
-//   ```svx result    you write beside you get, the html rendered from the example
+//   ```svx score          the parser's score of the example, the source a click away
+//   ```svx result         you write beside you get, what mdsvex compiles it to
 //   ```svx result score   both, opening on the score
+//   ```svx error          you write beside the error its compile gives
+//   ```svx commonmark     the source read by CommonMark and by mdsvex, side by side
 //
-// The flags are fence meta, as `title=` and `eval` are, and the fence becomes an
-// `example` directive the way @mdsvex/plugin-diagram makes a mermaid fence one,
-// so a page needs no script block. src/lib/docs/Example.svelte renders it
-import { compile, fence_meta, FrontmatterError } from "mdsvex/compile";
+// `templates` compiles with the templates guide's two templates, `file="..."`
+// names the file an example stands for, `gfm` reads the CommonMark side as GFM
+// does, and `cue="regex"` rules the characters a contrast turns on.
+//
+// The flags are fence meta, as `title=` and `eval` are, and the fence becomes a
+// directive the way @mdsvex/plugin-diagram makes a mermaid fence one, so a page
+// needs no script block. The plugin also owns the plates a page is cut into,
+// `::::plate[Title](mark=…, tone=…)`, and the strip of their marks, `::marks`.
+// src/lib/docs renders them, design/docs/PLATES.md says how to write them
+import { compile, fence_meta } from "mdsvex/compile";
 import { compile as compile_svelte } from "svelte/compiler";
-import * as server from "svelte/internal/server";
-import { render } from "svelte/server";
+import { commonmark } from "../src/lib/docs/commonmark.js";
+import { compile_svx, pretty, rendered } from "../src/lib/docs/render.js";
+import { cue_ranges, options_for, segments_of } from "../src/lib/docs/setup.js";
 
 // an object with every key, for the names and files an example only mentions
 const anything = (value) =>
@@ -35,16 +45,6 @@ const example_options = {
 	templates: anything({ specifier: "/Template.svelte", components: [] }),
 };
 
-// frontmatter for a parser of its own, such as toml, is tolerated
-function compile_svx(source, options) {
-	try {
-		return compile(source, options).code;
-	} catch (error) {
-		if (!(error instanceof FrontmatterError)) throw error;
-		return compile(source, { ...options, frontmatter: { parse: () => ({}) } }).code;
-	}
-}
-
 // the example through mdsvex, then what it gives through svelte, which is
 // where an unclosed {#if} or a stray brace fails
 function compile_example(source) {
@@ -59,6 +59,8 @@ export function examples({ strict }) {
 			parse(node, ctx) {
 				const { lang } = fence_meta(node.info);
 				if (lang !== "svx" && lang !== "md") return;
+				// an error example is checked by the docs plugin, which needs it to fail
+				if (flags(node.info)?.error) return;
 				return () => {
 					try {
 						compile_example(node.text_content);
@@ -73,141 +75,175 @@ export function examples({ strict }) {
 	};
 }
 
-/**
- * the html an example renders to, with mdsvex's defaults and nothing of the
- * site: compiled, server rendered, its hydration marks taken out. A close
- * callback can't wait, and svelte's server render doesn't need to once the
- * component is a function, so the module is run in place: its one import is
- * svelte's server runtime. An example that imports anything else, or uses a
- * template, has no html of its own here
- */
-export function rendered(source) {
-	const code = compile_svx(source, { filename: "/example.svx", strict_directives: false, snippets: false });
-	const { js } = compile_svelte(code, { generate: "server", filename: "Example.svelte" });
-	const body = js.code
-		.replace(/^import \* as \$ from 'svelte\/internal\/server';$/m, "")
-		.replace(/^import 'svelte\/internal\/flags\/\w+';$/gm, "")
-		.replace(/^export default function/m, "return function")
-		// frontmatter's metadata, from the module script
-		.replace(/^export (const|let|function) /gm, "$1 ");
-	if (/^import\s/m.test(body)) throw new Error("it imports a module, which an example shown with its result can't");
-	const component = new Function("$", body)(server);
-	const html = render(component).body;
-	return pretty(html.replace(/<!--(?:\[!?\d*|\]|)-->/g, ""));
-}
+const FLAGS = ["score", "result", "error", "commonmark"];
 
-const BLOCK = new Set(
-	(
-		"address article aside blockquote caption dd details div dl dt fieldset figcaption figure footer form " +
-		"h1 h2 h3 h4 h5 h6 header hr li main nav ol p pre section summary table tbody td tfoot th thead tr ul"
-	).split(" "),
-);
-const VOID = new Set("area base br col embed hr img input link meta source track wbr".split(" "));
-
-/** html as the docs wrote it by hand: a block per line, indented by tabs, inline runs kept on their line */
-export function pretty(html) {
-	// a tree of tags and text, pre kept as written
-	const root = { tag: null, children: [] };
-	const stack = [root];
-	const token = /<pre\b[\s\S]*?<\/pre>|<!--[\s\S]*?-->|<\/?([a-zA-Z][\w-]*)[^>]*>|[^<]+/g;
-	for (const [text, name] of html.matchAll(token)) {
-		const top = stack[stack.length - 1];
-		if (text.startsWith("<pre")) top.children.push({ tag: "pre", raw: text, children: [] });
-		else if (!name) top.children.push(text);
-		else if (text[1] === "/") {
-			const at = stack.findLastIndex((n) => n.tag === name.toLowerCase());
-			if (at > 0) stack.length = at;
-		} else {
-			// as the docs write them: a bare boolean attribute, a space before a void's slash
-			const open = text.replace(/ ([\w-]+)=""/g, " $1").replace(/\s*\/>$/, " />");
-			const node = { tag: name.toLowerCase(), open, children: [] };
-			top.children.push(node);
-			if (!VOID.has(node.tag) && !open.endsWith("/>")) stack.push(node);
-		}
-	}
-
-	const is_block = (n) => typeof n !== "string" && BLOCK.has(n.tag);
-	const has_block = (n) => n.children.some(is_block);
-	const inline = (n) =>
-		typeof n === "string"
-			? n.replace(/\s+/g, " ")
-			: n.raw ?? `${n.open}${n.children.map(inline).join("")}${VOID.has(n.tag) ? "" : `</${n.tag}>`}`;
-
-	const lines = [];
-	const print = (nodes, depth) => {
-		const pad = "\t".repeat(depth);
-		let run = "";
-		const flush = () => {
-			if (run.trim()) lines.push(pad + run.trim());
-			run = "";
-		};
-		for (const n of nodes) {
-			if (!is_block(n) || n.raw || !has_block(n)) {
-				if (is_block(n)) {
-					flush();
-					lines.push(pad + inline(n).trim());
-				} else run += inline(n);
-				continue;
-			}
-			flush();
-			lines.push(pad + n.open);
-			print(n.children, depth + 1);
-			lines.push(`${pad}</${n.tag}>`);
-		}
-		flush();
-	};
-	print(root.children, 0);
-	return lines.join("\n");
-}
-
-/** the `score` and `result` flags of a fence's meta, null for a fence with neither */
+/** what a fence's meta asks of it, null for an svx or md fence that asks nothing */
 function flags(info) {
 	const { lang, props } = fence_meta(info);
 	if (lang !== "svx" && lang !== "md") return null;
 	const on = new Set(props.filter(([, value]) => value === true).map(([key]) => key));
-	if (!on.has("score") && !on.has("result")) return null;
-	return { lang, score: on.has("score"), result: on.has("result") };
+	if (!FLAGS.some((flag) => on.has(flag))) return null;
+	const value = (key) => props.find(([k, v]) => k === key && typeof v === "string")?.[1];
+	return {
+		score: on.has("score"),
+		result: on.has("result"),
+		error: on.has("error"),
+		commonmark: on.has("commonmark"),
+		gfm: on.has("gfm"),
+		templates: on.has("templates"),
+		file: value("file"),
+		cue: value("cue"),
+	};
 }
 
+/** an anchor from a plate's title, as heading_ids makes one from a heading */
+const slug = (text) =>
+	text
+		.toLowerCase()
+		.replace(/[^\p{L}\p{N}]+/gu, "-")
+		.replace(/^-|-$/g, "") || "plate";
+
 /**
- * the docs' own plugin: a flagged fence becomes an `example` directive over
- * the fence, with the source as an arg for the score and, for `result`, the
- * rendered html, highlighted as a fence of its own would be.
+ * the docs' own plugin.
  *
- * The html goes as an arg rather than as a fence appended to the directive:
- * the highlighter reads a fence's text from the source by its offsets, and a
- * fence a plugin adds has none, so every added fence shows the first's text
+ * A flagged fence becomes a directive over the fence: `example` for `score`,
+ * `result` and `error`, `contrast` for `commonmark`. Its args carry what the
+ * build made of it: mdsvex's compile and its mappings, the error, or the two
+ * readings, highlighted as a fence of their own would be. They go as args
+ * rather than as fences appended to the directive: the highlighter reads a
+ * fence's text from the source by its offsets, and a fence a plugin adds has
+ * none, so every added fence would show the first's text.
+ *
+ * A plate is a container the author writes. Its first prose, up to its first
+ * fence or directive, is wrapped as the plate's lede, which the plate sets in
+ * its head; its title and mark are left as plugin data, `plates`, for the
+ * page's strip. An entry of `::::added` is left there too
  */
 export function example({ highlight }) {
-	const fenced = (html) =>
-		compile(`\`\`\`html\n${html}\n\`\`\`\n`, { filename: "/result.svx", highlight }).code.trim();
+	const fenced = (lang, code) =>
+		compile(`\`\`\`${lang}\n${code}\n\`\`\`\n`, { filename: "/result.svx", highlight }).code.trim();
+	const where = (node, ctx) => `the example at line ${node.position.start.line} of ${ctx.filename}`;
+
+	/** the example's args from its source, as the fence asked */
+	function example_args(source, asked, node, ctx) {
+		const args = { source };
+		if (asked.file) args.file = asked.file;
+		if (asked.score) args.score = "open";
+		if (!asked.result && !asked.error) return args;
+		let result;
+		try {
+			result = compile(source, { ...options_for(asked), sourcemap: true });
+		} catch (error) {
+			if (!asked.error) throw new Error(`${where(node, ctx)} has no result: ${error.message}`);
+			args.error = error.message;
+			return args;
+		}
+		if (asked.error) throw new Error(`${where(node, ctx)} is flagged error but compiles`);
+		args.code = result.code;
+		args.segments = JSON.stringify(segments_of(result));
+		return args;
+	}
+
+	/** a contrast's args: the source read by CommonMark and by mdsvex */
+	function contrast_args(source, asked, node, ctx) {
+		const html = pretty(commonmark(source, asked.gfm).trim());
+		let ours;
+		try {
+			ours = rendered(source);
+		} catch (error) {
+			throw new Error(`${where(node, ctx)} has no mdsvex reading: ${error.message}`);
+		}
+		const args = { source, commonmark: html, commonmark_code: fenced("html", html), mdsvex: ours, mdsvex_code: fenced("html", ours) };
+		if (asked.gfm) args.gfm = "true";
+		const cue = cue_ranges(source, asked.cue);
+		// a cue that rules nothing has lost what it points at, such as trailing
+		// spaces an editor trimmed
+		if (asked.cue && !cue.length) throw new Error(`${where(node, ctx)} has a cue, ${asked.cue}, that matches nothing in it`);
+		if (cue.length) args.cue = JSON.stringify(cue);
+		return args;
+	}
+
+	/** what a plate or an `add` leaves for the strip, and the args it is drawn with */
+	function record(node, ctx, kind) {
+		const label = node.first_child?.type === "directive_label" ? node.first_child.text_content : "";
+		const args = node.attrs.args ?? {};
+		const id = args.id ? ctx.id(args.id, { fixed: true }) : ctx.id(slug(label));
+		const n = (ctx.scratch[kind] = (ctx.scratch[kind] ?? 0) + 1);
+		const section = ctx.scratch.section ?? "";
+		node.attrs.args = { ...args, id, section, n: String(n) };
+		ctx.add("plates", { id, kind, mark: args.mark ?? "", tone: args.tone ?? "other", title: label, section });
+	}
+
+	// a plate's first prose is its lede, wrapped so the plate can set it in its head
+	const lede = (node, ctx) => {
+		if (ctx.state.ended || ctx.state.lede) return;
+		ctx.state.lede = node.wrap_from("directive_container", { name: "plate_lede" });
+	};
+	const end = (node, ctx) => {
+		ctx.state.ended = true;
+		ctx.state.lede?.close();
+		ctx.state.lede = null;
+	};
 
 	return {
-		name: "docs-example",
+		name: "docs",
 		module: "$lib/docs/directives.js",
-		directives: { example: {} },
+		directives: {
+			example: {},
+			contrast: {},
+			plate: {
+				parse(plate, ctx) {
+					return () => {
+						ctx.state.lede?.close();
+						record(plate, ctx, "plate");
+					};
+				},
+				children: {
+					paragraph: lede,
+					list: lede,
+					block_quote: lede,
+					code_fence: end,
+					directive_container: end,
+					directive_leaf: end,
+					table: end,
+					html: end,
+					heading: end,
+					thematic_break: end,
+					svelte_block: end,
+				},
+			},
+			plate_lede: {},
+			notes: {},
+			edges: {},
+			marks: {},
+			added: {},
+			add: {
+				parse(add, ctx) {
+					return () => record(add, ctx, "add");
+				},
+			},
+		},
 		parse: {
+			heading: {
+				parse(node, ctx) {
+					// the section a plate is in, for its kicker and the strip
+					if (node.depth !== 2) return;
+					return () => {
+						ctx.scratch.section = node.text_content.trim();
+					};
+				},
+			},
 			code_fence: {
 				parse(node, ctx) {
 					const asked = flags(node.info);
 					if (!asked) return;
-					const wrapper = node.wrap_from("directive_container", { name: "example", args: {} });
+					const name = asked.commonmark ? "contrast" : "example";
+					const wrapper = node.wrap_from("directive_container", { name, args: {} });
 					wrapper.close();
 					// the code has arrived once the fence closes
 					return () => {
 						const source = node.text_content;
-						const args = { source };
-						if (asked.score) args.score = "open";
-						if (asked.result) {
-							try {
-								args.result = fenced(rendered(source));
-							} catch (error) {
-								throw new Error(
-									`the example at line ${node.position.start.line} of ${ctx.filename} has no result: ${error.message}`,
-								);
-							}
-						}
-						wrapper.attrs.args = args;
+						wrapper.attrs.args = asked.commonmark ? contrast_args(source, asked, node, ctx) : example_args(source, asked, node, ctx);
 					};
 				},
 			},

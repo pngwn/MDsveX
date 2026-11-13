@@ -29,13 +29,17 @@ The 1.0 design foundation, phase 0 of `design/SITE_PLAN.md`. `design/SCORE.md` i
 - `cue`, source ranges `[start, end)` the page points at, ruled under their cells in the ink, for a contrast to show which characters made the difference.
 - `label`, the figure's accessible name. The source is also given whole to screen readers; the drawing is hidden from them.
 
-A docs page doesn't import it. It flags a fence, and `packages/site/build/examples.js` makes the fence an `example` directive at build time (`src/lib/docs/Example.svelte`):
+A docs page doesn't import it. It flags a fence, and `packages/site/build/examples.js` makes the fence a directive at build time (`src/lib/docs/Pair.svelte` and `Contrast.svelte`):
 
 ````md
-```svx score       the score, the source a click away
-```svx result      you write beside you get, the score a click away
-```svx result score   both, opening on the score
+```svx score         the score, the source a click away
+```svx result        you write beside you get, mdsvex's compile, the score a click away
+```svx result score  both, opening on the score
+```svx error         you write beside the error its compile gives
+```svx commonmark    the source read by CommonMark and by mdsvex, a `cue` ruled on the score
 ````
+
+A page is cut into plates, `::::plate[Title](mark=…, tone=…)`, drawn by `src/lib/docs/Plate.svelte`, the one plate plugin pages use too. `design/docs/PLATES.md` says how to write them.
 
 Sizing is custom properties on any parent: `--size`, `--track`, `--row`, `--name-size`, `--quiet-row`, `--line-gap`, `--block-gap`, `--underlay-gap`, `--inset`, `--margin`. The defaults are v12's, and below 600px the size, tracking, inset and names step down the way v12's page did.
 
