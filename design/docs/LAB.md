@@ -1,6 +1,8 @@
 # Docs lab: three directions for the docs
 
-2026-11-02. Three ways to draw a docs page, each drawn over the same two pages: `docs/learn/markdown` (the language tour) and `docs/guides/templates` (a typical guide). They are at `/docs-lab`, which links all six. Screenshots at 1440 and 375, light, with the real `/atlas` beside them, are in `design/screenshots/docs-lab/`. The `*-reading-on` crops show the page switch turned on.
+2026-11-02. Three ways to draw a docs page, each drawn over the same two pages: `docs/learn/markdown` (the language tour) and `docs/guides/templates` (a typical guide). They were at `/docs-lab`, which linked all six.
+
+**2026-11-13: Plates is the docs.** The two pages are real plates now, the machinery is in `packages/site/src/lib/docs` and `build/examples.js`, and `/docs-lab` is gone; Margins and Workbook are in this branch's history (`aad43ab5`). `design/docs/PLATES.md` is how to cut the other pages. This file stays as the record of the round. Screenshots at 1440 and 375, light, with the real `/atlas` beside them, are in `design/screenshots/docs-lab/`. The `*-reading-on` crops show the page switch turned on.
 
 All three use the real prose, the real compile and the real parser:
 - The pages are data in `packages/site/src/lib/docs-lab/content/`, split into units (one concept each), with the prose as written. `build.server.ts` compiles every piece with mdsvex at build time.
@@ -62,6 +64,8 @@ Lessons. Each concept with an example is a numbered lesson: the brief on the lef
 - Screenshots: `plates-*-{1440,1920,375}-light.jpg`.
 
 ## What it takes to apply Plates to all 42 pages
+
+As planned on 2026-11-02. Step 1 is done (2026-11-13); where it differs from this plan, `PLATES.md` is right.
 
 1. **Code, once.** Move the lab's pieces into `lib/docs`:
    - `Pair` replaces `Example.svelte` and reads the page's reading context.
