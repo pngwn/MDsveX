@@ -204,10 +204,3 @@ export function diagram() {
 ::::
 
 What a handler gets and can do is under [plugin handlers](/docs/plugins/writing/parse-plugins#plugin-handlers).
-
-<style>
-	/* a table that is a plate's part keeps inside its margins (the fix belongs in lib/docs/Plate.svelte) */
-	table {
-		max-width: calc(100% - 2 * var(--pad, 0px));
-	}
-</style>

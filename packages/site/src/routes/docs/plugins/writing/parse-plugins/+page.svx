@@ -196,10 +196,3 @@ const no_comments = {
 ::::
 
 [`PLUGINS.md`][plugins-md] in the repository has the whole API, with what a revoke undoes and how handlers run over a stream.
-
-<style>
-	/* a table that is a plate's part keeps inside its margins (the fix belongs in lib/docs/Plate.svelte) */
-	table {
-		max-width: calc(100% - 2 * var(--pad, 0px));
-	}
-</style>

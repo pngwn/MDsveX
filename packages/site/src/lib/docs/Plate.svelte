@@ -250,6 +250,24 @@
 		top: -1.25rem;
 	}
 
+	/* a table is a part that scrolls in its own box. prose.css caps it at 100%,
+	   of the whole grid area, so here it is capped at the part's width, inside
+	   the margins. Its scroll box would clip the hairline drawn outside it, so
+	   the hairline is its top border, its image outset to the plate's edges */
+	.plate > :global(table) {
+		max-width: calc(100% - 2 * var(--pad));
+		border-top: 1px solid var(--ink);
+		border-image: linear-gradient(var(--ink), var(--ink)) 1 / 1px 0 0 / 0 var(--pad);
+	}
+
+	.plate > :global(table)::before {
+		display: none;
+	}
+
+	.plate > :global(table:first-child) {
+		border-top: 0;
+	}
+
 	/* a fence the example under it is compiled with: one part, no hairline between */
 	.plate > :global(pre + :is(.pair, .contrast)) {
 		padding-top: 0;
