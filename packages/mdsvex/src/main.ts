@@ -1,5 +1,11 @@
 import type { ParsePlugin, SyntaxOptions } from '@mdsvex/parse';
-import type { Plugin, PluginOption, Rollup } from 'vite';
+import type {
+	Plugin,
+	PluginOption,
+	ResolvedConfig,
+	Rollup,
+	ViteDevServer,
+} from 'vite';
 import remapping from '@ampproject/remapping';
 // ahead of compile, so @mdsvex/render/sourcemap stays first in the chunk they share
 import { base64_utf8, chained_base64, pfm_map } from './sourcemap_chain.js';
@@ -67,6 +73,14 @@ import type { MetadataDev, ResolveImport } from './metadata_query.js';
 import { links_of } from './link_urls.js';
 import type { BaseImport, Rewrite } from './link_urls.js';
 import { need_error } from './fence_sources.js';
+import { STATIC_ENVIRONMENT } from './shells.js';
+import {
+	document_modules,
+	live_id,
+	static_environment,
+	static_environment_plugin,
+	static_shells,
+} from './static_render.js';
 import { slashed, source_files } from './source_files.js';
 import {
 	SNIPPET_MARK,
@@ -554,6 +568,9 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	const templates = has_templates
 		? template_registry(written_templates!, tracker!, matches)
 		: null;
+	// a directives barrel or the module of a plugin can register a static component
+	const statics = tracker === null && plugins === null ? null : static_shells();
+	if (statics !== null) inputs.shells = statics.table;
 	let command: 'build' | 'serve' = 'serve';
 	/** true when the handlers of a plugin run for a document */
 	const can_plug =
@@ -852,6 +869,11 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			}
 		}
 		const needs = parsed.needs;
+		if (statics !== null && needs !== undefined) {
+			const read = await statics.render(needs, id, clean_id(id), static_file);
+			// a watching build compiles the document again when a shell it used changes
+			if (command === 'build') for (const path of read) ctx.addWatchFile(path);
+		}
 		// it waited for its plugins alone
 		if (needs === undefined || !needs.some((need) => need.type === 'source')) {
 			if (!shown.empty) shown.drop(clean_id(id));
@@ -999,6 +1021,59 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		};
 	}
 
+	/**
+	 * the dev server a build renders static directives in, from the config
+	 * file of the build, so every plugin, alias and define applies, it only
+	 * serves modules to the runner of its static environment
+	 */
+	async function static_server(config: ResolvedConfig): Promise<ViteDevServer> {
+		const { createServer } = await import('vite');
+		return createServer({
+			configFile: config.configFile,
+			root: config.root,
+			mode: config.mode,
+			logLevel: 'warn',
+			clearScreen: false,
+			appType: 'custom',
+			server: { middlewareMode: true, hmr: false, ws: false, watch: null },
+			optimizeDeps: { noDiscovery: true, include: [] },
+		});
+	}
+
+	/** the component file of a static directive a virtual id serves */
+	function static_file(specifier: string, name: string): string | undefined {
+		return (
+			registry?.static_file(specifier, name) ??
+			templates?.static_file(specifier, name) ??
+			plugins?.static_file(specifier, name)
+		);
+	}
+
+	/**
+	 * a directives module that serves a static directive resolves with the
+	 * live query outside the static environment, while shells render, so
+	 * the client and the server render never load a static component
+	 */
+	async function live_module(
+		ctx: { environment?: { name: string } },
+		id: string,
+		found: Promise<Rollup.ResolvedId | null | undefined>
+	): Promise<Rollup.ResolvedId | null | undefined> {
+		const resolved = await found;
+		if (
+			resolved === null ||
+			resolved === undefined ||
+			resolved.external ||
+			!inputs.await_shells ||
+			ctx.environment?.name === STATIC_ENVIRONMENT ||
+			(registry?.static_module(id) ??
+				templates?.static_module(id) ??
+				plugins?.static_module(id)) === undefined
+		)
+			return resolved;
+		return { ...resolved, id: live_id(resolved.id) };
+	}
+
 	/** undefined for an id that is no snippet, sub requests of one are not it either */
 	function load_snippet(ctx: Rollup.PluginContext, id: string) {
 		if (id.indexOf('?') !== -1) return;
@@ -1017,19 +1092,23 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 
 			config: {
 				order: 'pre',
-				async handler(config) {
+				async handler(config, env) {
 					// kit passes this same array to vite-plugin-svelte and reads it
 					// lazily, so pushing here registers our extensions with both
 					const plugins = await flat_plugins(config.plugins);
 					const registered = api_extensions(
 						plugins.find((p) => p.name === 'vite-plugin-sveltekit-setup')
 					);
-					if (!registered) return;
-					// with no extensions option this is a default shared by every
-					// sveltekit() call in the process
-					for (const ext of extensions) {
-						if (!registered.includes(ext)) registered.push(ext);
+					if (registered) {
+						// with no extensions option this is a default shared by every
+						// sveltekit() call in the process
+						for (const ext of extensions) {
+							if (!registered.includes(ext)) registered.push(ext);
+						}
 					}
+					// static components render in an environment of their own, a build uses the one of the dev server it starts
+					if (statics !== null && env.command === 'serve')
+						return static_environment();
 				},
 			},
 
@@ -1038,6 +1117,21 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				templates?.set_root(config.root);
 				plugins?.set_root(config.root);
 				command = config.command;
+				if (statics !== null && command === 'build') {
+					// a build has no environment that runs modules, it starts a dev server from the same config
+					if (config.configFile)
+						statics.build(
+							config.configFile + '\0' + config.root + '\0' + config.mode,
+							() => static_server(config)
+						);
+					else
+						statics.refuse(
+							'can not render in a build whose vite config was given inline (configFile: false), ' +
+								'a build renders static directives in a dev server it starts from the config file'
+						);
+					inputs.shells = statics.table;
+					inputs.await_shells = true;
+				}
 				root = config.root;
 				set_links(config.root, config.base);
 				log = (message) => config.logger.warn('[mdsvex] ' + message);
@@ -1069,6 +1163,9 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			},
 
 			configureServer(server) {
+				// a document stops after its parse until its static directives have shells
+				if (statics !== null && statics.attach(server))
+					inputs.await_shells = true;
 				dev = {
 					config: server.config,
 					// vite watches a file outside the root once it is a module, a document read for its metadata never is
@@ -1083,12 +1180,22 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				// one clear error at startup rather than one per document
 				if (registry !== null) await registry.ensure(this);
 				if (templates !== null) await templates.ensure(this);
-				if (plugins !== null) await plugins.ensure(this);
+				if (plugins !== null) {
+					await plugins.ensure(this);
+					// a new array once the scan found a static directive
+					inputs.plugins = plugins.bundles;
+				}
 				manifest.schedule();
 			},
 
-			async buildEnd() {
+			async buildEnd(error) {
 				await manifest.flush();
+				if (error !== undefined) await statics?.close();
+			},
+
+			async closeBundle() {
+				// the shells stay for a later build of the process, sveltekit builds twice
+				await statics?.close();
 			},
 
 			resolveId(id, importer) {
@@ -1101,23 +1208,39 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 					queried_data.resolve(this, id, importer) ??
 					queried_text.resolve(this, id, importer);
 				if (queried !== undefined) return queried;
+				// mdsvex serves it from what the static environment compiled
+				if (statics !== null && statics.is_style(id)) return id;
 				if (
 					registry !== null &&
 					(id.startsWith(COMPONENTS_ID) || id.startsWith(DIRECTIVES_ID))
-				)
-					return registry.resolve(this, id);
+				) {
+					const found = registry.resolve(this, id);
+					return id.startsWith(DIRECTIVES_ID)
+						? live_module(this, id, found)
+						: found;
+				}
 				if (templates !== null && id.startsWith(TEMPLATE_ID))
 					return templates.resolve(this, id);
 				if (templates !== null && id.startsWith(TEMPLATE_DIRECTIVES_ID))
-					return templates.resolve_directives(this, id);
-				if (
-					plugins !== null &&
-					(id.startsWith(PLUGIN_ID) || id.startsWith(PLUGIN_COMPONENTS_ID))
-				)
+					return live_module(this, id, templates.resolve_directives(this, id));
+				if (plugins !== null && id.startsWith(PLUGIN_COMPONENTS_ID))
 					return plugins.resolve(this, id);
+				if (plugins !== null && id.startsWith(PLUGIN_ID))
+					return live_module(
+						this,
+						id,
+						Promise.resolve(plugins.resolve(this, id))
+					);
 			},
 
 			load(id) {
+				if (statics !== null) {
+					// an asset a static component imports loads as a marker the shell turns back into an import
+					if (this.environment?.name === STATIC_ENVIRONMENT) {
+						const marked = statics.asset(id, this.environment.config);
+						if (marked !== undefined) return marked;
+					} else if (statics.is_style(id)) return statics.style(id);
+				}
 				if (id.indexOf(SNIPPET_MARK) !== -1) {
 					const snippet = load_snippet(this, id);
 					if (snippet !== undefined) return snippet;
@@ -1201,6 +1324,8 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				// the dev server rescans in hotUpdate instead
 				if (command !== 'build') return;
 				const file = clean_id(id);
+				// a static component that changed renders again for the documents that watch it
+				statics?.changed(file);
 				// a document that read it compiles again with what it reads now
 				compiler.invalidate([slashed(file)]);
 				if (registry !== null && registry.files().includes(file))
@@ -1211,6 +1336,23 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 
 			async hotUpdate(update) {
 				const file = update.file;
+				if (statics !== null) {
+					// nothing hot runs a static component, the documents it shaped compile again
+					if (this.environment.name === STATIC_ENVIRONMENT) {
+						statics.touch(file, update.timestamp);
+						return [];
+					}
+					// every path below reads update.modules, so the documents join it
+					if (statics.touch(file, update.timestamp))
+						for (const mod of document_modules(
+							this.environment.moduleGraph,
+							// the styles too, they are no module of the file that changed
+							[...statics.documents(), ...statics.styles()],
+							clean_id,
+							update.timestamp
+						))
+							if (!update.modules.includes(mod)) update.modules.push(mod);
+				}
 				// files outlive a reset, so a later environment still sees the change
 				const in_root = registry !== null && registry.files().includes(file);
 				const in_templates =
@@ -1341,5 +1483,6 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				}
 			},
 		},
+		...(statics === null ? [] : [static_environment_plugin()]),
 	];
 }
