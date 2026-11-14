@@ -16,7 +16,7 @@ parse_plugins: ParsePlugin[];
 ::::plate[Keyed by node type](mark="parse", tone=expr)
 Parse plugins change the tree as the parser builds it. A plugin is an object keyed by node type. Each `parse` function gets the node, and can return a function that runs when the node closes, once everything inside it is known:
 
-```js
+```js config
 const external_links = {
 	link: {
 		parse(node) {
@@ -29,6 +29,10 @@ const external_links = {
 
 mdsvex({ parse_plugins: [external_links] });
 ```
+
+```svx result config
+Read the [Svelte docs](https://svelte.dev/docs) or the [guides](/docs/guides).
+```
 ::::
 
 ::::plate[`sequential: true`](mark="text", tone=text)
@@ -36,7 +40,7 @@ A plugin with `sequential: true` runs over the finished tree instead, after [`he
 
 A sequential plugin can also rewrite text. Its `text` function is called for each run of text in the document, and `run.replace` puts text or a node in place of a range of it:
 
-```js
+```js config
 const issues = {
 	sequential: true,
 	text(run) {
@@ -48,6 +52,12 @@ const issues = {
 		}
 	}
 };
+
+mdsvex({ parse_plugins: [issues] });
+```
+
+```svx result config
+Fixed in #12 and #14, not in `#13`.
 ```
 
 :::notes
@@ -180,13 +190,21 @@ The parser opens some nodes on a guess, such as an emphasis before it has seen t
 ::::plate[`remove()`](mark="remove", tone=other)
 `remove()` works where nothing can ask for the node back: in the function a handler returns, for a node that is not pending, or anywhere in a `sequential` plugin. A node removes itself or something inside it.
 
-```js
+```js config
 // comments do not reach the page
 const no_comments = {
 	html_comment: {
 		parse: (node) => () => node.remove()
 	}
 };
+
+mdsvex({ parse_plugins: [no_comments] });
+```
+
+```svx result config
+<!-- a draft, not ready -->
+
+Ready.
 ```
 ::::
 

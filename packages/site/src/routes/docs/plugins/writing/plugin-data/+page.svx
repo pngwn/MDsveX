@@ -10,7 +10,7 @@ A plugin can hand something back from the parse of a document, such as a table o
 ::::plate[`ctx.set` and `ctx.add`](mark="set", tone=expr)
 `ctx.set(key, value)` keeps one value under a key and `ctx.add(key, value)` adds an entry to a list. `ctx.data` reads what the plugin has written so far:
 
-```js
+```js config
 const reading_time = {
 	name: 'reading_time',
 	parse: {
@@ -26,6 +26,14 @@ const reading_time = {
 };
 
 mdsvex({ plugins: [reading_time] });
+```
+
+```svx result config
+# A short post
+
+It has two paragraphs.
+
+This is the second one.
 ```
 
 :::notes
