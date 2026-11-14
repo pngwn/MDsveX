@@ -1,6 +1,6 @@
 # Plugin directives: design
 
-Status: phases 0 to 3 are built (2026-10-11): the `plugins` option, bundles, bound handlers and `wrap_from`. One owner per directive name and observers (§3.5) were added 2026-10-24. §3.1, §3.2, §3.4 and §7 describe what was built. Static directives (§5) and the kit plugins are not started. Two points are implemented as drafted and not yet ruled on, Q1 and Q10 in §9.
+Status: phases 0 to 3 are built (2026-10-11): the `plugins` option, bundles, bound handlers and `wrap_from`. One owner per directive name and observers (§3.5) were added 2026-10-24. §3.1, §3.2, §3.4 and §7 describe what was built. Static directives (§5) are redesigned in `design/static-directives.md`, which replaces §5 and answers Q4, Q5 and Q6. The kit plugins are not started. Two points are implemented as drafted and not yet ruled on, Q1 and Q10 in §9.
 
 Sources:
 - The plugin audit (`plugins/PLUGIN_AUDIT.md`): the Presentation concern, and the directive rows in its §4.
@@ -375,6 +375,8 @@ tabs: {
 A directive's args are its `args` attr, an object of strings, which is how the parser sets them (`start_block_directive` in `packages/parse/src/main.ts`). A plugin sets the same attr, and the values reach the component as string props. Every value must be a string: the renderer calls `indexOf` on each one and throws on anything else, so the node view checks args when they are set (§3.3). `args: null` is harmless. `Tabs.svelte` renders every `label` in a tab list and every `children` in a panel, which is why it needs the parts separated. Tabs is live, not static.
 
 ## 5. Static directives
+
+> Superseded by `design/static-directives.md` (2026-11-13). Kept for the shell model of §5.2, which the new note reuses.
 
 Many directive components exist only because a component is a nicer way to write HTML: a callout, a badge, a step. They have no state and no handlers, but each instance is still imported, instantiated and hydrated.
 
