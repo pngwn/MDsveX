@@ -101,6 +101,8 @@ describe('compile inputs', () => {
 			unwrap_images: undefined,
 			heading_ids: undefined,
 			smart_punctuation: undefined,
+			shells: undefined,
+			await_shells: false,
 			await_sources: false,
 			await_plugins: false,
 		});

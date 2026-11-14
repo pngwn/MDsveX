@@ -18,6 +18,23 @@ export interface ScannedExports {
 	stars: string[];
 	/** namespace re-exports, export * as name from specifier */
 	namespaces: { name: string; specifier: string }[];
+	/** named re-exports, export { imported as name } from specifier, in source order */
+	reexports: Reexport[];
+	/** specifiers of import statements, which bind a name or only run the module */
+	imports: string[];
+}
+
+/** one name of export { imported as name } from specifier */
+export interface Reexport {
+	name: string;
+	/** the name the module exports, default for a component */
+	imported: string;
+	specifier: string;
+}
+
+/** a scan of a module with no script */
+export function no_exports(): ScannedExports {
+	return { names: [], stars: [], namespaces: [], reexports: [], imports: [] };
 }
 
 // the name of export * as name from, an es2022 string name keeps its quotes
@@ -36,8 +53,7 @@ export function read_exports(
 	strip_types?: StripTypes
 ): ScannedExports {
 	const js = kind === 'svelte' ? module_script(code) : code;
-	if (js === null || js.trim() === '')
-		return { names: [], stars: [], namespaces: [] };
+	if (js === null || js.trim() === '') return no_exports();
 	return lex(strip_types === undefined ? js : strip_types(js));
 }
 
@@ -48,21 +64,47 @@ function lex(js: string): ScannedExports {
 		: exports.map((e) => e.n);
 	const stars: string[] = [];
 	const namespaces: { name: string; specifier: string }[] = [];
+	const reexports: Reexport[] = [];
+	const plain: string[] = [];
 	for (let i = 0; i < imports.length; i++) {
 		const imp = imports[i];
+		// t 1 is a static statement, dynamic imports and import.meta are not
+		if (imp.n === undefined || imp.t !== 1) continue;
 		// a re-export statement starts with export, a namespace re-export is a name instead
-		if (imp.n === undefined || !js.startsWith('export', imp.ss)) continue;
+		if (!js.startsWith('export', imp.ss)) {
+			plain.push(imp.n);
+			continue;
+		}
 		const statement = js.slice(imp.ss, imp.se);
 		if (/^export\s*\*\s*from/.test(statement)) stars.push(imp.n);
 		else {
 			const m = NAMESPACE.exec(statement);
 			if (m !== null) {
-				const name = /^["']/.test(m[1]) ? m[1].slice(1, -1) : m[1];
-				namespaces.push({ name, specifier: imp.n });
+				namespaces.push({ name: unquoted(m[1]), specifier: imp.n });
+				continue;
+			}
+			const clause = CLAUSE.exec(statement);
+			if (clause === null) continue;
+			BINDING.lastIndex = 0;
+			let b: RegExpExecArray | null;
+			while ((b = BINDING.exec(clause[1])) !== null) {
+				const imported = unquoted(b[1]);
+				const name = b[2] === undefined ? imported : unquoted(b[2]);
+				reexports.push({ name, imported, specifier: imp.n });
 			}
 		}
 	}
-	return { names, stars, namespaces };
+	return { names, stars, namespaces, reexports, imports: plain };
+}
+
+// the braces of export { ... } from, a quoted name holds no brace the lexer accepts
+const CLAUSE = /^export\s*\{([^}]*)\}/;
+const BINDING =
+	/([\w$]+|"[^"]*"|'[^']*')(?:\s+as\s+([\w$]+|"[^"]*"|'[^']*'))?/g;
+
+/** an es2022 string name without its quotes */
+function unquoted(name: string): string {
+	return /^["']/.test(name) ? name.slice(1, -1) : name;
 }
 
 const DECLARED = /\bexport\s+(?:const|let|var)\b/;

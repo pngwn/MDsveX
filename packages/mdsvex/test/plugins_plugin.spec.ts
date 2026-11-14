@@ -25,7 +25,6 @@ function steps(): Bundle {
 		module: '#lib/steps/index.js',
 		directives: {
 			steps: {
-				static: true,
 				children: {
 					heading(node, ctx) {
 						ctx.state.step?.close();
@@ -37,7 +36,7 @@ function steps(): Bundle {
 					},
 				},
 			},
-			step: { static: true },
+			step: {},
 		},
 		components: { specifier: '#lib/steps/elements.js', names: ['hr'] },
 	};

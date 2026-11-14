@@ -1,6 +1,10 @@
 import type { Rollup } from 'vite';
 import type { TemplateEntry, TemplateOptions } from './compile.js';
-import { split_exports } from './component_registry.js';
+import {
+	directive_source,
+	manifest_directives,
+	split_exports,
+} from './component_registry.js';
 import { same_names } from './export_tracker.js';
 import type { ExportTracker, Warn } from './export_tracker.js';
 import {
@@ -13,6 +17,8 @@ import {
 } from './ids.js';
 import type { MdsvexOptions, TemplateSpec } from './main.js';
 import type { ManifestTemplate } from './manifest.js';
+import { mode_key, static_names } from './static_directives.js';
+import type { StaticNames } from './static_directives.js';
 import { template_module } from './template_module.js';
 
 const has_own = Object.prototype.hasOwnProperty;
@@ -39,6 +45,10 @@ interface TemplateDirectives {
 	spec: string;
 	file: string;
 	names: string[];
+	/** the names served by a .static. component, with their files */
+	statics: StaticNames;
+	/** what decided static, a rescan with another resolves again */
+	key: string;
 }
 
 /**
@@ -84,7 +94,7 @@ export function template_registry(
 			if (m.directives.length !== 0) {
 				entry.directives = [];
 				for (const d of m.directives) {
-					entry.directives.push({ specifier: d.virtual, names: d.names });
+					entry.directives.push(directive_source(d));
 					directive_ids.set(d.virtual, d);
 					own.push(d.file);
 				}
@@ -113,8 +123,16 @@ export function template_registry(
 			);
 		}
 		const file = clean_id(resolved.id);
-		const names = (await tracker.scan(file, warn)).names;
-		return { virtual, owner, spec, file, names };
+		const scanned = await tracker.scan(file, warn);
+		return {
+			virtual,
+			owner,
+			spec,
+			file,
+			names: scanned.names,
+			statics: await static_names(ctx, file, scanned),
+			key: mode_key(scanned),
+		};
 	}
 
 	async function load(ctx: Rollup.PluginContext) {
@@ -227,6 +245,17 @@ export function template_registry(
 			if (d === undefined) return undefined;
 			return ctx.resolve(d.spec, d.owner, { skipSelf: true });
 		},
+		/** the component file of a static directive the module of id serves, undefined for none */
+		static_file(id: string, name: string): string | undefined {
+			return directive_ids.get(id)?.statics.files[name];
+		},
+		/** the directives module of a virtual id that serves a static directive, undefined for none */
+		static_module(id: string): string | undefined {
+			const d = directive_ids.get(id);
+			return d !== undefined && d.statics.names.length !== 0
+				? d.file
+				: undefined;
+		},
 		/** the files a document wrapped in the named template read names from */
 		files_of(name: string | undefined): readonly string[] {
 			return name === undefined ? [] : (files_by_name.get(name) ?? []);
@@ -254,11 +283,7 @@ export function template_registry(
 									file: m.extra.file,
 									names: m.extra.names,
 								},
-					directives: m.directives.map((d) => ({
-						id: d.virtual,
-						file: d.file,
-						names: d.names,
-					})),
+					directives: m.directives.map(manifest_directives),
 				};
 			}
 			return out;
@@ -336,6 +361,12 @@ export function template_registry(
 				}
 				for (let i = 0; i < m.directives.length; i++) {
 					if (m.directives[i].file !== file) continue;
+					if (mode_key(scanned) !== m.directives[i].key) {
+						// a re-export moved, which may change a mode, it resolves in the next transform
+						tracker.mark(file, timestamp);
+						reset();
+						return true;
+					}
 					const cur = list.get(name)!;
 					const directives = cur.directives.slice();
 					directives[i] = { ...directives[i], names: scanned.names };
