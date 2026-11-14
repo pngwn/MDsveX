@@ -63,8 +63,14 @@ export { default as img } from './Image.svelte';
 export { default as a } from './Link.svelte';
 ```
 
-```js
+```js config
 mdsvex({ components: '#lib/markdown.js' });
+```
+
+```svx result config
+[About](/about)
+
+![A penguin](/penguin.png)
 ```
 
 :::notes
@@ -138,14 +144,14 @@ Svelte ignores props a component doesn't declare, so a replacement only reads wh
 ::::plate[HTML you type](mark="<a>", tone=comp)
 By default, only elements written as markdown are replaced, so typing HTML such as `<a>` gets you the plain element. With `component_mode: 'all'`, lowercase HTML you type is replaced as well:
 
-```js
+```js config
 mdsvex({
 	components: '#lib/markdown.js',
 	component_mode: 'all'
 });
 ```
 
-```svx
+```svx result config
 <a href="/about">Replaced by the a export</a>
 
 <svelte:element this={'a'} href="/about">Never replaced</svelte:element>
@@ -168,7 +174,11 @@ With `component_mode: 'all'`, a lowercase tag matching an export is replaced too
 export { default as warning } from './Warning.svelte';
 ```
 
-```svx
+```js config
+mdsvex({ components: '#lib/markdown.js', component_mode: 'all' });
+```
+
+```svx result config
 <warning type="tip">
 
 Markdown *inside* still works.
