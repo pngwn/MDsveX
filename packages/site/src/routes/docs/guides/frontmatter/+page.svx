@@ -7,9 +7,12 @@ order: 1
 [smol-toml]: https://github.com/squirrelchat/smol-toml
 # Frontmatter
 
-A document can start with YAML frontmatter between two `---` lines:
+A document can start with YAML frontmatter between two `---` lines.
 
-```svx
+::::plate[The `metadata` export](mark="---", tone=text)
+The frontmatter is exported from the document's module script as `metadata`, so the document can read it and so can anything that imports the document:
+
+```svx result file="src/routes/article/+page.svx"
 ---
 title: My lovely article
 author: Dr. Fabuloso the Fabulous
@@ -21,24 +24,20 @@ tags: [svelte, markdown]
 By {metadata.author}.
 ```
 
-The frontmatter is exported from the document's module script as `metadata`, so the document can read it and so can anything that imports the document:
-
-```svelte
-<script module>
-	export const metadata = {
-		title: 'My lovely article',
-		author: 'Dr. Fabuloso the Fabulous',
-		tags: ['svelte', 'markdown']
-	};
-</script>
-```
-
 ```js
 import { metadata } from './article.svx';
 ```
 
-Keys are not separate variables, so write `{metadata.title}` rather than `{title}`. [Templates](/docs/guides/templates#template-props) get every key as its own prop.
+:::notes
+[Templates](/docs/guides/templates#template-props) get every key as its own prop.
+:::
 
+:::edges
+- Keys are not separate variables, so write `{metadata.title}` rather than `{title}`.
+:::
+::::
+
+::::plate[Listing posts](mark="glob", tone=expr)
 To list posts in SvelteKit, import their metadata with `import.meta.glob` and the `?metadata` query:
 
 ```js
@@ -59,8 +58,12 @@ export function load() {
 }
 ```
 
+:::notes
 A `?metadata` import reads only the frontmatter, so the list does not load the component of every page.
+:::
+::::
 
+::::plate[In a layout](mark="route", tone=expr)
 A SvelteKit layout can read the frontmatter of the page it wraps the same way. Without `eager`, each page's metadata loads on its own, and the id of the route picks it:
 
 ```js
@@ -92,10 +95,14 @@ export async function load({ route }) {
 {@render children()}
 ```
 
+:::notes
 `data.metadata` is `null` on a route that isn't a document, and on a document with no frontmatter. The same `load` works in a `+layout.server.js`.
+:::
+::::
 
 ## Supported YAML
 
+::::plate[The built-in parser](mark="key:", tone=text)
 mdsvex parses frontmatter itself, with no dependency, so `compile` still runs anywhere. It understands the YAML that frontmatter tends to use:
 
 - plain, single quoted and double quoted strings, including escapes in double quotes;
@@ -105,6 +112,23 @@ mdsvex parses frontmatter itself, with no dependency, so `compile` still runs an
 - literal `|` and folded `>` blocks, with `-` and `+` chomping;
 - comments.
 
+```svx result
+---
+title: 'Hello: World'
+count: 0x1F
+draft: off
+published: 2026-10-02
+author: { name: Ada, handle: ~ }
+tags:
+  - svelte
+  - markdown
+summary: >-
+  Two lines,
+  folded into one.
+---
+```
+
+:::edges
 These are errors that name the line, and point you at [`frontmatter.parse`](/docs/guides/frontmatter#custom-frontmatter-parsers):
 
 - anchors (`&`), aliases (`*`), tags (`!!str`), complex keys (`?`) and merge keys (`<<`);
@@ -113,8 +137,17 @@ These are errors that name the line, and point you at [`frontmatter.parse`](/doc
 - frontmatter that isn't a map of keys to values;
 - a plain value containing `: `, such as `title: Hello: World`. Quote it: `title: 'Hello: World'`.
 
+```svx error
+---
+title: Hello: World
+---
+```
+:::
+::::
+
 ## Custom frontmatter parsers
 
+::::plate[`frontmatter.parse`](mark="parse", tone=expr)
 `frontmatter.parse` replaces the built-in parser. It gets the raw text between the `---` lines and returns an object of metadata. Returning `null` or `undefined` means no metadata.
 
 For full YAML, use a YAML library such as [`yaml`][yaml]:
@@ -127,7 +160,9 @@ mdsvex({
 	frontmatter: { parse: (raw) => parse(raw) }
 });
 ```
+::::
 
+::::plate[TOML](mark="=", tone=text)
 The fences stay `---`, but what goes between them is up to the parser. For TOML, with [`smol-toml`][smol-toml]:
 
 ```js
@@ -147,3 +182,4 @@ title = "TOML Example"
 name = "some name"
 ---
 ```
+::::

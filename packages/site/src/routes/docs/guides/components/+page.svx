@@ -8,6 +8,7 @@ Custom components replace the elements markdown produces. A `## heading` can ren
 
 ## Replacing elements in a template
 
+::::plate[A template's exports](mark="as h2", tone=comp)
 A template's `<script module>` exports replace elements by name, in the documents it wraps:
 
 ```svelte
@@ -27,8 +28,16 @@ A template's `<script module>` exports replace elements by name, in the document
 </main>
 ```
 
-The export name is the element name. mdsvex reads the names without running the module, so export each one by name. A name `export *` re-exports can't be seen, and mdsvex warns about it.
+:::notes
+The export name is the element name. mdsvex reads the names without running the module, so export each one by name.
+:::
 
+:::edges
+- A name `export *` re-exports can't be seen, and mdsvex warns about it.
+:::
+::::
+
+::::plate[A template you can't edit](mark="@acme", tone=comp)
 For a template you can't edit, such as one from a package, give the replacements in a module of their own. They are merged over the template's own:
 
 ```js
@@ -41,9 +50,11 @@ mdsvex({
 	}
 });
 ```
+::::
 
 ## The `components` option
 
+::::plate[Every document](mark=".js", tone=comp)
 `components` names one or more modules whose exports replace elements in every document, including documents with no template:
 
 ```js
@@ -56,22 +67,30 @@ export { default as a } from './Link.svelte';
 mdsvex({ components: '#lib/markdown.js' });
 ```
 
+:::notes
 See the [templates playground example](/playground/templates), which uses both.
+:::
+::::
 
 ## Precedence
 
+::::plate[The first match wins](mark="1.", tone=text)
 For each element, mdsvex uses the first match from:
 
 1. the document's template, including its `components` override module;
 2. the `components` modules, the last module in the list winning;
 3. no match, the plain element.
 
+:::notes
 `template: false` documents only use the `components` modules.
 
 Markdown inside a component you use, such as `<Aside>`, uses the same replacements as the rest of the document.
+:::
+::::
 
 ## Element props
 
+::::plate[What a replacement gets](mark="$props", tone=expr)
 Every replacement gets the element's attributes as props, including any a parse plugin added, such as an `id`. Unless the element is void, it gets its content as `children`. Some elements get more:
 
 | element | extra props |
@@ -85,8 +104,12 @@ Every replacement gets the element's attributes as props, including any a parse 
 | `li` | `checked`, `true` or `false` on a task list item (`- [x] done`), and no checkbox in its `children` |
 | `th`, `td` | `align`, `"left"`, `"right"` or `"center"` |
 
+:::notes
 `hr` and `br` are void too. For a fenced code block, `children` is the whole highlighted `<pre>` element.
+:::
+::::
 
+::::plate[One component, several elements](mark="h2 h3", tone=comp)
 One component can serve several elements:
 
 ```svelte
@@ -105,10 +128,14 @@ One component can serve several elements:
 export { default as h2, default as h3 } from './docs/Heading.svelte';
 ```
 
+:::notes
 Svelte ignores props a component doesn't declare, so a replacement only reads what it needs.
+:::
+::::
 
 ## `component_mode: 'all'`
 
+::::plate[HTML you type](mark="<a>", tone=comp)
 By default, only elements written as markdown are replaced, so typing HTML such as `<a>` gets you the plain element. With `component_mode: 'all'`, lowercase HTML you type is replaced as well:
 
 ```js
@@ -124,12 +151,16 @@ mdsvex({
 <svelte:element this={'a'} href="/about">Never replaced</svelte:element>
 ```
 
+:::edges
 - `<svelte:element this={'a'}>` is the escape hatch, it is never replaced.
 - `<svelte:*>` elements and capitalised components are never replaced.
 - An element with a directive, such as `bind:`, `on:`, `use:`, `class:`, `style:`, `transition:`, `in:`, `out:`, `animate:` or `let:`, stays a plain element even when it has a replacement, because a component can't take a directive. mdsvex warns, naming the element and the directive. Event attributes such as `onclick` are plain props and are passed along.
+:::
+::::
 
 ## Lowercase custom tags
 
+::::plate[A tag of your own](mark="warning", tone=comp)
 With `component_mode: 'all'`, a lowercase tag matching an export is replaced too. A `warning` export gives every document a `<warning>` tag, with no import:
 
 ```js
@@ -145,12 +176,21 @@ Markdown *inside* still works.
 </warning>
 ```
 
-A tag name that isn't a JavaScript identifier, such as `<info-box>`, matches a string export: `export { default as 'info-box' } from './InfoBox.svelte'`. Capitalised tags are always plain Svelte components, imported as usual. See the [all mode playground example](/playground/all-mode).
+:::notes
+See the [all mode playground example](/playground/all-mode).
+:::
+
+:::edges
+- A tag name that isn't a JavaScript identifier, such as `<info-box>`, matches a string export: `export { default as 'info-box' } from './InfoBox.svelte'`.
+- Capitalised tags are always plain Svelte components, imported as usual.
+:::
+::::
 
 ## Nested scopes
 
 Markdown inside a component always uses the document's replacements, never ones the wrapping component supplies. Letting `<Aside>` change how the markdown inside it renders is deferred for now.
 
+::::plate[A document of its own](mark="?=", tone=link)
 Until then, move that markdown into a document of its own, and give it a template with the replacements you want. Here that is an `aside` entry in `templates`, which `?template=` picks on the import:
 
 ```svelte
@@ -177,3 +217,4 @@ Until then, move that markdown into a document of its own, and give it a templat
 	<AsideText />
 </aside>
 ```
+::::
