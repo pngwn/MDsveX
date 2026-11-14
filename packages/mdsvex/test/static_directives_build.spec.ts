@@ -9,7 +9,7 @@ import {
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { build } from 'vite';
+import { build, normalizePath } from 'vite';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -149,7 +149,7 @@ describe('a build with an inline config', () => {
 			);
 			expect(error?.message).toContain(
 				'the static directive callout at ' +
-					join(root, 'src/doc.svx') +
+					normalizePath(join(root, 'src/doc.svx')) +
 					':1:1 can not render in a build whose vite config was given inline (configFile: false)'
 			);
 		} finally {
