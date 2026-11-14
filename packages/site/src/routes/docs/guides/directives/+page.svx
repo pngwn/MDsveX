@@ -124,10 +124,18 @@ A name starts with a letter, then letters, digits, `_` or `-`. A name that isn't
 ## Unknown directives
 
 ::::plate[No component](mark="Calout", tone=directive)
-A directive with no component is an error that names it and its line and column:
+A directive with no component is an error that names it and its line and column. With the modules above as the components:
 
+```js config
+mdsvex({ components: '#lib/markdown.js' });
 ```
-no component renders the directive :::Calout at 3:1. Export a component named "Calout" from a directives module (export * as directives from './directives.ts'), or replace the directive_container node in a parse plugin
+
+```svx error config
+# Notes
+
+:::Calout[Heads up](kind=warn)
+Body *markdown*
+:::
 ```
 
 :::notes

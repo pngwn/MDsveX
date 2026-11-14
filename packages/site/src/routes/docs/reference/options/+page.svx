@@ -289,22 +289,16 @@ Gives every markdown heading an `id` made from its text, so a link can point at 
 heading_ids: boolean | { slug?: (text: string, heading: { depth: number }) => string } = false;
 ```
 
-```js
+```js config
 mdsvex({ heading_ids: true });
 ```
 
-```svx score
+```svx result score config
 ## Getting _started_
 
 ## Getting started
 
 ## The `highlight` option
-```
-
-```html
-<h2 id="getting-started">Getting <em>started</em></h2>
-<h2 id="getting-started-1">Getting started</h2>
-<h2 id="the-highlight-option">The <code>highlight</code> option</h2>
 ```
 
 :::notes

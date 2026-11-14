@@ -92,7 +92,7 @@ The node is a view of the tree as it is being built:
 ::::plate[A new `html` node](mark="tag", tone=comp)
 A new `html` node takes its element name as `tag`. This wraps each `##` heading and what follows it in a `<section>`:
 
-```js
+```js config
 const sections = {
 	name: 'sections',
 	heading: {
@@ -107,7 +107,7 @@ const sections = {
 mdsvex({ parse_plugins: [sections] });
 ```
 
-```svx
+```svx result config
 ## One
 
 First.
@@ -115,11 +115,6 @@ First.
 ## Two
 
 Second.
-```
-
-```html
-<section><h2>One</h2><p>First.</p></section>
-<section><h2>Two</h2><p>Second.</p></section>
 ```
 ::::
 
