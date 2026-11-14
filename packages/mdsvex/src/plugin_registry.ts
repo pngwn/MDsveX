@@ -103,6 +103,7 @@ export function plugin_registry(written: readonly Bundle[]) {
 	let resolved = false;
 
 	async function load(ctx: Rollup.PluginContext): Promise<void> {
+		const optimized = new Set<PluginModule>();
 		const from = importer_in(root);
 		const failed: string[] = [];
 		for (const { module, plugin } of by_id.values()) {
@@ -112,6 +113,8 @@ export function plugin_registry(written: readonly Bundle[]) {
 				continue;
 			}
 			module.file = clean_id(found.id);
+			const deps = (ctx as { environment?: any }).environment?.depsOptimizer;
+			if (deps?.isOptimizedDepFile(found.id)) optimized.add(module);
 		}
 		if (failed.length !== 0) {
 			throw new Error(
@@ -122,6 +125,13 @@ export function plugin_registry(written: readonly Bundle[]) {
 		// a mode is fixed until a restart, the module of a plugin is rarely edited
 		for (const module of directives) {
 			if (module === null || module.file === null) continue;
+			if (optimized.has(module)) {
+				ctx.warn(
+					`the module ${JSON.stringify(module.spec)} is prebundled by optimizeDeps.include, ` +
+						'so its static directives render live, take its package out of optimizeDeps.include'
+				);
+				continue;
+			}
 			module.statics = await static_names(
 				ctx,
 				module.file,
@@ -186,11 +196,17 @@ export function plugin_registry(written: readonly Bundle[]) {
 		static_module(id: string): string | undefined {
 			return static_of(id)?.file ?? undefined;
 		},
-		/** true when a plugin serves a static directive, known once resolved */
-		has_static(): boolean {
-			return directives.some(
-				(m) => m !== null && m.statics !== null && m.statics.names.length !== 0
-			);
+		/**
+		 * the packages of the directives modules, kept out of the dep optimizer
+		 * of a dev server, a module named by a path or an import map has none
+		 */
+		packages(): string[] {
+			const out = new Set<string>();
+			for (const m of directives) {
+				const name = m === null ? null : package_of(m.spec);
+				if (name !== null) out.add(name);
+			}
+			return [...out];
 		},
 		/** the plugins for the editor manifest, in the order of the option */
 		describe(): ManifestPlugin[] {
@@ -225,4 +241,13 @@ export function plugin_registry(written: readonly Bundle[]) {
 			});
 		},
 	};
+}
+
+/** the package name of a bare specifier, null for a path, an import map entry or a url */
+function package_of(spec: string): string | null {
+	if (/^[./#]|^[a-z][\w+.-]*:/i.test(spec)) return null;
+	const parts = spec.split('/');
+	if (spec.startsWith('@'))
+		return parts.length < 2 ? null : parts[0] + '/' + parts[1];
+	return parts[0];
 }

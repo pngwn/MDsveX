@@ -1095,9 +1095,9 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				async handler(config, env) {
 					// kit passes this same array to vite-plugin-svelte and reads it
 					// lazily, so pushing here registers our extensions with both
-					const plugins = await flat_plugins(config.plugins);
+					const vite_plugins = await flat_plugins(config.plugins);
 					const registered = api_extensions(
-						plugins.find((p) => p.name === 'vite-plugin-sveltekit-setup')
+						vite_plugins.find((p) => p.name === 'vite-plugin-sveltekit-setup')
 					);
 					if (registered) {
 						// with no extensions option this is a default shared by every
@@ -1106,9 +1106,14 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 							if (!registered.includes(ext)) registered.push(ext);
 						}
 					}
+					if (env.command !== 'serve') return;
+					// a prebundled module inlines its re-exports, which mdsvex scans and strips
+					const exclude = plugins?.packages() ?? [];
 					// static components render in an environment of their own, a build uses the one of the dev server it starts
-					if (statics !== null && env.command === 'serve')
-						return static_environment();
+					const environment = statics === null ? {} : static_environment();
+					return exclude.length === 0
+						? environment
+						: { ...environment, optimizeDeps: { exclude } };
 				},
 			},
 
