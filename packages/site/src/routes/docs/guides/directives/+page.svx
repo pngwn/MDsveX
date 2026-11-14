@@ -7,7 +7,7 @@ order: 4
 Directives give markdown a syntax for your own components, without writing HTML. Each one renders a Svelte component:
 
 ```svx score
-:::Callout[Heads up](kind=warn)
+:::Callout[Hi](kind=warn)
 Body *markdown*
 :::
 ```
@@ -16,6 +16,7 @@ See the [directives playground example](/playground/directives).
 
 ## Declaring directives
 
+::::plate[A `directives` export](mark="* as", tone=directive)
 Directives come from a `directives` namespace export. Any module that can replace elements can have one, the `components` modules and a template's `<script module>` alike:
 
 ```js
@@ -30,30 +31,75 @@ export { default as Callout } from './Callout.svelte';
 export { default as youtube } from './YouTube.svelte';
 ```
 
+:::notes
 A directive's name matches an export name exactly, so `:::Callout` uses `Callout`. Directives and elements are separate, so a `table` directive never replaces tables, and an element export never serves a directive.
 
-Write it as `export * as directives from '...'`, so mdsvex can read the names without running the module. Any other `directives` export is an error.
-
 A template's directives come before those of the `components` modules, in the same order as [element replacements](/docs/guides/components#precedence).
+:::
+
+:::edges
+- Write it as `export * as directives from '...'`, so mdsvex can read the names without running the module. Any other `directives` export is an error.
+:::
+::::
 
 ## The three forms
 
-| form | example | props |
-| --- | --- | --- |
-| inline | `:abbr[HTML](title=HyperText)` | args, and the text in brackets as `children` |
-| leaf | `::youtube[A talk](id=dQw4w9WgXcQ)`, `::toc` | args, and the text in brackets as `label` |
-| container | `:::Callout[Heads up](kind=warn)` ... `:::`, `:::note` ... `:::` | args, the text in brackets as `label` and the body as `children` |
+::::plate[Inline](mark=":", tone=directive)
+An inline directive sits in a line of text. It gets its args, and the text in brackets as `children`:
 
-A leaf or container takes a line of its own, and a container ends at a line of colons. Its brackets are optional: `::toc` is the same as `::toc[]`, and args can follow the name directly, as in `::toc(depth=2)`. Nothing else can follow on the line, so `::toc is here` is a paragraph. A line that is only `::word` or `:::word` is a directive and needs a component, write `\::word` to keep it as text.
+```svx
+Read the :abbr[HTML](title=HyperText) spec.
+```
 
-An inline directive always needs its brackets, which can be empty: `:icon[]`. Without them a `:tada:` or `std::vector` in a sentence would be a directive.
+:::edges
+- An inline directive always needs its brackets, which can be empty: `:icon[]`. Without them a `:tada:` or `std::vector` in a sentence would be a directive.
+:::
+::::
 
-Containers nest when the outer one uses more colons. The bracket text can hold emphasis, strong, code and other directives, but links and images in it stay plain text.
+::::plate[Leaf](mark="::", tone=directive)
+A leaf takes a line of its own. It gets its args, and the text in brackets as `label`:
+
+```svx
+::youtube[A talk](id=dQw4w9WgXcQ)
+
+::toc
+```
+
+:::notes
+Its brackets are optional: `::toc` is the same as `::toc[]`, and args can follow the name directly, as in `::toc(depth=2)`.
+:::
+
+:::edges
+- Nothing else can follow on the line, so `::toc is here` is a paragraph.
+- A line that is only `::word` or `:::word` is a directive and needs a component, write `\::word` to keep it as text.
+:::
+::::
+
+::::plate[Container](mark=":::", tone=directive)
+A container takes a line of its own too, and ends at a line of colons. It gets its args, the text in brackets as `label` and the body as `children`:
+
+```svx
+:::Callout[Heads up](kind=warn)
+Body *markdown*
+:::
+
+:::note
+A note.
+:::
+```
+
+:::notes
+Containers nest when the outer one uses more colons. Its brackets are optional, as a leaf's are.
+:::
+::::
+
+The bracket text can hold emphasis, strong, code and other directives, but links and images in it stay plain text.
 
 A name starts with a letter, then letters, digits, `_` or `-`. A name that isn't a JavaScript identifier, such as `info-box`, matches a string export: `export { default as 'info-box' } from './InfoBox.svelte'`.
 
 ## Directive props
 
+::::plate[What a directive gets](mark="(k=v)", tone=directive)
 - Args in parentheses become string props: `(kind=warn, title="A title")` gives `kind="warn"` and `title="A title"`. Values are never Svelte expressions.
 - `label` is a snippet of the bracket text of a leaf or container. Its inline markdown is rendered, and empty or missing brackets pass no `label`.
 - `children` is a snippet of an inline directive's bracket text, or of a container's body.
@@ -70,18 +116,36 @@ A name starts with a letter, then letters, digits, `_` or `-`. A name that isn't
 </aside>
 ```
 
-An arg named `children` is an error. So is `label` on a leaf or container, though an inline directive can take a `label` arg as a plain prop.
+:::edges
+- An arg named `children` is an error. So is `label` on a leaf or container, though an inline directive can take a `label` arg as a plain prop.
+:::
+::::
 
 ## Unknown directives
 
+::::plate[No component](mark="Calout", tone=directive)
 A directive with no component is an error that names it and its line and column:
 
 ```
 no component renders the directive :::Calout at 3:1. Export a component named "Calout" from a directives module (export * as directives from './directives.ts'), or replace the directive_container node in a parse plugin
 ```
 
+:::notes
 A [parse plugin](/docs/plugins/writing/parse-plugins#parse_plugins) can handle directives that have no component, through the `directive_inline`, `directive_leaf` and `directive_container` node types. A directive with a component never reaches those handlers, a plugin reads it by [observing it](/docs/plugins/writing/bundles).
+:::
+::::
 
 ## Directives from a plugin
 
-A [plugin](/docs/plugins/writing/bundles) can bring directives of its own, with the components that render them. They sit below everything above: an export of the same name from a `components` module or a template replaces the plugin's component. Two plugins can't both bring one. [`@mdsvex/plugin-steps`](/docs/plugins/steps) is one.
+::::plate[A plugin's directives](mark="steps", tone=directive)
+A [plugin](/docs/plugins/writing/bundles) can bring directives of its own, with the components that render them.
+
+:::notes
+[`@mdsvex/plugin-steps`](/docs/plugins/steps) is one.
+:::
+
+:::edges
+- They sit below everything above: an export of the same name from a `components` module or a template replaces the plugin's component.
+- Two plugins can't both bring one.
+:::
+::::
