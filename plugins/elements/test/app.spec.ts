@@ -156,19 +156,20 @@ describe('in a vite app', () => {
 		);
 	});
 
-	test('the client gets the components and the stylesheet', async () => {
+	test('the client gets the stylesheet, the static components only when imported', async () => {
 		const client = server.environments.client;
 		const entry = await client.transformRequest(
-			'/node_modules/@mdsvex/plugin-elements/dist/directives.js'
+			'/node_modules/@mdsvex/plugin-elements/dist/directives.js?mdsvex-live'
 		);
 		expect(entry?.code).toMatch(/import ".*\/dist\/elements\.css"/);
+		expect(entry?.code).not.toContain('.static.svelte');
 		const css = await client.transformRequest(
 			'/node_modules/@mdsvex/plugin-elements/dist/elements.css'
 		);
 		expect(css?.code).toContain('.accordion');
 		expect(css?.code).toContain('.mark');
 		const details = await client.transformRequest(
-			'/node_modules/@mdsvex/plugin-elements/dist/Details.svelte'
+			'/node_modules/@mdsvex/plugin-elements/dist/Details.static.svelte'
 		);
 		expect(details?.code).toMatch(/svelte.internal.client/);
 	});

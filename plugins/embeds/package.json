@@ -24,12 +24,12 @@
 			"svelte": "./dist/unstyled.js"
 		},
 		"./YouTube.svelte": {
-			"types": "./dist/YouTube.svelte.d.ts",
-			"svelte": "./dist/YouTube.svelte"
+			"types": "./dist/YouTube.static.svelte.d.ts",
+			"svelte": "./dist/YouTube.static.svelte"
 		},
 		"./Vimeo.svelte": {
-			"types": "./dist/Vimeo.svelte.d.ts",
-			"svelte": "./dist/Vimeo.svelte"
+			"types": "./dist/Vimeo.static.svelte.d.ts",
+			"svelte": "./dist/Vimeo.static.svelte"
 		},
 		"./embeds.css": "./dist/embeds.css",
 		"./package.json": "./package.json"

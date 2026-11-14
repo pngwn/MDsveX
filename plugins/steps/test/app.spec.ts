@@ -153,25 +153,25 @@ describe('in a vite app', () => {
 		);
 	});
 
-	test('the client gets the components and the stylesheet', async () => {
+	test('the client gets the stylesheet and never the static components', async () => {
 		const client = server.environments.client;
 		const doc = await client.transformRequest('/src/doc.svx');
 		expect(doc?.code).toMatch(
-			/import \{ steps as Steps_MDSVEX_D_G, step as Step_MDSVEX_D_G \} from "\/node_modules\/@mdsvex\/plugin-steps\/dist\/directives\.js(\?[^"]*)?";/
+			/import "\/node_modules\/@mdsvex\/plugin-steps\/dist\/directives\.js\?(v=\w+&)?mdsvex-live";/
+		);
+		expect(doc?.code).not.toMatch(/Steps?_MDSVEX/);
+		expect(doc?.code).toContain(
+			'<ol class="steps" role="list"><li class="step">'
 		);
 		const entry = await client.transformRequest(
-			'/node_modules/@mdsvex/plugin-steps/dist/directives.js'
+			'/node_modules/@mdsvex/plugin-steps/dist/directives.js?mdsvex-live'
 		);
 		expect(entry?.code).toMatch(/import ".*\/dist\/steps\.css"/);
+		expect(entry?.code).not.toContain('.static.svelte');
 		const css = await client.transformRequest(
 			'/node_modules/@mdsvex/plugin-steps/dist/steps.css'
 		);
 		expect(css?.code).toContain('counter-increment: step');
-		const step = await client.transformRequest(
-			'/node_modules/@mdsvex/plugin-steps/dist/Step.svelte'
-		);
-		expect(step?.code).toContain('<li class="step">');
-		expect(step?.code).toMatch(/svelte.internal.client/);
 	});
 });
 
@@ -224,6 +224,43 @@ describe('in a vite app with options', () => {
 			);
 		} finally {
 			await server.close();
+		}
+	});
+});
+
+describe('in a vite app that prebundles its dependencies', () => {
+	test('the module is served as published, so its static re-exports are left out', async () => {
+		const root = write_app(HERE, FILES, [PACKAGE]);
+		// the optimizer on, as vite-plugin-svelte and every app leave it
+		const server = await createServer({
+			root,
+			configFile: false,
+			logLevel: 'silent',
+			appType: 'custom',
+			cacheDir: join(root, '.vite'),
+			server: { middlewareMode: true, hmr: false, watch: null },
+			plugins: [
+				mdsvex({ plugins: [steps()] }),
+				svelte({ configFile: false, extensions: ['.svelte', '.svx'] }),
+			],
+		});
+		const client = server.environments.client;
+		try {
+			const doc = await client.transformRequest('/src/doc.svx');
+			expect(doc?.code).toMatch(
+				/import "\/node_modules\/@mdsvex\/plugin-steps\/dist\/directives\.js\?(v=\w+&)?mdsvex-live";/
+			);
+			expect(doc?.code).not.toMatch(/Steps?_MDSVEX/);
+			expect(
+				(await client.pluginContainer.resolveId('mdsvex:plugin/0'))?.id
+			).toMatch(
+				/\/node_modules\/@mdsvex\/plugin-steps\/dist\/directives\.js\?/
+			);
+		} finally {
+			// the optimizer settles before the server can close
+			await client.waitForRequestsIdle();
+			await server.close();
+			rmSync(root, { recursive: true, force: true });
 		}
 	});
 });

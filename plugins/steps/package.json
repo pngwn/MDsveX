@@ -24,12 +24,12 @@
 			"svelte": "./dist/unstyled.js"
 		},
 		"./Steps.svelte": {
-			"types": "./dist/Steps.svelte.d.ts",
-			"svelte": "./dist/Steps.svelte"
+			"types": "./dist/Steps.static.svelte.d.ts",
+			"svelte": "./dist/Steps.static.svelte"
 		},
 		"./Step.svelte": {
-			"types": "./dist/Step.svelte.d.ts",
-			"svelte": "./dist/Step.svelte"
+			"types": "./dist/Step.static.svelte.d.ts",
+			"svelte": "./dist/Step.static.svelte"
 		},
 		"./steps.css": "./dist/steps.css",
 		"./package.json": "./package.json"
