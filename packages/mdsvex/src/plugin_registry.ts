@@ -10,7 +10,7 @@ import {
 	importer_in,
 } from './ids.js';
 import type { ManifestModule, ManifestPlugin } from './manifest.js';
-import { static_names } from './static_directives.js';
+import { scan_file, static_names } from './static_directives.js';
 import type { StaticNames } from './static_directives.js';
 
 interface PluginModule {
@@ -125,7 +125,7 @@ export function plugin_registry(written: readonly Bundle[]) {
 			module.statics = await static_names(
 				ctx,
 				module.file,
-				await scan_module(module.file)
+				await scan_file(module.file)
 			);
 			if (module.statics.names.length !== 0) {
 				module.bundle![STATIC_NAMES] = module.statics.names;
@@ -225,14 +225,4 @@ export function plugin_registry(written: readonly Bundle[]) {
 			});
 		},
 	};
-}
-
-/** the exports of a module a plugin names, read from disk once */
-async function scan_module(file: string) {
-	const [fs, { scan_exports_detail }] = await Promise.all([
-		import('node:fs/promises'),
-		import('./scan_exports.js'),
-	]);
-	const code = await fs.readFile(file, 'utf8');
-	return scan_exports_detail(code, file.endsWith('.svelte') ? 'svelte' : 'js');
 }

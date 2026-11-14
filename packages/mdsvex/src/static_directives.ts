@@ -48,7 +48,8 @@ const NO_STATIC: StaticNames = Object.freeze({
 export async function static_names(
 	ctx: Rollup.PluginContext,
 	file: string,
-	scanned: ScannedExports
+	scanned: ScannedExports,
+	seen: Set<string> = new Set([file])
 ): Promise<StaticNames> {
 	const { reexports, imports, stars } = scanned;
 	if (reexports.length === 0 && imports.length === 0 && stars.length === 0)
@@ -79,6 +80,16 @@ export async function static_names(
 		if (at !== null && is_static_file(at))
 			throw form_error(file, stars[i], 're-exports with export * from');
 	}
+	// a static component one module down would render live without a word
+	for (let i = 0; i < stars.length; i++) {
+		const hidden = await static_below(ctx, starred[i], seen);
+		if (hidden.length !== 0) throw hidden_error(file, stars[i], hidden);
+	}
+	for (let i = 0; i < reexports.length; i++) {
+		const hidden = await static_below(ctx, named[i], seen);
+		if (hidden.includes(reexports[i].imported))
+			throw hidden_error(file, reexports[i].specifier, [reexports[i].imported]);
+	}
 	const out: string[] = [];
 	const by_name: Record<string, string> = {};
 	for (let i = 0; i < reexports.length; i++) {
@@ -104,6 +115,40 @@ export async function static_names(
 	const problem = checked.find((e) => e !== null);
 	if (problem != null) throw problem;
 	return { names: out, files: by_name };
+}
+
+// a component file is a leaf, only a module can re-export another
+const MODULE_FILE = /\.[cm]?[jt]sx?$/;
+
+/** the static names a module re-exports, for a module reached from another */
+async function static_below(
+	ctx: Rollup.PluginContext,
+	file: string | null,
+	seen: Set<string>
+): Promise<string[]> {
+	if (file === null || !MODULE_FILE.test(file) || seen.has(file)) return [];
+	seen.add(file);
+	return (await static_names(ctx, file, await scan_file(file), seen)).names;
+}
+
+/** the exports of a module read from disk, for a module no tracker watches */
+export async function scan_file(file: string): Promise<ScannedExports> {
+	const [fs, { scan_exports_detail }] = await Promise.all([
+		import('node:fs/promises'),
+		import('./scan_exports.js'),
+	]);
+	const code = await fs.readFile(file, 'utf8');
+	return scan_exports_detail(code, file.endsWith('.svelte') ? 'svelte' : 'js');
+}
+
+function hidden_error(file: string, spec: string, names: string[]): Error {
+	const list = names.map((n) => JSON.stringify(n)).join(', ');
+	return new Error(
+		`[mdsvex] ${file} re-exports the static directive ${list} through ` +
+			`${JSON.stringify(spec)}, mdsvex reads static components only in the ` +
+			`module it is given, re-export each from it as ` +
+			`export { default as name } from "./Name.static.svelte"`
+	);
 }
 
 function form_error(file: string, spec: string, how: string): Error {
