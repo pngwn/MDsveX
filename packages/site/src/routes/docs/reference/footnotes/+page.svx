@@ -59,10 +59,28 @@ Referring to a note twice gives both references the same number, and the note a 
 ::::
 
 ::::plate[The id of a note](mark="#fn-", tone=link)
-The id of a note is `fn-` and its label, so a link to a note survives a renumbering. The id of a reference is `fnref-` and its number.
+The id of a note is `fn-` and its label, so a link to a note survives a renumbering. The id of a reference is `fnref-` and its number:
+
+```md result
+## Fn 1
+
+Text.[^1]
+
+[^1]: A note.
+```
 
 :::notes
-With [`heading_ids`](/docs/reference/options#heading_ids), a heading whose slug would be one of these gets a suffix.
+With [`heading_ids`](/docs/reference/options#heading_ids), a heading keeps its id, and a note whose id a heading took moves aside instead: `## Fn 1` keeps `fn-1` and the note `[^1]` becomes `fn-1-1`.
+
+```html
+<h2 id="fn-1">Fn 1</h2>
+<p>Text.<sup><a href="#fn-1-1" id="fnref-1" role="doc-noteref">1</a></sup></p>
+<section class="footnotes" role="doc-endnotes" aria-label="Footnotes">
+	<ol>
+		<li id="fn-1-1"><p>A note. <a href="#fnref-1" role="doc-backlink" aria-label="Back to reference 1">↩︎</a></p></li>
+	</ol>
+</section>
+```
 :::
 ::::
 
