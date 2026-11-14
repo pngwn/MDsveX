@@ -30,8 +30,7 @@ mdsvex needs Svelte 5 and Vite 6 or later.
 
 mdsvex is a Vite plugin. It turns markdown files into Svelte components, and the Svelte plugin compiles them like any other component.
 
-### SvelteKit
-
+::::plate[SvelteKit](mark="kit", tone=expr, id=sveltekit)
 SvelteKit 3 has no `svelte.config.js`, so mdsvex goes in `vite.config.js`, beside `sveltekit()`:
 
 ```js
@@ -45,6 +44,7 @@ export default defineConfig({
 });
 ```
 
+:::notes
 Declare the extensions once, in `mdsvex()`. It registers them with SvelteKit, so you don't repeat them in `sveltekit({ extensions })`. The order of the two plugins doesn't matter.
 
 Any markdown file is now a component, and a `+page.svx` is a route:
@@ -56,7 +56,10 @@ src/routes/
     └── hello/
         └── +page.svx
 ```
+:::
+::::
 
+::::plate[Options that point at a file](mark="#lib", tone=expr)
 Options that point at a file, such as [`templates`](/docs/reference/options#templates) and [`components`](/docs/reference/options#components), resolve the way an import from your project root would. That includes aliases, packages, relative paths and SvelteKit 3's `#lib` [subpath imports][subpath], which replace `$lib` (see the [SvelteKit 3 migration guide][kit3]):
 
 ```json
@@ -73,11 +76,17 @@ mdsvex({
 });
 ```
 
-Imports inside a document work the same way, `import Chart from '#lib/Chart.svelte'`. Subpath imports need the file extension.
+:::notes
+Imports inside a document work the same way, `import Chart from '#lib/Chart.svelte'`.
+:::
 
-### Vite without SvelteKit
+:::edges
+- Subpath imports need the file extension.
+:::
+::::
 
-With `@sveltejs/vite-plugin-svelte` on its own, add the extensions to `svelte()` as well. mdsvex can't register them there. If one is missing, the build stops with an error that names it.
+::::plate[Vite without SvelteKit](mark="vite", tone=expr, id=vite-without-sveltekit)
+With `@sveltejs/vite-plugin-svelte` on its own, add the extensions to `svelte()` as well. mdsvex can't register them there.
 
 ```js
 // vite.config.js
@@ -90,8 +99,12 @@ export default defineConfig({
 });
 ```
 
-### Highlighting code
+:::edges
+- If one is missing, the build stops with an error that names it.
+:::
+::::
 
+::::plate[Highlighting code](mark="```", tone=fence, id=highlighting-code)
 Fenced code is highlighted by default, with [twinkleplop][twinkleplop]. mdsvex adds no CSS, so install a theme and import it once, in your root layout:
 
 ```bash
@@ -109,4 +122,7 @@ npm i --save-dev @twinkleplop/theme-github
 {@render children()}
 ```
 
+:::notes
 Without a theme, code renders in one colour. The theme gives light colours, and dark ones under a `.dark` class. To follow the reader's system setting instead, see [themes](/docs/reference/highlighting#themes).
+:::
+::::
