@@ -19,9 +19,9 @@ Use a fence. On the atlas: [code fence](/atlas#code-fence).
 ::::
 
 ::::plate[An indented fence](mark="```", tone=fence)
-A fence can be indented, inside an element or not. Its code keeps the indent it was written with:
+A fence can be indented, inside an element or not. The indent of its opening fence is not code, and each line of its code loses up to as much leading whitespace, so a fence indented as a whole holds the same code as it does unindented:
 
-````svx score
+````svx result
 <div>
 	```js
 	let x;
@@ -29,9 +29,9 @@ A fence can be indented, inside an element or not. Its code keeps the indent it 
 </div>
 ````
 
-```html
-<div><pre><code class="language-js">	let x;</code></pre></div>
-```
+:::notes
+A line indented less loses what it has.
+:::
 ::::
 
 ## Not read yet
