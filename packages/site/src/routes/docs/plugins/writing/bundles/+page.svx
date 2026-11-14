@@ -39,7 +39,7 @@ The first-party plugins are listed under [Plugins](/docs/plugins).
 ::::plate[The plugin object](mark="{}", tone=expr)
 A plugin is an object:
 
-```js
+```js config
 export function steps() {
 	return {
 		name: 'steps',
@@ -59,7 +59,22 @@ export function steps() {
 		}
 	};
 }
+
+mdsvex({ plugins: [steps()] });
 ```
+
+````svx result config
+:::steps
+
+## Install
+
+Run `pnpm add mdsvex`.
+
+## Configure
+
+Add it to the config.
+:::
+````
 
 | key | what it is |
 | --- | --- |
@@ -108,19 +123,39 @@ Each handler gets the node and a context:
 ::::plate[A handler can return a function](mark="=>", tone=expr)
 A handler can return a function, which runs when the node closes. The directive's own `parse` can read its args when it opens and write them when it closes:
 
-```js
-tabs: {
-	parse(tabs, ctx) {
-		return () => {
-			tabs.attrs.args = { ...tabs.attrs.args, count: String(ctx.state.count ?? 0) };
-		};
-	},
-	children: {
-		heading(node, ctx) {
-			ctx.state.count = ctx.index + 1;
+```js config
+mdsvex({
+	plugins: [
+		{
+			name: 'tabs',
+			module: '@acme/tabs/directives',
+			directives: {
+				tabs: {
+					parse(tabs, ctx) {
+						return () => {
+							tabs.attrs.args = { ...tabs.attrs.args, count: String(ctx.state.count ?? 0) };
+						};
+					},
+					children: {
+						heading(node, ctx) {
+							ctx.state.count = ctx.index + 1;
+						}
+					}
+				}
+			}
 		}
-	}
-}
+	]
+});
+```
+
+```svx result config
+:::tabs
+
+## macOS
+
+## Windows
+
+:::
 ```
 
 :::notes
@@ -131,7 +166,9 @@ Args are always strings, since they reach the component as string props.
 ::::plate[Observing a directive](mark="observe", tone=directive)
 A plugin that wants to read a directive another plugin owns observes it, with `observe` in its `parse`, or in an entry of `parse_plugins`. This numbers the figures of a figure plugin and leaves what it finds as [plugin data](/docs/plugins/writing/plugin-data), which the figure's component can read:
 
-```js
+```js config
+import { figures } from '@mdsvex/plugin-figures';
+
 export function numbering() {
 	return {
 		name: 'numbering',
@@ -155,6 +192,14 @@ export function numbering() {
 		}
 	};
 }
+
+mdsvex({ plugins: [figures(), numbering()] });
+```
+
+```svx result config
+:::figure[Sales by month](id=sales)
+![A bar chart](./sales.png)
+:::
 ```
 
 :::notes
@@ -171,7 +216,9 @@ export function numbering() {
 ::::plate[Claiming a fence language](mark="```", tone=fence)
 A plugin that renders the fences of a language itself claims them with `fences`. `@mdsvex/plugin-diagram` draws each `mermaid` fence and keeps its code as the diagram's source:
 
-```js
+```js config
+import { fence_meta } from 'mdsvex/compile';
+
 export function diagram() {
 	return {
 		name: 'diagram',
@@ -188,7 +235,16 @@ export function diagram() {
 		}
 	};
 }
+
+mdsvex({ plugins: [diagram()] });
 ```
+
+````svx result config
+```mermaid
+graph LR
+  A --> B
+```
+````
 
 :::notes
 - **The highlighter never sees a claimed fence.** It renders as plain code, as with `highlight: false`, and there is no `unknown_language` warning for it. That holds for twinkleplop and for a highlighter function, and saves the work of highlighting code the plugin replaces. It still goes to a replaced `pre`, with its `lang`, `title` and the rest.
