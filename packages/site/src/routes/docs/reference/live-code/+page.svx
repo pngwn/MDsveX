@@ -9,7 +9,11 @@ Braces in code blocks are text.
 ::::plate[`[!eval]`](mark="!eval", tone=expr)
 To put a value from the document into a code block, mark it live with an `[!eval]` comment:
 
-````svx score
+```js config
+mdsvex({ highlight: {} });
+```
+
+````svx result config
 <script>
 	let install_command = 'pnpm add';
 </script>
@@ -31,7 +35,7 @@ On the atlas: [live code](/atlas#live-code).
 ::::plate[One group, by name](mark="=", tone=expr)
 To make one group live and leave the rest as text, name it:
 
-````svx score
+````svx result config
 ```js
 function my_func() {
 	console.log({ a: {some_val} }) // [!eval ="{some_val}"]
@@ -91,8 +95,23 @@ A live group keeps the colour of the token around it, so `"{base_url}/api"` stay
 :::
 
 :::edges
-- **Only expression tags**, `{expr}` and `{@html expr}`. Block tags such as `{#if}` and `{:else}`, and tags such as `{@const}`, fail the build.
-- **One line each.** A group that runs onto the next line fails the build.
+- **Only expression tags**, `{expr}` and `{@html expr}`. Block tags such as `{#if}` and `{:else}`, and tags such as `{@const}`, fail the build:
+
+````svx error config
+```sh
+{#if x}yes{/if} # [!eval]
+```
+````
+
+- **One line each.** A group that runs onto the next line fails the build:
+
+````svx error config
+```js
+let a = {b // [!eval]
+};
+```
+````
+
 - **Strings don't count.** Braces inside strings and template literals in a group are skipped, so `{a ? "}" : b}` is one group. A group that never closes fails the build with its line and column.
 - **Empty braces stay text**, so `{}` is never live.
 :::
@@ -103,7 +122,7 @@ A live group keeps the colour of the token around it, so `"{base_url}/api"` stay
 ::::plate[`eval` on a fence](mark="eval", tone=expr)
 `eval` in a fence's meta means `[!eval]` on every line:
 
-````svx score
+````svx result config
 ```sh eval
 {install_command} @pkg/my-pkg
 {run_command} dev
