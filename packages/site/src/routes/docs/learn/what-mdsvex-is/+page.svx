@@ -13,6 +13,7 @@ This preprocessor allows you to use Svelte components in your markdown, or markd
 
 mdsvex supports all Svelte syntax and its own flavour of markdown, which differs from CommonMark in a few places. See [Markdown](/docs/learn/markdown) for what is different and [limitations](/docs/reference/limitations) for what is missing.
 
+::::plate[Svelte components in your markdown](mark="<C/>", tone=comp)
 You can do this:
 
 ```svx score
@@ -27,6 +28,9 @@ The chart is rendered inside our mdsvex document.
 <Chart />
 ```
 
+:::notes
 mdsvex has its own markdown parser, and [parse plugins](/docs/plugins/writing/parse-plugins#parse_plugins) can change the tree it builds.
+:::
+::::
 
 [Try it](/playground)
