@@ -15,17 +15,15 @@ order: 6
 ::::plate[Display math](mark="math", tone=code)
 A fenced code block with the language `math` is display math:
 
-````md score
+```js config
+mdsvex({ math: {} });
+```
+
+````md result config
 ```math
 \int_0^\infty e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}
 ```
 ````
-
-```html
-<div class="math math-display" translate="no">
-	<math display="block" class="tml-display">…</math>
-</div>
-```
 
 :::notes
 The Vite plugin renders the LaTeX when it compiles the document, with [Temml][temml], into MathML. Browsers draw MathML themselves, so the page loads no JavaScript for math.
@@ -41,12 +39,8 @@ On the atlas: [math](/atlas#math).
 ::::plate[Inline math](mark="$`", tone=code)
 Inline math is a code span wrapped in dollars, on one line:
 
-```md score
+```md result config
 Euler's identity, $`e^{i\pi} + 1 = 0`$, links five constants.
-```
-
-```html
-<span class="math math-inline" translate="no"><math>…</math></span>
 ```
 
 :::notes
@@ -60,6 +54,10 @@ Both dollars have to touch the backticks. The LaTeX is raw, as in the fence, and
 
 ::::plate[Only these two forms are math](mark="$5", tone=text)
 Only these two forms are math. A `latex` or `tex` fence is a code block that shows its source. `$…$` and `$$…$$` are plain text, so a price such as `$5` needs no escaping, and a `$` beside a code span that the other `$` doesn't follow is a `$` (`` $`x` `` is a dollar and inline code). [Inline code](/docs/reference/highlighting#inline-code) with the hint, `` `#!math x^2` ``, is plain inline code.
+
+```md result config
+It costs $5, and $x$ and $$x$$ are text. $`x` is a dollar and inline code.
+```
 ::::
 
 ## Math styles
@@ -149,9 +147,14 @@ With Temml, `annotate: true` adds the LaTeX to the MathML as an annotation. KaTe
 ::::plate[A `MathError`](mark="\frac", tone=code)
 LaTeX the renderer can't read is a `MathError`. The message names the file and the line of the fence or of the inline math, and `line` and `column` point at the place in the LaTeX when the renderer says where it is, so Vite's error overlay opens on it:
 
+````md error config file="src/routes/post.svx"
+```math
+\frac{a}{
 ```
-Unexpected end of input in a macro argument, expected '}' at end of input: \frac{a}{ (`math` fence at src/routes/post.svx:12)
-Unexpected end of input in a macro argument, expected '}' at end of input: \frac{a}{ (inline math at src/routes/post.svx:20)
+````
+
+```md error config file="src/routes/post.svx"
+A fraction, $`\frac{a}{`$.
 ```
 
 :::notes
