@@ -10,76 +10,214 @@ mdsvex 0.x ran remark and rehype, and took their plugins in `remarkPlugins` and 
 
 `migrate_config` from the [migrator](/docs/guides/migrating-from-0x#run-the-migrator) leaves a note for every plugin it finds in your config, with the same answer.
 
+::marks
+
 ## Built into the markdown
 
-| plugin | now | how |
-| --- | --- | --- |
-| `remark-gfm`, `remark-footnotes` | built in, apart from one thing | [tables](/docs/learn/markdown#tables), `~~strikethrough~~`, [task lists](/docs/learn/markdown#task-lists) and [footnotes](/docs/reference/footnotes) work as written. A bare url is not linked: the migrator writes each one as `<https://example.com>`, and `references({ linkify: true })` from [`@mdsvex/plugin-references`](/docs/plugins/references) links them all |
-| `remark-frontmatter`, `remark-parse-yaml` | built in | [frontmatter](/docs/guides/frontmatter) is the `metadata` export, and [`frontmatter.parse`](/docs/guides/frontmatter#custom-frontmatter-parsers) takes TOML or full YAML |
-| `remark-directive`, `remark-admonitions`, `remark-containers`, `remark-custom-blocks` | built in | [directives](/docs/guides/directives): `:::note` renders your `note` component |
-| `remark-sub-super`, `remark-supersub` | built in | `H~2~O` and `x^2^` |
-| `remark-extended-table`, `rehype-merge-cells` | built in | a `>` or `^` cell [merges](/docs/learn/markdown#tables), and `\|\|` makes header columns |
-| `remark-math` with `rehype-katex`, `rehype-katex-svelte` or `rehype-mathjax` | built in | a [`math` fence and `` $`x`$ ``](/docs/reference/math), rendered by Temml or, with `math: { renderer: 'katex' }`, KaTeX. For MathJax pass a [function](/docs/reference/math#custom-math-renderers). The migrator rewrites `$x$` when you pass `math: true` |
-| `remark-code-import` | built in | [`src=./file.ts#L5-L20`](/docs/reference/highlighting#code-from-a-file) on a fence, the migrator renames `file=` |
-| `remark-breaks` | nothing, on purpose | a line end is a space. End a line with a backslash for a break |
-| `rehype-raw` | not needed | HTML in a document is always real markup |
+::::added
+:::add[`remark-gfm`, `remark-footnotes`](mark="~~", tone=emph)
+built in, apart from one thing: [tables](/docs/learn/markdown#tables), `~~strikethrough~~`, [task lists](/docs/learn/markdown#task-lists) and [footnotes](/docs/reference/footnotes) work as written. A bare url is not linked: the migrator writes each one as `<https://example.com>`, and `references({ linkify: true })` from [`@mdsvex/plugin-references`](/docs/plugins/references) links them all
+:::
+
+:::add[`remark-frontmatter`, `remark-parse-yaml`](mark="---", tone=text)
+built in: [frontmatter](/docs/guides/frontmatter) is the `metadata` export, and [`frontmatter.parse`](/docs/guides/frontmatter#custom-frontmatter-parsers) takes TOML or full YAML
+:::
+
+:::add[`remark-directive`, `remark-admonitions`, `remark-containers`, `remark-custom-blocks`](mark=":::", tone=directive)
+built in: [directives](/docs/guides/directives), `:::note` renders your `note` component
+:::
+
+:::add[`remark-sub-super`, `remark-supersub`](mark="^", tone=emph)
+built in: `H~2~O` and `x^2^`
+:::
+
+:::add[`remark-extended-table`, `rehype-merge-cells`](mark="> ^", tone=fence)
+built in: a `>` or `^` cell [merges](/docs/learn/markdown#tables), and `||` makes header columns
+:::
+
+:::add[`remark-math` with `rehype-katex`, `rehype-katex-svelte` or `rehype-mathjax`](mark="$", tone=code)
+built in: a [`math` fence and `` $`x`$ ``](/docs/reference/math), rendered by Temml or, with `math: { renderer: 'katex' }`, KaTeX. For MathJax pass a [function](/docs/reference/math#custom-math-renderers). The migrator rewrites `$x$` when you pass `math: true`
+:::
+
+:::add[`remark-code-import`](mark="src=", tone=fence)
+built in: [`src=./file.ts#L5-L20`](/docs/reference/highlighting#code-from-a-file) on a fence, the migrator renames `file=`
+:::
+
+:::add[`remark-breaks`](mark="\↵", tone=text)
+nothing, on purpose: a line end is a space. End a line with a backslash for a break
+:::
+
+:::add[`rehype-raw`](mark="<div>", tone=comp)
+not needed: HTML in a document is always real markup
+:::
+::::
 
 ## Now an option
 
-| plugin | now | how |
-| --- | --- | --- |
-| `remark-smartypants`, and the `smartypants` option | an option | [`smart_punctuation: true`](/docs/reference/options#smart_punctuation), off by default |
-| `rehype-slug`, `remark-slug` | an option | [`heading_ids: true`](/docs/reference/options#heading_ids), which the migrator adds |
-| `remark-unwrap-images`, `rehype-unwrap-images` | an option | [`unwrap_images: true`](/docs/reference/options#unwrap_images), which the migrator adds |
-| `mdsvex-relative-images`, `remark-embed-images` | on by default | a relative image is [imported](/docs/reference/images), so Vite hashes it |
-| `remark-link-rewrite`, `rehype-urls`, `remark-prepend-url`, `remark-relative-links` | an option | [`links`](/docs/reference/links#links) for links between documents and the base path, [`rewrite`](/docs/reference/links#rewrite) for anything else |
-| `rehype-highlight`, `remark-highlight.js`, `rehype-prism-plus`, `remark-prism`, `@shikijs/rehype`, `rehype-pretty-code` | on by default | [highlighting](/docs/reference/highlighting) needs a theme and no setup. [Fence meta](/docs/reference/highlighting#fence-meta) reads `{1,3-4}`, `/word/` and `showLineNumbers` as they do. For Shiki itself pass a [function](/docs/reference/highlighting#custom-highlighters) |
-| `rehype-code-titles`, `remark-code-titles`, `remark-flexible-code-titles` | built in | `title="math.ts"` or `[math.ts]` in the [fence meta](/docs/reference/highlighting#fence-meta) |
-| `rehype-twoslash` | an option | [`highlight: { twoslash: true }`](/docs/reference/highlighting#twoslash) |
+::::added
+:::add[`remark-smartypants`, and the `smartypants` option](mark="--", tone=text)
+an option: [`smart_punctuation: true`](/docs/reference/options#smart_punctuation), off by default
+:::
+
+:::add[`rehype-slug`, `remark-slug`](mark="#", tone=heading)
+an option: [`heading_ids: true`](/docs/reference/options#heading_ids), which the migrator adds
+:::
+
+:::add[`remark-unwrap-images`, `rehype-unwrap-images`](mark="![]", tone=link)
+an option: [`unwrap_images: true`](/docs/reference/options#unwrap_images), which the migrator adds
+:::
+
+:::add[`mdsvex-relative-images`, `remark-embed-images`](mark="./", tone=link)
+on by default: a relative image is [imported](/docs/reference/images), so Vite hashes it
+:::
+
+:::add[`remark-link-rewrite`, `rehype-urls`, `remark-prepend-url`, `remark-relative-links`](mark="[]()", tone=link)
+an option: [`links`](/docs/reference/links#links) for links between documents and the base path, [`rewrite`](/docs/reference/links#rewrite) for anything else
+:::
+
+:::add[`rehype-highlight`, `remark-highlight.js`, `rehype-prism-plus`, `remark-prism`, `@shikijs/rehype`, `rehype-pretty-code`](mark="```", tone=fence)
+on by default: [highlighting](/docs/reference/highlighting) needs a theme and no setup. [Fence meta](/docs/reference/highlighting#fence-meta) reads `{1,3-4}`, `/word/` and `showLineNumbers` as they do. For Shiki itself pass a [function](/docs/reference/highlighting#custom-highlighters)
+:::
+
+:::add[`rehype-code-titles`, `remark-code-titles`, `remark-flexible-code-titles`](mark="title=", tone=fence)
+built in: `title="math.ts"` or `[math.ts]` in the [fence meta](/docs/reference/highlighting#fence-meta)
+:::
+
+:::add[`rehype-twoslash`](mark="^?", tone=fence)
+an option: [`highlight: { twoslash: true }`](/docs/reference/highlighting#twoslash)
+:::
+::::
 
 ## First-party plugins
 
-| plugin | now | how |
-| --- | --- | --- |
-| `rehype-autolink-headings`, `remark-autolink-headings` | [`@mdsvex/plugin-anchors`](/docs/plugins/anchors) | `anchors()`, with `heading_ids: true` |
-| `rehype-external-links`, `remark-external-links` | [`@mdsvex/plugin-external-links`](/docs/plugins/external-links) | `external_links({ target: '_blank' })`. 0.x ran this plugin itself, with `rel="nofollow"`, see [what changes](/docs/guides/migrating-from-0x#what-changes) |
-| `remark-toc`, `rehype-toc`, `@stefanprobst/rehype-extract-toc`, `@vcarl/remark-headings` | [`@mdsvex/plugin-toc`](/docs/plugins/toc) | `toc()` leaves the headings as data, and `::toc` lists them in the page |
-| `remark-reading-time` | [`@mdsvex/plugin-page-data`](/docs/plugins/page-data) | `plugin_data.page.minutes` and `words` |
-| `rehype-infer-description-meta`, `rehype-infer-title-meta`, `rehype-truncate` | [`@mdsvex/plugin-page-data`](/docs/plugins/page-data) | `plugin_data.page.excerpt` and `title`, as text |
-| `rehype-code-group` | [`@mdsvex/plugin-tabs`](/docs/plugins/tabs) | `:::tabs` around the fences |
-| `remark-emoji`, `remark-gemoji` | [`@mdsvex/plugin-emoji`](/docs/plugins/emoji) | `emoji()` turns `:tada:` into the emoji, with GitHub's names |
-| `remark-github`, `remark-mentions`, `remark-ping` | [`@mdsvex/plugin-references`](/docs/plugins/references) | `references({ repo: 'you/site' })` links `@user`, `#123` and commits |
-| `remark-linkify-regex`, autolink literals | [`@mdsvex/plugin-references`](/docs/plugins/references) | `references({ linkify: true })` links bare urls |
-| `rehype-citation` | [`@mdsvex/plugin-citations`](/docs/plugins/citations) | `:cite[key]` from a CSL JSON file, and `::bibliography` |
+::::added
+:::add[`rehype-autolink-headings`, `remark-autolink-headings`](mark="#", tone=heading)
+[`@mdsvex/plugin-anchors`](/docs/plugins/anchors): `anchors()`, with `heading_ids: true`
+:::
+
+:::add[`rehype-external-links`, `remark-external-links`](mark="https:", tone=link)
+[`@mdsvex/plugin-external-links`](/docs/plugins/external-links): `external_links({ target: '_blank' })`. 0.x ran this plugin itself, with `rel="nofollow"`, see [what changes](/docs/guides/migrating-from-0x#what-changes)
+:::
+
+:::add[`remark-toc`, `rehype-toc`, `@stefanprobst/rehype-extract-toc`, `@vcarl/remark-headings`](mark="::toc", tone=directive)
+[`@mdsvex/plugin-toc`](/docs/plugins/toc): `toc()` leaves the headings as data, and `::toc` lists them in the page
+:::
+
+:::add[`remark-reading-time`](mark="words", tone=other)
+[`@mdsvex/plugin-page-data`](/docs/plugins/page-data): `plugin_data.page.minutes` and `words`
+:::
+
+:::add[`rehype-infer-description-meta`, `rehype-infer-title-meta`, `rehype-truncate`](mark="page", tone=other)
+[`@mdsvex/plugin-page-data`](/docs/plugins/page-data): `plugin_data.page.excerpt` and `title`, as text
+:::
+
+:::add[`rehype-code-group`](mark="tabs", tone=directive)
+[`@mdsvex/plugin-tabs`](/docs/plugins/tabs): `:::tabs` around the fences
+:::
+
+:::add[`remark-emoji`, `remark-gemoji`](mark=":tada:", tone=text)
+[`@mdsvex/plugin-emoji`](/docs/plugins/emoji): `emoji()` turns `:tada:` into the emoji, with GitHub's names
+:::
+
+:::add[`remark-github`, `remark-mentions`, `remark-ping`](mark="@user", tone=link)
+[`@mdsvex/plugin-references`](/docs/plugins/references): `references({ repo: 'you/site' })` links `@user`, `#123` and commits
+:::
+
+:::add[`remark-linkify-regex`, autolink literals](mark="url", tone=link)
+[`@mdsvex/plugin-references`](/docs/plugins/references): `references({ linkify: true })` links bare urls
+:::
+
+:::add[`rehype-citation`](mark=":cite", tone=directive)
+[`@mdsvex/plugin-citations`](/docs/plugins/citations): `:cite[key]` from a CSL JSON file, and `::bibliography`
+:::
+::::
 
 ## A component or a few lines
 
-| plugin | now | how |
-| --- | --- | --- |
-| `rehype-rewrite`, `rehype-wrap`, `rehype-components` | a component | [replace the element](/docs/guides/components) with a component of your own |
-| `rehype-class-names`, `rehype-add-classes` | a parse plugin | `{ table: { parse(node) { node.attrs.class = 'table'; } } }` in [`parse_plugins`](/docs/plugins/writing/parse-plugins#parse_plugins) |
-| `remark-sectionize`, `rehype-section` | a parse plugin | the `sections` plugin under [plugin handlers](/docs/plugins/writing/parse-plugins#plugin-handlers) |
-| `rehype-figure`, `remark-figure-caption` | [`@mdsvex/plugin-figures`](/docs/plugins/figures) | `:::figure[Caption]` around an image or anything else, with the caption in a `<figcaption>`. A lone image stays an image |
-| `rehype-img-size`, `rehype-plugin-image-native-lazy-loading` | [`@sveltejs/enhanced-img`][enhanced-img] and a component | add `enhancedImages()` to your Vite plugins and every markdown image gets its `width` and `height`, with avif and webp sources, see [optimised images](/docs/reference/images#optimised-images). For `loading="lazy"`, an `img` replacement sets it, and gets the picture as `src` |
-| `rehype-mermaid`, `remark-mermaidjs` | [`@mdsvex/plugin-diagram`](/docs/plugins/diagrams) | `diagram()` draws each `mermaid` fence, at build time with `pele` installed or in the browser with `mermaid` |
-| `remark-embedder`, `remark-oembed`, `remark-youtube` | [`@mdsvex/plugin-embeds`](/docs/plugins/embeds) | `::youtube[A talk](id=dQw4w9WgXcQ)` and `::vimeo`. Any other site is a leaf directive with a component of your own, see [directives](/docs/guides/directives#the-three-forms) |
-| `remark-collapse` | nothing needed | `<details>` and `<summary>` work as typed, with markdown inside, and [`@mdsvex/plugin-elements`](/docs/plugins/elements) adds `:::details[Summary]` and accordions |
-| `remark-kbd`, `remark-ruby` | [`@mdsvex/plugin-elements`](/docs/plugins/elements) | `:kbd[Ctrl]` and `:ruby[漢字](rt=かんじ)` |
-| `remark-flexible-markers`, `remark-mark-highlight`, `remark-ins` | [`@mdsvex/plugin-elements`](/docs/plugins/elements) | `:mark[text]` and `:ins[text]`. `==mark==` and `++ins++` are text, a plugin can't add syntax |
-| `remark-abbr` | [`@mdsvex/plugin-elements`](/docs/plugins/elements) | `:abbr[HTML](title="HyperText Markup Language")` |
-| `rehype-meta`, `rehype-document` | a template | a [template](/docs/guides/templates) renders `<svelte:head>` from its props |
-| `rehype-video` | a component | an `a` or `img` replacement that renders a `<video>` for a video url |
+::::added
+:::add[`rehype-rewrite`, `rehype-wrap`, `rehype-components`](mark="as h2", tone=comp)
+a component: [replace the element](/docs/guides/components) with a component of your own
+:::
+
+:::add[`rehype-class-names`, `rehype-add-classes`](mark="class", tone=other)
+a parse plugin: `{ table: { parse(node) { node.attrs.class = 'table'; } } }` in [`parse_plugins`](/docs/plugins/writing/parse-plugins#parse_plugins)
+:::
+
+:::add[`remark-sectionize`, `rehype-section`](mark="##", tone=heading)
+a parse plugin: the `sections` plugin under [plugin handlers](/docs/plugins/writing/parse-plugins#plugin-handlers)
+:::
+
+:::add[`rehype-figure`, `remark-figure-caption`](mark="figure", tone=directive)
+[`@mdsvex/plugin-figures`](/docs/plugins/figures): `:::figure[Caption]` around an image or anything else, with the caption in a `<figcaption>`. A lone image stays an image
+:::
+
+:::add[`rehype-img-size`, `rehype-plugin-image-native-lazy-loading`](mark="width", tone=link)
+[`@sveltejs/enhanced-img`][enhanced-img] and a component: add `enhancedImages()` to your Vite plugins and every markdown image gets its `width` and `height`, with avif and webp sources, see [optimised images](/docs/reference/images#optimised-images). For `loading="lazy"`, an `img` replacement sets it, and gets the picture as `src`
+:::
+
+:::add[`rehype-mermaid`, `remark-mermaidjs`](mark="-->", tone=fence)
+[`@mdsvex/plugin-diagram`](/docs/plugins/diagrams): `diagram()` draws each `mermaid` fence, at build time with `pele` installed or in the browser with `mermaid`
+:::
+
+:::add[`remark-embedder`, `remark-oembed`, `remark-youtube`](mark="::", tone=directive)
+[`@mdsvex/plugin-embeds`](/docs/plugins/embeds): `::youtube[A talk](id=dQw4w9WgXcQ)` and `::vimeo`. Any other site is a leaf directive with a component of your own, see [directives](/docs/guides/directives#the-three-forms)
+:::
+
+:::add[`remark-collapse`](mark=":::", tone=directive)
+nothing needed: `<details>` and `<summary>` work as typed, with markdown inside, and [`@mdsvex/plugin-elements`](/docs/plugins/elements) adds `:::details[Summary]` and accordions
+:::
+
+:::add[`remark-kbd`, `remark-ruby`](mark=":kbd", tone=directive)
+[`@mdsvex/plugin-elements`](/docs/plugins/elements): `:kbd[Ctrl]` and `:ruby[漢字](rt=かんじ)`
+:::
+
+:::add[`remark-flexible-markers`, `remark-mark-highlight`, `remark-ins`](mark=":mark", tone=directive)
+[`@mdsvex/plugin-elements`](/docs/plugins/elements): `:mark[text]` and `:ins[text]`. `==mark==` and `++ins++` are text, a plugin can't add syntax
+:::
+
+:::add[`remark-abbr`](mark=":abbr", tone=directive)
+[`@mdsvex/plugin-elements`](/docs/plugins/elements): `:abbr[HTML](title="HyperText Markup Language")`
+:::
+
+:::add[`rehype-meta`, `rehype-document`](mark="<head>", tone=comp)
+a template: a [template](/docs/guides/templates) renders `<svelte:head>` from its props
+:::
+
+:::add[`rehype-video`](mark="video", tone=comp)
+a component: an `a` or `img` replacement that renders a `<video>` for a video url
+:::
+::::
 
 ## Nothing yet
 
-| plugin | what to do today |
-| --- | --- |
-| `remark-github-blockquote-alert`, `remark-github-alerts`, `rehype-callouts` | `> [!NOTE]` is a block quote that starts with `[!NOTE]`. Write `:::note` with a directive component |
-| `remark-heading-id`, `remark-attr`, `rehype-attr` | `{#id}` and `{.class}` can't exist, braces belong to Svelte. `heading_ids` makes ids, and a parse plugin can set any attribute |
-| `remark-definition-list`, `remark-deflist` | type `<dl>`, `<dt>` and `<dd>` |
-| `remark-wiki-link` | `[[Page]]` is text |
-| `remark-validate-links`, `remark-lint` | nothing checks links or style. A missing image fails the build when it is [imported](/docs/reference/images) |
-| `rehype-sanitize` | nothing, and none is planned. A document compiles to a component and runs as code, so don't compile markdown you don't trust |
-| `rehype-minify`, `rehype-format` | not needed, Svelte and Vite own the output |
+::::added
+:::add[`remark-github-blockquote-alert`, `remark-github-alerts`, `rehype-callouts`](mark="[!]", tone=quote)
+`> [!NOTE]` is a block quote that starts with `[!NOTE]`. Write `:::note` with a directive component
+:::
+
+:::add[`remark-heading-id`, `remark-attr`, `rehype-attr`](mark="{#id}", tone=expr)
+`{#id}` and `{.class}` can't exist, braces belong to Svelte. `heading_ids` makes ids, and a parse plugin can set any attribute
+:::
+
+:::add[`remark-definition-list`, `remark-deflist`](mark="<dl>", tone=comp)
+type `<dl>`, `<dt>` and `<dd>`
+:::
+
+:::add[`remark-wiki-link`](mark="[[ ]]", tone=link)
+`[[Page]]` is text
+:::
+
+:::add[`remark-validate-links`, `remark-lint`](mark="lint", tone=other)
+nothing checks links or style. A missing image fails the build when it is [imported](/docs/reference/images)
+:::
+
+:::add[`rehype-sanitize`](mark="safe", tone=other)
+nothing, and none is planned. A document compiles to a component and runs as code, so don't compile markdown you don't trust
+:::
+
+:::add[`rehype-minify`, `rehype-format`](mark="min", tone=other)
+not needed, Svelte and Vite own the output
+:::
+::::
 
 A plugin that is not listed did one of three things. If it changed elements or attributes, a [parse plugin](/docs/plugins/writing/parse-plugins#parse_plugins) can do the same. If it added syntax, a [directive](/docs/guides/directives) is the syntax mdsvex has for that, and plugins can't add more. If it needed to fetch something or read a file while compiling, a plugin does that in [deferred work](/docs/plugins/writing/deferred-work).
