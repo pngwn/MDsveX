@@ -6,6 +6,9 @@ order: 3
 
 ## `links`
 
+::::plate[Links between documents](mark="[a]", tone=link)
+Turns the links you write between documents into the urls your site serves, with no function to write. Both keys are off until you set them.
+
 ```ts
 links: {
 	routes?: string;
@@ -13,23 +16,28 @@ links: {
 }
 ```
 
-Turns the links you write between documents into the urls your site serves, with no function to write. Both keys are off until you set them.
+:::notes
+On the atlas: [link](/atlas#link).
+:::
+::::
 
+::::plate[`routes`](mark="../", tone=link)
 `routes` is the directory whose files are served by their path, relative to the Vite root. A relative link to a document in it becomes that document's route, so a link works on GitHub and in an editor as well as on the site.
 
 ```js
 mdsvex({ links: { routes: 'src/routes' } });
 ```
 
-```svx
-<!-- src/routes/guide/+page.svx -->
+```svx score file="src/routes/guide/+page.svx"
 [Install](../setup/+page.svx#install) and then read [the rest](./advanced/+page.svx).
 ```
 
 ```html
 <p><a href="/setup#install">Install</a> and then read <a href="/guide/advanced">the rest</a>.</p>
 ```
+::::
 
+::::plate[How a file becomes a route](mark="+page", tone=link)
 How a file becomes a route:
 
 | link, from `src/routes/guide/+page.svx` | route |
@@ -42,7 +50,9 @@ How a file becomes a route:
 | `../[slug]/+page.svx` | left as written, nothing says which page it is |
 | `../../lib/notes.svx` | left as written, the file is outside `routes` |
 | `./chart.png`, `./data.json` | left as written, only a file with one of your [`extensions`](/docs/reference/options#extensions) is a document |
+::::
 
+::::plate[`base`](mark="/", tone=link)
 `base` goes in front of every url that starts with one `/`, for links and for images, and after `routes` has made its routes. It takes one of three things:
 
 ```js
@@ -54,7 +64,7 @@ mdsvex({ links: { base: '/docs' } });
 mdsvex({ links: { base: { import: 'resolve', from: '$app/paths' } } });
 ```
 
-```svx
+```svx score
 [Guide](/guide) ![Logo](/logo.png)
 ```
 
@@ -70,13 +80,29 @@ mdsvex({ links: { base: { import: 'resolve', from: '$app/paths' } } });
 <p><a href={__mdsvex_base('/guide')}>Guide</a> <img src={__mdsvex_base('/logo.png')} alt="Logo" /></p>
 ```
 
-Use the function form in SvelteKit, where the base is only known when the page renders. Any module works: the export is called with the url and returns the url to use. `import: 'default'` names a default export. A document with no root url imports nothing. `base: true` does nothing when Vite's base is relative or `/`.
+:::notes
+Use the function form in SvelteKit, where the base is only known when the page renders. Any module works: the export is called with the url and returns the url to use. `import: 'default'` names a default export. A document with no root url imports nothing.
+:::
 
-Neither key touches a url with a scheme (`https:`, `mailto:`), a `//host` url, a `#fragment` or `?query` alone, or a url with a Svelte expression such as `/posts/{slug}`. Only markdown links and images are changed. An `<a href>` or `<img src>` you type as HTML stays as written, and so does an image that [`import_images`](/docs/reference/images) imports.
+:::edges
+- `base: true` does nothing when Vite's base is relative or `/`.
+:::
+::::
+
+::::plate[What stays as written](mark="https:", tone=link)
+Neither key touches a url with a scheme (`https:`, `mailto:`), a `//host` url, a `#fragment` or `?query` alone, or a url with a Svelte expression such as `/posts/{slug}`.
+
+:::edges
+- Only markdown links and images are changed. An `<a href>` or `<img src>` you type as HTML stays as written, and so does an image that [`import_images`](/docs/reference/images) imports.
+:::
+::::
 
 `compile()` takes `links` too. There `routes` is compared with `filename` as written, so give both as absolute paths or both relative to one directory, `extensions` inside `links` says which files are documents (`.md` and `.svx` by default), and `base: true` is an error since there is no Vite config to read.
 
 ## `rewrite`
+
+::::plate[A function for the rest](mark="=>", tone=expr)
+A function for whatever [`links`](/docs/reference/links#links) does not cover. It is called for the url of every markdown link and of every markdown image that is not imported. A string replaces the url, and returning nothing keeps it.
 
 ```ts
 rewrite: (
@@ -84,8 +110,6 @@ rewrite: (
 	ctx: { filename?: string; type: 'link' | 'image'; written: string }
 ) => string | null | undefined | void;
 ```
-
-A function for whatever [`links`](/docs/reference/links#links) does not cover. It is called for the url of every markdown link and of every markdown image that is not imported. A string replaces the url, and returning nothing keeps it.
 
 ```js
 mdsvex({
@@ -98,10 +122,22 @@ mdsvex({
 });
 ```
 
+:::notes
 `ctx.filename` is the document, `ctx.type` says whether the url is the `href` of a link or the `src` of an image, and `ctx.written` is the url as the document has it.
+:::
+::::
 
-It runs after `links.routes` and before `links.base`. So `url` is already a route for a link to a document, and a root url you return still gets the base. It sees external urls and `#fragment` links too, since some sites rewrite those, so return nothing for a url you do not mean to change. It never sees a url with a Svelte expression, an empty url, or the `href` or `src` of an element typed as HTML. Returning `''` leaves the attribute out.
+::::plate[When `rewrite` runs](mark="url", tone=expr)
+It runs after `links.routes` and before `links.base`. So `url` is already a route for a link to a document, and a root url you return still gets the base. It sees external urls and `#fragment` links too, since some sites rewrite those, so return nothing for a url you do not mean to change.
 
+:::notes
 The url is the text of the document, with character references such as `&amp;` not decoded. What you return is written the same way, so returning `url` changes nothing. It is called once for each different url in a document, and it must be synchronous.
+:::
+
+:::edges
+- It never sees a url with a Svelte expression, an empty url, or the `href` or `src` of an element typed as HTML.
+- Returning `''` leaves the attribute out.
+:::
+::::
 
 `compile()` takes the option too.
