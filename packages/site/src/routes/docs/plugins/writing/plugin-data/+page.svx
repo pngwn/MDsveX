@@ -5,7 +5,10 @@ group: Writing plugins
 ---
 # Plugin data
 
-A plugin can hand something back from the parse of a document, such as a table of contents or a reading time. `ctx.set(key, value)` keeps one value under a key and `ctx.add(key, value)` adds an entry to a list. `ctx.data` reads what the plugin has written so far:
+A plugin can hand something back from the parse of a document, such as a table of contents or a reading time.
+
+::::plate[`ctx.set` and `ctx.add`](mark="set", tone=expr)
+`ctx.set(key, value)` keeps one value under a key and `ctx.add(key, value)` adds an entry to a list. `ctx.data` reads what the plugin has written so far:
 
 ```js
 const reading_time = {
@@ -25,6 +28,18 @@ const reading_time = {
 mdsvex({ plugins: [reading_time] });
 ```
 
+:::notes
+- **A write belongs to the node whose handler made it.** When the parser takes a node back, the writes its handlers made go too, so a handler can write as soon as it knows something.
+- **Lists are in document order.** An entry from `ctx.add` sorts by where its node is in the document, whatever order the handlers ran in. Of two nodes that `ctx.set` one key, the later one in the document wins.
+:::
+
+:::edges
+- **`ctx.data` is read-only.** Assigning to it throws a `TypeError`, and what it holds is frozen.
+- **The values are JSON**: plain objects, arrays, strings, finite numbers, booleans and `null`. Anything else, such as a `Date`, a `Map`, `NaN` or a function, throws a `PluginDataError` from the write, with the plugin, the key, the path of the value, `headings[2].id`, and where the node is. A key that holds `undefined` is left out.
+:::
+::::
+
+::::plate[The `plugin_data` export](mark="import", tone=expr)
 The document exports what its plugins left as `plugin_data`, beside `metadata`, keyed by plugin name:
 
 ```js
@@ -33,14 +48,17 @@ import Article, { metadata, plugin_data } from './article.svx';
 plugin_data.reading_time; // { words: 420, minutes: 3 }
 ```
 
+:::notes
 - **The document can read it too**, as `{plugin_data.reading_time.minutes}` in its own markup.
 - **A [template](/docs/guides/templates#template-props) gets it as its `plugin_data` prop.**
-- **A document whose plugins left nothing has no such export**, and compiles exactly as it does without plugins. Import it from a document you know has some, or use `?data` below, which always has the export.
-- **A write belongs to the node whose handler made it.** When the parser takes a node back, the writes its handlers made go too, so a handler can write as soon as it knows something.
-- **Lists are in document order.** An entry from `ctx.add` sorts by where its node is in the document, whatever order the handlers ran in. Of two nodes that `ctx.set` one key, the later one in the document wins.
-- **`ctx.data` is read-only.** Assigning to it throws a `TypeError`, and what it holds is frozen.
-- **The values are JSON**: plain objects, arrays, strings, finite numbers, booleans and `null`. Anything else, such as a `Date`, a `Map`, `NaN` or a function, throws a `PluginDataError` from the write, with the plugin, the key, the path of the value, `headings[2].id`, and where the node is. A key that holds `undefined` is left out.
+:::
 
+:::edges
+- **A document whose plugins left nothing has no such export**, and compiles exactly as it does without plugins. Import it from a document you know has some, or use `?data` below, which always has the export.
+:::
+::::
+
+::::plate[`?data`](mark="?data", tone=link)
 To list documents with what their plugins left, import them with the `?data` query:
 
 ```js
@@ -58,10 +76,14 @@ export function load() {
 }
 ```
 
+:::notes
 A `?data` import parses the document and runs its plugins, and renders nothing, so the list does not load the component of every page. Its module exports `metadata` and `plugin_data`, each `undefined` when the document has none, and both in one object as its default export.
 
 **`?data` or [`?metadata`](/docs/reference/options#frontmatter)?** A `?metadata` import reads the frontmatter alone, so only an edit of the frontmatter reloads the pages that import it. A `?data` import depends on the whole document: an edit of the body that changes what a plugin left reloads them, and a plugin that throws fails the import. Use `?metadata` for a list of titles and dates, and `?data` when the list shows something a plugin worked out.
+:::
+::::
 
+::::plate[Typing `PluginData`](mark=".ts", tone=expr)
 For TypeScript, a plugin types its own key by adding to the `PluginData` interface, and `mdsvex/globals` in `compilerOptions.types` types direct `?data` imports:
 
 ```ts
@@ -71,3 +93,4 @@ declare module 'mdsvex' {
 	}
 }
 ```
+::::

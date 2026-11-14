@@ -17,7 +17,7 @@ import { steps } from '@acme/steps';
 mdsvex({ plugins: [steps()] });
 ```
 
-````svx
+````svx score
 :::steps
 
 ## Install
@@ -36,6 +36,7 @@ Here each heading inside `:::steps` starts a step. The plugin wraps the heading 
 
 The first-party plugins are listed under [Plugins](/docs/plugins).
 
+::::plate[The plugin object](mark="{}", tone=expr)
 A plugin is an object:
 
 ```js
@@ -69,6 +70,12 @@ export function steps() {
 | `components` | element replacements, as `{ specifier, names }` |
 | `fences` | the fence languages the plugin renders itself, such as `['mermaid']`, which the highlighter never sees |
 
+:::notes
+`compile()` takes `plugins` as well. It writes `module` as the import specifier exactly as given.
+:::
+::::
+
+::::plate[Handlers bound to a directive](mark=":::", tone=directive)
 An entry of `directives` can hold handlers. They are bound to that directive, so they never run anywhere else in the document:
 
 | key | called for |
@@ -77,13 +84,28 @@ An entry of `directives` can hold handlers. They are bound to that directive, so
 | `descendants` | nodes at any depth inside it, by node type |
 | `parse` | the directive itself, in any of its three forms |
 
+:::notes
+- **Your own export wins.** A `directives` export of the same name from a [`components` module](/docs/guides/directives#declaring-directives) or a template replaces the plugin's component. The plugin's handlers still run, so your `step` gets the same `label` and `children`.
+- **Other plugins still see the nodes.** A heading inside `:::steps` reaches the `heading` handlers of `parse_plugins` too, after the bound handler ran. A plugin's `parse` runs ahead of `parse_plugins`.
+:::
+
+:::edges
+- **A nested blockquote or list is not a child.** `children` means written directly inside the directive. Use `descendants` for every node of a type at any depth.
+- **Only containers have children.** The bracket text of a leaf or inline directive is not passed to `children` or `descendants` handlers. Their own `parse` still runs, though an inline directive gets its args after it, so read them in the function `parse` returns.
+- **A directive has one owner.** Two plugins with an entry for the same directive throw a `DirectiveOwnerError` when the config loads, naming both. Another plugin reads the directive by observing it, below.
+:::
+::::
+
+::::plate[The handler's context](mark="ctx", tone=expr, id=handler-context)
 Each handler gets the node and a context:
 
 - `ctx.directive` is the directive it is bound to.
 - `ctx.index` counts the calls of this handler in this directive, from 0.
 - `ctx.state` is an empty object, new for each directive in the document. Keep what a handler needs between calls there, such as the step it opened last.
 - `ctx.scratch` is the plugin's, one for the whole document and shared with its other handlers and its document hook, see [plugin handlers](/docs/plugins/writing/parse-plugins#plugin-handlers).
+::::
 
+::::plate[A handler can return a function](mark="=>", tone=expr)
 A handler can return a function, which runs when the node closes. The directive's own `parse` can read its args when it opens and write them when it closes:
 
 ```js
@@ -101,16 +123,12 @@ tabs: {
 }
 ```
 
+:::notes
 Args are always strings, since they reach the component as string props.
+:::
+::::
 
-Things to know:
-
-- **A nested blockquote or list is not a child.** `children` means written directly inside the directive. Use `descendants` for every node of a type at any depth.
-- **Only containers have children.** The bracket text of a leaf or inline directive is not passed to `children` or `descendants` handlers. Their own `parse` still runs, though an inline directive gets its args after it, so read them in the function `parse` returns.
-- **Your own export wins.** A `directives` export of the same name from a [`components` module](/docs/guides/directives#declaring-directives) or a template replaces the plugin's component. The plugin's handlers still run, so your `step` gets the same `label` and `children`.
-- **A directive has one owner.** Two plugins with an entry for the same directive throw a `DirectiveOwnerError` when the config loads, naming both. Another plugin reads the directive by observing it, below.
-- **Other plugins still see the nodes.** A heading inside `:::steps` reaches the `heading` handlers of `parse_plugins` too, after the bound handler ran. A plugin's `parse` runs ahead of `parse_plugins`.
-
+::::plate[Observing a directive](mark="observe", tone=directive)
 A plugin that wants to read a directive another plugin owns observes it, with `observe` in its `parse`, or in an entry of `parse_plugins`. This numbers the figures of a figure plugin and leaves what it finds as [plugin data](/docs/plugins/writing/plugin-data), which the figure's component can read:
 
 ```js
@@ -139,11 +157,18 @@ export function numbering() {
 }
 ```
 
+:::notes
 - **It takes the same entries** as a plugin's own `directives`: `parse`, `children` and `descendants`, with a `ctx.state` and `ctx.index` of its own.
-- **It changes no node.** It writes data, warns, and reads the tree. Writing to a node, the directive or anything else, throws a `TypeError` that names the plugin that owns the directive.
 - **It runs after the owner,** at the open and at the close, so it sees the args and the children as the owner left them.
 - **It runs whoever renders the directive:** a plugin, your own component, or nothing yet.
+:::
 
+:::edges
+- **It changes no node.** It writes data, warns, and reads the tree. Writing to a node, the directive or anything else, throws a `TypeError` that names the plugin that owns the directive.
+:::
+::::
+
+::::plate[Claiming a fence language](mark="```", tone=fence)
 A plugin that renders the fences of a language itself claims them with `fences`. `@mdsvex/plugin-diagram` draws each `mermaid` fence and keeps its code as the diagram's source:
 
 ```js
@@ -165,13 +190,24 @@ export function diagram() {
 }
 ```
 
+:::notes
 - **The highlighter never sees a claimed fence.** It renders as plain code, as with `highlight: false`, and there is no `unknown_language` warning for it. That holds for twinkleplop and for a highlighter function, and saves the work of highlighting code the plugin replaces. It still goes to a replaced `pre`, with its `lang`, `title` and the rest.
+- **The editor knows.** The manifest lists the claimed languages, so the language server does not warn of them either.
+:::
+
+:::edges
 - **A language has one owner.** Two plugins that claim the same language throw a `FenceOwnerError` when the config loads, with `language` and both plugin names as `plugins`.
 - **Only fences.** A code span with a hint, `` `#!mermaid A --> B` ``, is highlighted as before.
 - **The language as written**, the first word of the info string, so `Mermaid` is not `mermaid`. Claim what your handler matches.
 - **`math` fences** are rendered by the [`math`](/docs/reference/options#math) option before any highlighter, so claiming `math` changes nothing while it is on.
-- **The editor knows.** The manifest lists the claimed languages, so the language server does not warn of them either.
-
-`compile()` takes `plugins` as well. It writes `module` as the import specifier exactly as given.
+:::
+::::
 
 What a handler gets and can do is under [plugin handlers](/docs/plugins/writing/parse-plugins#plugin-handlers).
+
+<style>
+	/* a table that is a plate's part keeps inside its margins (the fix belongs in lib/docs/Plate.svelte) */
+	table {
+		max-width: calc(100% - 2 * var(--pad, 0px));
+	}
+</style>

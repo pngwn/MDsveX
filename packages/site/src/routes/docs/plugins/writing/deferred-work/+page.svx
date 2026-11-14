@@ -5,6 +5,7 @@ group: Writing plugins
 ---
 # Deferred work
 
+::::plate[`ctx.defer`](mark="defer", tone=expr)
 A handler can't wait for a file or a fetch. It starts that work with `ctx.defer(node, task)` and the parse goes on:
 
 ```js
@@ -25,11 +26,18 @@ const titles = {
 };
 ```
 
+:::notes
 - **The task gets a node and a `ctx` of its own** and changes the document through them. Its changes apply once it has finished and the parser is sure of the node. If the parser takes the node back, they are dropped.
-- **A task changes its own node** and what is inside it, and writes data for it. Anything else throws a `TypeError`. So the result does not depend on which task finishes first.
 - **The Vite plugin waits** for deferred work before it renders the document, and so does a `?data` import. With `compile`, use [`compile_async`](/docs/reference/compile#compile_async). In dev it warns when a document has waited five seconds, naming the plugin and the document.
 - **What a task adds compiles as if it were written.** An image whose `src` a task set is imported, and a fence it adds with `src=` shows its file, and the same goes for a `document` hook.
+:::
 
+:::edges
+- **A task changes its own node** and what is inside it, and writes data for it. Anything else throws a `TypeError`. So the result does not depend on which task finishes first.
+:::
+::::
+
+::::plate[The `document` hook](mark="root", tone=expr)
 Work that needs the whole document goes in a `document` hook. It runs once, after the parse and after every deferred task, and gets the root of the tree. It may be async:
 
 ```js
@@ -46,15 +54,33 @@ const summary = {
 };
 ```
 
+:::notes
 Hooks run in plugin order, each awaited before the next. One that returns a promise needs `compile_async`, as deferred work does.
+:::
+::::
 
 ## Loading files
 
 A plugin loads what it needs itself, and tells mdsvex what it read:
 
-- **`ctx.depend(path)`** names a file the output depends on, by its absolute path. When it changes, the Vite plugin compiles the document again, and its `?data` import, in dev and in a watch build, and it watches files outside the project root too. `compile` returns them as `dependencies` for any other host to watch.
-- **`ctx.read(path)`** reads a file and depends on it. **`ctx.resolve(specifier)`** resolves a specifier as an import from the document would. The Vite plugin supplies both. With `compile_async`, pass `read` and `resolve` options, `mdsvex/compile` reads no files itself.
-- **`ctx.cached(key, load)`** shares one load between documents: a bibliography read once for every page. A key that is a path is a dependency, and the Vite plugin drops it when that file changes, so a dev server never serves a stale copy.
+::::plate[`ctx.depend`](mark="depend", tone=expr)
+`ctx.depend(path)` names a file the output depends on, by its absolute path. When it changes, the Vite plugin compiles the document again, and its `?data` import, in dev and in a watch build, and it watches files outside the project root too.
+
+:::notes
+`compile` returns them as `dependencies` for any other host to watch.
+:::
+::::
+
+::::plate[`ctx.read` and `ctx.resolve`](mark="read", tone=expr)
+`ctx.read(path)` reads a file and depends on it. `ctx.resolve(specifier)` resolves a specifier as an import from the document would.
+
+:::notes
+The Vite plugin supplies both. With `compile_async`, pass `read` and `resolve` options, `mdsvex/compile` reads no files itself.
+:::
+::::
+
+::::plate[`ctx.cached`](mark="cached", tone=expr)
+`ctx.cached(key, load)` shares one load between documents: a bibliography read once for every page. A key that is a path is a dependency, and the Vite plugin drops it when that file changes, so a dev server never serves a stale copy.
 
 ```js
 ctx.defer(node, async (node, ctx) => {
@@ -63,3 +89,4 @@ ctx.defer(node, async (node, ctx) => {
 	node.attrs.label = bib.get(node.text_content)?.short;
 });
 ```
+::::
