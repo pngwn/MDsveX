@@ -40,6 +40,28 @@ Curly quotes, dashes and other Unicode punctuation count as punctuation there…
   - `commonmark`: the source read by CommonMark and by mdsvex. Add `gfm` for GFM's reading, and `cue="regex"` to rule on the score the characters that make the difference.
   - `templates`: compile with the templates guide's `default` and `docs` templates.
   - `file="src/routes/x/+page.svx"`: name the file over the example.
+  - `config`: compile with the last `js config` fence above it (see below).
+- **`config`, an example compiled with the config the page shows.** Never write an example's output or error by hand. If it needs options, plugins, components or directives, show them in a `js config` fence, and flag the svx fence `config`:
+
+  ````svx
+  ```js config
+  mdsvex({ heading_ids: true });
+  ```
+
+  ```svx result score config
+  ## Getting _started_
+  ```
+  ````
+
+  - **The config runs as written** (`build/shown-config.js`).
+    - `mdsvex({ … })` needs no import, and nor do `sveltekit()` and `defineConfig()`.
+    - It may import mdsvex's entries (`mdsvex/highlight`, `mdsvex/math`, `mdsvex/compile`) and every first-party plugin the site depends on.
+    - A plugin can be defined in the fence itself, as parse-plugins' `sections` is.
+  - **Options map as the Vite plugin maps them.** The options that are the same in both pass through, such as `heading_ids`, `smart_punctuation`, `unwrap_images`, `wrap_static`, `footnotes`, `import_images`, `plugins` and `parse_plugins`. `highlight` gets the default languages, `math` the default temml, and directives are strict, as the plugin compiles them.
+  - **`components` names modules the page shows.** It reads them from the fences above whose first line is their path, `// src/lib/markdown.js`, with `#lib/` and `$lib/` as `src/lib/`. Their `directives` namespace export becomes the directives. The guides/directives page shows the real unknown-directive error this way.
+  - **Anything it can't honour fails the build** and names it: an option it doesn't map yet (`links`, `routes`, `templates`, `select_template`), an import it doesn't load, or a module no fence shows. Then extend `build/shown-config.js`, don't hand-write the output.
+  - **`result`, `error` and `score` honour it.** A score alone still compiles with its config, so a config that doesn't compile fails the build. With "Show the reading" on, a score parses with the config's `unwrap_images`. Plugins act after the parse: their work shows in "you get", not in the score.
+  - **Worked examples:** reference/options (`heading_ids`), guides/directives (the `error`), plugins/writing/parse-plugins (`sections`).
 - **`::marks`.** A line of its own after the page's intro. It draws the strip of the page's plates, grouped by their `##` sections. Use it on a page with a dozen plates or more, where a reader wants to jump.
 - **`::::added` holding `:::add[what you write](mark=…, tone=…)`.** A grid of small marks, each with what you get as its body. Use it for a list of short syntax with no example of its own, like Learn's "Added to CommonMark". Each cell joins the strip.
 - **The reading switch is the template's.** Pages need nothing for it. It is off by default in Learn, Guides and Plugins, and on in Reference and Internals.

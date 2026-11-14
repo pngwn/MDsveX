@@ -24,11 +24,13 @@
 		segments?: string;
 		/** the compile's error, for `error` */
 		error?: string;
+		/** the syntax choices of the config it compiles with, as JSON, which its score reads with */
+		syntax?: string;
 		/** the fence as written, highlighted */
 		children?: Snippet;
 	}
 
-	let { source, file, score, code, segments, error, children }: Props = $props();
+	let { source, file, score, code, segments, error, syntax, children }: Props = $props();
 
 	// svelte-ignore state_referenced_locally
 	const reading = new ExampleReading(use_reading(), score === 'open');
@@ -38,6 +40,7 @@
 	const paired = $derived(code !== undefined || error !== undefined);
 	const compiled = $derived({ code: code ?? '', segments: segments ? JSON.parse(segments) : [], with: [] as string[] });
 	const name = $derived(file ? `the example ${file}` : 'the example');
+	const read_with = $derived(syntax ? JSON.parse(syntax) : {});
 </script>
 
 <figure class="pair wide" class:paired class:scored={reading.on}>
@@ -52,7 +55,7 @@
 		</div>
 		{#if reading.on}
 			<div class="score">
-				<Score source={read} bind:focus label="{name}, as the parser reads it" />
+				<Score source={read} syntax={read_with} bind:focus label="{name}, as the parser reads it" />
 			</div>
 		{:else}
 			<div class="source">{@render children?.()}</div>

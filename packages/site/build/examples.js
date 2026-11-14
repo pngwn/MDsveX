@@ -8,6 +8,9 @@
 //   ```svx error          you write beside the error its compile gives
 //   ```svx commonmark     the source read by CommonMark and by mdsvex, side by side
 //
+// `config` compiles it with the last ```js config fence above it, run as
+// written (build/shown-config.js), and the modules that config names from the fences
+// above that show them, a fence whose first line is its path.
 // `templates` compiles with the templates guide's two templates, `file="..."`
 // names the file an example stands for, `gfm` reads the CommonMark side as GFM
 // does, and `cue="regex"` rules the characters a contrast turns on.
@@ -22,6 +25,7 @@ import { compile as compile_svelte } from "svelte/compiler";
 import { commonmark } from "../src/lib/docs/commonmark.js";
 import { compile_svx, pretty, rendered } from "../src/lib/docs/render.js";
 import { cue_ranges, options_for, segments_of } from "../src/lib/docs/setup.js";
+import { config_of, syntax_of } from "./shown-config.js";
 
 // an object with every key, for the names and files an example only mentions
 const anything = (value) =>
@@ -77,6 +81,9 @@ export function examples({ strict }) {
 
 const FLAGS = ["score", "result", "error", "commonmark"];
 
+/** a fence's first line naming its file, `// src/lib/markdown.js` or `<!-- src/lib/Post.svelte -->` */
+const PATH_LINE = /^\s*(?:\/\/|\/\*|<!--)\s*([\w@#$./-]+\.(?:js|ts|svelte|svx))\s*(?:\*\/|-->)?\s*$/;
+
 /** what a fence's meta asks of it, null for an svx or md fence that asks nothing */
 function flags(info) {
 	const { lang, props } = fence_meta(info);
@@ -91,6 +98,7 @@ function flags(info) {
 		commonmark: on.has("commonmark"),
 		gfm: on.has("gfm"),
 		templates: on.has("templates"),
+		config: on.has("config"),
 		file: value("file"),
 		cue: value("cue"),
 	};
@@ -124,21 +132,42 @@ export function example({ highlight }) {
 		compile(`\`\`\`${lang}\n${code}\n\`\`\`\n`, { filename: "/result.svx", highlight }).code.trim();
 	const where = (node, ctx) => `the example at line ${node.position.start.line} of ${ctx.filename}`;
 
+	/** the options of the `js config` fence above, with the files shown above, read once per pair of them */
+	function shown_config(node, ctx) {
+		const shown = ctx.scratch.config;
+		if (!shown) throw new Error(`${where(node, ctx)} is flagged config, but no \`js config\` fence is above it`);
+		const files = ctx.scratch.files ?? {};
+		const key = `${shown.line}:${Object.keys(files).join(",")}`;
+		if (ctx.scratch.config_key !== key) {
+			ctx.scratch.config_options = config_of(shown.code, files, `the config at line ${shown.line} of ${ctx.filename}`);
+			ctx.scratch.config_key = key;
+		}
+		return ctx.scratch.config_options;
+	}
+
 	/** the example's args from its source, as the fence asked */
 	function example_args(source, asked, node, ctx) {
 		const args = { source };
 		if (asked.file) args.file = asked.file;
 		if (asked.score) args.score = "open";
-		if (!asked.result && !asked.error) return args;
+		const config = asked.config ? shown_config(node, ctx) : null;
+		const syntax = config && syntax_of(config);
+		if (syntax) args.syntax = syntax;
+		// a score alone still compiles with its config, so a config that can't fails here
+		if (!asked.result && !asked.error && !config) return args;
+		const options = config
+			? { ...options_for(asked), ...config, filename: options_for(asked).filename }
+			: options_for(asked);
 		let result;
 		try {
-			result = compile(source, { ...options_for(asked), sourcemap: true });
+			result = compile(source, { ...options, sourcemap: true });
 		} catch (error) {
 			if (!asked.error) throw new Error(`${where(node, ctx)} has no result: ${error.message}`);
 			args.error = error.message;
 			return args;
 		}
 		if (asked.error) throw new Error(`${where(node, ctx)} is flagged error but compiles`);
+		if (!asked.result) return args;
 		args.code = result.code;
 		args.segments = JSON.stringify(segments_of(result));
 		return args;
@@ -172,6 +201,19 @@ export function example({ highlight }) {
 		const section = ctx.scratch.section ?? "";
 		node.attrs.args = { ...args, id, section, n: String(n) };
 		ctx.add("plates", { id, kind, mark: args.mark ?? "", tone: args.tone ?? "other", title: label, section });
+	}
+
+	/**
+	 * what a fence shows that a later example may compile with: the file it
+	 * names on its first line or with `file=`, and a `js config` fence's config
+	 */
+	function remember(node, source, ctx) {
+		const { lang, props } = fence_meta(node.info);
+		const file = props.find(([key, value]) => key === "file" && typeof value === "string")?.[1] ?? source.split("\n")[0].match(PATH_LINE)?.[1];
+		if (file) (ctx.scratch.files ??= {})[file.replace(/^\.?\//, "")] = source;
+		const config = props.some(([key, value]) => key === "config" && value === true);
+		if (config && (lang === "js" || lang === "javascript")) ctx.scratch.config = { code: source, line: node.position.start.line };
+		else if (config && lang !== "svx" && lang !== "md") throw new Error(`the ${lang} fence at line ${node.position.start.line} of ${ctx.filename} is flagged config, which only a js fence can be`);
 	}
 
 	// a plate's first prose is its lede, wrapped so the plate can set it in its head
@@ -236,13 +278,16 @@ export function example({ highlight }) {
 			code_fence: {
 				parse(node, ctx) {
 					const asked = flags(node.info);
-					if (!asked) return;
-					const name = asked.commonmark ? "contrast" : "example";
-					const wrapper = node.wrap_from("directive_container", { name, args: {} });
-					wrapper.close();
+					let wrapper = null;
+					if (asked) {
+						wrapper = node.wrap_from("directive_container", { name: asked.commonmark ? "contrast" : "example", args: {} });
+						wrapper.close();
+					}
 					// the code has arrived once the fence closes
 					return () => {
 						const source = node.text_content;
+						remember(node, source, ctx);
+						if (!asked) return;
 						wrapper.attrs.args = asked.commonmark ? contrast_args(source, asked, node, ctx) : example_args(source, asked, node, ctx);
 					};
 				},
