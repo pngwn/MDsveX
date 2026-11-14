@@ -55,12 +55,15 @@ Curly quotes, dashes and other Unicode punctuation count as punctuation there…
 
   - **The config runs as written** (`build/shown-config.js`).
     - `mdsvex({ … })` needs no import, and nor do `sveltekit()` and `defineConfig()`.
-    - It may import mdsvex's entries (`mdsvex/highlight`, `mdsvex/math`, `mdsvex/compile`) and every first-party plugin the site depends on.
+    - It may import mdsvex's entries (`mdsvex/highlight`, `mdsvex/math`, `mdsvex/compile`), every first-party plugin the site depends on, and the frontmatter parsers `yaml` and `smol-toml`.
     - A plugin can be defined in the fence itself, as parse-plugins' `sections` is.
-  - **Options map as the Vite plugin maps them.** The options that are the same in both pass through, such as `heading_ids`, `smart_punctuation`, `unwrap_images`, `wrap_static`, `footnotes`, `import_images`, `plugins` and `parse_plugins`. `highlight` gets the default languages, `math` the default temml, and directives are strict, as the plugin compiles them.
+  - **`mdsvex({ … })` means what it means to the Vite plugin, defaults included.**
+    - A bare `mdsvex()` highlights code with the default languages, renders math with temml, imports images and makes [code that runs](/docs/reference/code-that-runs) a module, with strict directives, as a reader's project would.
+    - A config fence needs to say only what it changes from those defaults: `highlight: false`, `math: false`, `import_images: false` turn one off. Saying a default out loud (`highlight: {}`) is fine.
+    - The options that are the same in both pass through, such as `heading_ids`, `smart_punctuation`, `unwrap_images`, `wrap_static`, `footnotes`, `frontmatter`, `import_images`, `plugins` and `parse_plugins`.
   - **`components` names modules the page shows.** It reads them from the fences above whose first line is their path, `// src/lib/markdown.js`, with `#lib/` and `$lib/` as `src/lib/`. Their `directives` namespace export becomes the directives. The guides/directives page shows the real unknown-directive error this way.
   - **Anything it can't honour fails the build** and names it: an option it doesn't map yet (`links`, `routes`, `templates`, `select_template`), an import it doesn't load, or a module no fence shows. Then extend `build/shown-config.js`, don't hand-write the output.
-  - **`result`, `error` and `score` honour it.** A score alone still compiles with its config, so a config that doesn't compile fails the build. With "Show the reading" on, a score parses with the config's `unwrap_images`. Plugins act after the parse: their work shows in "you get", not in the score.
+  - **`result`, `error` and `score` honour it.** A score alone still compiles with its config, so a config that doesn't compile fails the build. Each is compiled once, with its config, and its output through Svelte, so it can't fail for missing the options it shows. With "Show the reading" on, a score parses with the config's `unwrap_images`. Plugins act after the parse: their work shows in "you get", not in the score.
   - **Worked examples:** reference/options (`heading_ids`), guides/directives (the `error`), plugins/writing/parse-plugins (`sections`).
 - **`::marks`.** A line of its own after the page's intro. It draws the strip of the page's plates, grouped by their `##` sections. Use it on a page with a dozen plates or more, where a reader wants to jump.
 - **`::::added` holding `:::add[what you write](mark=…, tone=…)`.** A grid of small marks, each with what you get as its body. Use it for a list of short syntax with no example of its own, like Learn's "Added to CommonMark". Each cell joins the strip.

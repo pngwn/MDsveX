@@ -63,8 +63,10 @@ export function examples({ strict }) {
 			parse(node, ctx) {
 				const { lang } = fence_meta(node.info);
 				if (lang !== "svx" && lang !== "md") return;
-				// an error example is checked by the docs plugin, which needs it to fail
-				if (flags(node.info)?.error) return;
+				// an error example is checked by the docs plugin, which needs it to fail,
+				// and a config example by the docs plugin with its config, which this can't see
+				const asked = flags(node.info);
+				if (asked?.error || asked?.config) return;
 				return () => {
 					try {
 						compile_example(node.text_content);
@@ -167,6 +169,14 @@ export function example({ highlight }) {
 			return args;
 		}
 		if (asked.error) throw new Error(`${where(node, ctx)} is flagged error but compiles`);
+		// examples() leaves a config example to this compile, so its svelte check is here too
+		if (config) {
+			try {
+				compile_svelte(result.code, { generate: false, filename: "Example.svelte" });
+			} catch (error) {
+				throw new Error(`${where(node, ctx)} compiles with its config to svelte that doesn't: ${error.message}`);
+			}
+		}
 		if (!asked.result) return args;
 		args.code = result.code;
 		args.segments = JSON.stringify(segments_of(result));

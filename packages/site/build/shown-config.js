@@ -1,7 +1,8 @@
 // the config a docs example compiles with, read from the page itself: a `js
 // config` fence is run as written, its `mdsvex({ … })` call gives the options,
 // and an svx fence flagged `config` compiles with the last one above it. What
-// the reader sees as config is what compiles, so nothing here is a default.
+// the reader sees as config is what compiles: `mdsvex({ … })` means what it
+// means to the Vite plugin, its defaults included, and nothing else is added.
 //
 // It runs at build time, synchronously, inside the docs plugin's fence handler.
 // So the modules a config may import are loaded once, here: the site's
@@ -21,11 +22,14 @@ const plugin_names = Object.keys({ ...site.dependencies, ...site.devDependencies
 	name.startsWith("@mdsvex/plugin-"),
 );
 
-/** what a config can import: mdsvex's entries and every first-party plugin the site has */
+/** what a config can import: mdsvex's entries, every first-party plugin the site has, and the frontmatter parsers */
 const MODULES = {
 	"mdsvex/highlight": await import("mdsvex/highlight"),
 	"mdsvex/math": await import("mdsvex/math"),
 	"mdsvex/compile": await import("mdsvex/compile"),
+	// the frontmatter parsers the guides show
+	yaml: await import("yaml"),
+	"smol-toml": await import("smol-toml"),
 	...Object.fromEntries(await Promise.all(plugin_names.map(async (name) => [name, await import(name)]))),
 };
 const LANGUAGES = await load_default_languages();
@@ -147,16 +151,32 @@ const SAME = new Set([
 ]);
 
 /**
+ * what the Vite plugin does with an option a config leaves out (mdsvex's
+ * main.ts): highlighting with the default languages, temml for math, images
+ * as imports, code that runs as modules, and strict directives. So a bare
+ * `mdsvex()` on a page compiles as it would in a reader's project
+ */
+function plugin_defaults() {
+	return {
+		strict_directives: true,
+		highlight: create_highlight({ languages: LANGUAGES }),
+		math: TEMML,
+		import_images: true,
+		snippets: true,
+	};
+}
+
+/**
  * the compile options a shown config stands for: the Vite plugin's options
- * mapped as it maps them, the modules it names read from the files the page
- * shows, directives strict as the plugin compiles them
+ * mapped as it maps them, over its defaults, the modules it names read from
+ * the files the page shows
  * @param {string} code the config fence as written
  * @param {Record<string, string>} files the fences above that name their file
  * @param {string} where for errors, the fence and its page
  */
 export function config_of(code, files, where) {
 	const written = run(code, where);
-	const options = { strict_directives: true };
+	const options = plugin_defaults();
 	for (const [key, value] of Object.entries(written)) {
 		if (value === undefined) continue;
 		if (SAME.has(key)) options[key] = value;
