@@ -283,7 +283,7 @@ heading_ids: boolean | { slug?: (text: string, heading: { depth: number }) => st
 mdsvex({ heading_ids: true });
 ```
 
-```svx result score config
+```svx result config
 ## Getting _started_
 
 ## Getting started

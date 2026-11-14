@@ -152,7 +152,7 @@ title: Hello: World
 
 For full YAML, use a YAML library such as [`yaml`][yaml]:
 
-```js
+```js config
 import { mdsvex } from 'mdsvex';
 import { parse } from 'yaml';
 
@@ -160,12 +160,19 @@ mdsvex({
 	frontmatter: { parse: (raw) => parse(raw) }
 });
 ```
+
+```svx result config
+---
+author: &ada Ada
+editor: *ada
+---
+```
 ::::
 
 ::::plate[TOML](mark="=", tone=text)
 The fences stay `---`, but what goes between them is up to the parser. For TOML, with [`smol-toml`][smol-toml]:
 
-```js
+```js config
 import { mdsvex } from 'mdsvex';
 import { parse } from 'smol-toml';
 
@@ -174,7 +181,7 @@ mdsvex({
 });
 ```
 
-```svx
+```svx result config
 ---
 title = "TOML Example"
 

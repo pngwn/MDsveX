@@ -152,6 +152,17 @@ A claim[^1].
 
 ::::plate[`strict: false`](mark="false", tone=text)
 `strict: false` turns the two errors into warnings: a reference with no definition is numbered and linked all the same, and the first definition of a label is the one that renders. That suits a preview of a document that is still being written.
+
+```js config
+mdsvex({ footnotes: { strict: false } });
+```
+
+```md result config
+A claim[^1] and another[^2].
+
+[^1]: The first.
+[^1]: The second.
+```
 ::::
 
 ## Footnote components
