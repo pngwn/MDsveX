@@ -29,6 +29,13 @@ export * as directives from './directives.js';
 // src/lib/directives.js
 export { default as Callout } from './Callout.svelte';
 export { default as youtube } from './YouTube.svelte';
+export { default as abbr } from './Abbr.svelte';
+export { default as toc } from './Toc.svelte';
+export { default as note } from './Note.svelte';
+```
+
+```js config
+mdsvex({ components: '#lib/markdown.js' });
 ```
 
 :::notes
@@ -47,7 +54,7 @@ A template's directives come before those of the `components` modules, in the sa
 ::::plate[Inline](mark=":", tone=directive)
 An inline directive sits in a line of text. It gets its args, and the text in brackets as `children`:
 
-```svx
+```svx result config
 Read the :abbr[HTML](title=HyperText) spec.
 ```
 
@@ -59,7 +66,7 @@ Read the :abbr[HTML](title=HyperText) spec.
 ::::plate[Leaf](mark="::", tone=directive)
 A leaf takes a line of its own. It gets its args, and the text in brackets as `label`:
 
-```svx
+```svx result config
 ::youtube[A talk](id=dQw4w9WgXcQ)
 
 ::toc
@@ -78,7 +85,7 @@ Its brackets are optional: `::toc` is the same as `::toc[]`, and args can follow
 ::::plate[Container](mark=":::", tone=directive)
 A container takes a line of its own too, and ends at a line of colons. It gets its args, the text in brackets as `label` and the body as `children`:
 
-```svx
+```svx result config
 :::Callout[Heads up](kind=warn)
 Body *markdown*
 :::
@@ -116,8 +123,18 @@ A name starts with a letter, then letters, digits, `_` or `-`. A name that isn't
 </aside>
 ```
 
+```svx result config
+:::Callout[Heads up](kind=warn, title="A title")
+Body *markdown*
+:::
+```
+
 :::edges
 - An arg named `children` is an error. So is `label` on a leaf or container, though an inline directive can take a `label` arg as a plain prop.
+
+```svx error config
+::toc(children=x)
+```
 :::
 ::::
 
