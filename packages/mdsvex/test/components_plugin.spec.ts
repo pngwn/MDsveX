@@ -74,6 +74,8 @@ describe('scan_exports', () => {
 			names: ['p'],
 			stars: ['./md.js'],
 			namespaces: [],
+			reexports: [{ name: 'p', imported: 'default', specifier: './P.svelte' }],
+			imports: [],
 		});
 	});
 
@@ -95,6 +97,8 @@ describe('scan_exports', () => {
 				{ name: 'directives', specifier: './directives.ts' },
 				{ name: 'odd name', specifier: './odd.js' },
 			],
+			reexports: [{ name: 'p', imported: 'default', specifier: './P.svelte' }],
+			imports: ['./other.js'],
 		});
 	});
 

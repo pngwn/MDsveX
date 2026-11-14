@@ -21,6 +21,8 @@ describe('read_exports', () => {
 			names: ['a', 'directives'],
 			stars: ['./b.js'],
 			namespaces: [{ name: 'directives', specifier: './d.js' }],
+			reexports: [],
+			imports: [],
 		});
 	});
 
@@ -59,7 +61,41 @@ describe('read_exports', () => {
 		const result = read_exports('<p>x</p>', 'svelte', () => {
 			throw new Error('called');
 		});
-		expect(result).toEqual({ names: [], stars: [], namespaces: [] });
+		expect(result).toEqual({
+			names: [],
+			stars: [],
+			namespaces: [],
+			reexports: [],
+			imports: [],
+		});
+	});
+
+	test('reads each named re-export with the name it imports', () => {
+		const result = read_exports(
+			[
+				"import Local from './Local.static.svelte';",
+				"import './side.css';",
+				"export { default as callout, Badge as 'my-badge' } from './Callout.static.svelte';",
+				'export { kbd } from "./kbd.js";',
+				'export { Local };',
+				"const later = import('./lazy.js');",
+			].join('\n'),
+			'js'
+		);
+		expect(result.reexports).toEqual([
+			{
+				name: 'callout',
+				imported: 'default',
+				specifier: './Callout.static.svelte',
+			},
+			{
+				name: 'my-badge',
+				imported: 'Badge',
+				specifier: './Callout.static.svelte',
+			},
+			{ name: 'kbd', imported: 'kbd', specifier: './kbd.js' },
+		]);
+		expect(result.imports).toEqual(['./Local.static.svelte', './side.css']);
 	});
 
 	test('agrees with the scan of the vite plugin', async () => {

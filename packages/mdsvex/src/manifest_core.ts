@@ -19,6 +19,8 @@ export interface ManifestModule {
 	file: string;
 	/** its export names, the replacements it declares */
 	names: string[];
+	/** of a directives module, the names whose component renders at build time, left out for none */
+	static?: string[];
 }
 
 export interface ManifestTemplate {

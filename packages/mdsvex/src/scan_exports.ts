@@ -2,7 +2,7 @@
  * the export scan of the vite plugin, types stripped by vite, which loads on
  * first use so a compile never does
  */
-import { module_script, read_exports } from './read_exports.js';
+import { module_script, no_exports, read_exports } from './read_exports.js';
 import type { ScanKind, ScannedExports } from './read_exports.js';
 
 export { module_script };
@@ -21,8 +21,7 @@ export async function scan_exports_detail(
 	kind: ScanKind
 ): Promise<ScannedExports> {
 	const js = kind === 'svelte' ? module_script(code) : code;
-	if (js === null || js.trim() === '')
-		return { names: [], stars: [], namespaces: [] };
+	if (js === null || js.trim() === '') return no_exports();
 	return read_exports(await strip_types(js), 'js');
 }
 

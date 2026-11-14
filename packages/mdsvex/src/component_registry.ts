@@ -13,6 +13,8 @@ import {
 } from './ids.js';
 import type { ManifestModule } from './manifest.js';
 import type { ScannedExports } from './scan_exports.js';
+import { mode_key, static_names } from './static_directives.js';
+import type { StaticNames } from './static_directives.js';
 
 interface ComponentModule {
 	/** the id documents import */
@@ -32,6 +34,10 @@ interface DirectiveModule {
 	spec: string;
 	file: string;
 	names: string[];
+	/** the names served by a .static. component, with their files */
+	statics: StaticNames;
+	/** what decided static, a rescan with another resolves again */
+	key: string;
 }
 
 /**
@@ -102,10 +108,7 @@ export function component_registry(
 			sources.push({ specifier: m.virtual, names: m.names });
 			if (m.directives === null) continue;
 			all.push(m.directives.file);
-			directive_list.push({
-				specifier: m.directives.virtual,
-				names: m.directives.names,
-			});
+			directive_list.push(directive_source(m.directives));
 		}
 		files = all;
 		directive_sources =
@@ -154,12 +157,15 @@ export function component_registry(
 				);
 			}
 			const file = clean_id(resolved.id);
+			const scanned = await tracker.scan(file, warn);
 			m.directives = {
 				// a failed resolution threw above, so list lines up with written
 				virtual: directive_ids[i],
 				spec: own.directives,
 				file,
-				names: (await tracker.scan(file, warn)).names,
+				names: scanned.names,
+				statics: await static_names(ctx, file, scanned),
+				key: mode_key(scanned),
 			};
 		}
 		publish(list);
@@ -194,6 +200,23 @@ export function component_registry(
 		sources(): ComponentSource[] | undefined {
 			return sources;
 		},
+		/** the component file of a static directive the module of id serves, undefined for none */
+		static_file(id: string, name: string): string | undefined {
+			for (const m of published)
+				if (m.directives !== null && m.directives.virtual === id)
+					return m.directives.statics.files[name];
+			return undefined;
+		},
+		/** the directives module of a virtual id that serves a static directive, undefined for none */
+		static_module(id: string): string | undefined {
+			for (const m of published)
+				if (
+					m.directives?.virtual === id &&
+					m.directives.statics.names.length !== 0
+				)
+					return m.directives.file;
+			return undefined;
+		},
 		/** the directives compile option */
 		directive_sources(): ComponentSource[] | undefined {
 			return directive_sources;
@@ -209,8 +232,7 @@ export function component_registry(
 			for (const m of published) {
 				components.push({ id: m.virtual, file: m.file, names: m.names });
 				if (m.directives === null) continue;
-				const d = m.directives;
-				directives.push({ id: d.virtual, file: d.file, names: d.names });
+				directives.push(manifest_directives(m.directives));
 			}
 			return { components, directives };
 		},
@@ -260,7 +282,14 @@ export function component_registry(
 			const owner = modules.findIndex((m) => m.directives?.file === file);
 			if (owner < 0) return false;
 			const d = modules[owner].directives!;
-			const names = (await tracker.scan(file, warn, code)).names;
+			const scanned = await tracker.scan(file, warn, code);
+			if (mode_key(scanned) !== d.key) {
+				// a re-export moved, which may change a mode, it resolves in the next transform
+				tracker.mark(file, timestamp);
+				reset();
+				return true;
+			}
+			const names = scanned.names;
 			if (!same_names(names, d.names)) {
 				const list = modules.slice();
 				list[owner] = { ...list[owner], directives: { ...d, names } };
@@ -269,4 +298,27 @@ export function component_registry(
 			return tracker.changed(file, d.names, names, timestamp);
 		},
 	};
+}
+
+/** the directives compile option of a module, static only when it has some */
+export function directive_source(d: {
+	virtual: string;
+	names: string[];
+	statics: StaticNames;
+}): ComponentSource {
+	const source: ComponentSource = { specifier: d.virtual, names: d.names };
+	if (d.statics.names.length !== 0) source.static = d.statics.names;
+	return source;
+}
+
+/** a directives module for the editor manifest */
+export function manifest_directives(d: {
+	virtual: string;
+	file: string;
+	names: string[];
+	statics: StaticNames;
+}): ManifestModule {
+	const out: ManifestModule = { id: d.virtual, file: d.file, names: d.names };
+	if (d.statics.names.length !== 0) out.static = d.statics.names;
+	return out;
 }
