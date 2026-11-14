@@ -29,6 +29,7 @@
 	import { tone, type Tone } from './kinds';
 	import { place, strokes, systems, type Placed, type Stroke, type System } from './layout';
 	import { read, settled } from './reading';
+	import type { Syntax } from '../pfm';
 
 	interface Props {
 		/** the PFM source to read */
@@ -54,6 +55,11 @@
 		 * in the ink: the characters a docs contrast turns on, a space included
 		 */
 		cue?: [number, number][];
+		/**
+		 * the syntax choices the parser reads with, mdsvex's `unwrap_images`, for
+		 * a docs example compiled with a config that sets it
+		 */
+		syntax?: Syntax;
 	}
 
 	let {
@@ -64,12 +70,13 @@
 		staves = false,
 		label = 'The parser’s reading of the source',
 		cue = [],
+		syntax = {},
 	}: Props = $props();
 
 	const NBSP = String.fromCharCode(160);
 
 	let streaming = $derived(stream !== undefined);
-	let reading = $derived(read(source, { stream: streaming }));
+	let reading = $derived(read(source, { stream: streaming, syntax }));
 	let bar = $derived(streaming ? reading.bars[Math.max(0, Math.min(stream!, reading.bars.length - 1))] : settled(reading));
 	let length = $derived(source.length);
 	let fed = $derived(streaming ? bar.fed : length);

@@ -4,6 +4,11 @@
 import { parse_markdown_svelte, PFMParser } from '@mdsvex/parse';
 import type { Emitter } from '@mdsvex/parse';
 
+/** the syntax choices the parser reads, mdsvex's `unwrap_images`; every one off by default */
+export interface Syntax {
+	unwrap_images?: boolean;
+}
+
 export interface PfmNode {
 	type: string;
 	start: number;
@@ -97,7 +102,7 @@ export interface StreamFrame {
  * feed the incremental parser chunk by chunk and record what it says, the
  * opcodes and the tree they build, pending nodes and revokes included
  */
-export function pfm_stream(source: string, chunk_size = 1): StreamFrame[] {
+export function pfm_stream(source: string, chunk_size = 1, syntax: Syntax = {}): StreamFrame[] {
 	const by_id = new Map<number, LiveNode>();
 	const root: LiveNode = {
 		id: 0, kind: 'root', start: 0, end: -1, pending: false,
@@ -177,7 +182,7 @@ export function pfm_stream(source: string, chunk_size = 1): StreamFrame[] {
 		},
 	};
 
-	const parser = new PFMParser(emitter);
+	const parser = new PFMParser(emitter, 2, syntax);
 	parser.init();
 	const frames: StreamFrame[] = [];
 	for (let fed = 0; fed < source.length; ) {

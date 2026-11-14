@@ -17,7 +17,7 @@
 // All of it comes from pfm_stream, nothing here guesses at what the parser does.
 // The settled reading feeds the whole source as one chunk; only a streamed one
 // feeds it a character at a time, which copies the tree once per character
-import { pfm_stream, type KindName, type LiveNode, type Op } from '../pfm';
+import { pfm_stream, type KindName, type LiveNode, type Op, type Syntax } from '../pfm';
 
 export type Voice = 'block' | 'inline' | 'svelte' | 'directive' | 'document';
 
@@ -162,19 +162,22 @@ function held_span(root: LiveNode, fed: number): [number, number] | null {
 const kept = new Map<string, Reading>();
 const KEEP = 32;
 
-/** read a source, settled, or a character at a time keeping every bar when streamed */
-export function read(source: string, { stream = false }: { stream?: boolean } = {}): Reading {
-	const key = `${stream ? 's' : 'r'}${source}`;
+/**
+ * read a source, settled, or a character at a time keeping every bar when
+ * streamed, with the syntax choices a config makes, such as unwrap_images
+ */
+export function read(source: string, { stream = false, syntax = {} }: { stream?: boolean; syntax?: Syntax } = {}): Reading {
+	const key = `${stream ? 's' : 'r'}${syntax.unwrap_images ? 'u' : ''}${source}`;
 	const known = kept.get(key);
 	if (known) return known;
-	const reading = parse(source, stream);
+	const reading = parse(source, stream, syntax);
 	kept.set(key, reading);
 	if (kept.size > KEEP) kept.delete(kept.keys().next().value!);
 	return reading;
 }
 
-function parse(source: string, stream: boolean): Reading {
-	const frames = pfm_stream(source, stream ? 1 : Math.max(1, source.length));
+function parse(source: string, stream: boolean, syntax: Syntax): Reading {
+	const frames = pfm_stream(source, stream ? 1 : Math.max(1, source.length), syntax);
 	const bars: Bar[] = [];
 	const ghosts: Ghost[] = [];
 	let seen = new Map<number, Phrase>();
