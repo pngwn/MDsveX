@@ -10,6 +10,46 @@ export interface ComponentImport {
 	readonly specifier: string;
 	/** generated local binding, internal and never api */
 	readonly local: string;
+	/** a directive whose component renders at build time when a shell is given */
+	readonly static?: boolean;
+}
+
+/**
+ * a static directive rendered once, its html with a hole where each snippet
+ * goes, html has one more entry than holes, braces escaped and comments gone
+ */
+export interface Shell {
+	readonly html: readonly string[];
+	readonly holes: readonly ('label' | 'children')[];
+	/**
+	 * import statements a document that uses the shell adds, the styles of
+	 * the component and the files its html names, left out for none
+	 */
+	readonly imports?: readonly string[];
+}
+
+/** the shells a render may use, by shell_key */
+export interface ShellTable {
+	get(key: string): Shell | undefined;
+}
+
+/**
+ * the key of the shell for one use of a static directive, the component,
+ * its args and which snippets it is given, the same for every use alike
+ */
+export function shell_key(
+	specifier: string,
+	name: string,
+	args: Readonly<Record<string, string>> | undefined,
+	label: boolean,
+	children: boolean
+): string {
+	const pairs: string[] = [];
+	if (args !== undefined) {
+		const keys = Object.keys(args).sort();
+		for (let i = 0; i < keys.length; i++) pairs.push(keys[i], args[keys[i]]);
+	}
+	return JSON.stringify([specifier, name, pairs, label, children]);
 }
 
 /** an element component_mode all keeps because a component can not take its directive */
@@ -26,6 +66,12 @@ export interface ComponentSource {
 	specifier: string;
 	/** the export names of the module */
 	names: string[];
+	/**
+	 * the names among names whose component renders at build time, only for
+	 * directives, left out for none, a renderer with no shell for one renders
+	 * it live
+	 */
+	static?: readonly string[];
 }
 
 const IDENT = /^[A-Za-z_$][\w$]*$/;
@@ -34,6 +80,8 @@ export class ComponentScope {
 	readonly parent: ComponentScope | null;
 	/** names added here and in every parent */
 	readonly size: number;
+	/** true when this scope or a parent serves a directive statically */
+	readonly has_static: boolean;
 	private readonly own = new Map<string, ComponentImport>();
 	private readonly locals = new Set<string>();
 
@@ -47,17 +95,23 @@ export class ComponentScope {
 		parent: ComponentScope | null = null
 	) {
 		this.parent = parent;
+		let has_static = parent !== null && parent.has_static;
 		for (let i = 0; i < sources.length; i++) {
 			const { specifier, names } = sources[i];
+			const statics = sources[i].static;
 			for (let j = 0; j < names.length; j++) {
 				const name = names[j];
 				const prior = this.own.get(name);
 				// a replaced name keeps its local, which only this scope used
 				const local = prior ? prior.local : this.local_for(name, suffix);
-				this.own.set(name, { name, specifier, local });
+				if (statics !== undefined && statics.includes(name)) {
+					this.own.set(name, { name, specifier, local, static: true });
+					has_static = true;
+				} else this.own.set(name, { name, specifier, local });
 			}
 		}
 		this.size = this.own.size + (parent === null ? 0 : parent.size);
+		this.has_static = has_static;
 	}
 
 	/** the replacement for an element name, closest scope first */
@@ -83,6 +137,11 @@ export class ComponentScope {
 		this.locals.add(local);
 		return local;
 	}
+}
+
+/** an import that only runs the module at specifier */
+export function side_effect_import(specifier: string): string {
+	return 'import ' + js_string(specifier) + ';\n';
 }
 
 function js_string(s: string): string {
