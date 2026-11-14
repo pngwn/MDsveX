@@ -92,9 +92,15 @@ pre.twinkleplop {
 ::::plate[A highlighted block](mark="span.l", tone=fence)
 A highlighted block renders as below. Each line is a `span.l`, each token a `span.tok` with its type as a class, and a line number a `span.ln`:
 
-```html
-<pre class="twinkleplop language-ts has-highlight" data-language="ts"><code><span class="l highlight"><span class="tok keyword">const</span> …</span></code></pre>
+```js config
+mdsvex({ highlight: {} });
 ```
+
+````md result config
+```ts {1}
+const a = 1;
+```
+````
 
 :::notes
 On the atlas: [code fence](/atlas#code-fence).
@@ -240,7 +246,7 @@ shows [a file](/docs/reference/highlighting#code-from-a-file), or some of its li
 ::::plate[A title and a caption](mark="title", tone=fence)
 A fence with a title or caption renders inside a `<figure class="twinkleplop-block">`, with a `<figcaption class="twinkleplop-title">` above the code and a `<figcaption class="twinkleplop-caption">` below it:
 
-````md score
+````md result config
 ```ts title="math.ts" {2} :line-numbers
 export function add(a: number, b: number) {
 	return a + b;
@@ -255,7 +261,13 @@ The `language-` class carries only the language, never the rest of the meta.
 :::
 
 :::edges
-- A line range past the end of the fence fails the build, so a stale range doesn't silently highlight nothing.
+- A line range past the end of the fence fails the build, so a stale range doesn't silently highlight nothing:
+
+````md error config
+```ts {9}
+let a;
+```
+````
 :::
 ::::
 
@@ -364,6 +376,7 @@ compile(source, {
 ::::plate[`[!verb]`](mark="[!hl]", tone=fence)
 A code directive is a marker in a comment, `[!verb]`, that styles part of the code and disappears from the output. A line that holds only markers is dropped.
 
+````md result config
 ```js
 const config = {
 	theme: 'light', // [!del]
@@ -371,6 +384,7 @@ const config = {
 	lines: true // [!hl]
 };
 ```
+````
 ::::
 
 These are on by default:
@@ -416,13 +430,19 @@ With no arguments, a directive applies to its own line. `[!hl +2]` applies to th
 ::::plate[`annotations`](mark="++", tone=fence)
 `annotations` picks the directives. Content written for Shiki's transformers, `// [!code ++]`, works with `shiki_notation` added:
 
-```js
+```js config
 import { default_annotations, shiki_notation } from 'mdsvex/highlight';
 
 mdsvex({
 	highlight: { annotations: [...default_annotations, shiki_notation()] }
 });
 ```
+
+````md result config
+```js
+const theme = 'dark'; // [!code ++]
+```
+````
 
 :::notes
 `annotations: false` turns directives off, and markers stay in the code as written.
@@ -434,7 +454,7 @@ mdsvex({
 ::::plate[Inline code with a language](mark="#!ts", tone=code)
 A code span that starts with ` #! ` and a language is highlighted:
 
-```md score
+```md result config
 Call `#!ts add(1, 2)` to add numbers.
 ```
 
@@ -510,7 +530,11 @@ export { default as pre } from './markdown/Pre.svelte';
 ::::plate[Meta props](mark="key=", tone=fence)
 Meta that no convention claims becomes props. `key="value"`, `key='value'` and `key=value` give a string, and a bare `key` gives `true`:
 
-````md score
+```js config
+mdsvex({ components: '#lib/markdown.js', highlight: {} });
+```
+
+````md result config
 ```svelte title="App.svelte" playground height=300
 <h1>Hello</h1>
 ```
