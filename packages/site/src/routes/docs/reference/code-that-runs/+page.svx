@@ -6,7 +6,10 @@ order: 9
 
 A fence marked `run` is shown as code and is also a module the page imports. The component that [replaces `pre`](/docs/reference/highlighting#code-block-components) gets that module as a prop and decides what running means: render a component, call an export, print a result.
 
-````svx
+::::plate[A real module](mark="run", tone=fence)
+The block is a real module in the Vite graph, not a string that is evaluated:
+
+````svx score
 ```svelte run
 <script>
 	let count = $state(0);
@@ -16,17 +19,23 @@ A fence marked `run` is shown as code and is also a module the page imports. The
 ```
 ````
 
-The block is a real module in the Vite graph, not a string that is evaluated. TypeScript is compiled, a Svelte block is compiled by vite-plugin-svelte, and its styles are scoped as in any component. Imports in the block resolve as they would in the document, so `./Button.svelte` is a file beside it, and aliases and `#lib/…` work. The server renders it with the page, and a content security policy has nothing to object to.
+:::notes
+TypeScript is compiled, a Svelte block is compiled by vite-plugin-svelte, and its styles are scoped as in any component. Imports in the block resolve as they would in the document, so `./Button.svelte` is a file beside it, and aliases and `#lib/…` work. The server renders it with the page, and a content security policy has nothing to object to.
 
-A block can't see the document's `<script>`. It is a module of its own, as a file would be, so share values by importing them in both, or let your component pass props to what the block exports.
+On the atlas: [code fence](/atlas#code-fence).
+:::
+
+:::edges
+- A block can't see the document's `<script>`. It is a module of its own, as a file would be, so share values by importing them in both, or let your component pass props to what the block exports.
+:::
+::::
 
 See the [code that runs playground example](/playground/run).
 
 ## A component for `pre`
 
-mdsvex hands over the module and nothing else, so a document with a block that runs needs a `pre` replacement, from a [`components` module](/docs/guides/components#the-components-option) or a [template](/docs/guides/components#replacing-elements-in-a-template). Without one the build fails at the fence.
-
-This one renders a Svelte block as a component and calls the default export of a script block, each above its code:
+::::plate[A `pre` that runs blocks](mark="<pre>", tone=comp)
+mdsvex hands over the module and nothing else, so a document with a block that runs needs a `pre` replacement, from a [`components` module](/docs/guides/components#the-components-option) or a [template](/docs/guides/components#replacing-elements-in-a-template). This one renders a Svelte block as a component and calls the default export of a script block, each above its code:
 
 ```svelte
 <!-- src/lib/markdown/Pre.svelte -->
@@ -58,7 +67,7 @@ This one renders a Svelte block as a component and calls the default export of a
 export { default as pre } from './markdown/Pre.svelte';
 ```
 
-````svx
+````svx score
 ```ts run
 import { format } from './dates';
 
@@ -66,11 +75,19 @@ export default () => format(new Date(2026, 0, 1));
 ```
 ````
 
+:::notes
 `module` is the namespace of the block, so `module.default` is its default export and its named exports are beside it. A block without the flag gets no `module`, so the same component serves every fence.
+:::
 
+:::edges
+- Without a `pre` replacement the build fails at the fence.
+:::
+::::
+
+::::plate[A frame around a demo](mark=":::", tone=directive)
 Layout around a demo is a job for a [directive](/docs/guides/directives): the `pre` inside it renders the demo, and the directive's component puts a frame, a title or tabs around it.
 
-````svx
+````svx score
 :::Example[A counter]
 
 ```svelte run
@@ -79,33 +96,54 @@ Layout around a demo is a job for a [directive](/docs/guides/directives): the `p
 
 :::
 ````
+::::
 
 ## Languages that run
 
-`js`, `ts`, `jsx`, `tsx` and `svelte` blocks run, as do `javascript` and `typescript`. The language picks the extension of the module, which is how Vite knows what to do with it. `run` on a block in any other language, or on one with no language, fails the build.
+::::plate[Languages that run](mark="ts", tone=fence)
+`js`, `ts`, `jsx`, `tsx` and `svelte` blocks run, as do `javascript` and `typescript`. The language picks the extension of the module, which is how Vite knows what to do with it.
+
+:::edges
+- `run` on a block in any other language, or on one with no language, fails the build:
+
+````svx error
+```py run
+print(1)
+```
+````
+:::
+::::
 
 ## Running on the client
 
+::::plate[`run=client`](mark="client", tone=fence)
 A block that touches `window` when it loads can't render on the server, and a heavy demo below the fold is better fetched late. `run=client` leaves the module out of the page and hands the component a function that imports it:
 
-````svx
+````svx score
 ```js run=client
 export default () => window.innerWidth;
 ```
 ````
 
+:::notes
 The component gets `load` in place of `module`. Call it from an event handler or an effect, and it resolves to the same namespace `module` would hold. The block becomes a chunk of its own in a build.
+:::
+::::
 
 ## Running a file
 
+::::plate[`src=` with `run`](mark="src=", tone=fence)
 With [`src=`](/docs/reference/highlighting#code-from-a-file) a block shows a file, and with `run` as well the page imports that file. The component gets `src` and `module` both.
 
-````svx
+````svx score
 ```svelte src=./Counter.svelte run
 ```
 ````
 
+:::notes
 The module is the whole file, also when a slice shows only some of its lines.
+:::
+::::
 
 ## Editing a block
 
@@ -115,6 +153,7 @@ An error in a block, at build time or in the browser, points at its line of the 
 
 ## When a block can't run
 
+::::plate[When a block can't run](mark="run=?", tone=fence)
 These fail the build, each at the fence:
 
 - no component replaces `pre`;
@@ -122,8 +161,28 @@ These fail the build, each at the fence:
 - the block is also [live code](/docs/reference/live-code), with the `eval` flag or an `[!eval]` marker, since braces mean different things in each;
 - `run=` has a value other than `client`.
 
+:::edges
+- A block that is live and runs:
+
+````svx error
+```js run eval
+export default {a}
+```
+````
+
+- A value other than `client`:
+
+````svx error
+```js run=server
+export default 1
+```
+````
+:::
+::::
+
 ## Running with `compile`
 
+::::plate[`snippets`](mark="snip", tone=expr)
 `compile()` emits the import, but it has no bundler to serve the module from, so by default a block that runs throws a `RunError`. Say how the block is imported with `snippets`:
 
 ```js
@@ -133,8 +192,21 @@ const { code, snippets } = compile(source, {
 });
 ```
 
+:::notes
 `true` imports each block as a sibling of `filename`, `./guide.md.snippet-<hash>.<extension>`, the id the Vite plugin uses. A function gets the snippet and returns the specifier. Either way the result has `snippets`, one for each module, with its `hash`, `lang`, `extension`, `code` and the `line` of the document the code starts on, for your bundler's resolve and load hooks to serve. `snippets: false` runs no block: the flag is taken out of the meta and the fence is only shown.
 
-A `RunError` has a `code` (`run_module`, `run_pre`, `run_lang`, `run_eval` or `run_value`) and a `line` and `column`. A block with `src=` imports its file, so it needs no `snippets`.
+A block with `src=` imports its file, so it needs no `snippets`.
+:::
+
+:::edges
+- A `RunError` has a `code` (`run_module`, `run_pre`, `run_lang`, `run_eval` or `run_value`) and a `line` and `column`:
+
+````svx error
+```svelte run
+<button>…</button>
+```
+````
+:::
+::::
 
 The editor shows a block that runs as code, and reports one the build would reject at its fence. It doesn't check the code as a module yet.
