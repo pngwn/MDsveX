@@ -111,7 +111,7 @@ rewrite: (
 ) => string | null | undefined | void;
 ```
 
-```js
+```js config
 mdsvex({
 	rewrite(url, { type }) {
 		// [the repo](gh:pngwn/MDsveX)
@@ -120,6 +120,10 @@ mdsvex({
 		if (type === 'link' && /^\/(?!\/)[^?#]*[^/?#]$/.test(url)) return url + '/';
 	}
 });
+```
+
+```svx result config
+[the repo](gh:pngwn/MDsveX) and [the guide](/guide)
 ```
 
 :::notes

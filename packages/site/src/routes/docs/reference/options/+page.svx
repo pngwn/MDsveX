@@ -209,7 +209,7 @@ unwrap_images: boolean = false;
 export { default as img } from './Figure.svelte';
 ```
 
-```js
+```js config
 mdsvex({ components: '#lib/markdown.js', unwrap_images: true });
 ```
 
@@ -221,18 +221,10 @@ On the atlas: [image](/atlas#image).
 ::::plate[A paragraph of only images](mark="<p>", tone=para)
 With `unwrap_images`, a paragraph that holds only images gets no `<p>`, so the figure stands on its own:
 
-```svx score
+```svx result config
 Sales grew all year.
 
 ![A chart](/chart.png "Sales by month")
-```
-
-```html
-<p>Sales grew all year.</p>
-<figure>
-	<img src="/chart.png" alt="A chart" />
-	<figcaption>Sales by month</figcaption>
-</figure>
 ```
 
 :::notes
@@ -255,7 +247,11 @@ Wraps each run of two or more top level blocks with no Svelte in them in a `<div
 wrap_static: boolean = false;
 ```
 
-```svx score
+```js config
+mdsvex({ wrap_static: true });
+```
+
+```svx result config
 # Title
 
 Some text.
@@ -263,12 +259,6 @@ Some text.
 <Counter />
 
 More {count}.
-```
-
-```html
-<div style="display: contents"><h1>Title</h1><p>Some text.</p></div>
-<Counter />
-<p>More {count}.</p>
 ```
 
 :::notes
@@ -322,7 +312,13 @@ Each heading gets its id as it closes, from the ids before it, and an id never c
 :::
 
 :::edges
-- An id you write yourself, on a heading typed as HTML or through a plugin that reads one from your text, is kept, and one that an element before it already has fails the compile with a `HeadingIdError` that names both.
+- An id you write yourself, on a heading typed as HTML or through a plugin that reads one from your text, is kept, and one that an element before it already has fails the compile with a `HeadingIdError` that names both:
+
+```svx error config
+## Intro
+
+<h2 id="intro">Again</h2>
+```
 :::
 ::::
 
@@ -343,7 +339,7 @@ mdsvex({
 ::::plate[An anchor from a plugin](mark="#", tone=link)
 The id is there for the function a parse plugin returns from its handler, which runs when the heading closes, and for every sequential plugin, so one can add an anchor that points at its heading:
 
-```js
+```js config
 const anchors = {
 	heading: {
 		parse(node) {
@@ -355,6 +351,10 @@ const anchors = {
 };
 
 mdsvex({ heading_ids: true, parse_plugins: [anchors] });
+```
+
+```svx result config
+## Getting started
 ```
 
 :::notes
@@ -376,8 +376,12 @@ smart_punctuation:
 	= false;
 ```
 
-```js
+```js config
 mdsvex({ smart_punctuation: true });
+```
+
+```svx result config
+"quoted", 'quoted', it's, 1990--2020, wait --- what, and so on...
 ```
 
 :::notes
@@ -387,28 +391,32 @@ It is off by default, so a document renders the characters it has unless you ask
 
 ::::added
 :::add[`"quoted"`](mark='"', tone=text, id=smart-double)
-“quoted”, curly double quotes
+curly double quotes
 :::
 
 :::add[`'quoted'`, `it's`](mark="'", tone=text, id=smart-single)
-‘quoted’, it’s, curly single quotes, and the apostrophe
+curly single quotes, and the apostrophe
 :::
 
 :::add[`1990--2020`](mark="--", tone=text, id=smart-en)
-1990–2020, two hyphens are an en dash
+two hyphens are an en dash
 :::
 
 :::add[`wait --- what`](mark="---", tone=text, id=smart-em)
-wait — what, three hyphens are an em dash
+three hyphens are an em dash
 :::
 
 :::add[`and so on...`](mark="...", tone=text, id=smart-ellipsis)
-and so on…, three dots are an ellipsis
+three dots are an ellipsis
 :::
 ::::
 
 ::::plate[Only those five](mark="----", tone=text)
-Only those five are replaced. A run of any other length stays as written, so four hyphens or four dots are still four.
+Only those five are replaced. A run of any other length stays as written, so four hyphens or four dots are still four:
+
+```svx result config
+Four ---- hyphens and four .... dots. Run it with --watch, but a -- b, a--b and 1--2.
+```
 
 :::edges
 - Two hyphens after a space and before a letter are a command line flag and stay too, so `run it with --watch` is safe, while `a -- b`, `a--b` and `1--2` get a dash.
@@ -416,7 +424,11 @@ Only those five are replaced. A run of any other length stays as written, so fou
 ::::
 
 ::::plate[Which way a quote faces](mark="'", tone=text)
-A quote opens after a space, at the start of a paragraph, heading, list item or table cell, and after an opening bracket, a dash or another quote that just opened. Anywhere else it closes, which also makes an apostrophe.
+A quote opens after a space, at the start of a paragraph, heading, list item or table cell, and after an opening bracket, a dash or another quote that just opened. Anywhere else it closes, which also makes an apostrophe:
+
+```svx result config
+"_word_" and _"word"_, the `code`'s, the '90s and 6'2".
+```
 
 :::notes
 A quote with a space on both sides is left straight. Markup is looked through: the quotes in `_"word"_` and `"_word_"` face the same way, and the `'s` after a code span, a link or `{name}` is an apostrophe.
@@ -430,7 +442,7 @@ A quote with a space on both sides is left straight. Markup is looked through: t
 ::::plate[Quotes of another language](mark="«", tone=text)
 Each kind can be turned off, and `quotes` takes the four strings of another language, the opening and closing double quote and then the opening and closing single quote:
 
-```js
+```js config
 mdsvex({
 	smart_punctuation: {
 		dashes: false,
@@ -438,6 +450,10 @@ mdsvex({
 		quotes: ['«\u00a0', '\u00a0»', '“', '”']
 	}
 });
+```
+
+```svx result config
+"Bonjour", 'salut', l'ami -- 1990--2020.
 ```
 
 :::notes

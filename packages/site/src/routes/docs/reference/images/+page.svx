@@ -13,16 +13,12 @@ A markdown image with a relative url is imported, and the image gets what the im
 import_images: boolean | { enhanced?: boolean } = true;
 ```
 
-```svx score
-![A chart](./chart.png)
+```js config
+mdsvex({ import_images: true });
 ```
 
-```svelte
-<script>
-	import __mdsvex_img_0 from './chart.png';
-</script>
-
-<p><img src={__mdsvex_img_0} alt="A chart" /></p>
+```svx result config
+![A chart](./chart.png)
 ```
 
 :::notes
@@ -69,8 +65,12 @@ A file in `static` or `public` is served from the root, so write it as `/chart.p
 ::::plate[`import_images: false`](mark="false", tone=text)
 Set `import_images: false` to leave every url as written:
 
-```js
+```js config
 mdsvex({ import_images: false });
+```
+
+```svx result config
+![A chart](./chart.png)
 ```
 ::::
 
@@ -94,23 +94,12 @@ export default {
 ::::plate[A `<picture>`](mark="srcset", tone=comp)
 The image renders as the `<picture>` enhanced-img gives an `<enhanced:img>`: a `<source>` for each format it made, avif, webp and the format of the file, then an `<img>` with the `width` and `height` of the file, so the page doesn't shift as it loads. The `alt` and `title` stay on the `<img>`.
 
-```svx score
-![A chart](./chart.png)
+```js config
+mdsvex({ import_images: { enhanced: true } });
 ```
 
-```svelte
-<script>
-	import __mdsvex_img_0 from './chart.png?enhanced';
-</script>
-
-<p>
-	<picture>
-		{#each Object.entries(__mdsvex_img_0.sources) as [format, srcset]}
-			<source {srcset} type={'image/' + format} />
-		{/each}
-		<img src={__mdsvex_img_0.img.src} width={__mdsvex_img_0.img.w} height={__mdsvex_img_0.img.h} alt="A chart" />
-	</picture>
-</p>
+```svx result config
+![A chart](./chart.png)
 ```
 ::::
 
