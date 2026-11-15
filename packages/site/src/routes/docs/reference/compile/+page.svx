@@ -83,13 +83,22 @@ On the atlas: [template](/atlas#template).
 A plugin that waits for something, a file or an endpoint, [defers](/docs/plugins/writing/deferred-work) that work, and `compile` throws a `PluginAsyncError` when one does. `compile_async` takes the same options, waits for that work, and gives the same result once it applied:
 
 ```js
+import { readFile } from 'node:fs/promises';
 import { compile_async } from 'mdsvex/compile';
+import { citations } from '@mdsvex/plugin-citations';
 
-const { code, data } = await compile_async(source, { plugins: [citations()] });
+// the frontmatter of /site/post.svx names ./refs.json, so the plugin reads /site/refs.json
+const { code, data } = await compile_async(source, {
+	filename: '/site/post.svx',
+	read: (file) => readFile(file, 'utf8'),
+	plugins: [citations()]
+});
 ```
 
 :::notes
 A document whose plugins defer nothing compiles exactly as it does with `compile`.
+
+A plugin that loads a file finds a relative path from `filename` and loads it with `read`, see [`read` and `resolve`](/docs/reference/compile#read-and-resolve). Without `filename` the citations plugin can't find `./refs.json`, and without `read` it can't load it, and either fails the compile.
 :::
 
 :::edges
