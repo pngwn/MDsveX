@@ -28,7 +28,7 @@ const titles = {
 
 :::notes
 - **The task gets a node and a `ctx` of its own** and changes the document through them. Its changes apply once it has finished and the parser is sure of the node. If the parser takes the node back, they are dropped.
-- **The Vite plugin waits** for deferred work before it renders the document, and so does a `?data` import. With `compile`, use [`compile_async`](/docs/reference/compile#compile_async). In dev it warns when a document has waited five seconds, naming the plugin and the document.
+- **The Vite plugin waits** for deferred work before it renders the document, and so do `?data` and [`?text`](/docs/guides/search-and-feeds) imports. With `compile`, use [`compile_async`](/docs/reference/compile#compile_async). In dev it warns when a document has waited five seconds, naming the plugin and the document.
 - **What a task adds compiles as if it were written.** An image whose `src` a task set is imported, and a fence it adds with `src=` shows its file, and the same goes for a `document` hook.
 :::
 
@@ -64,7 +64,7 @@ Hooks run in plugin order, each awaited before the next. One that returns a prom
 A plugin loads what it needs itself, and tells mdsvex what it read:
 
 ::::plate[`ctx.depend`](mark="depend", tone=expr)
-`ctx.depend(path)` names a file the output depends on, by its absolute path. When it changes, the Vite plugin compiles the document again, and its `?data` import, in dev and in a watch build, and it watches files outside the project root too.
+`ctx.depend(path)` names a file the output depends on, by its absolute path. When it changes, the Vite plugin compiles the document again, and its `?data` and `?text` imports, in dev and in a watch build, and it watches files outside the project root too.
 
 :::notes
 `compile` returns them as `dependencies` for any other host to watch.

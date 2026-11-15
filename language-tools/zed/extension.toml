@@ -1,0 +1,19 @@
+id = "mdsvex"
+name = "mdsvex"
+version = "0.0.1"
+schema_version = 1
+authors = ["pngwn"]
+description = "mdsvex (.svx, .pfm) highlighting and language server"
+repository = "https://github.com/pngwn/MDsveX"
+
+# a pushed commit, zed builds the grammar from it until rev is bumped
+[grammars.mdsvex]
+repository = "https://github.com/pngwn/MDsveX"
+rev = "719da4beacbcbc04949eab519c79f1fe9d40c33f"
+path = "language-tools/tree-sitter"
+
+# the server reads only documents with the language id pfm
+[language_servers.mdsvex-language-server]
+name = "mdsvex Language Server"
+languages = ["mdsvex"]
+language_ids = { "mdsvex" = "pfm" }

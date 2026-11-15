@@ -244,6 +244,18 @@ describe.skipIf(!existsSync(SERVER))("the language server", { timeout: 30_000 },
 		).toEqual([]);
 	});
 
+	it("answers the color requests with a list, even an empty one", async () => {
+		expect(await server.sendDocumentColorRequest(doc.uri)).toEqual([]);
+		const range = { start: at("## Heading"), end: at("## Heading", 2) };
+		const color = { red: 1, green: 0, blue: 0, alpha: 1 };
+		const presentations = await server.sendColorPresentationRequest(
+			doc.uri,
+			color,
+			range,
+		);
+		expect(Array.isArray(presentations)).toBe(true);
+	});
+
 	it("reports type errors and compile errors where they come from", async () => {
 		const report = (await server.sendDocumentDiagnosticRequest(doc.uri)) as {
 			items: { range: { start: unknown; end: unknown }; message: string }[];

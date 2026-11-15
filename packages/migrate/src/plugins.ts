@@ -37,6 +37,10 @@ const KATEX: Replacement = {
 	message:
 		"Math renders with Temml by default. For KaTeX, install `katex` and set `math: { renderer: 'katex' }`.",
 };
+const PLAIN_TEXT: Replacement = {
+	message:
+		"Import a document with `?text`, or call `compile_text`, for its text without markup or link urls, by section. The page keeps its markup.",
+};
 const MERMAID: Replacement = {
 	message:
 		"Install `@mdsvex/plugin-diagram` and `pele` or `mermaid`, and add `diagram()` to `plugins`. pele draws at build time, mermaid in the browser.",
@@ -158,6 +162,10 @@ const REPLACEMENTS: Record<string, Replacement> = {
 	"remark-sub-super": { message: "`~sub~` and `^sup^` are built in." },
 	"remark-supersub": { message: "`~sub~` and `^sup^` are built in." },
 	"remark-footnotes": FOOTNOTES,
+	"remark-strip-html": PLAIN_TEXT,
+	"remark-unlink": PLAIN_TEXT,
+	"strip-markdown": PLAIN_TEXT,
+	"remark-plain-text": PLAIN_TEXT,
 	"remark-breaks": {
 		message:
 			"A line end is a space, and no option changes that. End a line with a backslash for a break.",

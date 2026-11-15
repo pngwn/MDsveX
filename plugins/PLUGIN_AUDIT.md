@@ -204,7 +204,7 @@ Working with many documents at once: listing pages, feeds, search. remark has no
 | Feature | Plugins | Delivery | Notes |
 | --- | --- | --- | --- |
 | **Metadata-only imports** | none | `vite`, exists (`?metadata`, and `?data` for plugin data) | `import.meta.glob('./*.md', { query: '?metadata', eager: true })` returns `metadata` without the component. Underlies every listing, feed and sitemap. |
-| **Plain text for search and feeds** | remark-strip-html (4k), remark-unlink | `vite`, not built | `?text`, or a field on `?metadata`: the page as plain text by section, for search indexes (FlexSearch), RSS bodies and `llms.txt`. Pagefind indexes built HTML, so it doesn't need this. |
+| **Plain text for search and feeds** | remark-strip-html (4k), remark-unlink | `vite`, exists (`?text`, and `compile_text` and `parsed_text` in `mdsvex/compile`) | The page as plain text by section, each with its heading id, for search indexes (FlexSearch), RSS bodies and `llms.txt`. Plugins settle first, so emoji, references and citation labels are in it, and a directive's `text` says what it reads as. Pagefind indexes built HTML, so it doesn't need this. |
 | **Tags, series, previous and next** | none | userland recipe | Built on `?metadata`. Document it rather than ship it. |
 
 ### 3.12 Quality
@@ -275,7 +275,7 @@ Ranked on usefulness to mdsvex users × popularity × cost. Items tagged `core` 
 | 30 | Sectionize | Navigation | plugin, a recipe in the docs | 184k |
 | 31 | Custom heading id syntax (deferred) | Navigation | core | ~300k combined |
 | 32 | Wiki links (last) | Cross-references | core | 108k |
-| 33 | Plain text for search and feeds | Collections | vite | — |
+| 33 | Plain text for search and feeds | Collections | vite, exists (`?text`, `compile_text`) | — |
 | 34 | Citations and bibliography | Reference apparatus | plugin, exists | 170k |
 | 35 | Numbering and cross-references | Reference apparatus | plugin+API, exists | — |
 | 36 | Typographic details | Typography | plugin+API | ~200k combined |

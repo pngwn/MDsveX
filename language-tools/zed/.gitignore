@@ -1,0 +1,4 @@
+target/
+# written by zed when it installs the dev extension
+extension.wasm
+grammars/

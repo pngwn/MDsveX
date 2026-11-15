@@ -99,6 +99,8 @@ An entry of `directives` can hold handlers. They are bound to that directive, so
 | `descendants` | nodes at any depth inside it, by node type |
 | `parse` | the directive itself, in any of its three forms |
 
+An entry can also say what its directive reads as in the [text of a page](/docs/guides/search-and-feeds#text-with-compile), with `text`.
+
 :::notes
 - **Your own export wins.** A `directives` export of the same name from a [`components` module](/docs/guides/directives#declaring-directives) or a template replaces the plugin's component. The plugin's handlers still run, so your `step` gets the same `label` and `children`.
 - **Other plugins still see the nodes.** A heading inside `:::steps` reaches the `heading` handlers of `parse_plugins` too, after the bound handler ran. A plugin's `parse` runs ahead of `parse_plugins`.

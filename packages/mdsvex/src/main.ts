@@ -10,6 +10,7 @@ import {
 	compile,
 	compile_inputs,
 	footnotes_option,
+	parsed_text,
 } from './compile.js';
 import type {
 	Bundle,
@@ -18,6 +19,7 @@ import type {
 	FootnoteOptions,
 	ImportImagesOptions,
 	Parsed,
+	TextOptions,
 } from './compile.js';
 import { images_on } from './image_imports.js';
 import { slug_of } from './heading_ids.js';
@@ -57,6 +59,8 @@ import {
 	data_module,
 	data_query,
 	metadata_query,
+	text_module,
+	text_query,
 	read_metadata,
 } from './metadata_query.js';
 import type { MetadataDev, ResolveImport } from './metadata_query.js';
@@ -220,6 +224,14 @@ export interface MdsvexOptions
 	 * links: { routes: 'src/routes', base: { import: 'resolve', from: '$app/paths' } }
 	 */
 	links?: PluginLinkOptions;
+	/**
+	 * what a ?text import reads, code_blocks false leaves out fences, math
+	 * fences and pre elements
+	 *
+	 * @example
+	 * text: { code_blocks: false }
+	 */
+	text?: Pick<TextOptions, 'code_blocks'>;
 }
 
 export interface PluginLinkOptions {
@@ -301,6 +313,23 @@ function api_extensions(plugin: Plugin | undefined): string[] | undefined {
  *    our HTML to markdown map using @ampproject/remapping, and injects
  *    the result as an inline sourceMappingURL in the output code.
  */
+/** the text option checked, a wrong one throws when the plugin is made */
+function text_options_of(
+	written: MdsvexOptions['text']
+): Pick<TextOptions, 'code_blocks'> {
+	if (written === undefined) return {};
+	const code = (written as { code_blocks?: unknown } | null)?.code_blocks;
+	if (
+		typeof written !== 'object' ||
+		written === null ||
+		(code !== undefined && typeof code !== 'boolean')
+	)
+		throw new Error(
+			'[mdsvex] text must be an object, its code_blocks true or false'
+		);
+	return written;
+}
+
 export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 	const extensions = (options.extensions ?? ['.svx']).map((ext) =>
 		ext.startsWith('.') ? ext : '.' + ext
@@ -582,6 +611,34 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				return done();
 			}
 			// what the plugins deferred is in the data, nothing renders
+			return settled.then(done).finally(() => compiler.drop(parsed));
+		},
+	});
+	const text_options = text_options_of(options.text);
+	const queried_text = text_query(extensions, {
+		ready: plugs_ready,
+		settled: () =>
+			(registry === null || registry.ready()) &&
+			(templates === null || templates.ready()),
+		module(raw, file, resolve, ctx) {
+			const parsed = compiler.parse(raw, parsing_inputs(file, resolve));
+			const settled = compiler.settle(parsed);
+			const done = () => {
+				track_dependencies(ctx, file, parsed.dependencies);
+				return text_module(
+					parsed_text(parsed, {
+						code_blocks: text_options.code_blocks,
+						plugins: inputs.plugins,
+					})
+				);
+			};
+			if (settled === undefined) {
+				try {
+					return done();
+				} finally {
+					compiler.drop(parsed);
+				}
+			}
 			return settled.then(done).finally(() => compiler.drop(parsed));
 		},
 	});
@@ -1041,7 +1098,8 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				}
 				const queried =
 					metadata.resolve(this, id, importer) ??
-					queried_data.resolve(this, id, importer);
+					queried_data.resolve(this, id, importer) ??
+					queried_text.resolve(this, id, importer);
 				if (queried !== undefined) return queried;
 				if (
 					registry !== null &&
@@ -1066,6 +1124,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				}
 				if (metadata.is(id)) return metadata.load(this, id, dev);
 				if (queried_data.is(id)) return queried_data.load(this, id, dev);
+				if (queried_text.is(id)) return queried_text.load(this, id, dev);
 				// only templates with extra replacements load a module
 				if (templates !== null && id.startsWith('\0' + TEMPLATE_ID))
 					return templates.load(this, id);
@@ -1162,6 +1221,9 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				const parsed_again = await queried_data.hot(this.environment, update);
 				if (parsed_again !== undefined)
 					(with_queried ??= update.modules.slice()).push(parsed_again);
+				const read_again = await queried_text.hot(this.environment, update);
+				if (read_again !== undefined)
+					(with_queried ??= update.modules.slice()).push(read_again);
 				// a file a fence shows or a plugin read is no module of the document, so nothing else compiles it again
 				const showing = shown.docs_showing(file);
 				if (showing.length !== 0) {
@@ -1173,6 +1235,8 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 						const mods = [...(graph.getModulesByFile(doc) ?? [])];
 						const data = graph.getModuleById(queried_data.id_of(doc));
 						if (data !== undefined) mods.push(data);
+						const text = graph.getModuleById(queried_text.id_of(doc));
+						if (text !== undefined) mods.push(text);
 						for (const mod of mods) {
 							graph.invalidateModule(mod, new Set(), update.timestamp, true);
 							if (!with_queried.includes(mod)) with_queried.push(mod);

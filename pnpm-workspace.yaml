@@ -2,3 +2,5 @@ packages:
   - 'packages/**'
   - 'plugins/**'
   - 'language-tools/**'
+  # zed clones this repo here to build the grammar
+  - '!language-tools/zed/grammars/**'

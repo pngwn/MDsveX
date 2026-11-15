@@ -142,5 +142,12 @@
 	"limitations": "/docs/reference/limitations",
 	"no-indented-code": "/docs/reference/limitations#no-indented-code",
 	"not-read-yet": "/docs/reference/limitations#not-read-yet",
-	"not-possible-yet": "/docs/reference/limitations#not-possible-yet"
+	"not-possible-yet": "/docs/reference/limitations#not-possible-yet",
+	"search-feeds-and-llmstxt": "/docs/guides/search-and-feeds",
+	"query-imports": "/docs/guides/search-and-feeds#query-imports",
+	"what-counts-as-text": "/docs/guides/search-and-feeds#what-counts-as-text",
+	"a-search-index": "/docs/guides/search-and-feeds#a-search-index",
+	"an-rss-feed": "/docs/guides/search-and-feeds#an-rss-feed",
+	"llmstxt": "/docs/guides/search-and-feeds#llms-txt",
+	"text-with-compile": "/docs/guides/search-and-feeds#text-with-compile"
 }

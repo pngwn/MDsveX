@@ -66,6 +66,10 @@ The VS Code extension. Registers the PFM language, starts the language server as
 
 A tree-sitter grammar for PFM, for editors that highlight with tree-sitter (Neovim, Helix, Zed) rather than the TextMate grammar in `vscode-pfm`. It stands apart from the Volar stack and from `@mdsvex/parse`: it is a separate parser of the same spec, with its own README listing where its trees differ.
 
+### `zed`
+
+The Zed extension. It builds the `tree-sitter` grammar from a pinned commit of this repo and holds Zed's own queries, since Zed's capture names differ from the grammar's. Its Rust code installs `@mdsvex/language-server` from npm and starts it over stdio, passing the LSP language id `pfm` and a `typescript.tsdk` as the VS Code extension does.
+
 ## Key dependencies
 
 - **`mdsvex`** (`packages/mdsvex`): core `compile()`, which `pfm_to_svelte` runs, and the manifest types. It exports from `dist/`, so it must be built before the language tools. `pnpm build:ls` from the repo root handles the full chain.
