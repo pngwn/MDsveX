@@ -59,7 +59,12 @@ Runs of spaces and line ends inside a block are one space, a hard break (a backs
 ## Recipes
 
 ::::plate[A search index](mark="find", tone=expr)
-Build the records once, at build time, and load them into [FlexSearch][flexsearch] in the page that searches. Each section is a record, so a hit goes to its heading:
+Build the records once, at build time, and load them into [FlexSearch][flexsearch] in the page that searches. Each section is a record, so with [`heading_ids`](/docs/reference/options#heading_ids) on a hit goes to its heading. Without it a section has no `id`, and every hit on a page links to the top of the page:
+
+```js
+// vite.config.js
+mdsvex({ heading_ids: true });
+```
 
 ```js
 // src/routes/search.json/+server.js
@@ -79,6 +84,7 @@ export function GET() {
 		const route = path.slice('..'.length, -'/+page.svx'.length);
 		for (const section of sections) {
 			records.push({
+				id: records.length,
 				href: section.id ? `${route}#${section.id}` : route,
 				title,
 				heading: section.heading,
@@ -95,7 +101,7 @@ export function GET() {
 import { Document } from 'flexsearch';
 
 const index = new Document({
-	document: { id: 'href', index: ['heading', 'text'], store: ['title', 'heading'] }
+	document: { id: 'id', index: ['heading', 'text'], store: ['href', 'title', 'heading'] }
 });
 const records = await (await fetch('/search.json')).json();
 for (const record of records) index.add(record);
@@ -103,14 +109,23 @@ for (const record of records) index.add(record);
 const hits = index.search(query, { enrich: true, merge: true });
 ```
 
+Each record gets an `id` of its own rather than using its `href`. Two sections can share an `href`, as every section of a page does without `heading_ids`, and FlexSearch keeps one record for each id.
+
 [Pagefind][pagefind] indexes the built HTML instead, and needs none of this.
 ::::
 
 ::::plate[An RSS feed](mark="rss", tone=link)
-`?metadata` gives the title and date, `?text` the body:
+`?metadata` gives the title and date, `?text` the body. A feed needs absolute links, and a prerendered route has no request to take the origin from, so `url.origin` is `http://sveltekit-prerender` unless the config names the site's origin:
+
+```js
+// vite.config.js
+sveltekit({ paths: { origin: 'https://example.com' } });
+```
 
 ```js
 // src/routes/rss.xml/+server.js
+import { resolve } from '$app/paths';
+
 const metadata = import.meta.glob('../blog/*/+page.svx', {
 	query: '?metadata',
 	import: 'metadata',
@@ -128,22 +143,24 @@ const escape = (text) =>
 	text.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
 
 export function GET({ url }) {
-	const items = Object.keys(metadata).map((path) => {
-		const { title, date } = metadata[path];
-		const link = `${url.origin}/blog/${path.split('/')[2]}`;
-		return `<item>
+	const items = Object.entries(metadata)
+		// a post without a title and a date in its frontmatter is left out
+		.filter(([, post]) => typeof post?.title === 'string' && post.date)
+		.map(([path, { title, date }]) => {
+			const link = new URL(resolve(`/blog/${path.split('/')[2]}`), url).href;
+			return `<item>
 	<title>${escape(title)}</title>
 	<link>${link}</link>
 	<guid>${link}</guid>
 	<pubDate>${new Date(date).toUTCString()}</pubDate>
 	<description>${escape(texts[path].text)}</description>
 </item>`;
-	});
+		});
 	return new Response(
 		`<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0"><channel>
 <title>My blog</title>
-<link>${url.origin}</link>
+<link>${new URL(resolve('/'), url).href}</link>
 <description>Posts</description>
 ${items.join('\n')}
 </channel></rss>`,
@@ -152,14 +169,20 @@ ${items.join('\n')}
 }
 ```
 
+:::notes
+Each post needs a `title` and a `date` in its frontmatter, the date in a form `new Date` reads, such as `2026-03-14`. A document with no frontmatter has `undefined` metadata, which the filter leaves out instead of failing the build. `resolve` from `$app/paths` puts `paths.base` in front of a route, and `new URL` makes it absolute against the url of the feed.
+:::
+
 An Atom feed is the same with `<entry>` and `<summary>`. For a feed with the HTML of each post, render the component with `render` from `svelte/server` instead.
 ::::
 
 ::::plate[llms.txt](mark="llms", tone=text)
-[`llms.txt`][llms-txt] is markdown: a title, a summary and a list of links. `?text` gives each link its title and a first paragraph:
+[`llms.txt`][llms-txt] is markdown: a title, a summary and a list of links. `?text` gives each link its title and a first paragraph. The links are absolute, so set `paths.origin` as for the feed:
 
 ```js
 // src/routes/llms.txt/+server.js
+import { resolve } from '$app/paths';
+
 const pages = import.meta.glob('../docs/**/+page.svx', {
 	query: '?text',
 	import: 'default',
@@ -171,8 +194,9 @@ export const prerender = true;
 export function GET({ url }) {
 	const links = Object.entries(pages).map(([path, { title, sections }]) => {
 		const route = path.slice('..'.length, -'/+page.svx'.length);
+		const href = new URL(resolve(route), url).href;
 		const summary = sections[0]?.text.split('\n\n')[0];
-		return `- [${title ?? route}](${url.origin}${route})${summary ? ': ' + summary : ''}`;
+		return `- [${title ?? route}](${href})${summary ? ': ' + summary : ''}`;
 	});
 	return new Response(
 		`# My site\n\n> What the site is for, in a sentence.\n\n## Docs\n\n${links.join('\n')}\n`,
