@@ -398,17 +398,16 @@ export function check_templates(written: Record<string, TemplateSpec>): void {
 	}
 }
 
-/** the template options of a document, with the import query and the id bound */
+/** the template options of a document, with its import query */
 export function templates_for(
 	templates: TemplateRegistry | null,
 	select: MdsvexOptions['select_template'],
 	id: string
 ): TemplateOptions {
-	const file = clean_id(id);
 	return {
 		templates: templates === null ? undefined : templates.entries(),
-		select_template:
-			select === undefined ? undefined : (metadata) => select(file, metadata),
+		// the plugin always compiles with a filename
+		select_template: select as TemplateOptions['select_template'],
 		template: query_template(id),
 	};
 }

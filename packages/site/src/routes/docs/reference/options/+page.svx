@@ -110,7 +110,7 @@ select_template: (id: string, metadata: Record<string, unknown>) => string | fal
 ```
 
 :::notes
-See [choosing a template](/docs/guides/templates#choosing-a-template). `id` is the path of the file. [`compile`](/docs/reference/compile)'s own `select_template` gets only the metadata, see [`select_template` with `compile`](/docs/guides/templates#choosing-a-template).
+See [choosing a template](/docs/guides/templates#choosing-a-template). `id` is the path of the file. [`compile`](/docs/reference/compile) takes the same callback, with its `filename` as the path.
 :::
 ::::
 

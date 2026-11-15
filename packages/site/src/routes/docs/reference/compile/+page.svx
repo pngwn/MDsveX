@@ -77,7 +77,7 @@ compile(source, {
 ```
 
 :::notes
-`compile`'s `select_template` gets only the metadata, `select_template(metadata)`, where the Vite plugin's gets the path too, `select_template(id, metadata)`. A callback that reads the path fails here, see [`select_template` with `compile`](/docs/guides/templates#choosing-a-template).
+`select_template` takes the same arguments as the Vite plugin's, `select_template(filename, metadata)`, with `filename` `undefined` for a compile without one, see [`select_template` with `compile`](/docs/guides/templates#choosing-a-template).
 
 On the atlas: [template](/atlas#template).
 :::

@@ -439,9 +439,16 @@ export interface TemplateOptions {
 	default_template?: string;
 	/**
 	 * called when the frontmatter has no template key, a name picks that
-	 * template, false picks none and undefined falls through to the default
+	 * template, false picks none and undefined falls through to the default,
+	 * filename is undefined for a compile without one
+	 *
+	 * @example
+	 * select_template: (filename) => (filename?.includes('/blog/') ? 'blog' : undefined)
 	 */
-	select_template?: (metadata: Metadata) => string | false | undefined;
+	select_template?: (
+		filename: string | undefined,
+		metadata: Metadata
+	) => string | false | undefined;
 	/** the template ahead of the frontmatter, false for none, as an import query asks */
 	template?: string | false;
 }
@@ -834,7 +841,8 @@ const unpacked = new WeakMap<Bundle[], Unpacked>();
 /** the array still holds the bundles it was unpacked from, in order */
 function same_bundles(bundles: Bundle[], from: Bundle[]): boolean {
 	if (bundles.length !== from.length) return false;
-	for (let i = 0; i < from.length; i++) if (bundles[i] !== from[i]) return false;
+	for (let i = 0; i < from.length; i++)
+		if (bundles[i] !== from[i]) return false;
 	return true;
 }
 
@@ -1062,6 +1070,7 @@ function picks_template(options: TemplateOptions | undefined): boolean {
 function template_of(
 	metadata: Metadata | undefined,
 	options: TemplateOptions | undefined,
+	filename: string | undefined,
 	nodes: NodeBuffer,
 	source: string
 ): string | undefined {
@@ -1086,7 +1095,7 @@ function template_of(
 		}
 	}
 	if (name === undefined && options.select_template !== undefined) {
-		name = options.select_template(metadata ?? {});
+		name = options.select_template(filename, metadata ?? {});
 		from = 'select_template';
 		if (name !== undefined && name !== false && typeof name !== 'string') {
 			throw new Error(
@@ -1225,10 +1234,11 @@ function prepare(
 	root: ComponentScope | null,
 	metadata: Metadata | undefined,
 	options: TemplateOptions | undefined,
+	filename: string | undefined,
 	nodes: NodeBuffer,
 	source: string
 ): string | undefined {
-	const name = template_of(metadata, options, nodes, source);
+	const name = template_of(metadata, options, filename, nodes, source);
 	if (name === undefined) {
 		renderer.scope = root;
 		return undefined;
@@ -1476,7 +1486,7 @@ function shell_needs(
 	const options = inputs.templates;
 	let scope = root;
 	if (options !== undefined || metadata !== undefined) {
-		const name = template_of(metadata, options, nodes, source);
+		const name = template_of(metadata, options, inputs.filename, nodes, source);
 		if (name !== undefined)
 			scope = template_directives(options!.templates![name], root);
 	}
@@ -1703,7 +1713,15 @@ function bind(
 	const template =
 		templates === undefined && metadata === undefined
 			? undefined
-			: prepare(renderer, scope, metadata, templates, nodes, source);
+			: prepare(
+					renderer,
+					scope,
+					metadata,
+					templates,
+					inputs.filename,
+					nodes,
+					source
+				);
 	// the scope prepare left decides, so a template scope replaces typed html
 	// too, a render without one stores nothing
 	if (renderer.scope !== null)
