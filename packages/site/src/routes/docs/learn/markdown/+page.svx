@@ -85,6 +85,7 @@ A fence is three or more backticks.
 ::::plate[two spaces at the end of a line](mark="··↵", id=cm-break)
 CommonMark reads a line break. In mdsvex they are nothing.
 
+<!-- prettier-ignore -->
 ```svx commonmark cue=" +$"
 one  
 two
