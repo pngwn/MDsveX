@@ -48,7 +48,8 @@ On the atlas: [autolink](/atlas#autolink).
 :::
 ::::
 
-- **GitHub alerts, definition lists and wiki links**, see [nothing yet](/docs/guides/remark-and-rehype#nothing-yet). `==mark==` is text too, write [`:mark[text]`](/docs/plugins/elements).
+- **GitHub alerts.** `> [!NOTE]` is a block quote, write [`:::note`](/docs/plugins/callouts). The migrator rewrites them.
+- **Definition lists and wiki links**, see [nothing yet](/docs/guides/remark-and-rehype#nothing-yet). `==mark==` is text too, write [`:mark[text]`](/docs/plugins/elements).
 
 ## Not possible yet
 

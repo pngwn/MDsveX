@@ -15,6 +15,8 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
+const PAGES = ["steps", "callouts", "styled", "unstyled"];
+
 const NOTE = [
 	"<script>",
 	"  let { children } = $props();",
@@ -37,14 +39,16 @@ function write_app(): string {
 		"vite.config.js": [
 			"import { mdsvex } from 'mdsvex';",
 			"import { steps } from '@mdsvex/plugin-steps';",
+			"import { callouts } from '@mdsvex/plugin-callouts';",
 			"import { svelte } from '@sveltejs/vite-plugin-svelte';",
 			"export default {",
-			`  build: { manifest: true, rollupOptions: { input: { ${["steps", "styled", "unstyled"].map(entry).join(", ")} } } },`,
+			`  build: { manifest: true, rollupOptions: { input: { ${PAGES.map(entry).join(", ")} } } },`,
 			"  plugins: [",
 			"    mdsvex({ plugins: [",
 			"      steps(),",
-			"      { name: 'styled', module: 'plugin-x/directives', directives: { note: {} } },",
-			"      { name: 'unstyled', module: 'plugin-x/directives/unstyled', directives: { tip: {} } },",
+			"      callouts(),",
+			"      { name: 'styled', module: 'plugin-x/directives', directives: { aside: {} } },",
+			"      { name: 'unstyled', module: 'plugin-x/directives/unstyled', directives: { hint: {} } },",
 			"    ] }),",
 			"    svelte({ extensions: ['.svelte', '.svx'] }),",
 			"  ],",
@@ -61,19 +65,20 @@ function write_app(): string {
 		}),
 		"node_modules/plugin-x/directives.js": [
 			"import './x.css';",
-			"export { default as note } from './Note.static.svelte';",
+			"export { default as aside } from './Note.static.svelte';",
 		].join("\n"),
 		"node_modules/plugin-x/unstyled.js":
-			"export { default as tip } from './Tip.static.svelte';",
+			"export { default as hint } from './Tip.static.svelte';",
 		"node_modules/plugin-x/x.css":
 			".x-note { border: 3px solid rebeccapurple; }",
 		"node_modules/plugin-x/Note.static.svelte": NOTE,
 		"node_modules/plugin-x/Tip.static.svelte": NOTE.replace("x-note", "x-tip"),
 		"src/steps.svx": ":::steps\n## One\n\nFirst.\n:::\n",
-		"src/styled.svx": ":::note\nStyled.\n:::\n",
-		"src/unstyled.svx": ":::tip\nUnstyled.\n:::\n",
+		"src/callouts.svx": ":::warning[Mind]\nCareful.\n:::\n",
+		"src/styled.svx": ":::aside\nStyled.\n:::\n",
+		"src/unstyled.svx": ":::hint\nUnstyled.\n:::\n",
 	};
-	for (const name of ["steps", "styled", "unstyled"])
+	for (const name of PAGES)
 		files[`src/${name}.js`] =
 			`import Doc from './${name}.svx';\nconsole.log(Doc);\n`;
 	for (const [path, content] of Object.entries(files)) {
@@ -111,11 +116,14 @@ describe("the css of a plugin whose directives are all static, in a build", () =
 	test("a page of shells loads the css of the module its directives come from", () => {
 		expect(css_of("steps")).toContain(":where(.steps)");
 		expect(css_of("styled")).toMatch(/\.x-note\{border:3px solid/);
+		expect(css_of("callouts")).toContain(":where(.callout)");
 	});
 
 	test("a page loads no css of a module it uses no directive of", () => {
 		expect(css_of("steps")).not.toContain("x-note");
 		expect(css_of("styled")).not.toContain(":where(.steps)");
+		expect(css_of("steps")).not.toContain(":where(.callout)");
+		expect(css_of("callouts")).not.toContain(":where(.steps)");
 		const unstyled = css_of("unstyled");
 		expect(unstyled).not.toContain("x-note");
 		expect(unstyled).not.toContain(":where(.steps)");
@@ -129,6 +137,7 @@ describe("the css of a plugin whose directives are all static, in a build", () =
 		expect(js).toContain("x-note");
 		expect(js).toContain("x-tip");
 		expect(js).toContain("steps");
+		expect(js).toContain('data-kind="warning"');
 		expect(js).not.toContain("NOTE_COMPONENT_CODE");
 	});
 });

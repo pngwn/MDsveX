@@ -555,6 +555,8 @@ class Reader {
 			this.flush();
 			return;
 		}
+		// with no label written, what the hook gives reads first, as a default title does
+		if (label === NONE && text !== undefined) this.push_blocks(text);
 		for (
 			let child = buf.first_child_at(i);
 			child !== NONE && buf.parent_at(child) === i;

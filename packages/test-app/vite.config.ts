@@ -2,6 +2,7 @@ import { sveltekit } from "@sveltejs/kit/vite";
 import { defineConfig } from "vite";
 import { mdsvex } from "mdsvex";
 import { anchors } from "@mdsvex/plugin-anchors";
+import { callouts } from "@mdsvex/plugin-callouts";
 import { citations } from "@mdsvex/plugin-citations";
 import { emoji } from "@mdsvex/plugin-emoji";
 import { external_links } from "@mdsvex/plugin-external-links";
@@ -29,6 +30,7 @@ export default defineConfig({
 				steps(),
 				tabs(),
 				elements(),
+				callouts({ titles: { caution: "Careful" } }),
 				embeds(),
 				figures(),
 				code_blocks(),

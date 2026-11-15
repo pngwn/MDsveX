@@ -79,6 +79,39 @@ describe("config: remark and rehype plugins", () => {
 		]);
 	});
 
+	test("alert and callout plugins point at the callouts plugin", () => {
+		const { plugins } = config(
+			[
+				"import { mdsvex } from 'mdsvex';",
+				"import a from 'remark-github-blockquote-alert';",
+				"import b from 'remark-github-alerts';",
+				"import c from 'remark-obsidian-callout';",
+				"import d from 'remark-github-admonitions-to-directives';",
+				"import e from 'remark-github-beta-blockquote-admonitions';",
+				"import f from 'rehype-callouts';",
+				"mdsvex({ remarkPlugins: [a, b, c, d, e], rehypePlugins: [f] });",
+			].join("\n"),
+		);
+		expect(plugins).toHaveLength(6);
+		for (const note of plugins) {
+			expect(note.message).toContain(
+				"Install `@mdsvex/plugin-callouts` and add `callouts()` to `plugins`. `migrate` rewrites `> [!NOTE]`",
+			);
+		}
+	});
+
+	test("link checkers point at the link-check plugin", () => {
+		const { plugins } = config(
+			"import { mdsvex } from 'mdsvex';\nimport links from 'remark-validate-links';\nimport lint from 'remark-lint';\nmdsvex({ remarkPlugins: [links, lint] });",
+		);
+		const install = "Install `@mdsvex/plugin-link-check` and add `link_check({ routes: 'src/routes' })` to `plugins`.";
+		expect(plugins.map((n) => n.message)).toEqual([
+			expect.stringContaining(install),
+			expect.stringMatching(/link_check.*Nothing checks style\./),
+		]);
+		for (const note of plugins) expect(note.message).not.toContain("Nothing replaces it");
+	});
+
 	test("an option that is already set is not added twice", () => {
 		const { code, plugins } = config(
 			"import { mdsvex } from 'mdsvex';\nimport slug from 'rehype-slug';\nimport old from 'remark-slug';\nmdsvex({ smart_punctuation: true, heading_ids: true, remarkPlugins: [old], rehypePlugins: [slug] });",

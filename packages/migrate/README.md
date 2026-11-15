@@ -32,6 +32,18 @@ migrate(source, {
 
 `math` is off unless you pass it. See [Math](#math).
 
+### Notes
+
+`migrate_document` takes the same arguments and returns the new `code` with a
+list of `notes`, each with a `line`, a `column` and a `message`, for what a
+person should check: GitHub alerts that are now callouts, Obsidian callouts
+it left alone, and a frontmatter `template` key that blocks renaming
+`layout`. `migrate` returns the code alone.
+
+```ts
+const { code, notes } = migrate_document(source, { smartypants: true });
+```
+
 ## What it changes
 
 | CommonMark / GFM                       | PFM output                                            |
@@ -49,6 +61,7 @@ migrate(source, {
 | A bare url (`https://example.com`)     | An autolink (`<https://example.com>`)                 |
 | Inline code that holds backticks       | A span of one or two backticks, whichever it can hold |
 | GFM footnotes                          | PFM footnotes, each reference with its definition's label |
+| GitHub alerts (`> [!NOTE]`)            | Callouts (`:::note`), see [Alerts](#alerts)           |
 
 Superscript, subscript and the PFM table extensions have no CommonMark
 equivalent, so nothing maps onto them; raw HTML is passed through untouched.
@@ -94,6 +107,37 @@ A `[^...]` that was no footnote in the source is escaped, since PFM reads
 every `[^label]` as a reference and fails the build for one with no
 definition. A second definition of a label, which PFM rejects, is escaped
 too.
+
+## Alerts
+
+A block quote that starts with `[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`,
+`[!WARNING]` or `[!CAUTION]`, in any case, is written as the container
+directive of that name, which `@mdsvex/plugin-callouts` renders. One level of
+`>` comes off its body, and text after the marker on its line is the title:
+
+```md
+> [!WARNING] Breaking change
+> The option is renamed.
+```
+
+```md
+:::warning[Breaking change]
+The option is renamed.
+:::
+```
+
+- An alert anywhere a block quote can be, in a list item or another block
+  quote, is rewritten in place. An alert inside an alert gets more colons, so
+  the inner one closes first.
+- A title with a link or an image stays as the first paragraph of the body,
+  since a directive label leaves those as text, and gets a note.
+- A marker with text right after it (`[!NOTE]text`) or that is not the first
+  line of the quote is not an alert, as on GitHub.
+- An Obsidian callout of another kind (`[!info]`, `[!todo]`), or one that
+  folds (`[!NOTE]-`, `[!NOTE]+`), stays a block quote with its marker as
+  written, and gets a note that says how to write it.
+
+The first alert of a document gets a note that says to install the plugin.
 
 ## Math
 

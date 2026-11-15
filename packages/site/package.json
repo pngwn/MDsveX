@@ -15,6 +15,7 @@
 	"dependencies": {
 		"@mdsvex/parse": "workspace:*",
 		"@mdsvex/plugin-anchors": "workspace:*",
+		"@mdsvex/plugin-callouts": "workspace:*",
 		"@mdsvex/plugin-citations": "workspace:*",
 		"@mdsvex/plugin-code-blocks": "workspace:*",
 		"@mdsvex/plugin-diagram": "workspace:*",

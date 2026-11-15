@@ -130,6 +130,14 @@ an option: [`highlight: { twoslash: true }`](/docs/reference/highlighting#twosla
 :::add[`rehype-citation`](mark=":cite", tone=directive)
 [`@mdsvex/plugin-citations`](/docs/plugins/citations): `:cite[key]` from a CSL JSON file, and `::bibliography`
 :::
+
+:::add[`remark-github-blockquote-alert`, `remark-github-alerts`, `rehype-callouts`, `remark-obsidian-callout`, `remark-github-admonitions-to-directives`, `remark-github-beta-blockquote-admonitions`](mark=":::note", tone=directive)
+[`@mdsvex/plugin-callouts`](/docs/plugins/callouts): `:::note`, `:::tip`, `:::important`, `:::warning` and `:::caution`. The migrator rewrites `> [!NOTE]` as `:::note`, and leaves a note at Obsidian's other kinds and at a callout that folds
+:::
+
+:::add[`remark-validate-links`](mark="404", tone=other)
+[`@mdsvex/plugin-link-check`](/docs/plugins/link-check): `link_check()` warns at every link to an id or a document that is not there
+:::
 ::::
 
 ## A component or a few lines
@@ -191,10 +199,6 @@ a component: an `a` or `img` replacement that renders a `<video>` for a video ur
 ## Nothing yet
 
 ::::added
-:::add[`remark-github-blockquote-alert`, `remark-github-alerts`, `rehype-callouts`](mark="[!]", tone=quote)
-`> [!NOTE]` is a block quote that starts with `[!NOTE]`. Write `:::note` with a directive component
-:::
-
 :::add[`remark-heading-id`, `remark-attr`, `rehype-attr`](mark="{#id}", tone=expr)
 `{#id}` and `{.class}` can't exist, braces belong to Svelte. `heading_ids` makes ids, and a parse plugin can set any attribute
 :::
@@ -207,8 +211,8 @@ type `<dl>`, `<dt>` and `<dd>`
 `[[Page]]` is text
 :::
 
-:::add[`remark-validate-links`, `remark-lint`](mark="lint", tone=other)
-nothing checks links or style. A missing image fails the build when it is [imported](/docs/reference/images)
+:::add[`remark-lint`](mark="lint", tone=other)
+nothing checks style. [`@mdsvex/plugin-link-check`](/docs/plugins/link-check) checks links, and a missing image fails the build when it is [imported](/docs/reference/images)
 :::
 
 :::add[`rehype-sanitize`](mark="safe", tone=other)

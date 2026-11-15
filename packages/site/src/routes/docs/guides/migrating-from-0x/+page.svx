@@ -23,7 +23,7 @@ It is a library of functions. A short script runs them over a project. Commit yo
 ```js
 // migrate.js
 import { readFileSync, writeFileSync, globSync } from 'node:fs';
-import { migrate, migrate_config, check_template } from '@mdsvex/migrate';
+import { migrate_document, migrate_config, check_template } from '@mdsvex/migrate';
 
 const config = 'svelte.config.js';
 const layouts = ['src/lib/layouts/Blog.svelte'];
@@ -39,8 +39,11 @@ const { code, notes } = migrate_config(readFileSync(config, 'utf8'));
 writeFileSync(config, code);
 report(config, notes);
 
-for (const file of globSync('src/**/*.{svx,md}'))
-	writeFileSync(file, migrate(readFileSync(file, 'utf8'), options));
+for (const file of globSync('src/**/*.{svx,md}')) {
+	const { code, notes } = migrate_document(readFileSync(file, 'utf8'), options);
+	writeFileSync(file, code);
+	report(file, notes);
+}
 
 for (const file of layouts) report(file, check_template(readFileSync(file, 'utf8')));
 ```
@@ -50,7 +53,7 @@ node migrate.js
 ```
 
 - `migrate_config` rewrites the options of a JavaScript or TypeScript config: `layout` into `templates`, `highlight`, `smartypants` and `extension`. It returns the new `code` and a list of `notes`, things to check by hand, each with a `line` and a `message`. Every entry of `remarkPlugins` and `rehypePlugins` gets a note that says [what replaces it](/docs/guides/remark-and-rehype).
-- `migrate` converts a document to mdsvex's [markdown](/docs/learn/markdown) and returns it. 0.x read CommonMark, where `*text*` is emphasis and a `===` underline makes a heading, so every document needs it. Svelte in the document is kept as written, and the `layout:` key of the frontmatter becomes `template:`.
+- `migrate_document` converts a document to mdsvex's [markdown](/docs/learn/markdown) and returns its `code` and `notes`, `migrate` the code alone. 0.x read CommonMark, where `*text*` is emphasis and a `===` underline makes a heading, so every document needs it. Svelte in the document is kept as written, the `layout:` key of the frontmatter becomes `template:`, and GitHub alerts become [callouts](/docs/plugins/callouts).
 - `check_template` lists what a layout component needs changed. It rewrites nothing.
 
 Read the diff before you commit it. `migrate` writes each document out again from what it parsed, so list markers, table padding and blank lines come out in one style.
