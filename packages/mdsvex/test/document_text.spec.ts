@@ -384,6 +384,24 @@ describe('plugin output in the text', () => {
 		}
 	);
 
+	test('a container with no label reads what its hook gives first', async () => {
+		const plugins: Bundle[] = [
+			{
+				name: 'c',
+				module: './c.js',
+				directives: {
+					note: { text: (_args, label) => (label === '' ? 'Note' : label) },
+				},
+			},
+		];
+		const { text } = await compile_text(':::note\nheld\n:::\n', { plugins });
+		expect(text).toBe('Note\n\nheld');
+		const labelled = await compile_text(':::note[Mind]\nheld\n:::\n', {
+			plugins,
+		});
+		expect(labelled.text).toBe('Mind\n\nheld');
+	});
+
 	test('a hook that returns undefined reads the label', async () => {
 		const { text } = await compile_text(':cite[smith]\n', {
 			plugins: [
