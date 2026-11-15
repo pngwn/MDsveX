@@ -100,7 +100,8 @@ export async function run(
 		const plugins = await Promise.all([...(example.with ?? []).map((w) => bundle_of(w)), bundle_of(name, example.options)]);
 		const result: any = await t.compile_async(source, {
 			filename: '/docs/example.svx',
-			heading_ids: true,
+			// the same options catalog.server.ts compiles with
+			heading_ids: !!needs?.heading_ids,
 			unwrap_images: !!needs?.unwrap_images,
 			strict_directives: false,
 			plugins,

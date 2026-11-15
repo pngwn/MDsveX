@@ -93,7 +93,8 @@ function reader(files: Record<string, string> = {}) {
 function compile_options(needs: Needs | undefined, example: Example, plugins: unknown[]) {
 	return {
 		filename: FILENAME,
-		heading_ids: true,
+		// only what the setup panel prints, so the example matches a reader setup
+		heading_ids: !!needs?.heading_ids,
 		unwrap_images: !!needs?.unwrap_images,
 		strict_directives: false,
 		plugins,

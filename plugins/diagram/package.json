@@ -80,15 +80,15 @@
 	"license": "MIT",
 	"peerDependencies": {
 		"mdsvex": "^1.0.0-next.2",
-		"mermaid": "^10.0.0 || ^11.0.0 || ^12.0.0",
 		"pele": "^1.9.0",
+		"mermaid": "^10.0.0 || ^11.0.0 || ^12.0.0",
 		"svelte": "^5.20.0"
 	},
 	"peerDependenciesMeta": {
-		"mermaid": {
+		"pele": {
 			"optional": true
 		},
-		"pele": {
+		"mermaid": {
 			"optional": true
 		}
 	},
