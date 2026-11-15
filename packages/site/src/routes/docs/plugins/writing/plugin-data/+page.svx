@@ -95,10 +95,14 @@ A `?data` import parses the document and runs its plugins, and renders nothing, 
 For TypeScript, a plugin types its own key by adding to the `PluginData` interface, and `mdsvex/globals` in `compilerOptions.types` types direct `?data` imports:
 
 ```ts
+import 'mdsvex';
+
 declare module 'mdsvex' {
 	interface PluginData {
 		reading_time: { words: number; minutes: number };
 	}
 }
 ```
+
+The import makes the file a module, so the block adds to the types of `mdsvex`. Without it, in a `.d.ts` of its own, the block declares a module `mdsvex` that has only `PluginData`, and every other import from `mdsvex` fails.
 ::::
