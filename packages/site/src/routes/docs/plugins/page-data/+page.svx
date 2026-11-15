@@ -40,7 +40,7 @@ page_data({
 });
 ```
 
-- **`words`** counts the prose: headings, paragraphs, lists, quotes and table cells. Code blocks, image alts, comments, expressions and attributes are not counted, and code inside a sentence is. Chinese, Japanese and Korean are written without spaces, so each Han ideograph, hiragana and hangul syllable is a word, the rule of the `reading-time` package.
+- **`words`** counts the prose: headings, paragraphs, lists, quotes and table cells. Code blocks, image alts, comments, expressions and attributes are not counted, and code inside a sentence is. Chinese, Japanese and Korean are written without spaces, so each Han ideograph, hiragana and hangul syllable is a word, the rule of the `reading-time` package. `count_words(text)` from `@mdsvex/plugin-page-data` counts a string the same way.
 - **`minutes`** is `words` over `words_per_minute`, 200 by default, to two decimals and then rounded up, as `reading-time` shows it. One word is 1 minute and 202 words are 2.
 - **`excerpt`** is the first paragraph, or everything before a `<!-- more -->` comment when the document has one. It is plain text: a parse plugin sees the document before it is rendered, so there is no HTML to give. `max_length` cuts a longer one where a word ends and adds the `ellipsis`.
 - **`title`** is the text of the first `#` heading, and is only set when the frontmatter has no `title`.
