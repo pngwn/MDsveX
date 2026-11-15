@@ -6,7 +6,7 @@ order: 4
 
 `compile` turns one document into Svelte component source without Vite. It is synchronous and never touches the filesystem, so it also runs in a browser.
 
-In a browser or worker, import it from `mdsvex/compile`. That entry holds only the compiler, so a bundler never sees the Vite plugin or its lazy imports of Vite and Node builtins.
+Import it from `mdsvex/compile`. That entry holds only the compiler, so a bundler never sees the Vite plugin or its lazy imports of Vite and Node builtins. The root `mdsvex` exports `compile` too, but its types import `vite`, so in a project without Vite and with `skipLibCheck` off, TypeScript reports that it can't find `vite`.
 
 ::marks
 
@@ -19,7 +19,7 @@ The result has:
 - `warnings`, or `undefined` when there are none.
 
 ```js
-import { compile } from 'mdsvex';
+import { compile } from 'mdsvex/compile';
 
 const { code, metadata } = compile(`---
 title: Hello

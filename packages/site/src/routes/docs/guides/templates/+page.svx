@@ -158,6 +158,10 @@ To choose for one import only, add `?template=` to it. `?template=false` unwraps
 
 <Intro />
 ```
+
+:::notes
+TypeScript can't resolve an import with a query of its own, so a `?template=` import needs a declaration in the project, see [types for these imports](/docs/guides/frontmatter#types-for-these-imports).
+:::
 ::::
 
 ## Template props

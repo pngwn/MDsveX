@@ -6,7 +6,7 @@ order: 6
 
 The Vite plugin reads files, finds the names your modules export, serves modules that don't exist on disk and reloads pages as you edit. [`compile`](/docs/reference/compile) does none of that. It takes text and returns Svelte source, never touches the filesystem and runs in a browser, a worker or Node. Everything below is what a build tool, a playground or an editor that isn't Vite supplies to get the same output.
 
-Import the compiler from `mdsvex/compile`, highlighting from `mdsvex/highlight` and math from `mdsvex/math`. None of them loads Vite or a Node builtin, and neither does `mdsvex/host`, which holds the pieces of the plugin a host needs beside the compiler.
+Import the compiler from `mdsvex/compile`, highlighting from `mdsvex/highlight` and math from `mdsvex/math`. None of them loads Vite or a Node builtin, and neither does `mdsvex/host`, which holds the pieces of the plugin a host needs beside the compiler. The root `mdsvex` is the Vite plugin, and its types import `vite`, so take `compile` from `mdsvex/compile` in a project without Vite.
 
 ::marks
 
