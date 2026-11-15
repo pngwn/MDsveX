@@ -6,7 +6,7 @@ order: 8
 [enhanced-img]: https://svelte.dev/docs/kit/images#sveltejs-enhanced-img
 # Coming from remark and rehype plugins
 
-mdsvex 0.x ran remark and rehype, and took their plugins in `remarkPlugins` and `rehypePlugins`. mdsvex now has its own parser, so those plugins don't run and the two options are gone. Most of what they were used for is built in, an option, or a first-party plugin. Find each plugin you used below.
+mdsvex 0.x ran remark and rehype, and took their plugins in `remarkPlugins` and `rehypePlugins`. mdsvex now has its own parser, so those plugins don't run and the two options are gone. Most of what they were used for is built in, an option, or a first-party plugin. Find each plugin you used below, and for one you wrote yourself, see [porting a plugin of your own](#porting-a-plugin-of-your-own).
 
 `migrate_config` from the [migrator](/docs/guides/migrating-from-0x#run-the-migrator) leaves a note for every plugin it finds in your config, with the same answer.
 
@@ -224,4 +224,268 @@ not needed, Svelte and Vite own the output
 :::
 ::::
 
+## Porting a plugin of your own
+
 A plugin that is not listed did one of three things. If it changed elements or attributes, a [parse plugin](/docs/plugins/writing/parse-plugins#parse_plugins) can do the same. If it added syntax, a [directive](/docs/guides/directives) is the syntax mdsvex has for that, and plugins can't add more. If it needed to fetch something or read a file while compiling, a plugin does that in [deferred work](/docs/plugins/writing/deferred-work).
+
+Each plate below is a remark pattern, then the same plugin for mdsvex. An mdsvex plugin is an object with a `name` and its handlers under `parse`, passed to `mdsvex({ plugins: [...] })`.
+
+::::plate[`visit` becomes a handler](mark="link", tone=link)
+A remark plugin walks the finished tree with `visit`. An mdsvex plugin names the node type instead, and its handler runs for each node of that type while the parser reads the document. A link has its url and its text once it closes, so the handler returns a function that runs then:
+
+```js
+// remark
+import { visit } from 'unist-util-visit';
+import { toString } from 'mdast-util-to-string';
+
+export function vague_links() {
+	return (tree, file) => {
+		visit(tree, 'link', (node) => {
+			if (toString(node).trim().toLowerCase() === 'click here')
+				file.message('say where the link goes, not "click here"', node);
+		});
+	};
+}
+```
+
+```js
+// mdsvex
+export function vague_links() {
+	return {
+		name: 'vague_links',
+		parse: {
+			link: {
+				parse(node, ctx) {
+					return () => {
+						if (node.text_content.trim().toLowerCase() === 'click here')
+							ctx.warn('vague_link', 'say where the link goes, not "click here"', node);
+					};
+				}
+			}
+		}
+	};
+}
+```
+
+:::notes
+`toString(node)` is `node.text_content`, `node.url` is `node.href`, and `file.message` is `ctx.warn`, which the build prints with the line of the node. A plugin that handles several types has a key for each.
+:::
+
+:::edges
+- **A handler sees the document up to its node, not past it.** A `visit` that reads ahead becomes a plugin with `sequential: true`, which runs over the finished tree, or a [`document` hook](/docs/plugins/writing/deferred-work).
+:::
+::::
+
+::::plate[Node types](mark="type", tone=other)
+Most mdast types keep their name. These are written differently:
+
+| remark | mdsvex |
+| --- | --- |
+| `strong` | `strong_emphasis` |
+| `delete` | `strikethrough` |
+| `inlineCode` | `code_span` |
+| `code` | `code_fence` |
+| `blockquote` | `block_quote` |
+| `listItem` | `list_item` |
+| `tableRow`, `tableCell` | `table_row`, `table_cell`, and `table_header` for the header row |
+| `thematicBreak` | `thematic_break` |
+| `break` | `hard_break` |
+| `yaml` | `frontmatter` |
+| `textDirective`, `leafDirective`, `containerDirective` | `directive_inline`, `directive_leaf`, `directive_container` |
+| `html` | `html` for each element or component, `html_comment` for a comment |
+
+:::notes
+A rehype plugin that matched an `element` by its `tagName` keys by what the markdown wrote instead: `a` is `link`, `img` is `image`, and `h1` to `h6` are `heading`, with a `depth`. [Plugin handlers](/docs/plugins/writing/parse-plugins#plugin-handlers) lists every type.
+:::
+
+:::edges
+- **No handler takes `text`.** A [sequential plugin's `text` function](/docs/plugins/writing/parse-plugins#parse_plugins) rewrites runs of text.
+:::
+::::
+
+::::plate[Attributes are `attrs`](mark="attrs", tone=comp)
+remark sets an attribute through `data.hProperties`, and rehype through `properties`. An mdsvex handler writes it to `node.attrs`:
+
+```js
+// remark
+import { visit } from 'unist-util-visit';
+
+export function table_class() {
+	return (tree) => {
+		visit(tree, 'table', (node) => {
+			node.data = { ...node.data, hProperties: { className: ['table'] } };
+		});
+	};
+}
+```
+
+```js config
+// mdsvex
+const table_class = {
+	name: 'table_class',
+	parse: {
+		table: {
+			parse(node) {
+				node.attrs.class = 'table';
+			}
+		}
+	}
+};
+
+mdsvex({ plugins: [table_class] });
+```
+
+```svx result config
+| Plugin | Port |
+| --- | --- |
+| remark | `attrs` |
+```
+
+:::notes
+`attrs` takes HTML names, so `class` where rehype has `className`, as one string. On an element that a [replacement](/docs/guides/components) renders, an attribute becomes a prop.
+:::
+
+:::edges
+- **An element written as HTML keeps what was written on it in `attrs.attributes`.** Set a new object there, in the function the handler returns: `node.attrs.attributes = { ...node.attrs.attributes, class: 'wide' }`.
+:::
+::::
+
+::::plate[`file.data.fm` becomes `plugin_data`](mark="set", tone=expr, id=file-data-fm)
+In mdsvex 0.x a remark plugin added keys to the frontmatter through `file.data.fm`, and the page read them in `metadata`. A plugin now writes with `ctx.set` or `ctx.add`, and the page reads it in `plugin_data`, under the plugin's name:
+
+```js
+// remark, for mdsvex 0.x
+import { toString } from 'mdast-util-to-string';
+
+export function reading_time() {
+	return (tree, file) => {
+		const words = toString(tree).split(/\s+/).length;
+		file.data.fm.minutes = Math.ceil(words / 200);
+	};
+}
+```
+
+```js config
+// mdsvex
+const reading_time = {
+	name: 'reading_time',
+	parse: {
+		document(root, ctx) {
+			const words = root.text_content.split(/\s+/).length;
+			ctx.set('minutes', Math.ceil(words / 200));
+		}
+	}
+};
+
+mdsvex({ plugins: [reading_time] });
+```
+
+```svx result config
+---
+title: A short post
+---
+
+It takes {plugin_data.reading_time.minutes} minute to read.
+```
+
+:::notes
+- **Plugins can't write `metadata`.** It is the frontmatter the author wrote and nothing else, and `ctx.frontmatter` reads it but must not change it. So no plugin can overwrite a key that the author or another plugin wrote, since each plugin writes under its own name. And a page or a [template](/docs/guides/templates#template-props) can tell where a value came from: `metadata.title` was written, `plugin_data.reading_time.minutes` was worked out.
+- A template gets both as props, and a [`?data`](/docs/plugins/writing/plugin-data) import gives both to a list of posts.
+- A value worked out from the frontmatter or the path alone belongs in `metadata`, through [`frontmatter.parse`](#frontmatter-transforms).
+:::
+::::
+
+::::plate[Async work goes in `ctx.defer`](mark="defer", tone=expr)
+A remark transformer could be async and await anything. An mdsvex handler is synchronous: it starts the work with `ctx.defer(node, task)`, and the task changes the node when it finishes:
+
+```js
+// remark
+import { visit } from 'unist-util-visit';
+
+export function link_titles() {
+	return async (tree) => {
+		const links = [];
+		visit(tree, 'link', (node) => links.push(node));
+		await Promise.all(
+			links.map(async (node) => {
+				const page = await fetch(node.url).then((r) => r.text());
+				node.title = page.match(/<title>(.*?)<\/title>/)?.[1];
+			})
+		);
+	};
+}
+```
+
+```js
+// mdsvex
+export function link_titles() {
+	return {
+		name: 'link_titles',
+		parse: {
+			link: {
+				parse(node, ctx) {
+					return () =>
+						ctx.defer(node, async (node) => {
+							const page = await fetch(node.href).then((r) => r.text());
+							node.attrs.title = page.match(/<title>(.*?)<\/title>/)?.[1];
+						});
+				}
+			}
+		}
+	};
+}
+```
+
+:::notes
+- **No list to collect.** Each link starts its own task, and the Vite plugin waits for all of them before it renders the document. With `compile`, use [`compile_async`](/docs/reference/compile#compile_async).
+- **Read files with `ctx.read`, not `fs.readFile`.** It reads through the Vite plugin and makes the file a dependency, so an edit to it compiles the document again. See [loading files](/docs/plugins/writing/deferred-work#loading-files).
+:::
+
+:::edges
+- **A task changes its own node** and what is inside it. Anything else throws a `TypeError`, where a remark transformer could change the whole tree. Work that needs the whole tree goes in a [`document` hook](/docs/plugins/writing/deferred-work), which may be async.
+:::
+::::
+
+::::plate[Frontmatter transforms go in `frontmatter.parse`](mark="parse", tone=expr, id=frontmatter-transforms)
+A remark plugin that worked a value out of the frontmatter or the path of the file, and wrote it to `file.data.fm`, becomes a `frontmatter.parse`. It gets the text of the frontmatter and `{ filename }`, and what it returns is `metadata`:
+
+```js
+// remark, for mdsvex 0.x
+export function dated_posts() {
+	return (tree, file) => {
+		const [, date, slug] = file.filename.match(/(\d{4}-\d{2}-\d{2})-([^/]+)\.svx$/) ?? [];
+		Object.assign(file.data.fm, { date, slug });
+	};
+}
+```
+
+```js config
+// mdsvex
+import { parse } from 'yaml';
+
+mdsvex({
+	frontmatter: {
+		parse: (raw, { filename }) => {
+			const [, date, slug] = filename?.match(/(\d{4}-\d{2}-\d{2})-([^/]+)\.svx$/) ?? [];
+			return { date, slug, ...parse(raw) };
+		}
+	}
+});
+```
+
+```svx result config file="src/posts/2026-11-15-hello-world.svx"
+---
+title: Hello world
+---
+```
+
+:::notes
+- **It runs wherever the frontmatter is read:** the compiled document, a [`?metadata`](/docs/guides/frontmatter) import and `ctx.frontmatter`. A list of posts sees the same `date` as the page.
+- **It replaces the built-in parser,** so it parses the YAML itself, here with `yaml`. See [custom frontmatter parsers](/docs/guides/frontmatter#custom-frontmatter-parsers).
+:::
+
+:::edges
+- **`filename` is `undefined`** for a document compiled without a path, as `compile()` is without its `filename` option.
+- **It sees only the frontmatter.** A value worked out from the body, such as a reading time, is [plugin data](#file-data-fm).
+:::
+::::
