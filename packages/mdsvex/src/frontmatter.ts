@@ -1,11 +1,21 @@
 import { parse_yaml, YamlError } from './yaml.js';
 
+/** what a frontmatter parser learns about the document besides its text */
+export interface FrontmatterFile {
+	/** the path of the document, undefined when whoever compiles it gave none */
+	filename: string | undefined;
+}
+
 export interface FrontmatterOptions {
 	/**
-	 * replaces the built in yaml parser, null or undefined means no metadata
+	 * replaces the built in yaml parser, null or undefined means no metadata,
+	 * file tells it which document the text came from
 	 * @example parse: (raw) => yaml.parse(raw)
 	 */
-	parse?: (raw: string) => Record<string, unknown> | null | undefined;
+	parse?: (
+		raw: string,
+		file: FrontmatterFile
+	) => Record<string, unknown> | null | undefined;
 }
 
 /** line and column index the document */
@@ -31,7 +41,8 @@ export function parse_frontmatter(
 	source: string,
 	start: number,
 	end: number,
-	parse: FrontmatterOptions['parse']
+	parse: FrontmatterOptions['parse'],
+	filename: string | undefined
 ): Record<string, unknown> {
 	const raw = source.slice(start, end);
 	if (parse === undefined) {
@@ -47,7 +58,7 @@ export function parse_frontmatter(
 			);
 		}
 	}
-	const metadata = parse(raw);
+	const metadata = parse(raw, { filename });
 	if (metadata == null) return {};
 	if (typeof metadata !== 'object' || Array.isArray(metadata)) {
 		throw new FrontmatterError(

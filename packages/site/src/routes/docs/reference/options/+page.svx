@@ -74,10 +74,15 @@ SvelteKit picks them up from here, see [SvelteKit](/docs/learn/quick-start#svelt
 ## `frontmatter`
 
 ::::plate[Replaces the YAML parser](mark="---", tone=text)
-Replaces the built-in YAML parser.
+Replaces the built-in YAML parser. It gets the text between the fences and the path of the document.
 
 ```ts
-frontmatter: { parse?: (raw: string) => Record<string, unknown> | null | undefined };
+frontmatter: {
+	parse?: (
+		raw: string,
+		file: { filename: string | undefined }
+	) => Record<string, unknown> | null | undefined;
+};
 ```
 
 :::notes

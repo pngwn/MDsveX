@@ -75,22 +75,22 @@ describe('metadata_module', () => {
 		'---  \n---  ',
 		'',
 	])('exports what the compiled document exports: %j', (raw) => {
-		expect(metadata_module(raw, undefined)).toBe(from_compile(raw));
+		expect(metadata_module(raw, undefined, undefined)).toBe(from_compile(raw));
 	});
 
 	test('a document without frontmatter still has the named export', () => {
-		expect(metadata_module('# hi\n', undefined)).toBe(
+		expect(metadata_module('# hi\n', undefined, undefined)).toBe(
 			'export const metadata = undefined;' + DEFAULT
 		);
 	});
 
 	test('uses the parser passed as frontmatter.parse', () => {
 		const raw = '---\r\ntitle = "toml"\r\n---\r\ntext\r\n';
-		expect(metadata_module(raw, keep)).toBe(
+		expect(metadata_module(raw, keep, undefined)).toBe(
 			'export const metadata = {"raw":"title = \\"toml\\"\\n"};' + DEFAULT
 		);
-		expect(metadata_module(raw, keep)).toBe(from_compile(raw, keep));
-		expect(metadata_module(raw, () => null)).toBe(
+		expect(metadata_module(raw, keep, undefined)).toBe(from_compile(raw, keep));
+		expect(metadata_module(raw, () => null, undefined)).toBe(
 			'export const metadata = {};' + DEFAULT
 		);
 	});
@@ -130,7 +130,9 @@ describe('metadata_module', () => {
 			if (next() < 0.5) raw += pick(newlines) + '---' + pick(['', ...pieces]);
 			const expected = from_compile(raw, keep);
 			if (!expected.includes('undefined')) with_frontmatter++;
-			expect(metadata_module(raw, keep), JSON.stringify(raw)).toBe(expected);
+			expect(metadata_module(raw, keep, undefined), JSON.stringify(raw)).toBe(
+				expected
+			);
 		}
 		// the generator must reach both outcomes
 		expect(with_frontmatter).toBeGreaterThan(800);
@@ -151,7 +153,7 @@ describe('metadata_module', () => {
 				};
 			}
 		};
-		const error = thrown(() => metadata_module(raw, undefined));
+		const error = thrown(() => metadata_module(raw, undefined, undefined));
 		expect(error).toEqual(thrown(() => compile(raw)));
 		expect(error).toMatchObject({
 			name: 'FrontmatterError',
@@ -296,6 +298,30 @@ describe('?metadata load', () => {
 		expect(await pre.load.call({ addWatchFile() {} }, id)).toBe(
 			'export const metadata = {"raw":"title = \\"x\\"\\n"};' + DEFAULT
 		);
+	});
+
+	test('frontmatter.parse gets the path of the document', async () => {
+		const files: unknown[] = [];
+		const [pre] = mdsvex({
+			frontmatter: {
+				parse: (_raw, file) => {
+					files.push(file);
+					return { slug: file.filename!.split('/').pop()!.slice(0, -4) };
+				},
+			},
+		}) as any[];
+		const id = write('hello-world.svx', '---\ntitle: x\n---\n');
+		expect(await pre.load.call({ addWatchFile() {} }, id)).toBe(
+			'export const metadata = {"slug":"hello-world"};' + DEFAULT
+		);
+		expect(files).toEqual([{ filename: path('hello-world.svx') }]);
+		const code = pre.transform.call(
+			{ addWatchFile() {} },
+			'---\ntitle: x\n---\n',
+			path('hello-world.svx')
+		).code;
+		expect(code).toContain('export const metadata = {"slug":"hello-world"};');
+		expect(files[1]).toEqual(files[0]);
 	});
 
 	test('an error names the document and the position in it', async () => {

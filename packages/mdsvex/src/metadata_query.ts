@@ -51,7 +51,7 @@ export function metadata_query(
 	parse: FrontmatterOptions['parse']
 ) {
 	return document_query(extensions, METADATA_ID, METADATA_QUERY, {
-		module: (raw) => metadata_module(raw, parse),
+		module: (raw, file) => metadata_module(raw, parse, file),
 	});
 }
 

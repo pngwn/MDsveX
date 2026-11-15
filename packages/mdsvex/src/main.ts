@@ -614,7 +614,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			// no handler can run, so the frontmatter is all there is
 			if (!can_plug)
 				return data_module(
-					read_metadata(raw, options.frontmatter?.parse),
+					read_metadata(raw, options.frontmatter?.parse, file),
 					undefined
 				);
 			const parsed = compiler.parse(raw, parsing_inputs(file, resolve));

@@ -189,6 +189,37 @@ describe('frontmatter.parse', () => {
 		);
 	});
 
+	test('gets the filename of the document', () => {
+		const files: unknown[] = [];
+		const parse = (raw: string, file: { filename: string | undefined }) => {
+			files.push(file);
+			const name = file.filename?.split('/').pop() ?? '';
+			return { slug: name.replace(/\.svx$/, '') };
+		};
+		const { metadata, code } = compile('---\ntitle: a\n---\n', {
+			frontmatter: { parse },
+			filename: '/src/posts/hello-world.svx',
+		});
+		expect(metadata).toEqual({ slug: 'hello-world' });
+		expect(code).toContain('export const metadata = {"slug":"hello-world"};');
+		expect(files).toEqual([{ filename: '/src/posts/hello-world.svx' }]);
+	});
+
+	test('a document without a filename gets filename undefined', () => {
+		const files: object[] = [];
+		const parse = (_raw: string, file: object) => {
+			files.push(file);
+			return {};
+		};
+		compile('---\nx\n---\n', { frontmatter: { parse } });
+		compile('---\nx\n---\n', {
+			frontmatter: { parse },
+			parse_plugins: [{ frontmatter: { parse() {} } }],
+		});
+		expect(files).toEqual([{ filename: undefined }, { filename: undefined }]);
+		expect(files.every((f) => 'filename' in f)).toBe(true);
+	});
+
 	test('null or undefined is no metadata', () => {
 		for (const value of [null, undefined]) {
 			const { metadata, code } = compile('---\nx\n---\n', {

@@ -169,6 +169,38 @@ editor: *ada
 ```
 ::::
 
+::::plate[A slug from the path](mark="file", tone=expr)
+`frontmatter.parse` gets a second argument, `{ filename }`, the path of the document. A value that comes from where the document lives, such as its slug, can go into `metadata` there:
+
+```js config
+import { mdsvex } from 'mdsvex';
+import { parse } from 'yaml';
+
+mdsvex({
+	frontmatter: {
+		parse: (raw, { filename }) => ({
+			slug: filename?.split('/').at(-2),
+			...parse(raw)
+		})
+	}
+});
+```
+
+```svx result config file="src/routes/blog/hello-world/+page.svx"
+---
+title: Hello world
+---
+```
+
+:::notes
+The same parser runs for the compiled document, for a [`?metadata`](#listing-posts) import and for the `ctx.frontmatter` that [plugins](/docs/plugins/writing/parse-plugins#plugin-handlers) read, so all three see the slug. A `slug` written in the frontmatter wins here, because it is spread after.
+:::
+
+:::edges
+- `filename` is `undefined` when whoever compiles the document gives no path, as `compile()` does without its `filename` option. The key is always there.
+:::
+::::
+
 ::::plate[TOML](mark="=", tone=text)
 The fences stay `---`, but what goes between them is up to the parser. For TOML, with [`smol-toml`][smol-toml]:
 
