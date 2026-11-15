@@ -109,6 +109,23 @@ To match the plugin's output, `mdsvex/host` exports the prefixes (`COMPONENTS_ID
 :::
 ::::
 
+::::plate[A template with replacements](mark="extra", tone=comp)
+A template given as `{ component, components }` has one id for two files, so the id stands for a module that merges them. `template_module(main, extra, names)` writes its code: everything `main` exports, and over it the `names` that `extra` exports.
+
+```js
+import { template_module } from 'mdsvex/host';
+
+template_module('/site/src/Post.svelte', '/site/src/theme.js', ['p']);
+// export * from "/site/src/Post.svelte";
+// export { default } from "/site/src/Post.svelte";
+// export { p } from "/site/src/theme.js";
+```
+
+:::notes
+The manifest has all three: `templates[name].file`, and `extra.file` and `extra.names`.
+:::
+::::
+
 ::::plate[`?metadata` and `?data` modules](mark="?data", tone=link)
 A [`?metadata`](/docs/reference/options#frontmatter) or [`?data`](/docs/plugins/writing/plugin-data) import loads a module made from the document.
 
@@ -124,6 +141,23 @@ The editor reads `node_modules/.mdsvex/manifest.json`, which the Vite plugin wri
 
 :::notes
 A host can write the manifest itself. `queue_manifest(build, output)` writes it a little after the last change and only when it changed, `manifest_json` gives the exact text the plugin writes, and `MANIFEST_PATH` is where it goes.
+:::
+::::
+
+::::plate[`read_json_config`](mark="{}", tone=other)
+`read_json_config(config, file, root, host, options?)` turns the parsed JSON of an `mdsvex.config.json` into the manifest the plugin would write for the same options. `file` is the path of the config, and `root` the absolute project root the manifest records, where the plugin would have the Vite root. `host` resolves and scans the modules the config names, which is all of it that touches files:
+
+```js
+import { read_json_config } from 'mdsvex/host';
+
+const { manifest, errors } = read_json_config(json, '/site/mdsvex.config.json', '/site', {
+	resolve: (specifier, importer) => resolve_file(specifier, importer), // a path, or null
+	scan: (file) => scan_file(file) // { names, directives }
+});
+```
+
+:::notes
+`scan` returns the names the file exports, which [`read_exports`](/docs/guides/without-vite#finding-the-names-a-module-exports) finds, and the specifier of its `export * as directives`, or `null`. `options.extensions` gives the document extensions of a config with no `extensions` key. `errors` lists what is wrong with the config, and the manifest leaves those parts out.
 :::
 ::::
 
