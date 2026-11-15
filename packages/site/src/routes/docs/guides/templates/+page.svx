@@ -136,6 +136,21 @@ mdsvex({
 ```
 ::::
 
+::::plate[`select_template` with `compile`](mark="(m)", tone=expr)
+[`compile`](/docs/reference/compile) takes a `select_template` too, but it gets only the metadata, even when the compile has a `filename`:
+
+```ts
+// mdsvex(), the Vite plugin
+select_template: (id: string, metadata: Record<string, unknown>) => string | false | undefined;
+// compile() and compile_async()
+select_template: (metadata: Record<string, unknown>) => string | false | undefined;
+```
+
+:::edges
+- A callback that reads the path, such as the one above, gets the metadata as its `id` in `compile` and fails. Close over the filename instead, `select_template: (metadata) => pick(filename, metadata)`, or pass a `default_template` picked from the path, which the frontmatter still overrides.
+:::
+::::
+
 ## Opting out
 
 ::::plate[`template: false`](mark="false", tone=text)

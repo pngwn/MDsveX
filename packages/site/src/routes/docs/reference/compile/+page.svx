@@ -16,7 +16,11 @@ The result has:
 - `code`, the Svelte 5 component source;
 - `metadata`, the parsed frontmatter, or `undefined` when there is none;
 - `template`, the name of the template wrapping the document, or `undefined`;
-- `warnings`, or `undefined` when there are none.
+- `warnings`, or `undefined` when there are none;
+- `mappings`, from the output back to the document, only with `sourcemap: true`. `mappings_to_v3` from `@mdsvex/render/sourcemap` makes a v3 source map of them;
+- `data`, what plugins left in [plugin data](/docs/plugins/writing/plugin-data), by plugin name, or `undefined` when they left none;
+- `snippets`, the code of each fence that [runs](/docs/reference/code-that-runs#running-with-compile), one per module the output imports, or `undefined` when none runs;
+- `dependencies`, the absolute paths of the files the output depends on, or `undefined` for none. They are what plugins read or named, and, with `read` and `resolve` in [`compile_async`](/docs/reference/compile#read-and-resolve), the files fences show and the module of the template.
 
 ```js
 import { compile } from 'mdsvex/compile';
@@ -73,6 +77,8 @@ compile(source, {
 ```
 
 :::notes
+`compile`'s `select_template` gets only the metadata, `select_template(metadata)`, where the Vite plugin's gets the path too, `select_template(id, metadata)`. A callback that reads the path fails here, see [`select_template` with `compile`](/docs/guides/templates#select-template-with-compile).
+
 On the atlas: [template](/atlas#template).
 :::
 ::::

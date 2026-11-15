@@ -109,11 +109,11 @@ On the atlas: [code fence](/atlas#code-fence).
 
 ## Highlight options
 
-::::plate[`HighlightOptions`](mark="{}", tone=expr)
-`highlight` takes these options in `mdsvex()`:
+::::plate[`PluginHighlightOptions`](mark="{}", tone=expr)
+`highlight` takes these options in `mdsvex()`, the `PluginHighlightOptions` type of `mdsvex`:
 
 ```ts
-interface HighlightOptions {
+interface PluginHighlightOptions {
 	languages?: Record<string, LanguageModule | HtmlHighlighter | string>;
 	default_language?: string;
 	on_unknown_language?: 'plain' | 'throw';
@@ -664,7 +664,7 @@ const { code } = compile(source, { highlight, filename: 'post.svx' });
 ```
 
 :::notes
-`create_highlight` takes the [options](/docs/reference/highlighting#highlight-options) above, apart from `twoslash`, which takes highlighters by language. `load_default_languages` loads every bundled language once.
+`create_highlight` takes `HighlightOptions` from `mdsvex/highlight`, the [options](/docs/reference/highlighting#highlight-options) above apart from `twoslash`, which there is `false` or highlighters by language, `Record<string, HtmlHighlighter>`. `load_default_languages` loads every bundled language once.
 :::
 ::::
 
