@@ -94,7 +94,7 @@ describe('in a vite app', () => {
 				'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" ' +
 				'referrerpolicy="strict-origin-when-cross-origin" allowfullscreen=""></iframe></div>' +
 				'<div class="embed embed-vimeo"><iframe src="https://player.vimeo.com/video/76979871?dnt=1" title="A film" loading="lazy" ' +
-				'allow="autoplay; fullscreen; picture-in-picture; clipboard-write" ' +
+				'allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" ' +
 				'referrerpolicy="strict-origin-when-cross-origin" allowfullscreen=""></iframe></div>' +
 				'<p>No id</p>'
 		);

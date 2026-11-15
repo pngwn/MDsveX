@@ -35,6 +35,25 @@
 		"validation",
 		"lint"
 	],
+	"mdsvex": {
+		"concerns": [
+			"check"
+		],
+		"syntax": [
+			{
+				"mark": "[text](#id)",
+				"source": "[nowhere](#nowhere)\n"
+			},
+			{
+				"mark": "[text](./page.svx#id)",
+				"source": "[a page](./page.svx#usage)\n"
+			}
+		],
+		"needs": {
+			"heading_ids": true
+		},
+		"waits": "it reads the documents a page links to"
+	},
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"peerDependencies": {

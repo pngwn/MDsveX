@@ -1,0 +1,20 @@
+/* the page under the frame: the paper runs to the edges, a rem is the
+   reader's own (the old global.css made it 10px), and scrollbars and form
+   controls follow the scheme */
+
+html {
+	color-scheme: light dark;
+	-webkit-text-size-adjust: 100%;
+	text-size-adjust: 100%;
+}
+
+body {
+	margin: 0;
+	color: var(--ink);
+	background: var(--paper);
+}
+
+:focus-visible {
+	outline: 1.5px solid var(--ink);
+	outline-offset: 2px;
+}

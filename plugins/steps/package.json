@@ -53,6 +53,21 @@
 		"markdown",
 		"steps"
 	],
+	"mdsvex": {
+		"concerns": [
+			"layout"
+		],
+		"syntax": [
+			{
+				"mark": ":::steps",
+				"source": ":::steps\n\n## Install\n\nRun it.\n\n:::\n"
+			},
+			{
+				"mark": ":::step[Title]",
+				"source": ":::steps\n\n:::step[Install]\nRun it.\n:::\n\n:::\n"
+			}
+		]
+	},
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"peerDependencies": {

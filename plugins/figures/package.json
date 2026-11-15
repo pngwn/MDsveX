@@ -51,6 +51,21 @@
 		"figcaption",
 		"caption"
 	],
+	"mdsvex": {
+		"concerns": [
+			"media",
+			"cite"
+		],
+		"syntax": [
+			{
+				"mark": ":::figure[Caption]",
+				"source": ":::figure[A caption]\nAnything.\n:::\n"
+			}
+		],
+		"needs": {
+			"unwrap_images": true
+		}
+	},
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"peerDependencies": {

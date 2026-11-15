@@ -66,7 +66,8 @@
 				top: 0;
 				height: 24px;
 				background: currentColor;
-				mask: url(icons/chevron) no-repeat 50% 50%;
+				/* svelte.dev serves its icons from /icons, inlined here */
+				mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 15l6-6 6 6' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat 50% 50%;
 				mask-size: contain;
 				transition: transform 0.2s;
 				cursor: pointer;
@@ -189,7 +190,7 @@
 					left: 0;
 					top: 0;
 					background: currentColor;
-					mask: url(icons/close) 50% 50% no-repeat;
+					mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 6l12 12M18 6L6 18' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") 50% 50% no-repeat;
 					mask-size: 18px;
 				}
 			}

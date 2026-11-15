@@ -1,0 +1,80 @@
+---
+title: Page data
+order: 11
+package: '@mdsvex/plugin-page-data'
+example:
+  source: |
+    # Moving to runes
+
+    Signals changed how I write components.
+
+    <!-- more -->
+
+    Here is what I learned, in order.
+---
+Works out facts about each document and leaves them in its [plugin data](/docs/plugins/writing/plugin-data), under one key:
+
+```js
+import Post, { plugin_data } from './moving-to-runes.svx';
+
+plugin_data.page;
+// {
+//   title: 'Moving to runes',
+//   excerpt: 'Signals changed how I write components. Here is what I learned.',
+//   words: 842,
+//   minutes: 5,
+//   edit_url: 'https://github.com/you/site/edit/main/src/routes/blog/moving-to-runes.svx',
+//   last_modified: '2026-10-15T09:30:00.000Z'
+// }
+```
+
+`metadata` is not touched, it stays exactly the frontmatter. Each part can be turned off. `title`, `excerpt`, `edit_url` and `last_modified` are only there when their part found something, and a document with no prose has `words: 0` and `minutes: 0`:
+
+```ts
+page_data({
+	reading_time: boolean | { words_per_minute: number } = true,
+	excerpt: boolean | { max_length: number, ellipsis: string } = true,
+	title: boolean = true,
+	edit_url: string | { base: string, root: string } | ((filename: string) => string | undefined),
+	last_modified: 'git' | 'fs' | ((filename: string) => Promise<string | Date | undefined>)
+});
+```
+
+- **`words`** counts the prose: headings, paragraphs, lists, quotes and table cells. Code blocks, image alts, comments, expressions and attributes are not counted, and code inside a sentence is. Chinese, Japanese and Korean are written without spaces, so each Han ideograph, hiragana and hangul syllable is a word, the rule of the `reading-time` package.
+- **`minutes`** is `words` over `words_per_minute`, 200 by default, to two decimals and then rounded up, as `reading-time` shows it. One word is 1 minute and 202 words are 2.
+- **`excerpt`** is the first paragraph, or everything before a `<!-- more -->` comment when the document has one. It is plain text: a parse plugin sees the document before it is rendered, so there is no HTML to give. `max_length` cuts a longer one where a word ends and adds the `ellipsis`.
+- **`title`** is the text of the first `#` heading, and is only set when the frontmatter has no `title`.
+- **`edit_url`** is off until you give it a base. The url is the base and the path of the document relative to `root`, the working directory by default:
+
+```js
+page_data({ edit_url: 'https://github.com/you/site/edit/main/' });
+```
+
+- **`last_modified`** is off until you choose where the date comes from. `'git'` is the date of the last commit that touched the document, `'fs'` is the modification time of its file, and a function is given the path of the document and returns the date. It is an ISO string in UTC:
+
+```js
+page_data({ last_modified: 'git' });
+```
+
+`'git'` and `'fs'` need Node, and throw a `PageDataError` when the plugin is made anywhere else. `'git'` reads the history of the repository once with one `git log`, for every document, so a site of a thousand pages runs git twice, not a thousand times. A file that is not committed yet has no date. A shallow clone, which CI makes by default, cuts the history, so a file whose last commit is before the cut has no date and is reported as `shallow_history`: fetch the whole history (`fetch-depth: 0` in GitHub Actions). In the dev server the history is read once, so a commit made while it runs shows after a restart. `'fs'` gives the time of the checkout in CI, so it is for a site built where it is written.
+
+Finding the date waits, so the Vite plugin and `compile_async` take a document with `last_modified` on, and `compile` throws a `PluginAsyncError` for it.
+
+A [`?data` import](/docs/plugins/writing/plugin-data) gives all of it without rendering the document, which is what a page that lists posts wants:
+
+```svelte
+<!-- src/routes/blog/+page.svelte -->
+<script>
+	const posts = import.meta.glob('./*/+page.svx', { query: '?data', eager: true });
+</script>
+
+<ul>
+	{#each Object.entries(posts) as [path, { metadata, plugin_data }] (path)}
+		<li>
+			<a href="/blog/{path.split('/')[1]}">{metadata?.title ?? plugin_data?.page?.title}</a>
+			<span>{plugin_data?.page?.minutes} min read</span>
+			<p>{plugin_data?.page?.excerpt}</p>
+		</li>
+	{/each}
+</ul>
+```

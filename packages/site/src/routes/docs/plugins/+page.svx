@@ -1,0 +1,27 @@
+---
+title: Find a plugin
+order: 0
+---
+<script>
+	import { page } from '$app/state';
+	import Finder from '$lib/docs/plugins/Finder.svelte';
+</script>
+
+<Finder plugins={page.data.plugins} terms={page.data.terms} />
+
+## Using plugins
+
+The first-party plugins are packages of their own, named `@mdsvex/plugin-*`. Each exports a function, and what it returns goes in the [`plugins`](/docs/plugins/writing/bundles) option, in the order they should run:
+
+```js
+import { mdsvex } from 'mdsvex';
+import { toc } from '@mdsvex/plugin-toc';
+import { tabs } from '@mdsvex/plugin-tabs';
+
+mdsvex({
+	heading_ids: true,
+	plugins: [tabs(), toc()]
+});
+```
+
+Every plugin here is read from its package: its name, what it owns and acts on, and its options with their docs. Every output is the plugin's own compile, run when the site is built, and an edited example compiles in your browser with the same plugin.

@@ -64,6 +64,18 @@
 		"mermaid",
 		"pele"
 	],
+	"mdsvex": {
+		"concerns": [
+			"media",
+			"code"
+		],
+		"syntax": [
+			{
+				"mark": "```mermaid",
+				"source": "```mermaid\ngraph LR\n  A --> B\n```\n"
+			}
+		]
+	},
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"peerDependencies": {

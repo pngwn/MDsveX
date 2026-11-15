@@ -1,0 +1,191 @@
+/* long reading, the docs page, design/SCORE.md "Type": Source Serif 4 for the
+   text, Playfair for headings (linen, from texture.css), the mono for code
+   (code.css). Text keeps a reading measure; a score, a pair or a wide table
+   can take the whole column */
+
+.prose {
+	--prose-measure: 40rem;
+	font-size: 1.125rem;
+	line-height: 1.6;
+	overflow-wrap: break-word;
+}
+
+.prose > * {
+	max-width: var(--prose-measure);
+}
+
+/* the whole column, never past it: a wider table scrolls inside itself */
+.prose > :is(.wide, table, figure) {
+	max-width: 100%;
+}
+
+.prose :is(h1, h2, h3, h4) {
+	position: relative;
+	font-family: var(--face-display);
+	font-weight: 500;
+	line-height: 1.15;
+	scroll-margin-top: 1.5rem;
+	text-wrap: balance;
+}
+
+.prose h1 {
+	margin: 0 0 1.75rem;
+	font-size: clamp(2.25rem, 1.6rem + 2.6vw, 3.25rem);
+	font-weight: 400;
+	line-height: 1.05;
+}
+
+.prose h2 {
+	margin: 3.25rem 0 1rem;
+	font-size: 1.75rem;
+}
+
+.prose h3 {
+	margin: 2.5rem 0 0.75rem;
+	font-size: 1.3rem;
+}
+
+.prose h4 {
+	margin: 2rem 0 0.5rem;
+	font-family: var(--face-text);
+	font-size: 1.05rem;
+	font-weight: 700;
+}
+
+/* a heading's code sits on its line, at the heading's size */
+.prose :is(h1, h2, h3, h4) code {
+	font-size: 0.82em;
+}
+
+/* the anchors plugin's link, empty, before the text: the place a scroll lands */
+.prose :is(h1, h2, h3, h4) > a:empty {
+	position: absolute;
+	inset: 0 auto auto 0;
+	width: 0;
+	height: 0;
+}
+
+.prose p,
+.prose ul,
+.prose ol,
+.prose dl {
+	margin: 0 0 1.1rem;
+}
+
+.prose :is(ul, ol) {
+	padding-left: 1.4rem;
+}
+
+.prose li {
+	margin: 0.3rem 0;
+}
+
+.prose li > :is(ul, ol) {
+	margin: 0.3rem 0 0;
+}
+
+.prose li::marker {
+	color: var(--quiet);
+}
+
+.prose a {
+	color: inherit;
+	text-decoration: underline 1px var(--quiet-line);
+	text-underline-offset: 0.18em;
+}
+
+.prose a:hover {
+	text-decoration-color: var(--ink);
+}
+
+.prose strong {
+	font-weight: 650;
+}
+
+.prose blockquote {
+	margin: 1.5rem 0;
+	padding: 0 0 0 1.25rem;
+	border-left: 1.5px solid var(--line-quote);
+	color: var(--quiet);
+}
+
+.prose hr {
+	margin: 3rem 0;
+	border: 0;
+	border-top: 1px solid var(--staff);
+}
+
+.prose img {
+	max-width: 100%;
+	height: auto;
+}
+
+/* tables: rules in the staff grey, the header as meta in the mono */
+.prose table {
+	display: block;
+	width: max-content;
+	max-width: 100%;
+	margin: 1.5rem 0 2rem;
+	overflow-x: auto;
+	border-collapse: collapse;
+	font-size: 1rem;
+	line-height: 1.45;
+}
+
+.prose th,
+.prose td {
+	padding: 0.5rem 1.25rem 0.5rem 0;
+	border-bottom: 1px solid var(--staff);
+	text-align: left;
+	vertical-align: top;
+}
+
+.prose thead th {
+	padding-top: 0;
+	border-bottom-color: var(--ink);
+	font: 400 0.75rem / 1.4 var(--face-mono);
+	font-variant-ligatures: none;
+	color: var(--quiet);
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+
+.prose td code {
+	white-space: nowrap;
+}
+
+/* a plugin's figure, a footnote section, a callout: plain until a page styles them */
+.prose figure {
+	margin: 1.5rem 0;
+}
+
+.prose :is(section.footnotes, .footnotes) {
+	margin-top: 3rem;
+	padding-top: 1rem;
+	border-top: 1px solid var(--staff);
+	font-size: 0.95rem;
+}
+
+@media (max-width: 600px) {
+	.prose {
+		font-size: 1.0625rem;
+	}
+
+	.prose h2 {
+		margin-top: 2.5rem;
+		font-size: 1.5rem;
+	}
+
+	/* a code block of the page's own runs to the screen's edge; one in an
+	   example keeps its rule beside the example's labels */
+	.prose > pre {
+		margin-inline: calc(var(--gutter, 1rem) * -1) 0;
+		padding-left: calc(var(--gutter, 1rem) - 1.5px);
+		border-left: 0;
+	}
+
+	.prose td code {
+		white-space: normal;
+	}
+}

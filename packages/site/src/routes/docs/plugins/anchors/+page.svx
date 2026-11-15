@@ -1,0 +1,45 @@
+---
+title: Anchors
+order: 8
+package: '@mdsvex/plugin-anchors'
+example:
+  source: |
+    ## Getting started
+
+    Every heading with an id links to itself.
+---
+Puts a link to itself on every heading that has an id:
+
+```html
+<h2 id="getting-started"><a href="#getting-started">Getting started</a></h2>
+```
+
+**It needs [`heading_ids`](/docs/reference/options#heading_ids).** The plugin makes no ids of its own. It links the id each heading has once `heading_ids` has run, so with the option off no heading has one and nothing is linked. A heading left without an id, such as `## {title}`, gets no link either. An id a [parse plugin](/docs/plugins/writing/parse-plugins#parse_plugins) set is linked like any other.
+
+```ts
+anchors({
+	position: 'wrap' | 'prepend' | 'append' = 'wrap',
+	attrs: Record<string, string>
+});
+```
+
+- **`'wrap'`** puts the content of the heading inside the link. A heading that already holds a link is left as it is, since a link can't hold another.
+- **`'prepend'`** and **`'append'`** add an empty link before or after the content, with `aria-hidden="true"` and `tabindex="-1"`, for a stylesheet to draw:
+
+```js
+anchors({ position: 'prepend', attrs: { class: 'anchor' } });
+```
+
+```html
+<h2 id="getting-started">
+	<a href="#getting-started" aria-hidden="true" tabindex="-1" class="anchor"></a>Getting started
+</h2>
+```
+
+```css
+.anchor::before {
+	content: '#';
+}
+```
+
+- **`attrs`** are more attributes for the link. One named as a default replaces it.

@@ -34,6 +34,17 @@
 		"headings",
 		"anchors"
 	],
+	"mdsvex": {
+		"concerns": [
+			"navigate"
+		],
+		"syntax": [
+			"## Heading"
+		],
+		"needs": {
+			"heading_ids": true
+		}
+	},
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"peerDependencies": {

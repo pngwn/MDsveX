@@ -84,6 +84,24 @@
 		"ins",
 		"abbr"
 	],
+	"mdsvex": {
+		"concerns": [
+			"layout",
+			"text"
+		],
+		"syntax": [
+			{
+				"mark": ":::details[Summary]",
+				"source": ":::details[Summary]\nHidden.\n:::\n"
+			},
+			":kbd[Ctrl]",
+			":badge[new](tone=tip)",
+			{
+				"mark": ":abbr[PFM](title=…)",
+				"source": ":abbr[PFM](title=\"Penguin-Flavoured Markdown\")\n"
+			}
+		]
+	},
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"peerDependencies": {

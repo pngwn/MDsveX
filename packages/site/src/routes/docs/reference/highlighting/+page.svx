@@ -1,0 +1,688 @@
+---
+title: Syntax highlighting
+order: 5
+---
+
+[twinkleplop]: https://twinkleplop.pngwn.at
+[twinkleplop-annotations]: https://twinkleplop.pngwn.at/docs/directives
+[shiki]: https://shiki.style
+# Syntax highlighting
+
+The Vite plugin highlights fenced code and [inline code with a language](/docs/reference/highlighting#inline-code) with [twinkleplop][twinkleplop], with no setup. Every bundled language loads the first time a document has code.
+
+Highlighted code is ordinary markup in your component, not `{@html}`. mdsvex escapes every `{` and `}` in it, so code is never read as a Svelte expression, whichever highlighter produced it.
+
+::marks
+
+## Themes
+
+::::plate[A theme is a stylesheet](mark=".css", tone=other)
+mdsvex adds no CSS. A twinkleplop theme is a stylesheet you import once, usually in your root layout:
+
+```js
+import '@twinkleplop/theme-github';
+```
+
+:::notes
+The themes are `@twinkleplop/theme-github`, `theme-atom-one`, `theme-ayu`, `theme-catppuccin`, `theme-material`, `theme-night-owl`, `theme-rose-pine` and `theme-solarized`. Each has three stylesheets:
+
+- the package itself, light colours by default and dark ones under a `.dark` ancestor, for sites that toggle a `dark` class;
+- `/light` and `/dark`, one variant each, for a fixed mode.
+:::
+::::
+
+::::plate[The reader's system setting](mark="dark", tone=other)
+To follow the reader's system setting, import the light variant and add the dark one under a media query:
+
+```svelte
+<!-- src/routes/+layout.svelte -->
+<script>
+	import '@twinkleplop/theme-github/light';
+	import '../app.css';
+
+	let { children } = $props();
+</script>
+
+{@render children()}
+```
+
+```css
+/* src/app.css */
+@import '@twinkleplop/theme-github/dark' (prefers-color-scheme: dark);
+```
+::::
+
+::::plate[A theme only colours tokens](mark="--twp", tone=other)
+A theme only colours tokens. It sets `--twp-background` without applying it, and leaves the block's layout and the classes that [fence meta](/docs/reference/highlighting#fence-meta) and [code directives](/docs/reference/highlighting#code-directives) add to you:
+
+```css
+pre.twinkleplop {
+	padding: 1em;
+	overflow-x: auto;
+	background: var(--twp-background);
+}
+
+.twinkleplop .highlight,
+.twinkleplop .highlighted-word {
+	background: rgb(127 127 127 / 0.2);
+}
+
+.twinkleplop .diff-add {
+	background: rgb(0 200 0 / 0.15);
+}
+
+.twinkleplop .diff-del {
+	background: rgb(200 0 0 / 0.15);
+}
+
+.twinkleplop .ln {
+	display: inline-block;
+	width: 2em;
+	margin-right: 1em;
+	text-align: right;
+	opacity: 0.5;
+}
+
+.has-focus .l:not(.focus) {
+	opacity: 0.5;
+}
+```
+::::
+
+::::plate[A highlighted block](mark="span.l", tone=fence)
+A highlighted block renders as below. Each line is a `span.l`, each token a `span.tok` with its type as a class, and a line number a `span.ln`:
+
+```js config
+mdsvex({ highlight: {} });
+```
+
+````md result config
+```ts {1}
+const a = 1;
+```
+````
+
+:::notes
+On the atlas: [code fence](/atlas#code-fence).
+:::
+::::
+
+## Highlight options
+
+::::plate[`HighlightOptions`](mark="{}", tone=expr)
+`highlight` takes these options in `mdsvex()`:
+
+```ts
+interface HighlightOptions {
+	languages?: Record<string, LanguageModule | HtmlHighlighter | string>;
+	default_language?: string;
+	on_unknown_language?: 'plain' | 'throw';
+	line_numbers?: boolean | { start?: number };
+	annotations?: AnnotationPlugin[] | false;
+	render?: RenderOptions;
+	parse_meta?: (raw: string, parsed: RenderOptions) => RenderOptions | void;
+	twoslash?: boolean | { svelte?: boolean };
+}
+```
+
+:::notes
+- `languages` adds languages and aliases, merged over the bundled ones. See [languages](/docs/reference/highlighting#languages).
+- `default_language` highlights fences that name no language.
+- `on_unknown_language` decides what happens to a language mdsvex doesn't have. `'plain'`, the default, renders it as plain code and warns once per file and language. `'throw'` fails the build. A language a plugin [claims](/docs/plugins/writing/bundles), such as `mermaid` with `@mdsvex/plugin-diagram`, is never looked up, so it neither warns nor throws.
+- `line_numbers` numbers every fence's lines, `{ start: 10 }` from 10. A fence's own meta overrides it.
+- `annotations` lists the [code directives](/docs/reference/highlighting#code-directives). Leave it out for the defaults, or pass `false` for none.
+- `render` is twinkleplop's render options under every fence's own, such as `indent_guides`, `whitespace` or the `line` and `token` hooks. See [twinkleplop's render options](https://twinkleplop.pngwn.at/docs/render_options).
+- `parse_meta` gets a fence's raw meta and the render options the [meta conventions](/docs/reference/highlighting#fence-meta) set, and returns the render options to use, for house conventions of your own.
+- `twoslash` turns on [twoslash](/docs/reference/highlighting#twoslash).
+
+`highlight` also takes a [function](/docs/reference/highlighting#custom-highlighters), or `false` to render every block as a plain `<pre><code class="language-js">`.
+:::
+::::
+
+## Languages
+
+::::plate[Bundled languages](mark="ts", tone=fence)
+These languages are bundled: `bash`, `c`, `cpp`, `css`, `diff`, `dockerfile`, `dotenv`, `go`, `graphql`, `html`, `http`, `ini`, `javascript`, `json`, `jsonc`, `markdown`, `powershell`, `python`, `rust`, `shellsession`, `sql`, `svelte`, `toml`, `tsx`, `typescript` and `yaml`. Fences inside a `markdown` block are highlighted too.
+::::
+
+::::plate[Aliases](mark="js", tone=fence)
+These aliases are built in:
+
+| alias | language |
+| --- | --- |
+| `js`, `mjs`, `cjs` | `javascript` |
+| `ts`, `mts`, `cts` | `typescript` |
+| `jsx` | `tsx` |
+| `sh`, `shell`, `zsh` | `bash` |
+| `console`, `shell-session` | `shellsession` |
+| `yml` | `yaml` |
+| `md` | `markdown` |
+| `env` | `dotenv` |
+| `patch` | `diff` |
+| `py` | `python` |
+| `rs` | `rust` |
+
+:::notes
+A fence's language is looked up as written, then lowercased, so `Dockerfile` and `JSON` work.
+:::
+
+:::edges
+- A language mdsvex doesn't have renders as plain code, in the same markup, so themes and line numbers still apply, with one warning per file. A fence with no language renders the same way, unless you set `default_language`.
+:::
+::::
+
+::::plate[Languages of your own](mark="zig", tone=fence)
+`languages` adds to these. A string is an alias. A twinkleplop language package is passed as its module namespace:
+
+```js
+import * as zig from '@acme/twinkleplop-zig';
+
+mdsvex({
+	highlight: {
+		languages: { zig, zg: 'zig', svx: 'markdown', vue: 'html' }
+	}
+});
+```
+
+:::notes
+A language can also be a function, `(code, render) => html`, that renders HTML itself.
+:::
+
+:::edges
+- Code directives don't apply to it.
+:::
+::::
+
+## Fence meta
+
+The info string after the language takes the conventions of Shiki, VitePress and rehype-pretty-code:
+
+::::added
+:::add[`{1,3-4}`](mark="{1}", tone=fence, id=meta-lines)
+highlights lines 1, 3 and 4 with the `highlight` class
+:::
+
+:::add[`{1,3-4}#id`](mark="{1}#", tone=fence, id=meta-line-id)
+adds `data-highlighted-line-id="id"` to those lines
+:::
+
+:::add[`/word/`](mark="/w/", tone=fence, id=meta-word)
+highlights every `word` with the `highlighted-word` class
+:::
+
+:::add[`/word/2-3`, `/word/#id`](mark="/w/2", tone=fence, id=meta-word-n)
+the second and third `word` only, or adds `data-chars-id="id"`
+:::
+
+:::add[`:line-numbers`, `:line-numbers=10`, `:no-line-numbers`](mark=":ln", tone=fence, id=meta-line-numbers)
+turns line numbers on, from 10, or off
+:::
+
+:::add[`showLineNumbers`, `showLineNumbers{10}`](mark="show", tone=fence, id=meta-show-line-numbers)
+turns line numbers on, from 10
+:::
+
+:::add[`[math.ts]`, `title="math.ts"`](mark="[a]", tone=fence, id=meta-title)
+a title
+:::
+
+:::add[`caption="…"`](mark="cap=", tone=fence, id=meta-caption)
+a caption
+:::
+
+:::add[`twoslash`](mark="^?", tone=fence, id=meta-twoslash)
+uses [twoslash](/docs/reference/highlighting#twoslash)
+:::
+
+:::add[`src=./math.ts`, `src=./math.ts#L5-L20`](mark="src=", tone=fence, id=meta-src)
+shows [a file](/docs/reference/highlighting#code-from-a-file), or some of its lines
+:::
+
+:::add[`run`, `run=client`](mark="run", tone=fence, id=meta-run)
+[runs the block](/docs/reference/code-that-runs) as a module, with the page or when asked
+:::
+::::
+
+::::plate[A title and a caption](mark="title", tone=fence)
+A fence with a title or caption renders inside a `<figure class="twinkleplop-block">`, with a `<figcaption class="twinkleplop-title">` above the code and a `<figcaption class="twinkleplop-caption">` below it:
+
+````md result config
+```ts title="math.ts" {2} :line-numbers
+export function add(a: number, b: number) {
+	return a + b;
+}
+```
+````
+
+:::notes
+A [replaced `pre`](/docs/reference/highlighting#code-block-components) gets them as props instead. With `highlight: false` there's no figure, and the fence renders as a plain `<pre><code>`.
+
+The `language-` class carries only the language, never the rest of the meta.
+:::
+
+:::edges
+- A line range past the end of the fence fails the build, so a stale range doesn't silently highlight nothing:
+
+````md error config
+```ts {9}
+let a;
+```
+````
+:::
+::::
+
+::::plate[`fence_meta`](mark="info", tone=expr)
+A [parse plugin](/docs/plugins/writing/parse-plugins#parse_plugins) reads the same conventions with `fence_meta`, from the info string a `code_fence` node has in its handler:
+
+```js
+import { fence_meta } from 'mdsvex/compile';
+
+const titled = {
+	code_fence: {
+		parse(node) {
+			const { lang, title, src, props } = fence_meta(node.info);
+			// 'ts', 'math.ts', undefined, [['wrap', true]] for ```ts [math.ts] wrap
+		}
+	}
+};
+```
+
+:::notes
+It gives the language, the rest as `meta`, the `title` and `caption`, what `src=` names, `run` for a fence that [runs](/docs/reference/code-that-runs), the `key=value` pairs and bare flags no convention claims as `props`, and every part as it was written as `parts`.
+:::
+::::
+
+## Code from a file
+
+::::plate[`src=`](mark="src=", tone=fence)
+`src=` in the meta of a fence shows a file in place of code written in the document, so the docs never drift from the code they describe. The fence itself stays empty.
+
+````md score
+```ts src=./math.ts
+```
+
+```src=#lib/math.ts#L5-L20 title="math.ts"
+```
+````
+
+:::notes
+The path resolves as an import from the document would: a relative path, a Vite alias, or a `#lib/…` subpath import. Write `./math.ts`, since a bare `math.ts` is a package name to an import. Quote a path with spaces, `src="./my file.ts"`.
+:::
+
+:::edges
+These fail the build, each at the fence:
+
+- the file does not resolve or cannot be read;
+- the slice asks for lines the file does not have, so a stale range never silently shows the wrong code;
+- the fence has code of its own, which would otherwise go missing.
+:::
+::::
+
+A slice after the path shows some of the lines, counted from 1:
+
+::::added
+:::add[`#L5`](mark="#L5", tone=fence, id=slice-line)
+line 5
+:::
+
+:::add[`#L5-L20`](mark="L5-L20", tone=fence, id=slice-range)
+lines 5 to 20
+:::
+
+:::add[`#L5-`](mark="#L5-", tone=fence, id=slice-to-end)
+line 5 to the end
+:::
+
+:::add[`#-L20`](mark="#-L20", tone=fence, id=slice-from-start)
+the start to line 20
+:::
+::::
+
+::::plate[The language from the file name](mark=".ts", tone=fence)
+A fence with no language takes it from the file name, so `src=./math.ts` is highlighted as `ts` and `src=./Dockerfile` as `dockerfile`. A language you write wins.
+
+:::notes
+Everything else in the meta works as it does on any fence: line highlights count the lines shown, a title is still `[math.ts]` or `title=`, and `src=` sets none.
+
+The file is highlighted like code written in the fence, and a [replaced `pre`](/docs/reference/highlighting#code-block-components) gets `src` as a prop, as written. In dev, saving the file updates every page that shows it, and a watch build compiles those documents again.
+:::
+::::
+
+::::plate[`sources`, for `compile()`](mark="{}", tone=expr)
+`compile()` reads no files. Give it the text of each file in `sources`, keyed by the path as the fence has it, without the slice:
+
+```js
+compile(source, {
+	sources: { './math.ts': 'export const a = 1;\n' }
+});
+```
+
+:::notes
+`sources: false` leaves `src=` unread, and the fence renders as written. The editor reads no files either, so it shows such a fence empty and reports only a fence that has code of its own.
+:::
+
+:::edges
+- A fence whose file is not in `sources` throws a `SourceError`, which has a `code` (`src_missing`, `src_slice`, `src_body` or `src_spec`), the `spec`, and a `line` and `column`:
+
+````md error
+```ts src=./math.ts
+```
+````
+:::
+::::
+
+## Code directives
+
+::::plate[`[!verb]`](mark="[!hl]", tone=fence)
+A code directive is a marker in a comment, `[!verb]`, that styles part of the code and disappears from the output. A line that holds only markers is dropped.
+
+````md result config
+```js
+const config = {
+	theme: 'light', // [!del]
+	theme: 'dark', // [!add]
+	lines: true // [!hl]
+};
+```
+````
+::::
+
+These are on by default:
+
+::::added
+:::add[`[!hl]`](mark="[!hl]", tone=fence, id=directive-hl)
+`highlight`, a highlighted line
+:::
+
+:::add[`[!em]`](mark="[!em]", tone=fence, id=directive-em)
+`emphasis`, drawing attention
+:::
+
+:::add[`[!focus]`](mark="focus", tone=fence, id=directive-focus)
+`focus`, and `has-focus` on the `<pre>`, the lines to look at
+:::
+
+:::add[`[!dim]`](mark="[!dim]", tone=fence, id=directive-dim)
+`subdued`, fading lines out
+:::
+
+:::add[`[!add]`, `[!del]`, `[!mod]`](mark="[!add]", tone=fence, id=directive-diff)
+`diff-add`, `diff-del`, `diff-mod`, diffs
+:::
+
+:::add[`[!err]`, `[!warn]`, `[!info]`](mark="[!err]", tone=fence, id=directive-diagnostics)
+`error`, `warning`, `info`, diagnostics
+:::
+
+:::add[`[!eval]`](mark="!eval", tone=fence, id=directive-eval)
+no class, [live values](/docs/reference/live-code)
+:::
+::::
+
+::::plate[Where a directive applies](mark="+2", tone=fence)
+With no arguments, a directive applies to its own line. `[!hl +2]` applies to the two lines below the marker, `[!hl :3...5]` to lines 3 to 5, and `[!hl =total]` to every `total` on the marker's line.
+
+:::notes
+[Twinkleplop's directive docs][twinkleplop-annotations] have every form. The `<pre>` also gets a `has-` class for each class inside it, such as `has-diff-add`.
+:::
+::::
+
+::::plate[`annotations`](mark="++", tone=fence)
+`annotations` picks the directives. Content written for Shiki's transformers, `// [!code ++]`, works with `shiki_notation` added:
+
+```js config
+import { default_annotations, shiki_notation } from 'mdsvex/highlight';
+
+mdsvex({
+	highlight: { annotations: [...default_annotations, shiki_notation()] }
+});
+```
+
+````md result config
+```js
+const theme = 'dark'; // [!code ++]
+```
+````
+
+:::notes
+`annotations: false` turns directives off, and markers stay in the code as written.
+:::
+::::
+
+## Inline code
+
+::::plate[Inline code with a language](mark="#!ts", tone=code)
+A code span that starts with ` #! ` and a language is highlighted:
+
+```md result config
+Call `#!ts add(1, 2)` to add numbers.
+```
+
+:::notes
+It renders as `<code class="twinkleplop twinkleplop-inline language-ts">`, with token spans inside and no ` #!ts `. A code span without ` #! ` stays a plain `<code>`. A [`code` replacement](/docs/guides/components#element-props) gets highlighted spans as `children`, and the language as a `lang` prop.
+
+On the atlas: [code span](/atlas#code-span).
+:::
+::::
+
+## Code block components
+
+::::plate[A `pre` replacement](mark="<pre>", tone=comp)
+A [`pre` replacement](/docs/guides/components) wraps the highlighted block. It gets these props:
+
+| prop | value |
+| --- | --- |
+| `children` | the whole highlighted `<pre>` element |
+| `lang` | the fence's language |
+| `meta` | the rest of the info string, raw |
+| `code` | the text a reader sees, without directive markers, with [live values](/docs/reference/live-code) in place |
+| `title`, `caption` | from the [fence meta](/docs/reference/highlighting#fence-meta), when it has them |
+| `src` | the path a fence [takes its code from](/docs/reference/highlighting#code-from-a-file), as written, slice included |
+| `module` | the module of a fence marked [`run`](/docs/reference/code-that-runs) |
+| `load` | a function that imports the module of a fence marked [`run=client`](/docs/reference/code-that-runs#running-on-the-client) |
+| meta props | each part of the meta that no convention claims |
+
+:::notes
+`children` is the `<pre>` itself, not its `<code>`, because Svelte only keeps whitespace inside a `<pre>` it can see. A replaced `pre` gets no `<figure>`, so the title, caption and anything else around the code are up to the component.
+:::
+
+:::edges
+- Render `children` with `{@render children()}` inside your own markup, never inside another `<pre>`.
+:::
+::::
+
+::::plate[A copy button](mark="copy", tone=comp)
+A copy button with a filename:
+
+```svelte
+<!-- src/lib/markdown/Pre.svelte -->
+<script>
+	let { code, title, children } = $props();
+
+	let copied = $state(false);
+
+	async function copy() {
+		await navigator.clipboard.writeText(code);
+		copied = true;
+		setTimeout(() => (copied = false), 1500);
+	}
+</script>
+
+<div class="code">
+	<div class="bar">
+		{#if title}<span>{title}</span>{/if}
+		<button onclick={copy}>{copied ? 'copied' : 'copy'}</button>
+	</div>
+	{@render children()}
+</div>
+```
+
+```js
+// src/lib/markdown.js
+export { default as pre } from './markdown/Pre.svelte';
+```
+
+:::notes
+[`@mdsvex/plugin-code-blocks`](/docs/plugins/code-blocks) is a finished one, with an announced result and the caption, to use or to copy.
+:::
+::::
+
+::::plate[Meta props](mark="key=", tone=fence)
+Meta that no convention claims becomes props. `key="value"`, `key='value'` and `key=value` give a string, and a bare `key` gives `true`:
+
+```js config
+mdsvex({ components: '#lib/markdown.js', highlight: {} });
+```
+
+````md result config
+```svelte title="App.svelte" playground height=300
+<h1>Hello</h1>
+```
+````
+
+:::notes
+That fence gives `playground={true}` and `height="300"`, as well as `title`. Meta props, `title` and `caption` don't depend on the highlighter, so a `pre` gets them with `highlight: false` too.
+:::
+
+:::edges
+- Expression values, `key={…}`, aren't read.
+- A meta prop named `lang`, `meta`, `code`, `title`, `caption`, `class`, `children`, `src`, `module` or `load` is dropped with a warning.
+:::
+::::
+
+See the [code blocks playground example](/playground/code).
+
+## Custom highlighters
+
+::::plate[A highlighter function](mark="=>", tone=expr)
+`highlight` can be a function instead of options. It gets the code and what mdsvex knows about it, and returns HTML:
+
+```ts
+type Highlighter = (
+	code: string,
+	info: { lang: string; meta: string; inline: boolean; filename?: string }
+) => string | null | undefined;
+```
+
+:::notes
+- `lang` is the fence's language, `""` when it names none, and `meta` the rest of the info string.
+- `inline` is `true` for a [code span with ` #! `](/docs/reference/highlighting#inline-code). Plain code spans never reach the highlighter.
+- A fence in a language a plugin [claims](/docs/plugins/writing/bundles) never reaches it either, the plugin renders that fence.
+- It returns a whole `<pre>` for a fence, or a `<code>` for inline code. `null` or `undefined` renders that code plain.
+:::
+
+:::edges
+- It must be synchronous. Do any async setup before `mdsvex()` is called, with top-level `await` in your Vite config.
+- It returns ordinary HTML. Don't escape it for Svelte, with `escapeSvelte` or anything else, and don't wrap it in `{@html}`. mdsvex escapes every brace in what you return, so a `{@html …}` wrapper would show up as text.
+:::
+::::
+
+::::plate[With Shiki](mark="shiki", tone=expr)
+With [Shiki][shiki]:
+
+```js
+// vite.config.js
+import { sveltekit } from '@sveltejs/kit/vite';
+import { mdsvex } from 'mdsvex';
+import { createHighlighter } from 'shiki';
+import { defineConfig } from 'vite';
+
+const shiki = await createHighlighter({
+	themes: ['github-dark'],
+	langs: ['javascript', 'typescript', 'svelte']
+});
+
+export default defineConfig({
+	plugins: [
+		mdsvex({
+			highlight: (code, { lang, inline }) =>
+				inline || !shiki.getLoadedLanguages().includes(lang)
+					? null
+					: shiki.codeToHtml(code, { lang, theme: 'github-dark' })
+		}),
+		sveltekit()
+	]
+});
+```
+
+:::notes
+Shiki's transformers go in the `codeToHtml` call, as they would anywhere else. A [`pre` replacement](/docs/reference/highlighting#code-block-components) wraps a custom highlighter's output too, and gets the same props.
+:::
+::::
+
+## Twoslash
+
+::::plate[Twoslash](mark="^?", tone=fence)
+Twoslash shows type information from the TypeScript compiler in your code. It is opt-in, as it starts a TypeScript environment. Install it:
+
+```bash
+npm i --save-dev @twinkleplop/twoslash
+```
+
+:::edges
+- Turning it on without the package installed is an error that names the package.
+:::
+::::
+
+::::plate[Turning twoslash on](mark="twosl", tone=fence)
+Turn it on, and import its styles next to your theme:
+
+```js
+mdsvex({ highlight: { twoslash: true } });
+```
+
+```js
+import '@twinkleplop/twoslash/style.css';
+```
+
+````md score
+```ts twoslash
+const total = [1, 2, 3].reduce((a, b) => a + b, 0);
+//    ^?
+```
+````
+
+:::notes
+Fences with `twoslash` in their meta then go through twoslash. `twoslash: true` covers `ts`, `js` and `tsx` fences. For Svelte fences too, install `@twinkleplop/twoslash-svelte` as well and use `twoslash: { svelte: true }`.
+:::
+::::
+
+## Highlighting with `compile`
+
+::::plate[`create_highlight`](mark="create", tone=expr)
+`compile` is synchronous and loads nothing, so it doesn't highlight unless you pass `highlight`. `mdsvex/highlight` builds the same configuration the plugin uses:
+
+```js
+import { compile } from 'mdsvex/compile';
+import { create_highlight, load_default_languages } from 'mdsvex/highlight';
+
+const highlight = create_highlight({
+	languages: await load_default_languages()
+});
+
+const { code } = compile(source, { highlight, filename: 'post.svx' });
+```
+
+:::notes
+`create_highlight` takes the [options](/docs/reference/highlighting#highlight-options) above, apart from `twoslash`, which takes highlighters by language. `load_default_languages` loads every bundled language once.
+:::
+::::
+
+::::plate[`language_loaders`](mark="await", tone=expr)
+In a browser, `language_loaders` loads them one at a time, so you only fetch what you use:
+
+```js
+import { create_highlight, language_loaders } from 'mdsvex/highlight';
+
+const highlight = create_highlight({
+	languages: {
+		svelte: await language_loaders.svelte(),
+		typescript: await language_loaders.typescript()
+	}
+});
+```
+
+:::notes
+`compile` also takes a [highlighter function](/docs/reference/highlighting#custom-highlighters), or `false`.
+:::
+::::
