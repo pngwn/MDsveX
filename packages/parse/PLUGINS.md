@@ -75,7 +75,8 @@ heading: {
 }
 ```
 
-- **`offset`** indexes the source the parser read, in which every newline is a `\n`. A document written with `\r\n` has other offsets on disk.
+- **`offset`** is a JavaScript string index, in UTF-16 code units, not a byte offset. In `é🐧\n\n# Hi` the heading starts at 5, where its UTF-8 byte offset would be 8.
+- **`offset` indexes the source the parser read,** in which every `\r\n` and every lone `\r` is a `\n`. A lone `\r` moves no offset, but each `\r\n` moves those after it back by one, so a document written with `\r\n` has other offsets on disk. `raw_offsets(raw)` from `@mdsvex/parse` maps them back: `null` when `raw` has no `\r\n`, else an object whose `to_raw(offset)` is the index in `raw`.
 - **`line`** counts from 1 and **`column`** from 0. Both hold in the document as it was written, `\r\n` or not.
 - **`end` is `undefined` while the node is open**, which is the case in its own open handler. The close callback has it.
 - **`position` is `undefined` for a node a plugin made**, which has no source, **and over the wire**. The wire format carries text and no offsets, so a tree built by `WireTreeBuilder` cannot say where a node was.
