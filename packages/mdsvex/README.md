@@ -45,4 +45,4 @@ export default defineConfig({
 
 Coming from mdsvex 0.x, [`@mdsvex/migrate`](https://www.npmjs.com/package/@mdsvex/migrate) rewrites your config and your documents.
 
-The documentation for this line is [on the `next` branch](https://github.com/pngwn/MDsveX/blob/next/packages/site/src/routes/_docs.svtext). https://mdsvex.com/ documents mdsvex 0.x.
+The documentation for this line is [on the `next` branch](https://github.com/pngwn/MDsveX/tree/next/packages/site/src/routes/docs). https://mdsvex.com/ documents mdsvex 0.x.

@@ -26,7 +26,7 @@ The other files in this directory are the audit of the remark and rehype plugins
 
 ## Adding a plugin
 
-Copy [`anchors`](./anchors) for a plugin that is only handlers, or [`steps`](./steps) for one that ships Svelte components. Change the name, description, `repository.directory` and keywords in `package.json`, set the version to `0.0.1`, and add a row above and a section to the Plugins part of `packages/site/src/routes/_docs.svtext`. The workspace, the root build, the root test run, preview builds, dependabot and the release already cover `plugins/*`, so nothing outside the new directory needs wiring.
+Copy [`anchors`](./anchors) for a plugin that is only handlers, or [`steps`](./steps) for one that ships Svelte components. Change the name, description, `repository.directory` and keywords in `package.json`, set the version to `0.0.1`, add a row above, and give it a docs page at `packages/site/src/routes/docs/plugins/<name>/+page.svx` whose frontmatter names the `package` and an `example` (copy a neighbour's), since a strict site build fails on a plugin without one. The workspace, the root build, the root test run, preview builds, dependabot and the release already cover `plugins/*`, so nothing outside the new directory needs wiring.
 
 ### What every plugin package has
 
