@@ -73,7 +73,7 @@ The citations and their entries are [plugin data](/docs/plugins/writing/plugin-d
 <Bibliography data={plugin_data?.citations} />
 ```
 
-The file is read while the document compiles, so the Vite plugin and [`compile_async`](/docs/reference/compile#compile_async) take a document that cites, and `compile` throws a `PluginAsyncError`. `compile_async` needs the document's `filename`, to find the file the frontmatter names, and a [`read`](/docs/reference/compile#read-and-resolve) option, to load it:
+The file is read while the document compiles, so the Vite plugin and [`compile_async`](/docs/reference/compile#compile_async) take a document that cites, and `compile` throws a `PluginAsyncError`. `compile_async` needs the document's `filename`, to find the file the frontmatter names, and a [`read`](/docs/reference/compile#compile_async) option, to load it:
 
 ```js
 import { readFile } from 'node:fs/promises';
