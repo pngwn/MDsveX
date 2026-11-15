@@ -25,9 +25,10 @@ import {
 	ComponentScope,
 	CursorHTMLRenderer,
 	K_FRONTMATTER,
+	shell_requests,
 	take_plain_math,
 } from '@mdsvex/render/html-cursor';
-import type { ComponentSource } from '@mdsvex/render/html-cursor';
+import type { ComponentSource, ShellTable } from '@mdsvex/render/html-cursor';
 import { mappings_to_v3 } from '@mdsvex/render/sourcemap';
 import type { Mapping, MappingData } from '@mdsvex/render/mappings';
 import type { MapTrace, SourceMapV3 } from '@mdsvex/render/sourcemap';
@@ -75,6 +76,8 @@ import {
 import type { Fenced, SourceFences, SourceNeed } from './fence_sources.js';
 import type { Snippet, SnippetsOption } from './run_blocks.js';
 import { document_text } from './document_text.js';
+import { STATIC_NAMES } from './bundle_statics.js';
+import type { StaticBundle } from './bundle_statics.js';
 import type {
 	DirectiveText,
 	DocumentText,
@@ -205,8 +208,6 @@ type BoundTables = NonNullable<ParseOptions['directive_handlers']>;
 
 /** one directive a plugin owns, its handlers run only inside that directive */
 export interface BundleDirective extends DirectiveEntry {
-	/** reserved for rendering the component at build time, nothing reads it yet */
-	static?: boolean;
 	/**
 	 * what the directive reads as in the plain text of a document, given its
 	 * args once the plugins settled and the text of its label, undefined
@@ -396,7 +397,30 @@ type UrlSwaps = NonNullable<ReturnType<typeof with_images>>;
  * an image itself, with the import, and takes the text of a source from the
  * sources of its inputs
  */
-export type Need = ImageNeed | SourceNeed;
+export type Need = ImageNeed | SourceNeed | ShellNeed;
+
+/**
+ * one use of a static directive with no shell in the shells option, the
+ * caller renders its component with args as props and a hole for each
+ * snippet it is given, see design/static-directives.md
+ */
+export interface ShellNeed {
+	type: 'shell';
+	/** the key the shell goes under in the shells option */
+	key: string;
+	/** the module of the component, as documents import it */
+	specifier: string;
+	/** the export of the module, the directive name */
+	name: string;
+	/** its props, each a string */
+	args: Record<string, string>;
+	/** true when the component is given a label snippet */
+	label: boolean;
+	/** true when the component is given a children snippet */
+	children: boolean;
+	/** the first use, line from 1 and column from 0, which hold in the raw source */
+	start: { line: number; column: number };
+}
 
 /** a svelte component that wraps documents, its replacements chain in front of the root */
 export interface TemplateEntry {
@@ -520,6 +544,18 @@ export interface CompileInputs {
 	/** the text of the files fences show with src=, by spec, false leaves src= unread */
 	sources: Readonly<Record<string, string>> | false | undefined;
 	/**
+	 * the rendered shells of static directives, by the key of each need of
+	 * type shell, a static directive with none renders live, no compile
+	 * option sets it so compiles without it pay nothing, a session caller
+	 * sets it on the inputs, see design/static-directives.md
+	 */
+	shells: ShellTable | undefined;
+	/**
+	 * true makes an into compile stop after the parse when a static directive
+	 * has no shell, the document then waits in the waiting field of its target
+	 */
+	await_shells: boolean;
+	/**
 	 * true makes an into compile stop after the parse when sources lacks a
 	 * file, the document then waits in the waiting field of its target
 	 */
@@ -572,6 +608,8 @@ function fresh_inputs(): CompileInputs {
 		wrap_static: undefined,
 		links: undefined,
 		sources: undefined,
+		shells: undefined,
+		await_shells: false,
 		await_sources: false,
 		await_plugins: false,
 		snippets: undefined,
@@ -853,7 +891,12 @@ function unpack(bundles: Bundle[]): Unpacked {
 						bundle,
 						'needs a module, the specifier its directive components are exported from'
 					);
-				directives.push({ specifier: bundle.module, names });
+				const statics = (bundle as StaticBundle)[STATIC_NAMES];
+				directives.push(
+					statics === undefined || statics.length === 0
+						? { specifier: bundle.module, names }
+						: { specifier: bundle.module, names, static: statics }
+				);
 				// the parser reads children, descendants and parse and ignores the
 				// rest, the name keys what the handlers write to ctx.data
 				tables.push({ name: bundle.name, directives: own });
@@ -1388,6 +1431,82 @@ function need_images(parsed: Parsed, images: ImageImports | null): void {
 	if (images === null) return;
 	parsed._images = images;
 	parsed.needs = images.needs;
+}
+
+/** true when the root or a template registers a static directive */
+function any_static(
+	root: ComponentScope | null,
+	options: TemplateOptions | undefined
+): boolean {
+	if (root !== null && root.has_static) return true;
+	const templates = options?.templates;
+	if (templates === undefined) return false;
+	for (const name in templates) {
+		const list = templates[name].directives;
+		if (list === undefined) continue;
+		for (let i = 0; i < list.length; i++) {
+			const statics = list[i].static;
+			if (statics !== undefined && statics.length !== 0) return true;
+		}
+	}
+	return false;
+}
+
+/**
+ * the shells the document lacks, in the directive scope its template gives,
+ * null when it lacks none
+ */
+function shell_needs(
+	nodes: NodeBuffer,
+	source: string,
+	metadata: Metadata | undefined,
+	root: ComponentScope | null,
+	inputs: CompileInputs
+): ShellNeed[] | null {
+	const options = inputs.templates;
+	let scope = root;
+	if (options !== undefined || metadata !== undefined) {
+		const name = template_of(metadata, options, nodes, source);
+		if (name !== undefined)
+			scope = template_directives(options!.templates![name], root);
+	}
+	if (scope === null) return null;
+	const requests = shell_requests(nodes, source, scope, inputs.shells);
+	if (requests.length === 0) return null;
+	const out: ShellNeed[] = [];
+	for (const r of requests) {
+		out.push({
+			type: 'shell',
+			key: r.key,
+			specifier: r.specifier,
+			name: r.name,
+			args: r.args,
+			label: r.label,
+			children: r.children,
+			start: line_column(source, r.start),
+		});
+	}
+	return out;
+}
+
+/** a collapsed \r\n moves no line and no column, so they hold in the raw source */
+function line_column(
+	source: string,
+	start: number
+): { line: number; column: number } {
+	let line = 1;
+	for (
+		let i = source.indexOf('\n');
+		i !== -1 && i < start;
+		i = source.indexOf('\n', i + 1)
+	)
+		line++;
+	return { line, column: start - (source.lastIndexOf('\n', start - 1) + 1) };
+}
+
+function need_shells(parsed: Parsed, shells: ShellNeed[]): void {
+	const needs = parsed.needs;
+	parsed.needs = needs === undefined ? shells : [...needs, ...shells];
 }
 
 function need_sources(parsed: Parsed, shown: SourceFences | null): void {
@@ -2559,8 +2678,15 @@ export class CompilerSession {
 				(take_info(source, 'src=', 'run') || plugged)
 			)
 				shown = fences_of(nodes, source, inputs);
+			// only a config that registers a static directive looks for them
+			const statics =
+				(kind === Kind.PARSE || inputs.await_shells) &&
+				any_static(directives, inputs.templates)
+					? shell_needs(nodes, source, metadata, directives, inputs)
+					: null;
 			if (
 				kind === Kind.PARSE ||
+				(statics !== null && out !== undefined) ||
 				(shown !== null &&
 					out !== undefined &&
 					inputs.await_sources &&
@@ -2573,6 +2699,7 @@ export class CompilerSession {
 				if (host !== null) host.wait(waiting, inputs);
 				need_images(waiting, images);
 				need_sources(waiting, shown);
+				if (statics !== null) need_shells(waiting, statics);
 				// parse_once made its own nodes, no arena of the session holds them
 				if (renderer === this.renderer) this.lend(waiting, plugged);
 				if (kind === Kind.PARSE) return waiting;
@@ -2660,6 +2787,8 @@ export class CompilerSession {
 		if (notes !== null) renderer.footnotes = notes;
 		const wrap = inputs.wrap_static === true;
 		if (wrap) renderer.wrap_static = true;
+		const shells = inputs.shells;
+		if (shells !== undefined) renderer.shells = shells;
 		// the session keeps its renderer, a render that throws must not leave
 		// the imports of this document for the next
 		try {
@@ -2761,6 +2890,7 @@ export class CompilerSession {
 			if (smart !== undefined) renderer.smart_punctuation = undefined;
 			if (notes !== null) renderer.footnotes = undefined;
 			if (wrap) renderer.wrap_static = undefined;
+			if (shells !== undefined) renderer.shells = undefined;
 		}
 		if (fenced !== null) done!.snippets = fenced.snippets;
 		// one call site for every kind, each more is another callee to inline

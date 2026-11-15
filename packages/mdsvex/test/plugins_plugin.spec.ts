@@ -25,7 +25,6 @@ function steps(): Bundle {
 		module: '#lib/steps/index.js',
 		directives: {
 			steps: {
-				static: true,
 				children: {
 					heading(node, ctx) {
 						ctx.state.step?.close();
@@ -37,7 +36,7 @@ function steps(): Bundle {
 					},
 				},
 			},
-			step: { static: true },
+			step: {},
 		},
 		components: { specifier: '#lib/steps/elements.js', names: ['hr'] },
 	};
@@ -320,5 +319,47 @@ describe('plugins option errors', () => {
 			await server.close();
 			rmSync(root, { recursive: true, force: true });
 		}
+	});
+});
+
+describe('plugins option and the dep optimizer', () => {
+	async function config_of(modules: string[], command: 'serve' | 'build') {
+		const main = mdsvex({
+			plugins: modules.map((module, i) => ({
+				name: 'p' + i,
+				module,
+				directives: { ['d' + i]: {} },
+			})),
+		})[0];
+		const hook = main.config as { handler: Function };
+		return hook.handler.call(
+			{},
+			{ plugins: [] },
+			{ command, mode: 'development' }
+		);
+	}
+
+	test('a dev server serves the package of each directives module as published', async () => {
+		const config = await config_of(
+			[
+				'@acme/steps/directives',
+				'acme-embeds/directives/unstyled',
+				'#lib/mine.js',
+				'./local.js',
+			],
+			'serve'
+		);
+		expect(config.optimizeDeps).toEqual({
+			exclude: ['@acme/steps', 'acme-embeds'],
+		});
+	});
+
+	test('a build and a module with no package leave the optimizer alone', async () => {
+		expect(
+			(await config_of(['@acme/steps/directives'], 'build'))?.optimizeDeps
+		).toBe(undefined);
+		expect((await config_of(['#lib/mine.js'], 'serve'))?.optimizeDeps).toBe(
+			undefined
+		);
 	});
 });

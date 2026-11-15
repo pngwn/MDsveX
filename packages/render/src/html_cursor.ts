@@ -44,14 +44,24 @@ import {
 	trace_take,
 } from './sourcemap.js';
 import type { MapTrace, SourceMapV3 } from './sourcemap.js';
-import { ComponentScope, component_imports } from './scope.js';
-import type { ComponentImport, ReplaceWarning } from './scope.js';
+import {
+	ComponentScope,
+	component_imports,
+	shell_key,
+	side_effect_import,
+} from './scope.js';
+import type {
+	ComponentImport,
+	ReplaceWarning,
+	Shell,
+	ShellTable,
+} from './scope.js';
 import { is_entity_name } from './entities.js';
 import { top_block } from './component.js';
 
 export type { Mapping, CodeInformation, MappingData } from './mappings.js';
 export { MapSink } from './mappings.js';
-export { ComponentScope, component_imports } from './scope.js';
+export { ComponentScope, component_imports, shell_key } from './scope.js';
 /** @internal a pass over the tree reads references as the renderer does */
 export { is_entity_name } from './entities.js';
 export type {
@@ -59,6 +69,8 @@ export type {
 	ComponentSource,
 	DefaultImport,
 	ReplaceWarning,
+	Shell,
+	ShellTable,
 } from './scope.js';
 
 /**
@@ -1013,6 +1025,15 @@ let comp_scope: ComponentScope | null = null;
 let dir_scope: ComponentScope | null = null;
 /** a directive no scope replaces throws, otherwise it renders as its children */
 let dir_strict = false;
+/** the shells of static directives, null renders every directive live */
+let dir_shells: ShellTable | null = null;
+/** comp_scan met a directive written as its shell, which imports nothing */
+let dir_shelled = false;
+/** the import lines of the shells comp_scan met, after those of the replacements */
+let shell_lines = '';
+/** each import line once, the specifiers of the modules a shelled directive comes from */
+const shell_seen = new Set<string>();
+const shell_specs: string[] = [];
 let comp_mode: number = CM.FOLD;
 /** component_mode all, typed lowercase elements are replaced too */
 let comp_all = false;
@@ -1060,7 +1081,8 @@ function hoist_reset(): void {
  */
 function hoist_begin(c: Cursor, buf: NodeBuffer, extra: boolean): void {
 	const child = hoist_imports(buf);
-	if (hoist_nodes.length === 0 && !has_components && !extra) return;
+	// comp_lines is empty for a document whose only replacements are shells
+	if (hoist_nodes.length === 0 && comp_lines === '' && !extra) return;
 	if (extra) comp_lines += extra_lines;
 	hoist_script_from(c, buf, child);
 	// no script and no import to start one, the render starts with one
@@ -1142,7 +1164,9 @@ function wrap_hoist_begin(c: Cursor, buf: NodeBuffer): void {
 		component_imports(comp_used, {
 			specifier: wrap_spec,
 			local: WRAP_LOCAL,
-		}) + extra_lines;
+		}) +
+		shell_lines +
+		extra_lines;
 	if (declare) comp_lines += 'let ' + WRAP_PROPS + ' = $props();\n';
 	wrap_open =
 		'<' +
@@ -4319,6 +4343,23 @@ function comp_use_html(c: Cursor, name: string): void {
 	else comp_warnings.push({ tag: name, directive, start: c.start });
 }
 
+/** a shelled directive imports what its shell names and runs its module for its styles */
+function note_shell(ref: ComponentImport, shell: Shell): void {
+	dir_shelled = true;
+	if (!shell_seen.has(ref.specifier)) {
+		shell_seen.add(ref.specifier);
+		shell_specs.push(ref.specifier);
+	}
+	const imports = shell.imports;
+	if (imports === undefined) return;
+	for (let i = 0; i < imports.length; i++) {
+		const line = imports[i];
+		if (shell_seen.has(line)) continue;
+		shell_seen.add(line);
+		shell_lines += line;
+	}
+}
+
 /** walk what the render walks below c and note each replacement it will use */
 function comp_scan(c: Cursor): void {
 	if (!c.goto_first_child()) return;
@@ -4327,7 +4368,12 @@ function comp_scan(c: Cursor): void {
 		if (k === K.TEXT || k === K.LINE_BREAK) continue;
 		if (k >= K.DIRECTIVE_INLINE && k <= K.DIRECTIVE_CONTAINER) {
 			const ref = dir_scope!.get(dir_name(c));
-			if (ref !== undefined) note_use(ref);
+			// a directive written as its shell imports no component
+			if (ref !== undefined) {
+				const shell = ref.static === true ? dir_shell_of(c, ref) : undefined;
+				if (shell === undefined) note_use(ref);
+				else note_shell(ref, shell);
+			}
 		} else if (k === K.FOOTNOTE_DEFINITION) {
 			// a definition is in the tree where it was written, the section holds it
 			comp_use('footnotes');
@@ -4399,23 +4445,46 @@ function comp_begin(
 	scope: ComponentScope | null,
 	directives: ComponentScope | null,
 	mode: number,
-	all: boolean
+	all: boolean,
+	shells: ShellTable | undefined
 ): readonly ReplaceWarning[] {
 	comp_scope = scope ?? NO_SCOPE;
 	dir_scope = directives ?? NO_SCOPE;
+	if (shells !== undefined && dir_scope.has_static) dir_shells = shells;
 	comp_mode = mode;
 	comp_all = all;
 	comp_scan(c);
 	const warnings =
 		comp_warnings.length === 0 ? NO_WARNINGS : comp_warnings.splice(0);
-	if (comp_used.length === 0) return warnings;
+	// the walks route a shell through the replacement code too
+	if (comp_used.length === 0 && !dir_shelled) return warnings;
 	has_components = true;
 	for (let i = 0; i < TABLE_PARTS.length; i++) {
 		const ref = comp_scope.get(TABLE_PARTS[i]);
 		if (ref !== undefined && comp_seen.has(ref)) comp_table = true;
 	}
-	comp_lines = component_imports(comp_used);
+	if (dir_shelled) shell_lines = shell_module_lines() + shell_lines;
+	comp_lines = component_imports(comp_used) + shell_lines;
 	return warnings;
+}
+
+/**
+ * the modules of the shelled directives that no replacement already
+ * imports from, run for their side effects, the styles a barrel imports
+ */
+function shell_module_lines(): string {
+	let s = '';
+	for (let i = 0; i < shell_specs.length; i++) {
+		const spec = shell_specs[i];
+		let imported = false;
+		for (let j = 0; j < comp_used.length; j++)
+			if (comp_used[j].specifier === spec) {
+				imported = true;
+				break;
+			}
+		if (!imported) s += side_effect_import(spec);
+	}
+	return s;
 }
 
 function comp_end(): void {
@@ -4423,6 +4492,13 @@ function comp_end(): void {
 	comp_table = false;
 	comp_scope = null;
 	dir_scope = null;
+	dir_shells = null;
+	dir_shelled = false;
+	if (shell_specs.length !== 0) {
+		shell_specs.length = 0;
+		shell_seen.clear();
+		shell_lines = '';
+	}
 	comp_mode = CM.FOLD;
 	comp_all = false;
 	comp_lines = '';
@@ -5042,6 +5118,10 @@ function dir_node(
 	p: number,
 	ref: ComponentImport
 ): number {
+	if (ref.static === true && dir_shells !== null) {
+		const shell = dir_shell_of(c, ref);
+		if (shell !== undefined) return dir_shell(c, sink, p, shell);
+	}
 	const pre = mo.length;
 	const kind = c.kind as number;
 	const local = ref.local;
@@ -5079,6 +5159,148 @@ function dir_node(
 		kind === K.DIRECTIVE_INLINE ? Preset.TEXT : Preset.STRUCTURE
 	);
 	return p;
+}
+
+/** which snippets the component of the directive at c is given */
+function dir_snippets(c: Cursor): { label: number; children: boolean } {
+	const kind = c.kind as number;
+	if (kind === K.DIRECTIVE_INLINE)
+		return {
+			label: Slot.NONE,
+			children: c.words[c.index * W.stride + W.first_child] !== Slot.NONE,
+		};
+	return {
+		label: dir_label_of(c),
+		children: kind === K.DIRECTIVE_CONTAINER && dir_has_body(c),
+	};
+}
+
+/** the key of the shell the static directive at c renders with */
+function dir_shell_key(c: Cursor, ref: ComponentImport): string {
+	const kind = c.kind as number;
+	// throws for an arg the component takes as a snippet, as a live render does
+	dir_props(c, kind);
+	const { label, children } = dir_snippets(c);
+	return shell_key(
+		ref.specifier,
+		ref.name,
+		c.meta()?.args as Record<string, string> | undefined,
+		label !== Slot.NONE,
+		children
+	);
+}
+
+function dir_shell_of(c: Cursor, ref: ComponentImport): Shell | undefined {
+	return dir_shells === null
+		? undefined
+		: dir_shells.get(dir_shell_key(c, ref));
+}
+
+/**
+ * a static directive as the html of its shell, the label and the body
+ * rendered into its holes as the walks render them
+ */
+function dir_shell(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	shell: Shell
+): number {
+	const pre = mo.length;
+	const kind = c.kind as number;
+	const { html, holes } = shell;
+	p = cm_put(p, html[0]);
+	if (holes.length === 0) {
+		cm_void(c, sink, pre, Preset.STRUCTURE);
+		return p;
+	}
+	const ao = mo.length;
+	for (let i = 0; i < holes.length; i++) {
+		if (holes[i] === 'label') {
+			const at = c.index;
+			c.move_to(dir_label_of(c));
+			p = cm_children(c, sink, p);
+			c.move_to(at);
+		} else {
+			// no line breaks around the body, outside a snippet svelte keeps them as a space
+			p = cm_children(c, sink, p);
+		}
+		if (i === holes.length - 1) {
+			const bc = mo.length;
+			p = cm_put(p, html[i + 1]);
+			cm_spans(
+				c,
+				sink,
+				pre,
+				ao,
+				bc,
+				mo.length,
+				kind === K.DIRECTIVE_INLINE ? Preset.TEXT : Preset.STRUCTURE
+			);
+		} else p = cm_put(p, html[i + 1]);
+	}
+	return p;
+}
+
+/** one use of a static directive with no shell yet */
+export interface ShellRequest {
+	key: string;
+	/** the module of the component, emitted verbatim as an import specifier */
+	specifier: string;
+	/** its export name, the directive name */
+	name: string;
+	args: Record<string, string>;
+	label: boolean;
+	children: boolean;
+	/** the offset of the directive in the source */
+	start: number;
+}
+
+/**
+ * every static directive of the document in directives that shells has no
+ * shell for, one request per key in document order, empty when every use
+ * has one
+ */
+export function shell_requests(
+	buf: NodeBuffer,
+	source: string,
+	directives: ComponentScope,
+	shells: ShellTable | undefined
+): ShellRequest[] {
+	const out: ShellRequest[] = [];
+	if (!directives.has_static) return out;
+	const c = new Cursor(buf, source);
+	const seen = new Set<string>();
+	const walk = (): void => {
+		if (!c.goto_first_child()) return;
+		do {
+			const k = c.kind as number;
+			if (k >= K.DIRECTIVE_INLINE && k <= K.DIRECTIVE_CONTAINER) {
+				const ref = directives.get(dir_name(c));
+				if (ref !== undefined && ref.static === true) {
+					const key = dir_shell_key(c, ref);
+					if (!seen.has(key) && shells?.get(key) === undefined) {
+						seen.add(key);
+						const { label, children } = dir_snippets(c);
+						const args = c.meta()?.args as Record<string, string> | undefined;
+						out.push({
+							key,
+							specifier: ref.specifier,
+							name: ref.name,
+							args: args === undefined ? {} : { ...args },
+							label: label !== Slot.NONE,
+							children,
+							start: c.start,
+						});
+					}
+				}
+			}
+			if (k !== K.CODE_SPAN && k !== K.CODE_FENCE) walk();
+		} while (c.goto_next_sibling());
+		c.goto_parent();
+	};
+	walk();
+	return out;
 }
 
 /** table content where a part may be replaced */
@@ -5661,6 +5883,11 @@ export class CursorHTMLRenderer {
 	 * contents div, the cached render of update ignores it
 	 */
 	declare wrap_static?: boolean;
+	/**
+	 * the shells of the static directives of the next renders, a static
+	 * directive with none renders live, the cached render of update ignores it
+	 */
+	declare shells?: ShellTable;
 	/** the cached render met a footnote, so each update numbers them again */
 	private noted = false;
 
@@ -5715,7 +5942,8 @@ export class CursorHTMLRenderer {
 						scope,
 						directives,
 						CM.FOLD,
-						this.replace_typed
+						this.replace_typed,
+						this.shells
 					);
 				if (extra) extra_begin(imports);
 				if (this.strict_directives) dir_strict = true;
@@ -5852,7 +6080,8 @@ export class CursorHTMLRenderer {
 					scope,
 					directives,
 					trace ? CM.TRACE : CM.MAPPED,
-					this.replace_typed
+					this.replace_typed,
+					this.shells
 				);
 			if (extra) extra_begin(imports);
 			if (this.strict_directives) dir_strict = true;
@@ -5915,7 +6144,14 @@ export class CursorHTMLRenderer {
 				(scope !== null && scope.size !== 0) ||
 				(directives !== null && directives.size !== 0)
 			)
-				comp_last = comp_begin(c, scope, directives, mode, this.replace_typed);
+				comp_last = comp_begin(
+					c,
+					scope,
+					directives,
+					mode,
+					this.replace_typed,
+					this.shells
+				);
 			if (extra) extra_begin(imports);
 			if (this.strict_directives) dir_strict = true;
 			if (this.wrap_static === true) ws_on = true;
@@ -6096,6 +6332,7 @@ export class CursorHTMLRenderer {
 			this.smart_punctuation = undefined;
 		if (this.footnotes !== undefined) this.footnotes = undefined;
 		if (this.wrap_static !== undefined) this.wrap_static = undefined;
+		if (this.shells !== undefined) this.shells = undefined;
 		this.noted = false;
 		// the escape index is module state and would keep the source alive,
 		// every render resets it, a zero length clamps any text of '' to empty

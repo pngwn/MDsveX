@@ -1,9 +1,9 @@
 // the export names are the directive names
-export { default as details } from './Details.svelte';
-export { default as accordion } from './Accordion.svelte';
-export { default as kbd } from './Kbd.svelte';
-export { default as ruby } from './Ruby.svelte';
-export { default as badge } from './Badge.svelte';
-export { default as mark } from './Mark.svelte';
-export { default as ins } from './Ins.svelte';
-export { default as abbr } from './Abbr.svelte';
+export { default as details } from './Details.static.svelte';
+export { default as accordion } from './Accordion.static.svelte';
+export { default as kbd } from './Kbd.static.svelte';
+export { default as ruby } from './Ruby.static.svelte';
+export { default as badge } from './Badge.static.svelte';
+export { default as mark } from './Mark.static.svelte';
+export { default as ins } from './Ins.static.svelte';
+export { default as abbr } from './Abbr.static.svelte';

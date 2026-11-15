@@ -1,5 +1,5 @@
 import { embeds } from '@mdsvex/plugin-embeds';
-import { compile } from 'mdsvex';
+import { compile, compile_text } from 'mdsvex';
 import { describe, expect, test } from 'vitest';
 
 import {
@@ -31,12 +31,19 @@ function warnings(source: string): string[] {
 }
 
 describe('embeds', () => {
-	test('the label is the title of the frame', () => {
+	test('the label is the title of the frame, and a frame shows no label', () => {
 		expect(tree('::youtube[A *talk*](id=dQw4w9WgXcQ, start=30)\n')).toEqual([
 			'root',
+			'directive_leaf name="youtube" args={"id":"dQw4w9WgXcQ","start":"30","title":"A talk"}',
+		]);
+	});
+
+	test('with no id the label stays, the component shows it in place of a frame', () => {
+		expect(tree('::youtube[A talk]\n')).toEqual([
+			'root',
 			[
-				'directive_leaf name="youtube" args={"id":"dQw4w9WgXcQ","start":"30","title":"A talk"}',
-				['directive_label', 'text:A ', ['strong_emphasis', 'text:talk']],
+				'directive_leaf name="youtube" args={"title":"A talk"}',
+				['directive_label', 'text:A talk'],
 			],
 		]);
 	});
@@ -44,10 +51,7 @@ describe('embeds', () => {
 	test('a title written as an arg is kept', () => {
 		expect(tree('::vimeo[Label](id=76979871, title=Mine)\n')).toEqual([
 			'root',
-			[
-				'directive_leaf name="vimeo" args={"id":"76979871","title":"Mine"}',
-				['directive_label', 'text:Label'],
-			],
+			'directive_leaf name="vimeo" args={"id":"76979871","title":"Mine"}',
 		]);
 	});
 
@@ -68,7 +72,7 @@ describe('compile', () => {
 			[
 				'<script>',
 				"import { vimeo as Vimeo_MDSVEX_D_G } from '@mdsvex/plugin-embeds/directives';",
-				'</script><Vimeo_MDSVEX_D_G id="76979871" title="A film">{#snippet label()}A film{/snippet}</Vimeo_MDSVEX_D_G>',
+				'</script><Vimeo_MDSVEX_D_G id="76979871" title="A film" />',
 			].join('\n')
 		);
 	});
@@ -85,14 +89,23 @@ describe('compile', () => {
 		const { code } = compile('::youtube[A {b} talk](id=dQw4w9WgXcQ)\n', {
 			plugins: [embeds()],
 		});
-		expect(code).toContain(
-			'id="dQw4w9WgXcQ" title="A talk">{#snippet label()}A {b} talk{/snippet}'
-		);
+		expect(code).toContain('id="dQw4w9WgXcQ" title="A talk" />');
 		expect(
 			compile('::youtube[A \\{b\\} talk](id=dQw4w9WgXcQ)\n', {
 				plugins: [embeds()],
 			}).code
 		).toContain('title={"A {b} talk"}');
+	});
+
+	test('the plain text of an embed is its title', async () => {
+		const text = async (source: string) =>
+			(await compile_text(source, { plugins: [embeds()] })).text;
+		expect(await text('Watch.\n\n::vimeo[A film](id=76979871)\n')).toBe(
+			'Watch.\n\nA film'
+		);
+		expect(await text('::vimeo[Label](id=76979871, title=Mine)\n')).toBe(
+			'Mine'
+		);
 	});
 
 	test('warnings come back with the plugin and the line', () => {

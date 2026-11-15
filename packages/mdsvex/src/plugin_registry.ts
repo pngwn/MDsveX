@@ -1,5 +1,7 @@
 import type { ComponentSource } from '@mdsvex/render/html-cursor';
 import type { Rollup } from 'vite';
+import { STATIC_NAMES } from './bundle_statics.js';
+import type { StaticBundle } from './bundle_statics.js';
 import type { Bundle } from './compile.js';
 import {
 	PLUGIN_COMPONENTS_ID,
@@ -8,6 +10,8 @@ import {
 	importer_in,
 } from './ids.js';
 import type { ManifestModule, ManifestPlugin } from './manifest.js';
+import { scan_file, static_names } from './static_directives.js';
+import type { StaticNames } from './static_directives.js';
 
 interface PluginModule {
 	/** the id documents import */
@@ -17,6 +21,10 @@ interface PluginModule {
 	names: string[];
 	/** the resolved id without its query, null until resolved */
 	file: string | null;
+	/** the names a .static. component serves, a directives module only, found at startup */
+	statics: StaticNames | null;
+	/** the copy of the bundle compile reads, a directives module only */
+	bundle: StaticBundle | null;
 }
 
 const DIRECTIVE_KINDS = [
@@ -26,8 +34,9 @@ const DIRECTIVE_KINDS = [
 ] as const;
 
 /**
- * the modules of the plugins option, a plugin names its exports itself so
- * nothing is scanned, documents import each through a virtual id that
+ * the modules of the plugins option, a plugin names its exports itself, a
+ * directives module is scanned once at startup only for the re-exports of
+ * .static. components, documents import each through a virtual id that
  * resolves as an import from the vite root would
  */
 export function plugin_registry(written: readonly Bundle[]) {
@@ -36,7 +45,7 @@ export function plugin_registry(written: readonly Bundle[]) {
 	const components: (PluginModule | null)[] = [];
 	const by_id = new Map<string, { module: PluginModule; plugin: string }>();
 	/** the plugins as compile takes them, each module replaced by its virtual id */
-	const bundles: Bundle[] = [];
+	let bundles: Bundle[] = [];
 
 	for (let i = 0; i < written.length; i++) {
 		const bundle = written[i];
@@ -54,9 +63,16 @@ export function plugin_registry(written: readonly Bundle[]) {
 				? Object.keys(bundle.directives)
 				: [];
 		if (names.length !== 0 && typeof bundle.module === 'string') {
-			own = { virtual: PLUGIN_ID + i, spec: bundle.module, names, file: null };
+			copy = { ...bundle, module: PLUGIN_ID + i };
+			own = {
+				virtual: PLUGIN_ID + i,
+				spec: bundle.module,
+				names,
+				file: null,
+				statics: null,
+				bundle: copy,
+			};
 			by_id.set(own.virtual, { module: own, plugin: bundle.name });
-			copy = { ...bundle, module: own.virtual };
 		}
 		let replaced: PluginModule | null = null;
 		const source: ComponentSource | undefined = bundle.components;
@@ -71,6 +87,8 @@ export function plugin_registry(written: readonly Bundle[]) {
 				spec: source.specifier,
 				names: source.names,
 				file: null,
+				statics: null,
+				bundle: null,
 			};
 			by_id.set(replaced.virtual, { module: replaced, plugin: bundle.name });
 			copy ??= { ...bundle };
@@ -85,6 +103,7 @@ export function plugin_registry(written: readonly Bundle[]) {
 	let resolved = false;
 
 	async function load(ctx: Rollup.PluginContext): Promise<void> {
+		const optimized = new Set<PluginModule>();
 		const from = importer_in(root);
 		const failed: string[] = [];
 		for (const { module, plugin } of by_id.values()) {
@@ -94,6 +113,8 @@ export function plugin_registry(written: readonly Bundle[]) {
 				continue;
 			}
 			module.file = clean_id(found.id);
+			const deps = (ctx as { environment?: any }).environment?.depsOptimizer;
+			if (deps?.isOptimizedDepFile(found.id)) optimized.add(module);
 		}
 		if (failed.length !== 0) {
 			throw new Error(
@@ -101,17 +122,52 @@ export function plugin_registry(written: readonly Bundle[]) {
 					`from the vite root ${from.slice(0, -'/vite.config'.length)}`
 			);
 		}
+		// a mode is fixed until a restart, the module of a plugin is rarely edited
+		for (const module of directives) {
+			if (module === null || module.file === null) continue;
+			if (optimized.has(module)) {
+				ctx.warn(
+					`the module ${JSON.stringify(module.spec)} is prebundled by optimizeDeps.include, ` +
+						'so its static directives render live, take its package out of optimizeDeps.include'
+				);
+				continue;
+			}
+			module.statics = await static_names(
+				ctx,
+				module.file,
+				await scan_file(module.file)
+			);
+			if (module.statics.names.length !== 0) {
+				module.bundle![STATIC_NAMES] = module.statics.names;
+				// compile keys what it unpacks by the array
+				bundles = bundles.slice();
+			}
+		}
 		resolved = true;
 	}
 
-	const manifest_module = (m: PluginModule | null): ManifestModule | null =>
-		m === null || m.file === null
-			? null
-			: { id: m.virtual, file: m.file, names: m.names };
+	const manifest_module = (m: PluginModule | null): ManifestModule | null => {
+		if (m === null || m.file === null) return null;
+		const out: ManifestModule = { id: m.virtual, file: m.file, names: m.names };
+		if (m.statics !== null && m.statics.names.length !== 0)
+			out.static = m.statics.names;
+		return out;
+	};
+	const static_of = (id: string): PluginModule | undefined => {
+		const hit = by_id.get(id)?.module;
+		return hit?.statics != null && hit.statics.names.length !== 0
+			? hit
+			: undefined;
+	};
 
 	return {
-		/** the plugins compile option, one array for every document */
-		bundles,
+		/**
+		 * the plugins compile option, one array for every document, a new one
+		 * once resolved when a plugin serves a static directive
+		 */
+		get bundles(): Bundle[] {
+			return bundles;
+		},
 		/** a plugin has document wide directive handlers, so one no component takes may still render */
 		handles_directives: written.some((bundle) => {
 			const parse = bundle?.parse;
@@ -131,6 +187,26 @@ export function plugin_registry(written: readonly Bundle[]) {
 		},
 		resolved(): boolean {
 			return resolved;
+		},
+		/** the component file of a static directive a virtual id serves */
+		static_file(id: string, name: string): string | undefined {
+			return static_of(id)?.statics!.files[name];
+		},
+		/** the module of a virtual id that serves a static directive, undefined for none */
+		static_module(id: string): string | undefined {
+			return static_of(id)?.file ?? undefined;
+		},
+		/**
+		 * the packages of the directives modules, kept out of the dep optimizer
+		 * of a dev server, a module named by a path or an import map has none
+		 */
+		packages(): string[] {
+			const out = new Set<string>();
+			for (const m of directives) {
+				const name = m === null ? null : package_of(m.spec);
+				if (name !== null) out.add(name);
+			}
+			return [...out];
 		},
 		/** the plugins for the editor manifest, in the order of the option */
 		describe(): ManifestPlugin[] {
@@ -165,4 +241,13 @@ export function plugin_registry(written: readonly Bundle[]) {
 			});
 		},
 	};
+}
+
+/** the package name of a bare specifier, null for a path, an import map entry or a url */
+function package_of(spec: string): string | null {
+	if (/^[./#]|^[a-z][\w+.-]*:/i.test(spec)) return null;
+	const parts = spec.split('/');
+	if (spec.startsWith('@'))
+		return parts.length < 2 ? null : parts[0] + '/' + parts[1];
+	return parts[0];
 }

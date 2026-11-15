@@ -24,36 +24,36 @@
 			"svelte": "./dist/unstyled.js"
 		},
 		"./Details.svelte": {
-			"types": "./dist/Details.svelte.d.ts",
-			"svelte": "./dist/Details.svelte"
+			"types": "./dist/Details.static.svelte.d.ts",
+			"svelte": "./dist/Details.static.svelte"
 		},
 		"./Accordion.svelte": {
-			"types": "./dist/Accordion.svelte.d.ts",
-			"svelte": "./dist/Accordion.svelte"
+			"types": "./dist/Accordion.static.svelte.d.ts",
+			"svelte": "./dist/Accordion.static.svelte"
 		},
 		"./Kbd.svelte": {
-			"types": "./dist/Kbd.svelte.d.ts",
-			"svelte": "./dist/Kbd.svelte"
+			"types": "./dist/Kbd.static.svelte.d.ts",
+			"svelte": "./dist/Kbd.static.svelte"
 		},
 		"./Ruby.svelte": {
-			"types": "./dist/Ruby.svelte.d.ts",
-			"svelte": "./dist/Ruby.svelte"
+			"types": "./dist/Ruby.static.svelte.d.ts",
+			"svelte": "./dist/Ruby.static.svelte"
 		},
 		"./Badge.svelte": {
-			"types": "./dist/Badge.svelte.d.ts",
-			"svelte": "./dist/Badge.svelte"
+			"types": "./dist/Badge.static.svelte.d.ts",
+			"svelte": "./dist/Badge.static.svelte"
 		},
 		"./Mark.svelte": {
-			"types": "./dist/Mark.svelte.d.ts",
-			"svelte": "./dist/Mark.svelte"
+			"types": "./dist/Mark.static.svelte.d.ts",
+			"svelte": "./dist/Mark.static.svelte"
 		},
 		"./Ins.svelte": {
-			"types": "./dist/Ins.svelte.d.ts",
-			"svelte": "./dist/Ins.svelte"
+			"types": "./dist/Ins.static.svelte.d.ts",
+			"svelte": "./dist/Ins.static.svelte"
 		},
 		"./Abbr.svelte": {
-			"types": "./dist/Abbr.svelte.d.ts",
-			"svelte": "./dist/Abbr.svelte"
+			"types": "./dist/Abbr.static.svelte.d.ts",
+			"svelte": "./dist/Abbr.static.svelte"
 		},
 		"./elements.css": "./dist/elements.css",
 		"./package.json": "./package.json"
