@@ -16,7 +16,7 @@ import text from './guide.svx?text';
 
 text.title; // 'Getting started', the first # heading
 text.text; // every block of the page, a blank line between two
-text.sections; // [{ id: 'install', heading: 'Install', depth: 2, text: 'Run pnpm add mdsvex.' }, ...]
+text.sections; // [{ id: 'install', heading: 'Install', depth: 2, text: 'Run pnpm add mdsvex@next.' }, ...]
 ```
 
 Each section starts at a heading and runs to the next one. With [`heading_ids`](/docs/reference/options#heading_ids) on, it carries the heading's `id`, so a search hit links to `page#id`. Text before the first heading is a section of its own, with an empty `heading` and `depth` 0, and only when there is some. `title` is the text of the first `#` heading outside any container, and is left out when there is none. It does not read the frontmatter, which is what [`?metadata`](/docs/guides/frontmatter) is for. The whole value is plain JSON.

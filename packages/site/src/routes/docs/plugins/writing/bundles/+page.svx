@@ -23,7 +23,7 @@ mdsvex({ plugins: [steps()] });
 ## Install
 
 ```sh
-pnpm add mdsvex
+pnpm add mdsvex@next
 ```
 
 ## Configure
@@ -68,7 +68,7 @@ mdsvex({ plugins: [steps()] });
 
 ## Install
 
-Run `pnpm add mdsvex`.
+Run `pnpm add mdsvex@next`.
 
 ## Configure
 

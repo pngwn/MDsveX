@@ -24,7 +24,7 @@ Each heading written directly inside `:::steps` starts a step. The heading is it
 ## Install
 
 ```sh
-pnpm add mdsvex
+pnpm add mdsvex@next
 ```
 
 ## Configure
