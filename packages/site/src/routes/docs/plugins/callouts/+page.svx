@@ -1,0 +1,31 @@
+---
+title: Callouts
+order: 3.5
+package: '@mdsvex/plugin-callouts'
+example:
+  source: |
+    :::note
+    Callouts load no JavaScript.
+    :::
+
+    :::warning[Breaking change]
+    The `layout` option is now `templates`.
+    :::
+---
+GitHub's five alerts as container directives: `:::note`, `:::tip`, `:::important`, `:::warning` and `:::caution`. The bracket text is a custom title, and without it the title is the kind's own, Note or Warning. Anything can go inside, and a callout inside a callout takes more colons on the outside.
+
+````svx
+::::tip
+Run the migrator first.
+
+:::caution[Commit your work]
+It rewrites every document.
+:::
+::::
+````
+
+A callout is a `<div role="note">` with its title in a `<p>`, so it adds no landmark to the page and no heading to the outline or a table of contents. Its kind is never colour alone: the default title names it, and with a custom title the icon, whose shape differs by kind, is an image named after the kind. The component renders at build time and loads no JavaScript, and what is inside stays live. A [`?text` import](/docs/guides/search-and-feeds#query-imports) reads the title and then the body. A leaf or inline callout warns (`not_container`).
+
+`callouts({ titles: { note: 'Remarque' } })` changes the default title of a kind, for a site in another language. The stylesheet has selectors with no specificity and reads `--callout-color` and `--callout-radius` from `.callout`, and each kind is `[data-kind]`. `callouts({ css: false })` leaves it out and keeps the markup. A `note`, `tip`, `important`, `warning` or `caution` from a [directives module](/docs/guides/directives#declaring-directives) replaces the plugin's component. It gets `kind` and `title` as props, and `label` and `children`. The plugin's own is `@mdsvex/plugin-callouts/Callout.svelte`.
+
+The [migrator](/docs/guides/migrating-from-0x#run-the-migrator) rewrites `> [!NOTE]` and the other GitHub alerts as these directives, with text after the marker as the title, and leaves a note at each Obsidian callout it can't.

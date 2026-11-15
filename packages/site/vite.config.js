@@ -1,58 +1,60 @@
-import { extname } from "node:path";
 import { sveltekit } from "@sveltejs/kit/vite";
 import { anchors } from "@mdsvex/plugin-anchors";
-import { compile } from "mdsvex";
+import { link_check } from "@mdsvex/plugin-link-check";
+import { mdsvex } from "mdsvex";
 import { create_highlight, load_default_languages } from "mdsvex/highlight";
+import { example, examples } from "./build/examples.js";
 
 // svx is markdown with svelte in it, sig fences hold typescript signatures,
 // the docs show code directives as written, so none apply
-const highlight = create_highlight({
+const highlight = {
 	languages: {
-		...(await load_default_languages()),
 		svx: "markdown",
 		mdsvex: "markdown",
 		mdx: "markdown",
 		sig: "typescript",
 	},
 	annotations: false,
-});
-
-// the empty anchors scroll tracking reads, one array so every compile shares it
-const plugins = [anchors({ position: "prepend" })];
-
-function mdsvex_transform() {
-	return {
-		name: "mdsvex-svtext",
-		transform(code, id) {
-			if (extname(id) !== ".svtext") return;
-
-			const { code: html } = compile(code, {
-				heading_ids: true,
-				plugins,
-				highlight,
-				filename: id,
-			});
-			return `export default ${JSON.stringify(html)};`;
-		},
-	};
-}
-
-/** @type {import('vite').UserConfig} */
-const config = {
-	plugins: [mdsvex_transform(), sveltekit()],
-	server: {
-		fs: {
-			// the repl workers are loaded by url, outside the import graph
-			allow: ["../repl"],
-		},
-	},
-	optimizeDeps: {
-		// prebundling moves the rollup wasm away from the file that fetches it
-		exclude: ["@rollup/browser"],
-	},
-	worker: {
-		format: "es",
-	},
 };
 
-export default config;
+// the same highlighting for an example's result, which the docs plugin renders itself
+const result_highlight = create_highlight({
+	...highlight,
+	languages: { ...(await load_default_languages()), ...highlight.languages },
+});
+
+/** @type {import('vite').UserConfigFn} */
+export default ({ command }) => {
+	const build = command === "build";
+
+	return {
+		plugins: [
+			mdsvex({
+				heading_ids: true,
+				highlight,
+				// the empty anchors scroll tracking reads
+				plugins: [
+					anchors({ position: "prepend" }),
+					link_check({ routes: "src/routes", strict: build }),
+					// a fence flagged score or result, drawn as its score or beside its html
+					example({ highlight: result_highlight }),
+				],
+				parse_plugins: [examples({ strict: build })],
+			}),
+			sveltekit(),
+		],
+		server: {
+			fs: {
+				// the repl workers are loaded by url, outside the import graph
+				allow: ["../repl"],
+			},
+		},
+		optimizeDeps: {
+			// prebundling moves the rollup wasm away from the file that fetches it
+			exclude: ["@rollup/browser"],
+		},
+		worker: {
+			format: "es",
+		},
+	};
+};

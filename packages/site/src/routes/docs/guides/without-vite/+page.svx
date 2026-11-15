@@ -1,0 +1,199 @@
+---
+title: Without Vite
+order: 6
+---
+# Without Vite
+
+The Vite plugin reads files, finds the names your modules export, serves modules that don't exist on disk and reloads pages as you edit. [`compile`](/docs/reference/compile) does none of that. It takes text and returns Svelte source, never touches the filesystem and runs in a browser, a worker or Node. Everything below is what a build tool, a playground or an editor that isn't Vite supplies to get the same output.
+
+Import the compiler from `mdsvex/compile`, highlighting from `mdsvex/highlight` and math from `mdsvex/math`. None of them loads Vite or a Node builtin, and neither does `mdsvex/host`, which holds the pieces of the plugin a host needs beside the compiler.
+
+::marks
+
+## What a host supplies
+
+Each feature, and what a host gives `compile` for it:
+
+::::added
+:::add[markdown, frontmatter, `metadata`](mark="---", tone=text)
+nothing
+:::
+
+:::add[footnotes, smart punctuation, heading ids, `unwrap_images`](mark="[^]", tone=link)
+the option
+:::
+
+:::add[highlighting](mark="```", tone=fence)
+a highlighter from `mdsvex/highlight`, with its languages loaded up front, see [highlighting](/docs/reference/highlighting#highlighting-with-compile)
+:::
+
+:::add[math](mark="$", tone=code)
+a renderer from `load_math` in `mdsvex/math`, see [math](/docs/reference/math#math-with-compile)
+:::
+
+:::add[images as imports](mark="![]", tone=link)
+`import_images: true`, then a bundler that imports images, see [images as imports](/docs/reference/images)
+:::
+
+:::add[links](mark="[]()", tone=link)
+`routes`, and `base` as a string or `{ import, from }`, see [links](/docs/reference/links#links)
+:::
+
+:::add[code from a file](mark="src=", tone=fence)
+the text of each file in `sources`, or `read` and `resolve` with [`compile_async`](/docs/reference/compile#compile_async), see [code from a file](/docs/reference/highlighting#code-from-a-file)
+:::
+
+:::add[code that runs](mark="eval", tone=fence)
+`snippets`, then serving each of `result.snippets` as a module, see [code that runs](/docs/reference/code-that-runs#running-with-compile)
+:::
+
+:::add[templates, components, directives](mark="as h2", tone=comp)
+each module as its specifier and the names it exports, see below
+:::
+
+:::add[plugins](mark="p()", tone=other)
+`plugins`, as for the Vite plugin, and [`compile_async`](/docs/reference/compile#compile_async) for one that [defers work](/docs/plugins/writing/deferred-work)
+:::
+
+:::add[plugins that load files](mark="read", tone=expr)
+`read` and `resolve`, with `compile_async`, see [loading files](/docs/plugins/writing/deferred-work#loading-files)
+:::
+
+:::add[rebuilding when a file changes](mark="watch", tone=other)
+watching `dependencies` on the result, see [below](/docs/guides/without-vite#files-and-plugins-that-wait)
+:::
+
+:::add[plugin data](mark="data", tone=expr)
+nothing, it is `data` on the result, see [plugin data](/docs/plugins/writing/plugin-data)
+:::
+
+:::add[a template for one import](mark="?=", tone=link)
+the `template` option of that compile, in place of `?template=`
+:::
+::::
+
+## Finding the names a module exports
+
+`compile` takes templates, components and directives as a specifier and the names that module exports (see [`compile`](/docs/reference/compile)), and writes the specifier into the output as given. The Vite plugin finds the names by reading each module's exports without running it.
+
+::::plate[`read_exports`](mark="names", tone=expr)
+`read_exports` from `mdsvex/host` does the same for you, with the TypeScript stripper you already have:
+
+```js
+import { read_exports } from 'mdsvex/host';
+import ts from 'typescript';
+
+const strip = (code) =>
+	ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ESNext } }).outputText;
+
+const { names, stars, namespaces } = read_exports(source, 'svelte', strip);
+```
+
+:::notes
+For a `.svelte` file it reads the `<script module>`. Without a stripper it reads the code as JavaScript. `stars` lists the `export * from` specifiers whose names it can't see, and `namespaces` the `export * as name from` ones, which is how a module [declares its directives](/docs/guides/directives#declaring-directives).
+:::
+
+:::edges
+- `names` includes `default`. Leave it out for a template, whose default export is the template itself.
+- For a [document used as a template](/docs/guides/templates#documents-as-templates), read the exports of its compiled `code` and leave out `metadata` as well.
+:::
+::::
+
+## Virtual ids, `?metadata` and `?data`
+
+::::plate[Virtual ids](mark="_ID", tone=expr)
+The Vite plugin writes `mdsvex:components`, `mdsvex:template/<name>` and the other `mdsvex:*` ids in place of real paths and resolves them itself. `compile` writes whatever specifier you give it, so a host can use real paths and skip this.
+
+:::notes
+To match the plugin's output, `mdsvex/host` exports the prefixes (`COMPONENTS_ID`, `DIRECTIVES_ID`, `TEMPLATE_ID`, `TEMPLATE_DIRECTIVES_ID`, `PLUGIN_ID`, `PLUGIN_COMPONENTS_ID`), and `manifest_resolver(manifest)` returns the file an id and an imported name stand for.
+:::
+::::
+
+::::plate[`?metadata` and `?data` modules](mark="?data", tone=link)
+A [`?metadata`](/docs/reference/options#frontmatter) or [`?data`](/docs/plugins/writing/plugin-data) import loads a module made from the document.
+
+:::notes
+`metadata_module(source, parse)` builds the first from the text of the document, with your [frontmatter parser](/docs/guides/frontmatter#custom-frontmatter-parsers) or `undefined`, and `data_module(result.metadata, result.data)` the second from a compile of it.
+:::
+::::
+
+## The editor manifest
+
+::::plate[The editor manifest](mark=".json", tone=other)
+The editor reads `node_modules/.mdsvex/manifest.json`, which the Vite plugin writes, or else `mdsvex.config.json`, which can't hold functions.
+
+:::notes
+A host can write the manifest itself. `queue_manifest(build, output)` writes it a little after the last change and only when it changed, `manifest_json` gives the exact text the plugin writes, and `MANIFEST_PATH` is where it goes.
+:::
+::::
+
+## Vite only
+
+These need a dev server or Vite's config, so they stay with the plugin:
+
+::::added
+:::add[`links.base: true`](mark="base", tone=link)
+reads Vite's `base`. Give `compile` the base as a string, or as `{ import, from }` for a base known when the page renders.
+:::
+
+:::add[the checks on `?metadata` and `?data` imports](mark="?data", tone=link)
+In dev the plugin serves a document only when Vite would serve the file, so a request can't read files outside the project.
+:::
+
+:::add[source maps back to markdown](mark=".map", tone=other)
+`compile` with `sourcemap: true` maps its own output, and `mappings_to_v3` from `@mdsvex/render/sourcemap` turns that into a v3 map. Chaining it with the Svelte compiler's map is up to your bundler.
+:::
+
+:::add[`?template=` on an import](mark="?=", tone=link)
+Use the `template` option of the compile.
+:::
+
+:::add[hot update](mark="hot", tone=other)
+of documents, of the files a fence shows and of template and component modules. A host that rebuilds watches `dependencies` instead, see below.
+:::
+::::
+
+## Files and plugins that wait
+
+`compile` reads nothing and waits for nothing. There are two ways to give a document the files it shows and the work its plugins defer:
+
+- **[`compile_async`](/docs/reference/compile#compile_async)** does it in one call. Pass `read` and `resolve` and it reads the files fences show with `src=` and what plugins load, then waits for deferred work. Use it for a build where the host can read files, in Node or a worker with a virtual filesystem.
+- **[Compiling in steps](/docs/guides/without-vite#compiling-in-steps)** hands the waiting to you: `parse`, then `settle` for deferred work, then read each of `parsed.needs` yourself and `render`. Use it when files arrive another way, such as a fetch or an editor's open buffers, or to compile other documents while one waits. The playground compiles this way.
+
+The result's `dependencies` are absolute paths: what plugins read or named, and, when `compile_async` read them, the files fences show and the module of the template. Compiling in steps, you know the files you read for `needs` yourself. To rebuild as the Vite plugin does in dev, watch those files, and when one changes call `session.invalidate([path])` on your `CompilerSession`, so what [`ctx.cached`](/docs/plugins/writing/deferred-work#loading-files) kept from it goes, then compile the documents that list it again. With `compile_async`, pass that session as its third argument.
+
+## Compiling in steps
+
+::::plate[Parse, settle, render](mark="settle", tone=expr)
+A host that is not Vite, such as a playground or another bundler, compiles in steps so it can fetch what a document needs between them. This is what the Vite plugin does:
+
+```js
+import { CompilerSession, compile_inputs } from 'mdsvex/compile';
+
+const session = new CompilerSession();
+const inputs = compile_inputs(options); // the options compile takes
+const parsed = session.parse(source, inputs);
+
+// 1. what the plugins deferred, undefined when there is nothing to wait for
+await session.settle(parsed);
+
+// 2. what the document needs: the files its fences show with src=, and images
+for (const need of parsed.needs ?? []) {
+	if (need.type === 'source') sources[need.spec] = await read(need.spec);
+}
+inputs.sources = sources;
+
+// 3. the render, with the same result compile gives
+const { code, data } = session.render(parsed, inputs);
+```
+
+:::notes
+- **`parse`** runs the parser and the plugins. The `Parsed` it returns holds the document, its `metadata`, the `data` its plugins wrote so far and `needs`.
+- **`settle`** waits for deferred work and applies it, and returns `undefined` when there was none, so a document without any stays synchronous. A document whose plugins deferred work throws if it renders before.
+- **Read `needs` after `settle`.** Deferred work and a `document` hook can add an image or a fence with `src=`, or change one, and `settle` makes `needs`, `snippets` and `math` again from the settled tree. Only what the inputs of the `parse` turned on is looked for.
+- **`render`** gives what `compile` gives. A `Parsed` renders once.
+- **The session compiles other documents while one waits.** Each `Parsed` holds its own document.
+- **`parsed.dependencies`**, and `dependencies` on the result, are the absolute paths its plugins read or named, for the host to watch. When one changes, call `session.invalidate([path])` before compiling the documents that depend on it again, so what `ctx.cached` kept from it goes.
+- **`read` and `resolve` options** give plugins `ctx.read` and `ctx.resolve`.
+:::
+::::

@@ -1,0 +1,220 @@
+---
+title: Search, feeds and llms.txt
+order: 6.5
+---
+
+[flexsearch]: https://github.com/nextapps-de/flexsearch
+[pagefind]: https://pagefind.app
+[llms-txt]: https://llmstxt.org
+
+# Search, feeds and llms.txt
+
+A search index, an RSS feed and an `llms.txt` file all want the words of a page without its markup. Import a document with the `?text` query and you get the text a reader sees, split at each heading, with nothing compiled to Svelte:
+
+```js
+import text from './guide.svx?text';
+
+text.title; // 'Getting started', the first # heading
+text.text; // every block of the page, a blank line between two
+text.sections; // [{ id: 'install', heading: 'Install', depth: 2, text: 'Run pnpm add mdsvex.' }, ...]
+```
+
+Each section starts at a heading and runs to the next one. With [`heading_ids`](/docs/reference/options#heading_ids) on, it carries the heading's `id`, so a search hit links to `page#id`. Text before the first heading is a section of its own, with an empty `heading` and `depth` 0, and only when there is some. `title` is the text of the first `#` heading outside any container, and is left out when there is none. It does not read the frontmatter, which is what [`?metadata`](/docs/guides/frontmatter) is for. The whole value is plain JSON.
+
+A `?text` import parses the document and runs its plugins, and waits for the work they [defer](/docs/plugins/writing/deferred-work), as `?data` does, so the text has what plugins wrote: emoji, the text of links `references` made, citation labels. In dev an edit reloads what imports it only when the text changed, so an edit of the frontmatter alone leaves it be. For TypeScript, `mdsvex/globals` types it as `DocumentText`.
+
+::marks
+
+## Query imports
+
+| import | gives | reads | an edit reloads it when |
+| --- | --- | --- | --- |
+| `./post.svx` | the component, `metadata`, `plugin_data` | everything, and compiles it | anything changed |
+| [`?metadata`](/docs/guides/frontmatter) | `metadata` | the frontmatter | the frontmatter changed |
+| [`?data`](/docs/plugins/writing/plugin-data) | `metadata` and `plugin_data` | the document, with plugins, no render | either changed |
+| `?text` | the text, by section | the document, with plugins, no render | the text changed |
+| `?raw`, from Vite | the source as a string | the file | anything changed |
+
+Each works with `import.meta.glob`: `import.meta.glob('./*.svx', { query: '?text', import: 'default', eager: true })`.
+
+## What counts as text
+
+| written | in the text |
+| --- | --- |
+| paragraphs, headings, list items, block quotes | their text, each a block |
+| table cells | a row is a block, its cells on one line |
+| emphasis, links, `~~strikethrough~~`, `^sup^`, `~sub~` | their text, a link without its url |
+| images | the alt text, where the image is |
+| code spans and inline math | as written, they are part of the sentence |
+| code fences, `math` fences, `<pre>` | as written, each a block, lines kept. `text: { code_blocks: false }` leaves them out |
+| footnotes | each referenced footnote at the end, in the order the page numbers them, the reference marks left out |
+| directives | the label, and what a container holds. A plugin can say what its directive reads as, `:cite[key]` reads `[1]` |
+| HTML elements and components | their text. A block element such as `<div>` or `<p>`, and a component among blocks, is a block |
+| `{#if}`, `{#each}` and other blocks | the text of every branch, as which one shows is only known when the page runs |
+| `{expression}`, `{@html}`, `{@render}` | nothing, they are only known when the page runs |
+| frontmatter, `<script>`, `<style>`, `<svelte:head>`, comments | nothing |
+
+Runs of spaces and line ends inside a block are one space, a hard break (a backslash at the end of a line) is a line end, blocks are apart by a blank line, and no line ends in a space. Character references such as `&amp;`, `&#233;` and the common named ones are their characters. Punctuation is as typed: [`smart_punctuation`](/docs/reference/options#smart_punctuation) changes the page only, so the text has the straight `'` a search box gets where the page shows a curly one.
+
+## Recipes
+
+::::plate[A search index](mark="find", tone=expr)
+Build the records once, at build time, and load them into [FlexSearch][flexsearch] in the page that searches. Each section is a record, so a hit goes to its heading:
+
+```js
+// src/routes/search.json/+server.js
+import { json } from '@sveltejs/kit';
+
+const pages = import.meta.glob('../docs/**/+page.svx', {
+	query: '?text',
+	import: 'default',
+	eager: true
+});
+
+export const prerender = true;
+
+export function GET() {
+	const records = [];
+	for (const [path, { title, sections }] of Object.entries(pages)) {
+		const route = path.slice('..'.length, -'/+page.svx'.length);
+		for (const section of sections) {
+			records.push({
+				href: section.id ? `${route}#${section.id}` : route,
+				title,
+				heading: section.heading,
+				text: section.text
+			});
+		}
+	}
+	return json(records);
+}
+```
+
+```js
+// in the search component
+import { Document } from 'flexsearch';
+
+const index = new Document({
+	document: { id: 'href', index: ['heading', 'text'], store: ['title', 'heading'] }
+});
+const records = await (await fetch('/search.json')).json();
+for (const record of records) index.add(record);
+
+const hits = index.search(query, { enrich: true, merge: true });
+```
+
+[Pagefind][pagefind] indexes the built HTML instead, and needs none of this.
+::::
+
+::::plate[An RSS feed](mark="rss", tone=link)
+`?metadata` gives the title and date, `?text` the body:
+
+```js
+// src/routes/rss.xml/+server.js
+const metadata = import.meta.glob('../blog/*/+page.svx', {
+	query: '?metadata',
+	import: 'metadata',
+	eager: true
+});
+const texts = import.meta.glob('../blog/*/+page.svx', {
+	query: '?text',
+	import: 'default',
+	eager: true
+});
+
+export const prerender = true;
+
+const escape = (text) =>
+	text.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+
+export function GET({ url }) {
+	const items = Object.keys(metadata).map((path) => {
+		const { title, date } = metadata[path];
+		const link = `${url.origin}/blog/${path.split('/')[2]}`;
+		return `<item>
+	<title>${escape(title)}</title>
+	<link>${link}</link>
+	<guid>${link}</guid>
+	<pubDate>${new Date(date).toUTCString()}</pubDate>
+	<description>${escape(texts[path].text)}</description>
+</item>`;
+	});
+	return new Response(
+		`<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"><channel>
+<title>My blog</title>
+<link>${url.origin}</link>
+<description>Posts</description>
+${items.join('\n')}
+</channel></rss>`,
+		{ headers: { 'content-type': 'application/rss+xml' } }
+	);
+}
+```
+
+An Atom feed is the same with `<entry>` and `<summary>`. For a feed with the HTML of each post, render the component with `render` from `svelte/server` instead.
+::::
+
+::::plate[llms.txt](mark="llms", tone=text)
+[`llms.txt`][llms-txt] is markdown: a title, a summary and a list of links. `?text` gives each link its title and a first paragraph:
+
+```js
+// src/routes/llms.txt/+server.js
+const pages = import.meta.glob('../docs/**/+page.svx', {
+	query: '?text',
+	import: 'default',
+	eager: true
+});
+
+export const prerender = true;
+
+export function GET({ url }) {
+	const links = Object.entries(pages).map(([path, { title, sections }]) => {
+		const route = path.slice('..'.length, -'/+page.svx'.length);
+		const summary = sections[0]?.text.split('\n\n')[0];
+		return `- [${title ?? route}](${url.origin}${route})${summary ? ': ' + summary : ''}`;
+	});
+	return new Response(
+		`# My site\n\n> What the site is for, in a sentence.\n\n## Docs\n\n${links.join('\n')}\n`,
+		{ headers: { 'content-type': 'text/plain; charset=utf-8' } }
+	);
+}
+```
+
+For `llms-full.txt`, which holds whole pages, the markdown itself usually reads better than plain text, as it keeps the headings, lists and code. Vite's `?raw` already gives the source of a document, frontmatter and Svelte included. Use `?text` there when you want only what a reader sees.
+::::
+
+## Text with `compile`
+
+::::plate[`compile_text`](mark="text", tone=expr)
+`compile_text` from `mdsvex/compile` gives the same value without Vite. It takes the options `compile` takes, and `code_blocks`, and waits for deferred work as [`compile_async`](/docs/reference/compile#compile_async) does:
+
+```js
+import { compile_text } from 'mdsvex/compile';
+
+const { title, text, sections } = await compile_text(source, {
+	heading_ids: true,
+	plugins: [citations()],
+	code_blocks: false
+});
+```
+
+Compiling [in steps](/docs/guides/without-vite#compiling-in-steps), `parsed_text(parsed, { plugins })` reads a `Parsed` once it settled, and the document can still render afterwards. `text_module` from `mdsvex/host` makes the module a `?text` import loads from that value.
+::::
+
+::::plate[What a directive reads as](mark=":::", tone=directive)
+A plugin says what one of its directives reads as with `text` beside its handlers. It gets the directive's args once the plugins settled, and the text of its label, and returns a string, or `undefined` to read the label and what the directive holds. A leaf or a container reads the string as blocks, apart where it has a blank line:
+
+```js
+{
+	name: 'cite',
+	module: '@acme/cite/directives',
+	directives: {
+		cite: {
+			text: (args, label) => (args.number ? `[${args.number}]` : label),
+			parse(node, ctx) { /* sets args.number */ }
+		}
+	}
+}
+```
+::::

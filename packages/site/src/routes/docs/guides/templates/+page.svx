@@ -1,0 +1,227 @@
+---
+title: Templates
+order: 2
+---
+# Templates
+
+A template is a Svelte component that wraps documents. It's the place for a document's title, byline and surrounding layout, and it can [replace the elements](/docs/guides/components) of the documents it wraps. mdsvex 0.x called these layouts.
+
+## Defining templates
+
+::::plate[Name your templates](mark="#lib", tone=comp)
+Name your templates in the `templates` option:
+
+```js
+// vite.config.js
+mdsvex({
+	templates: {
+		default: '#lib/templates/Post.svelte',
+		docs: '#lib/templates/Docs.svelte'
+	}
+});
+```
+
+```svx result templates file="src/routes/hello/+page.svx"
+---
+title: Hello
+date: 2026-11-02
+---
+
+# Hello
+
+A post.
+```
+
+:::notes
+Each value is a specifier, resolved from the project root like an import, or a `URL`, such as `new URL('./src/Blog.svelte', import.meta.url)`.
+:::
+::::
+
+::::plate[A template renders the document](mark="{@}", tone=expr)
+A template renders the document with `{@render children()}`:
+
+```svelte
+<!-- src/lib/templates/Post.svelte -->
+<script>
+	let { title, date, children } = $props();
+</script>
+
+<article>
+	<h1>{title}</h1>
+	<time datetime={date}>{date}</time>
+
+	{@render children()}
+</article>
+```
+
+:::notes
+Templates are ordinary components, so editing one hot reloads the documents that use it. See the [templates playground example](/playground/templates).
+:::
+::::
+
+## Documents as templates
+
+::::plate[A document as a template](mark=".svx", tone=para)
+A template can be a document too, so its own content is markdown. Like a component, it reads its props and renders `children`. This is `src/lib/templates/Note.svx`:
+
+```svx result file="src/lib/templates/Note.svx"
+<script>
+	let { title, children } = $props();
+</script>
+
+# {title}
+
+{@render children()}
+
+Written by the _docs team_.
+```
+
+```js
+mdsvex({
+	templates: { note: '#lib/templates/Note.svx' }
+});
+```
+
+:::notes
+It can [replace elements](/docs/guides/components#replacing-elements-in-a-template) from its `<script module>`, as a component does.
+:::
+
+:::edges
+- As a template it is never wrapped in a template itself, so a `template` key in its frontmatter, `select_template` and the `default` entry don't apply to it.
+:::
+::::
+
+## Choosing a template
+
+::::plate[The first answer wins](mark="---", tone=text)
+mdsvex picks a document's template from the first of these that gives an answer:
+
+1. The `?template=` query on the import, see [opting out](/docs/guides/templates#opting-out).
+2. The `template` key in the frontmatter, a template name or `false`.
+3. `select_template(id, metadata)`, if you configured one.
+4. The `default` entry in `templates`.
+5. Otherwise, no template.
+
+```svx result templates
+---
+title: Writing docs
+template: docs
+---
+```
+
+:::edges
+- An unknown name is an error that lists the templates you configured:
+
+```svx error templates
+---
+title: Writing docs
+template: blog
+---
+```
+:::
+::::
+
+::::plate[`select_template`](mark="=>", tone=expr)
+`select_template` runs for documents whose frontmatter has no `template` key. It gets the file path and the metadata. It returns a template name, `false` for none, or `undefined` to fall through to `default`:
+
+```js
+mdsvex({
+	templates: {
+		default: '#lib/templates/Post.svelte',
+		docs: '#lib/templates/Docs.svelte'
+	},
+	select_template: (id) =>
+		id.includes('/changelog/') ? false : id.includes('/docs/') ? 'docs' : undefined
+});
+```
+::::
+
+## Opting out
+
+::::plate[`template: false`](mark="false", tone=text)
+`template: false` in the frontmatter renders a document without one:
+
+```svx result templates
+---
+template: false
+---
+```
+::::
+
+::::plate[For one import](mark="?=", tone=link)
+To choose for one import only, add `?template=` to it. `?template=false` unwraps the document and `?template=docs` picks another template. The query wins over the frontmatter:
+
+```svelte
+<script>
+	import Intro from './intro.svx?template=false';
+</script>
+
+<Intro />
+```
+::::
+
+## Template props
+
+::::plate[What a template gets](mark="$props", tone=expr)
+A template gets:
+
+- every frontmatter key as its own prop, so `let { title } = $props()` reads `title`;
+- `plugin_data`, what the plugins left for the document, when they left any (see [plugin data](/docs/plugins/writing/plugin-data));
+- `children`, a snippet that renders the document;
+- the props passed to the document, so `<Post featured />` reaches the template as `featured`.
+
+```svx result templates
+---
+title: Hello
+---
+
+# Hello
+```
+
+:::notes
+A document that reads its own props with `let props = $props()` still forwards them all to its template. If it destructures them, `let { featured } = $props()`, it forwards none, as `$props()` can only be called once.
+:::
+
+:::edges
+- The frontmatter can't have a `children` key when the document has a template, nor a `plugin_data` key when its plugins left data. Each is an error that points at the line:
+
+```svx error templates
+---
+title: Hello
+children: none
+---
+
+# Hello
+```
+:::
+::::
+
+## What gets hoisted
+
+::::plate[What gets hoisted](mark="<head>", tone=comp)
+Some things only work at the top level of a component, so they stay outside the template:
+
+- `<script>` and `<script module>`;
+- `<style>`;
+- `<svelte:head>`, `<svelte:window>`, `<svelte:body>`, `<svelte:document>` and `<svelte:options>`.
+
+```svx result templates
+---
+title: Hello
+---
+
+<svelte:head>
+	<title>Hello</title>
+</svelte:head>
+
+# Hello
+
+<style>
+	h1 { color: tomato }
+</style>
+```
+
+:::notes
+Everything else, markdown, HTML and components alike, is the document body that the template renders as `children`.
+:::
+::::

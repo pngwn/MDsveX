@@ -1,0 +1,24 @@
+/* the texture follows the face, design/SCORE.md "Ink texture". The masks are
+   custom properties from texture.ts, set by the frame; without them every rule
+   here falls back to plain ink. Rules and phrase lines are not type and stay plain */
+
+/* Playfair: linen */
+.linen,
+.design-frame :is(h1, h2, h3) {
+	mask-image: var(--linen-image, none);
+	mask-size: var(--linen-size, auto);
+	mask-composite: var(--linen-composite, add);
+}
+
+/* Berkeley Mono: riso, like a typewriter's ribbon */
+.riso {
+	mask-image: var(--riso-image, none);
+	mask-size: var(--riso-size, auto);
+	mask-composite: var(--riso-composite, add);
+}
+
+/* display sizes only: the glyph's outline pushed about by fine noise and the
+   ink cut to it, so the edge rags and the texture inside stays put */
+.rag {
+	filter: url(#design-rag);
+}

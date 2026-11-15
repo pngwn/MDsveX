@@ -1,0 +1,318 @@
+---
+title: Markdown
+order: 3
+---
+# Markdown
+
+mdsvex reads its own flavour of markdown, [Penguin-Flavoured Markdown](https://github.com/pngwn/MDsveX/blob/next/PFM.md). It is CommonMark with the ambiguous parts taken out, the GFM additions most people use, and a few of its own. Most of a document reads as it does anywhere else. This section covers the rest.
+
+Coming from 0.x, the [migrator](/docs/guides/migrating-from-0x#run-the-migrator) rewrites your documents for you.
+
+::marks
+
+## Different from CommonMark
+
+::::plate[`_text_` and `*text*`](mark="*", tone=strong, id=cm-star)
+CommonMark reads `_text_` and `*text*` both as emphasis. mdsvex reads `_text_` as emphasis and `*text*` as strong.
+
+```svx commonmark cue="\*"
+_text_ and *text*
+```
+::::
+
+::::plate[`**text**`, `__text__`](mark="**", tone=strong, id=cm-double)
+CommonMark reads them as strong. mdsvex reads strong inside strong, and emphasis inside emphasis.
+
+```svx commonmark cue="\*\*|__"
+**text** and __text__
+```
+
+:::notes
+Write `*text*`.
+:::
+::::
+
+::::plate[a line of `===` or `---` under a title](mark="===", tone=heading, id=cm-setext)
+CommonMark reads a heading. mdsvex reads a paragraph, and `---` is a thematic break.
+
+```svx commonmark cue="^(===|---)$"
+Title
+===
+
+Title
+---
+```
+
+:::notes
+Write `# Title`.
+:::
+::::
+
+::::plate[`## Title ##`](mark="##", tone=heading, id=cm-closing)
+CommonMark drops the closing `#`. In mdsvex they are text.
+
+```svx commonmark cue="##$"
+## Title ##
+```
+::::
+
+::::plate[four spaces of indent](mark="····", tone=fence, id=cm-indent)
+CommonMark reads a code block. In mdsvex it is nothing, indentation means nothing.
+
+```svx commonmark cue="^    "
+    code
+```
+
+:::notes
+Use a fence.
+:::
+::::
+
+::::plate[`~~~`](mark="~~~", tone=fence, id=cm-tilde)
+CommonMark reads a code fence. In mdsvex it is text.
+
+```svx commonmark cue="~~~"
+~~~
+code
+~~~
+```
+
+:::notes
+A fence is three or more backticks.
+:::
+::::
+
+::::plate[two spaces at the end of a line](mark="··↵", id=cm-break)
+CommonMark reads a line break. In mdsvex they are nothing.
+
+<!-- prettier-ignore -->
+```svx commonmark cue=" +$"
+one  
+two
+```
+
+:::notes
+End the line with a backslash.
+:::
+::::
+
+::::plate[a line without `>` after a quoted line](mark=">", tone=quote, id=cm-lazy)
+In CommonMark it is still in the quote. In mdsvex the quote has ended.
+
+```svx commonmark cue="^n"
+> quoted
+not quoted
+```
+::::
+
+::::plate[`[text]` with a definition somewhere](mark="[a]", tone=link, id=cm-shortcut)
+CommonMark reads a link. In mdsvex it is text.
+
+```svx commonmark cue="\[svelte\](?!:)"
+[svelte]: https://svelte.dev/
+
+Made with [svelte].
+```
+
+:::notes
+Write `[text][]`, with the definition above it.
+:::
+::::
+
+::::plate[`https://example.com`, as GFM links it](mark="https:", tone=link, id=cm-autolink)
+GFM reads a link. In mdsvex it is text.
+
+```svx commonmark gfm cue="https://\S+"
+See https://example.com
+```
+
+:::notes
+Write `<https://example.com>`.
+:::
+::::
+
+::::plate[`{` and `}`](mark="{}", tone=expr, id=cm-brace)
+CommonMark reads text. mdsvex reads a Svelte expression.
+
+```svx commonmark cue="[{}]"
+One and one is {1 + 1}.
+```
+
+:::notes
+Write `\{` for a brace.
+:::
+::::
+
+::::plate[Definitions come first](mark="[]:", tone=link)
+A link reference definition comes before the first link that uses it. That lets a document render while it is still arriving, since nothing later in it can change what came before.
+
+```svx result score
+[svelte]: https://svelte.dev
+
+Made with [svelte][], see [the site][svelte].
+```
+::::
+
+::::plate[Inside a word](mark="|_", tone=emph)
+A `_` or `*` opens after a space or punctuation and closes before one, so `snake_case_name` and `2*3*4` are text. To mark part of a word, put a `|` on the side that touches a letter. The `|` is not rendered:
+
+```svx result
+fan|_tas_|tic
+```
+
+:::notes
+Curly quotes, dashes and other Unicode punctuation count as punctuation there. Chinese, Japanese and Korean text needs no marker, `这是*重要*的` is strong.
+:::
+::::
+
+## Added to CommonMark
+
+::::added
+:::add[`H~2~O`](mark="~", tone=emph, id=add-sub)
+subscript, H~2~O
+:::
+
+:::add[`x^2^`](mark="^", tone=emph, id=add-sup)
+superscript, x^2^
+:::
+
+:::add[`~~gone~~`](mark="~~", tone=emph, id=add-strike)
+strikethrough
+:::
+
+:::add[`- [x] done`](mark="[x]", tone=item, id=add-task)
+a [task list](/docs/learn/markdown#task-lists)
+:::
+
+:::add[a pipe table](mark="|", tone=fence, id=add-table)
+a [table](/docs/learn/markdown#tables), with header columns and merged cells
+:::
+
+:::add[`:name[text]`, `::name`, `:::name`](mark=":", tone=directive, id=add-directive)
+a [directive](/docs/guides/directives), your own component
+:::
+
+:::add[a `math` fence, `` $`x^2`$ ``](mark="$", tone=code, id=add-math)
+[math](/docs/reference/math)
+:::
+
+:::add[`[^1]` in the text and `[^1]: a note`](mark="[^]", tone=link, id=add-footnote)
+a [footnote](/docs/reference/footnotes)
+:::
+
+:::add[`import` lines at the top](mark="import", tone=expr, id=add-import)
+[imports](/docs/learn/markdown#svelte-in-markdown) without a `<script>`
+:::
+::::
+
+## Task lists
+
+::::plate[Task lists](mark="[x]", tone=item, id=tasks)
+A list item that starts with `[ ]` or `[x]` and a space is a task:
+
+```svx result
+- [x] write the docs
+- [ ] ship it
+```
+
+:::notes
+It works in bulleted and numbered lists at any depth.
+
+A [replaced `li`](/docs/guides/components#element-props) gets `checked` and no checkbox.
+:::
+
+:::edges
+- The marker needs text after it on its line, so `[x]done` and a bare `- [ ]` are text, and so is a marker anywhere but the start of an item.
+- Write `- \[x] text` to start an item with those characters.
+:::
+::::
+
+## Tables
+
+Tables are GFM pipe tables. A `:` in the delimiter row aligns a column, and `\|` is a bar inside a cell, in a code span too.
+
+::::plate[Row headers](mark="||", tone=fence)
+A `||` in the header and delimiter rows makes the columns on one side of it row headers:
+
+```svx result
+| option || type | default |
+| --- || --- | --- |
+| `extensions` || `string[]` | `['.svx']` |
+```
+::::
+
+::::plate[Merged cells](mark="> ^", tone=fence)
+A cell that holds only `>` joins the cell to its left, and one that holds only `^` joins the cell above:
+
+```svx result
+| a | > | c |
+| --- | --- | --- |
+| 1 | 2 | 3 |
+| ^ | 4 | 5 |
+```
+
+:::edges
+- Write `\>` or `\^` for a cell of that one character.
+- A row is one line, and a table ends at a blank line or at any line that would end a paragraph, such as a heading.
+:::
+::::
+
+## Svelte in markdown
+
+::::plate[Markdown inside Svelte](mark="{#}", tone=logic)
+Components, elements, expressions and blocks go anywhere, and markdown works inside them with no blank lines around it:
+
+```svx result score
+<Box>
+# A title
+</Box>
+
+{#if published}
+Some *strong* text.
+{/if}
+```
+
+:::notes
+A block quote, a list item, an element, a Svelte block and a container directive all hold the same blocks the document does, so a table or a `{#if}` is the same thing inside a list item as at the top.
+:::
+::::
+
+::::plate[A paragraph of only tags gets no `<p>`.](mark="<C/>", tone=comp)
+`<Chart />` on a line of its own is the component and nothing else, and `<Badge /> new today` is a paragraph.
+
+```svx result
+<Chart />
+
+<Badge /> new today
+```
+::::
+
+::::plate[A block level element that starts a line is a block.](mark="<div>", tone=comp)
+`<div>one</div> two` is the `<div>` and then a paragraph, `two`.
+
+```svx result
+<div>one</div> two
+```
+::::
+
+::::plate[`<script>`, `<style>`, `<pre>` and `<textarea>` hold text.](mark="<pre>", tone=comp)
+Nothing inside them is markdown.
+::::
+
+::::plate[Imports can stand at the top](mark="import", tone=expr)
+They stand after any frontmatter, without a `<script>`, and go into the document's script:
+
+```svx result
+import Chart from './Chart.svelte'
+
+<Chart />
+```
+::::
+
+::::plate[A brace is an expression.](mark="{}", tone=expr)
+For a brace as text, write `\{`, use `&#123;`, or put it in code, where a brace is always text.
+
+```svx result
+One and one is {1 + 1}, not \{1 + 1}.
+```
+::::

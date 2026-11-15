@@ -2,3 +2,6 @@
 /node_modules
 /cypress/screenshots/
 /.svelte-kit
+
+# Berkeley Mono is licensed, its files arrive at deploy and never enter git (design/FONTS.md)
+/static/fonts/berkeley-mono/

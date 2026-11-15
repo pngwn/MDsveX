@@ -53,6 +53,21 @@
 		"note",
 		"warning"
 	],
+	"mdsvex": {
+		"concerns": [
+			"layout"
+		],
+		"syntax": [
+			{
+				"mark": ":::note",
+				"source": ":::note\nRead this first.\n:::\n"
+			},
+			{
+				"mark": ":::warning[Title]",
+				"source": ":::warning[Breaking change]\nRead this first.\n:::\n"
+			}
+		]
+	},
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"peerDependencies": {

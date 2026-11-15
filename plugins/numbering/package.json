@@ -40,6 +40,20 @@
 		"figures",
 		"equations"
 	],
+	"mdsvex": {
+		"concerns": [
+			"cite"
+		],
+		"syntax": [
+			{
+				"mark": ":ref[sec:id]",
+				"source": "## Results\n\nSee :ref[sec:results].\n"
+			}
+		],
+		"needs": {
+			"heading_ids": true
+		}
+	},
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"peerDependencies": {
