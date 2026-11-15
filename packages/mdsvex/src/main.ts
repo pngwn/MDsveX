@@ -8,8 +8,14 @@ import type {
 } from 'vite';
 import remapping from '@ampproject/remapping';
 // ahead of compile, so @mdsvex/render/sourcemap stays first in the chunk they share
-import { base64_utf8, chained_base64, pfm_map } from './sourcemap_chain.js';
+import {
+	base64_utf8,
+	chained_base64,
+	document_map,
+	pfm_map,
+} from './sourcemap_chain.js';
 import type { StoredDocument } from './sourcemap_chain.js';
+import type { SourceMapV3 } from '@mdsvex/render/sourcemap';
 import {
 	CompilerSession,
 	check_plugins,
@@ -312,6 +318,43 @@ async function flat_plugins(
 	return out;
 }
 
+// id tests of a wrapped compile transform, one per mdsvex instance
+const OWNS = Symbol.for('mdsvex.owns');
+
+/** hides the combined map from the svelte compile of a document, vite applies that chain to its map again */
+function own_compile_maps(plugin: Plugin, owns: (id: string) => boolean): void {
+	const hook = plugin.transform as any;
+	if (hook == null) return;
+	const handler = typeof hook === 'function' ? hook : hook.handler;
+	if (typeof handler !== 'function') return;
+	if (handler[OWNS] !== undefined) {
+		handler[OWNS].add(owns);
+		return;
+	}
+	const tests = new Set([owns]);
+	const wrapped = function (
+		this: any,
+		code: string,
+		id: string,
+		...rest: any[]
+	) {
+		let owned = false;
+		for (const test of tests) if ((owned = test(id))) break;
+		if (!owned) return handler.call(this, code, id, ...rest);
+		const view = new Proxy(this, {
+			get(target, key) {
+				if (key === 'getCombinedSourcemap') return () => undefined;
+				const value = Reflect.get(target, key);
+				return typeof value === 'function' ? value.bind(target) : value;
+			},
+		});
+		return handler.call(view, code, id, ...rest);
+	} as any;
+	wrapped[OWNS] = tests;
+	if (typeof hook === 'function') plugin.transform = wrapped;
+	else hook.handler = wrapped;
+}
+
 function api_extensions(plugin: Plugin | undefined): string[] | undefined {
 	const extensions = plugin?.api?.options?.extensions;
 	return Array.isArray(extensions) ? extensions : undefined;
@@ -321,11 +364,13 @@ function api_extensions(plugin: Plugin | undefined): string[] | undefined {
  * mdsvex vite plugin. returns a single plugin that:
  *
  * 1. transforms markdown to svelte html (enforce: 'pre')
- * 2. does NOT return a sourcemap to vite (to avoid poisoning the
- *    svelte compiler's own sourcemap via getCombinedSourcemap())
- * 3. after svelte compiles, chains the compiler's JS to HTML map with
- *    our HTML to markdown map using @ampproject/remapping, and injects
- *    the result as an inline sourceMappingURL in the output code.
+ * 2. keeps the compile of vite-plugin-svelte from applying the maps before
+ *    it, as vite applies them to its map again
+ * 3. in a build returns the HTML to markdown map, which vite chains
+ * 4. in dev returns no map, and after svelte compiles, chains the compiler's
+ *    JS to HTML map with our HTML to markdown map using
+ *    @ampproject/remapping, and injects the result as an inline
+ *    sourceMappingURL in the output code
  */
 /** the text option checked, a wrong one throws when the plugin is made */
 function text_options_of(
@@ -736,7 +781,7 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 		code: string,
 		id: string,
 		parsed: Parsed | undefined
-	): { code: string } | null {
+	): { code: string; map: SourceMapV3 | null } | null {
 		let doc = stored.get(id);
 		if (doc === undefined) {
 			doc = {
@@ -802,8 +847,12 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 			doc.warnings = undefined;
 		}
 
-		// return NO map, avoids poisoning getCombinedSourcemap()
-		return { code: doc.html };
+		// a build chains the map, dev gets an inline one from mdsvex:sourcemap,
+		// null keeps the chain whole where a missing map would drop it
+		return {
+			code: doc.html,
+			map: command === 'build' ? document_map(doc, id) : null,
+		};
 	}
 
 	/**
@@ -1130,6 +1179,11 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				templates?.set_root(config.root);
 				plugins?.set_root(config.root);
 				command = config.command;
+				// vite-plugin-svelte 5 compiles in its main plugin and passes no combined map
+				const compile = config.plugins.find(
+					(p) => p.name === 'vite-plugin-svelte:compile'
+				);
+				if (compile !== undefined) own_compile_maps(compile, matches);
 				if (statics !== null && command === 'build') {
 					// a build has no environment that runs modules, it starts a dev server from the same config
 					if (config.configFile)
@@ -1447,6 +1501,8 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				const doc = stored.get(id);
 				if (!doc || !doc.raw) return;
 				try {
+					// vite chains the map the document returned
+					if (command === 'build') return;
 					const originalSource = doc.raw;
 
 					// get the svelte compiler's JS to HTML map from the chain

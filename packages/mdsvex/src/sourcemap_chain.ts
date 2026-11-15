@@ -26,6 +26,17 @@ export function pfm_map(
 	return trace_to_decoded(doc, doc.source, doc.html, lines, file);
 }
 
+/** the whole html to markdown map, raw as its content, null for an empty one */
+export function document_map(
+	doc: StoredDocument,
+	file: string
+): SourceMapV3 | null {
+	const map = trace_to_v3(doc, doc.source, doc.html, file);
+	if (map.mappings === '') return null;
+	map.sourcesContent = [doc.raw];
+	return map;
+}
+
 // the map json head when the compile map names no file
 const PLAIN_HEAD = '{"version":3,"mappings":"';
 const PLAIN_HEAD_BYTES = /* @__PURE__ */ ascii_table(PLAIN_HEAD);
