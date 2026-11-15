@@ -82,6 +82,14 @@ const CLASSES: Replacement = {
 	message:
 		"A parse plugin sets a class in a few lines: `parse_plugins: [{ table: { parse(node) { node.attrs.class = 'table'; } } }]`.",
 };
+const CALLOUTS: Replacement = {
+	message:
+		"Install `@mdsvex/plugin-callouts` and add `callouts()` to `plugins`. `migrate` rewrites `> [!NOTE]` and the other GitHub alerts as `:::note`, `:::tip`, `:::important`, `:::warning` and `:::caution`, and leaves a note at each Obsidian callout it can't.",
+};
+const LINK_CHECK: Replacement = {
+	message:
+		"Install `@mdsvex/plugin-link-check` and add `link_check({ routes: 'src/routes' })` to `plugins`. It warns at every link to an id or a document that is not there.",
+};
 const NOTHING_YET = "Nothing replaces it yet.";
 
 const REPLACEMENTS: Record<string, Replacement> = {
@@ -216,17 +224,20 @@ const REPLACEMENTS: Record<string, Replacement> = {
 	"remark-wiki-link": { message: `${NOTHING_YET} \`[[Page]]\` is text.` },
 	"remark-definition-list": { message: `${NOTHING_YET} Type \`<dl>\`, \`<dt>\` and \`<dd>\`.` },
 	"remark-deflist": { message: `${NOTHING_YET} Type \`<dl>\`, \`<dt>\` and \`<dd>\`.` },
-	"remark-github-blockquote-alert": {
-		message: `${NOTHING_YET} Write \`:::note\` with a directive component.`,
-	},
-	"rehype-callouts": {
-		message: `${NOTHING_YET} Write \`:::note\` with a directive component.`,
-	},
+	"remark-github-blockquote-alert": CALLOUTS,
+	"remark-github-alerts": CALLOUTS,
+	"rehype-callouts": CALLOUTS,
+	"remark-obsidian-callout": CALLOUTS,
+	"remark-github-admonitions-to-directives": CALLOUTS,
+	"remark-github-beta-blockquote-admonitions": CALLOUTS,
 	"rehype-citation": {
 		message:
 			"Install `@mdsvex/plugin-citations` and add `citations()` to `plugins`. Cite with `:cite[key]` from a CSL JSON file named by `bibliography` in the frontmatter, and list the entries with `::bibliography`.",
 	},
-	"remark-validate-links": { message: NOTHING_YET },
+	"remark-validate-links": LINK_CHECK,
+	"remark-lint": {
+		message: `${LINK_CHECK.message} Nothing checks style.`,
+	},
 	"rehype-sanitize": {
 		message:
 			"Nothing replaces it. A document compiles to a component and runs as code, so don't compile markdown you don't trust.",

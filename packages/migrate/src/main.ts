@@ -4,7 +4,8 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import type { Nodes, Root } from "mdast";
 
-import { serialize, type SerializeOptions } from "./serialize.js";
+import { serialize, type Found, type SerializeOptions } from "./serialize.js";
+import { position_at, type MigrateResult, type MigrationNote } from "./notes.js";
 import { migrate_frontmatter, split_frontmatter } from "./frontmatter.js";
 import { protect } from "./svelte.js";
 
@@ -67,13 +68,14 @@ function display_math(tree: Root, body: string): void {
  * the tree remark-math reads, with the dollars of a price escaped first so
  * what is between two prices is read as markdown and not as latex
  */
-function parse_math(body: string): Root {
+/** the tree remark-math reads, and the text it read, a price escaped */
+function parse_math(body: string): { tree: Root; text: string } {
 	for (;;) {
 		const tree = math_processor.parse(body) as Root;
 		const at = prices(tree, body);
 		if (at.length === 0) {
 			display_math(tree, body);
-			return tree;
+			return { tree, text: body };
 		}
 		for (let i = at.length - 1; i >= 0; i--)
 			body = body.slice(0, at[i]) + "\\" + body.slice(at[i]);
@@ -95,17 +97,36 @@ function parse_math(body: string): Root {
  * `$x$` and `$$x$$` are written as inline math and math fences
  */
 export function migrate(markdown: string, options: MigrateOptions = {}): string {
-	// the output is written with linefeeds, and so is read with them
-	const { frontmatter, body } = split_frontmatter(markdown.replace(/\r\n?/g, "\n"));
-	const guard = protect(body);
-	const tree =
-		options.math === true ? parse_math(guard.text) : (processor.parse(guard.text) as Root);
-	const out = guard.restore(serialize(tree, options));
-	if (frontmatter === "") return out;
+	return migrate_document(markdown, options).code;
+}
 
-	let head = migrate_frontmatter(frontmatter).code;
+/**
+ * migrate a document as `migrate` does, with notes on what a person should
+ * check, github alerts that are now callouts and obsidian callouts left as
+ * block quotes
+ */
+export function migrate_document(markdown: string, options: MigrateOptions = {}): MigrateResult {
+	// the output is written with linefeeds, and so is read with them
+	const source = markdown.replace(/\r\n?/g, "\n");
+	const { frontmatter, body } = split_frontmatter(source);
+	const guard = protect(body);
+	const { tree, text } =
+		options.math === true
+			? parse_math(guard.text)
+			: { tree: processor.parse(guard.text) as Root, text: guard.text };
+	const found: Found[] = [];
+	const out = guard.restore(serialize(tree, options, found));
+	const notes: MigrationNote[] = found.map(({ kind, message, offset }) => {
+		// the source up to the node, with svelte put back, so lines count as written
+		const before = frontmatter + guard.restore(text.slice(0, offset));
+		return { kind, message, ...position_at(before, before.length) };
+	});
+	if (frontmatter === "") return { code: out, notes };
+
+	const head_result = migrate_frontmatter(frontmatter);
+	let head = head_result.code;
 	if (!head.endsWith("\n")) head += "\n";
-	return out === "\n" ? head : head + "\n" + out;
+	return { code: out === "\n" ? head : head + "\n" + out, notes: [...head_result.notes, ...notes] };
 }
 
 export {

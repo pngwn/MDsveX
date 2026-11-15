@@ -1,7 +1,9 @@
 import type {
+	BlockContent,
 	Blockquote,
 	Code,
 	Definition,
+	DefinitionContent,
 	FootnoteDefinition,
 	FootnoteReference,
 	Heading,
@@ -22,7 +24,9 @@ import type {
 	TableRow,
 } from "mdast";
 
+import { read_alert } from "./alerts.js";
 import { escape_inline, escape_line_starts } from "./escape.js";
+import type { NoteKind } from "./notes.js";
 
 /** the smartypants option of mdsvex 0.x, which was on unless it was false */
 export type LegacySmartypants =
@@ -55,7 +59,18 @@ export interface SerializeOptions {
 	math?: boolean;
 }
 
+/** a note about the document, at an offset into the text that was parsed */
+export interface Found {
+	kind: NoteKind;
+	message: string;
+	offset: number;
+}
+
 interface Context {
+	/** what a person should check, in the order it is found */
+	found: Found[];
+	/** true once the document has a note about the callouts plugin */
+	alerted: boolean;
 	/** the footnotes of the document by identifier */
 	notes: Map<string, Footnote>;
 	/** in a table cell, where a pipe has to be escaped and latex has to spell its double bar */
@@ -68,13 +83,15 @@ interface Context {
 	quotes: boolean;
 }
 
-/** Serialise a parsed mdast tree to a PFM document string. */
-export function serialize(tree: Root, options: SerializeOptions = {}): string {
+/** serialise a parsed mdast tree to a pfm document string, pushing what a person should check to found */
+export function serialize(tree: Root, options: SerializeOptions = {}, found: Found[] = []): string {
 	const smart = options.smartypants;
 	const on = smart !== undefined && smart !== false;
 	const set = typeof smart === "object" && smart !== null ? smart : {};
 	const dashes = set.dashes ?? true;
 	const ctx: Context = {
+		found,
+		alerted: false,
 		notes: footnote_labels(tree),
 		cell: false,
 		bullet: options.bullet ?? "-",
@@ -183,12 +200,78 @@ function serialize_code(node: Code): string {
 }
 
 function serialize_blockquote(node: Blockquote, ctx: Context): string {
-	const inner = node.children.map((c) => serialize_block(c, ctx)).join("\n\n");
+	const alert = read_alert(node);
+	if (alert?.type === "alert") return serialize_alert(node, alert, ctx);
+	let inner = node.children.map((c) => serialize_block(c, ctx)).join("\n\n");
+	if (alert?.type === "callout") {
+		const { kind, fold, marker } = alert;
+		const callout = KINDS.includes(kind);
+		note(
+			ctx,
+			node,
+			"manual",
+			fold !== ""
+				? `\`${marker}\` is a callout that folds in Obsidian, which mdsvex leaves as a block quote. Write a folding one as \`:::details[Title]\` with \`@mdsvex/plugin-elements\`` +
+						(callout ? `, or as \`:::${kind}\` with \`@mdsvex/plugin-callouts\` if it need not fold.` : ".")
+				: `\`${marker}\` is an Obsidian callout, which mdsvex leaves as a block quote. Write it as \`:::${kind}[Title]\` with a \`${kind}\` component of your own in a directives module, or as one of ${KINDS.map((k) => `\`:::${k}\``).join(", ")} with \`@mdsvex/plugin-callouts\`.`,
+		);
+		// pfm reads the marker as text, so it stays as written
+		const escaped = escape_inline(marker);
+		if (inner.startsWith(escaped)) inner = marker + inner.slice(escaped.length);
+	}
 	// PFM has no lazy continuation: every line carries an explicit `>` prefix.
 	return inner
 		.split("\n")
 		.map((line) => (line.length === 0 ? ">" : "> " + line))
 		.join("\n");
+}
+
+const KINDS = ["note", "tip", "important", "warning", "caution"];
+
+/** a github alert as the container directive of its kind, one level of quote taken off its body */
+function serialize_alert(
+	node: Blockquote,
+	alert: { kind: string; title: PhrasingContent[]; title_fits: boolean; body: (BlockContent | DefinitionContent)[] },
+	ctx: Context,
+): string {
+	const { kind } = alert;
+	if (!ctx.alerted) {
+		ctx.alerted = true;
+		note(
+			ctx,
+			node,
+			"plugin",
+			`GitHub alerts are now container directives, \`> [!${kind.toUpperCase()}]\` is \`:::${kind}\`. Install \`@mdsvex/plugin-callouts\` and add \`callouts()\` to \`plugins\` to render them.`,
+		);
+	}
+	const body = alert.body.slice();
+	let label = "";
+	if (alert.title.length > 0) {
+		if (alert.title_fits) label = "[" + serialize_inline(alert.title, ctx).replace(/\n/g, " ") + "]";
+		else {
+			note(
+				ctx,
+				node,
+				"manual",
+				`The title of this \`[!${kind.toUpperCase()}]\` has a link or an image, which a directive label leaves as text, so it is the first paragraph of the \`:::${kind}\`.`,
+			);
+			body.unshift({ type: "paragraph", children: alert.title });
+		}
+	}
+	const inner = body
+		.map((c) => serialize_block(c, ctx))
+		.filter((b) => b.length > 0)
+		.join("\n\n");
+	// a container in the body closes at its own fence, so this one takes more colons
+	let colons = 3;
+	for (const run of inner.match(/^[ \t]*:{3,}/gm) ?? []) colons = Math.max(colons, run.trim().length + 1);
+	const fence = ":".repeat(colons);
+	return fence + kind + label + "\n" + (inner === "" ? "" : inner + "\n") + fence;
+}
+
+/** a note at the start of a node */
+function note(ctx: Context, node: Nodes, kind: NoteKind, message: string): void {
+	ctx.found.push({ kind, message, offset: node.position?.start.offset ?? 0 });
 }
 
 function serialize_list(node: List, ctx: Context): string {
