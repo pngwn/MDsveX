@@ -88,7 +88,7 @@ test("tab sets of one group switch together and remember the choice", async ({
 	await expect(second.getByRole("tab", { selected: true })).toHaveText("pnpm");
 	await first.getByRole("tab", { name: "yarn v2" }).click();
 	await expect(second.getByRole("tab", { selected: true })).toHaveText("pnpm");
-	await second.getByRole("tab", { name: "npm" }).click();
+	await second.getByRole("tab", { name: "npm", exact: true }).click();
 	await expect(first.getByRole("tab", { selected: true })).toHaveText("npm");
 
 	await second.getByRole("tab", { name: "pnpm" }).click();
