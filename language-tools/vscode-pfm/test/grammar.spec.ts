@@ -96,7 +96,7 @@ describe('task lists', () => {
 		const tokens = await tokenize(source);
 		expect(
 			tokens.filter((t) => t.scopes.length === 2 && t.text === ' ')
-		).toEqual([
+		).toMatchObject([
 			{
 				text: ' ',
 				scopes: ['markup.list.pfm', 'constant.language.task.unchecked.pfm'],
@@ -205,7 +205,7 @@ describe('directives', () => {
 			'punctuation.definition.directive.pfm',
 		]);
 		const tokens = await tokenize(':::note\nbody\n:::');
-		expect(tokens[tokens.length - 1]).toEqual({
+		expect(tokens[tokens.length - 1]).toMatchObject({
 			text: ':::',
 			scopes: ['punctuation.definition.directive.end.pfm'],
 		});
@@ -311,7 +311,10 @@ describe('fence meta', () => {
 		expect(tokens.find((t) => t.text === 'let x;')?.scopes).toContain(
 			'markup.fenced_code.block.pfm'
 		);
-		expect(tokens[tokens.length - 1]).toEqual({ text: 'after', scopes: [] });
+		expect(tokens[tokens.length - 1]).toMatchObject({
+			text: 'after',
+			scopes: [],
+		});
 		expect(await scopes_of('```\na\n``` b\nc\n```\nafter', 'c')).toEqual([
 			'markup.fenced_code.block.pfm',
 		]);
@@ -501,6 +504,267 @@ describe('what the grammar already read', () => {
 			'markup.heading.pfm',
 			'entity.name.section.pfm',
 			'markup.bold.pfm',
+		]);
+	});
+});
+
+/** the scopes of every token whose text is text */
+async function all_scopes(source: string, text: string): Promise<string[][]> {
+	return (await tokenize(source))
+		.filter((token) => token.text === text)
+		.map((token) => token.scopes);
+}
+
+describe('inline marks', () => {
+	test('an unclosed mark ends with its paragraph', async () => {
+		for (const mark of ['_', '*', '~~']) {
+			expect(await scopes_of(`a ${mark}open\n\nafter`, 'after')).toEqual([]);
+			expect(await scopes_of(`a ${mark}open\n# after`, 'after')).toEqual([
+				'markup.heading.pfm',
+				'entity.name.section.pfm',
+			]);
+		}
+	});
+
+	test('a mark runs on over the lines of its paragraph', async () => {
+		expect(await scopes_of('*one\ntwo*', 'two')).toEqual(['markup.bold.pfm']);
+		expect(await scopes_of('~~one\ntwo~~', 'two')).toEqual([
+			'markup.strikethrough.pfm',
+		]);
+	});
+
+	test('a mark opens after punctuation', async () => {
+		const source = '(*a*) [_b_] "*c*" x|*d*|y';
+		for (const [text, scope] of [
+			['a', 'markup.bold.pfm'],
+			['b', 'markup.italic.pfm'],
+			['c', 'markup.bold.pfm'],
+			['d', 'markup.bold.pfm'],
+		])
+			expect(await scopes_of(source, text)).toContain(scope);
+		expect(
+			(await tokenize('a*b*c')).some((t) =>
+				t.scopes.includes('markup.bold.pfm')
+			)
+		).toBe(false);
+	});
+
+	test('a doubled star is a strong in a strong, never an empty one', async () => {
+		expect(await scopes_of('**`code` text** after', ' text')).toEqual([
+			'markup.bold.pfm',
+			'markup.bold.pfm',
+		]);
+		expect(await scopes_of('**`code` text** after', ' after')).toEqual([]);
+	});
+
+	test('a mark in a block quote runs on over the quoted lines', async () => {
+		const source = '> a *b\n> c* d\n\nafter';
+		expect(await scopes_of(source, 'c')).toEqual([
+			'markup.quote.pfm',
+			'markup.bold.pfm',
+		]);
+		expect(await scopes_of(source, '> ')).toContain(
+			'punctuation.definition.quote.begin.pfm'
+		);
+		expect(await scopes_of(source, ' d')).toEqual(['markup.quote.pfm']);
+		expect(await scopes_of('> a *b\n\nafter', 'after')).toEqual([]);
+	});
+
+	test('the closing run of a code span is as long as the opening one', async () => {
+		const tokens = await tokenize('`a`` b');
+		expect(tokens.some((t) => t.scopes.includes('markup.raw.inline.pfm'))).toBe(
+			false
+		);
+		expect(await scopes_of('```` ```ts ```` x', ' ```ts ')).toContain(
+			'markup.raw.inline.pfm'
+		);
+	});
+
+	test('a superscript steps over a code span, a footnote opens none', async () => {
+		const footnotes = 'escaped, \\[^like this], or in code, `[^abc]`.';
+		expect(await scopes_of(footnotes, '[^abc]')).toContain(
+			'markup.raw.inline.pfm'
+		);
+		expect(
+			(await tokenize(footnotes)).some((t) =>
+				t.scopes.includes('markup.superscript.pfm')
+			)
+		).toBe(false);
+		expect(await scopes_of('x^`a`^ y', '`a`')).toContain(
+			'markup.superscript.pfm'
+		);
+		expect(await scopes_of('::leaf[^two^ three]', 'two')).toContain(
+			'markup.superscript.pfm'
+		);
+	});
+});
+
+describe('blocks after container markers', () => {
+	test('a heading in a block quote, a list item and at any indent', async () => {
+		for (const source of [
+			'> ## Title',
+			'- ## Title',
+			'1. > ## Title',
+			'    ## Title',
+		])
+			expect(await scopes_of(source, 'Title')).toEqual([
+				'markup.heading.pfm',
+				'entity.name.section.pfm',
+			]);
+		expect(await all_scopes('> ## Title', ' ')).toEqual([
+			[],
+			['markup.heading.pfm'],
+		]);
+		expect(await scopes_of('> ## Title', '>')).toEqual([
+			'punctuation.definition.quote.begin.pfm',
+		]);
+		expect(
+			(await tokenize('#hashtag')).some((t) =>
+				t.scopes.includes('markup.heading.pfm')
+			)
+		).toBe(false);
+	});
+
+	test('a fence on the line of a list marker', async () => {
+		const source = '- ```js\n  let x;\n  ```\n- after';
+		expect(await scopes_of(source, 'js')).toContain(
+			'fenced_code.block.language.pfm'
+		);
+		expect(await scopes_of(source, '  let x;')).toEqual([
+			'markup.fenced_code.block.pfm',
+			'meta.embedded.block.javascript',
+		]);
+		expect(await scopes_of(source, 'after')).toEqual([]);
+	});
+
+	test('a comment and a svelte block in a block quote', async () => {
+		expect(await scopes_of('> <!-- note -->', ' note ')).toEqual([
+			'markup.quote.pfm',
+			'comment.block.html',
+		]);
+		expect(await scopes_of('> {#if a}', 'if')).toContain(
+			'keyword.control.svelte'
+		);
+	});
+});
+
+describe('the scopes around a construct', () => {
+	test('every svelte block is a block', async () => {
+		for (const [source, text] of [
+			['{#if a}', 'if'],
+			['{:else}', 'else'],
+			['{/if}', 'if'],
+		])
+			expect(await scopes_of(source, text)).toEqual([
+				'meta.svelte.block.pfm',
+				'keyword.control.svelte',
+			]);
+	});
+
+	test('the arguments of a directive on its own line are in the directive', async () => {
+		expect(await scopes_of('::toc(depth=2)', 'depth')).toEqual([
+			'meta.directive.pfm',
+			'meta.directive.args.pfm',
+			'entity.other.attribute-name.pfm',
+		]);
+	});
+
+	test('a container with a label opens with any run of colons', async () => {
+		const source = '::::figure[The *penguin*](id=fig:penguin)';
+		expect(await scopes_of(source, '::::')).toEqual([
+			'meta.directive.pfm',
+			'punctuation.definition.directive.pfm',
+		]);
+		expect(await scopes_of(source, 'penguin')).toEqual([
+			'meta.directive.pfm',
+			'meta.directive.label.pfm',
+			'markup.bold.pfm',
+		]);
+		expect(await scopes_of(source, 'fig:penguin')).toContain(
+			'string.unquoted.directive-arg.pfm'
+		);
+	});
+
+	test('arguments the parser takes, and parentheses it leaves as text', async () => {
+		const quoted = ':d[x](a="]", b=")") after';
+		expect(await scopes_of(quoted, '")"')).toContain(
+			'string.unquoted.directive-arg.pfm'
+		);
+		expect(await scopes_of(quoted, ' after')).toEqual([]);
+		for (const args of [
+			'(positional)',
+			'(a=1,)',
+			'(a=b c=d)',
+			'(a=)',
+			'(a="x)',
+		])
+			expect(await scopes_of(`:d[x]${args} q`, `${args} q`)).toEqual([]);
+	});
+
+	test('a tag that never closes ends with its paragraph', async () => {
+		expect(await scopes_of('a <span class\n\nafter', 'after')).toEqual([]);
+		expect(await scopes_of('<span\nclass="a">', 'class')).toContain(
+			'meta.tag.html.pfm'
+		);
+	});
+
+	test('a svelte element is a tag, any other scheme an autolink', async () => {
+		expect(await scopes_of('<svelte:head>', 'svelte:head')).toEqual([
+			'meta.tag.html.pfm',
+			'entity.name.tag.html',
+		]);
+		expect(await scopes_of('<mailto:a@b.c>', 'mailto:a@b.c')).toEqual([
+			'meta.link.autolink.pfm',
+			'markup.underline.link.pfm',
+		]);
+	});
+});
+
+describe('link text', () => {
+	test('holds inline marks, images and escaped brackets', async () => {
+		expect(await scopes_of('[a *b*](u)', 'b')).toEqual([
+			'meta.link.inline.pfm',
+			'string.other.link.title.pfm',
+			'markup.bold.pfm',
+		]);
+		const badge = '[![npm](badge.svg)](https://npm.im/x)';
+		expect(await scopes_of(badge, 'badge.svg')).toContain(
+			'markup.underline.link.image.pfm'
+		);
+		expect(await scopes_of(badge, 'https://npm.im/x')).toEqual([
+			'meta.link.inline.pfm',
+			'markup.underline.link.pfm',
+		]);
+		expect(await scopes_of('[a \\[b](u)', 'u')).toContain(
+			'markup.underline.link.pfm'
+		);
+		expect(await scopes_of('[a *b*][ref]', 'b')).toContain('markup.bold.pfm');
+	});
+});
+
+describe('imports', () => {
+	test('an import over lines runs to its closing brace', async () => {
+		const source =
+			'import {\n  a, // the {a}\n  b /* } */\n} from "x";\n\n# Hi';
+		for (const text of ['a', 'b', '/* } */'])
+			expect(await scopes_of(source, text)).toContain('meta.import.pfm');
+		expect((await all_scopes(source, '}'))[0]).toContain('meta.import.pfm');
+		expect(await scopes_of(source, 'Hi')).toContain('markup.heading.pfm');
+	});
+
+	test('an import that never closes its brace ends at a blank line', async () => {
+		expect(await scopes_of('import {\n  a,\n\n# Hi', 'Hi')).toContain(
+			'markup.heading.pfm'
+		);
+	});
+
+	test('a line of prose that starts with the word is no import', async () => {
+		expect(await scopes_of('import. Timing it', 'import. Timing it')).toEqual(
+			[]
+		);
+		expect(await scopes_of('import A from "./A"', 'import')).toEqual([
+			'meta.import.pfm',
+			'keyword.control.import.pfm',
 		]);
 	});
 });
