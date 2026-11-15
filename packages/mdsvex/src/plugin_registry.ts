@@ -1,5 +1,7 @@
 import type { ComponentSource } from '@mdsvex/render/html-cursor';
 import type { Rollup } from 'vite';
+import { STATIC_NAMES } from './bundle_statics.js';
+import type { StaticBundle } from './bundle_statics.js';
 import type { Bundle } from './compile.js';
 import {
 	PLUGIN_COMPONENTS_ID,
@@ -8,6 +10,8 @@ import {
 	importer_in,
 } from './ids.js';
 import type { ManifestModule, ManifestPlugin } from './manifest.js';
+import { static_names } from './static_directives.js';
+import type { StaticNames } from './static_directives.js';
 
 interface PluginModule {
 	/** the id documents import */
@@ -17,6 +21,10 @@ interface PluginModule {
 	names: string[];
 	/** the resolved id without its query, null until resolved */
 	file: string | null;
+	/** the names a .static. component serves, a directives module only, found at startup */
+	statics: StaticNames | null;
+	/** the copy of the bundle compile reads, a directives module only */
+	bundle: StaticBundle | null;
 }
 
 const DIRECTIVE_KINDS = [
@@ -26,8 +34,9 @@ const DIRECTIVE_KINDS = [
 ] as const;
 
 /**
- * the modules of the plugins option, a plugin names its exports itself so
- * nothing is scanned, documents import each through a virtual id that
+ * the modules of the plugins option, a plugin names its exports itself, a
+ * directives module is scanned once at startup only for the re-exports of
+ * .static. components, documents import each through a virtual id that
  * resolves as an import from the vite root would
  */
 export function plugin_registry(written: readonly Bundle[]) {
@@ -36,7 +45,7 @@ export function plugin_registry(written: readonly Bundle[]) {
 	const components: (PluginModule | null)[] = [];
 	const by_id = new Map<string, { module: PluginModule; plugin: string }>();
 	/** the plugins as compile takes them, each module replaced by its virtual id */
-	const bundles: Bundle[] = [];
+	let bundles: Bundle[] = [];
 
 	for (let i = 0; i < written.length; i++) {
 		const bundle = written[i];
@@ -54,9 +63,16 @@ export function plugin_registry(written: readonly Bundle[]) {
 				? Object.keys(bundle.directives)
 				: [];
 		if (names.length !== 0 && typeof bundle.module === 'string') {
-			own = { virtual: PLUGIN_ID + i, spec: bundle.module, names, file: null };
+			copy = { ...bundle, module: PLUGIN_ID + i };
+			own = {
+				virtual: PLUGIN_ID + i,
+				spec: bundle.module,
+				names,
+				file: null,
+				statics: null,
+				bundle: copy,
+			};
 			by_id.set(own.virtual, { module: own, plugin: bundle.name });
-			copy = { ...bundle, module: own.virtual };
 		}
 		let replaced: PluginModule | null = null;
 		const source: ComponentSource | undefined = bundle.components;
@@ -71,6 +87,8 @@ export function plugin_registry(written: readonly Bundle[]) {
 				spec: source.specifier,
 				names: source.names,
 				file: null,
+				statics: null,
+				bundle: null,
 			};
 			by_id.set(replaced.virtual, { module: replaced, plugin: bundle.name });
 			copy ??= { ...bundle };
@@ -101,17 +119,45 @@ export function plugin_registry(written: readonly Bundle[]) {
 					`from the vite root ${from.slice(0, -'/vite.config'.length)}`
 			);
 		}
+		// a mode is fixed until a restart, the module of a plugin is rarely edited
+		for (const module of directives) {
+			if (module === null || module.file === null) continue;
+			module.statics = await static_names(
+				ctx,
+				module.file,
+				await scan_module(module.file)
+			);
+			if (module.statics.names.length !== 0) {
+				module.bundle![STATIC_NAMES] = module.statics.names;
+				// compile keys what it unpacks by the array
+				bundles = bundles.slice();
+			}
+		}
 		resolved = true;
 	}
 
-	const manifest_module = (m: PluginModule | null): ManifestModule | null =>
-		m === null || m.file === null
-			? null
-			: { id: m.virtual, file: m.file, names: m.names };
+	const manifest_module = (m: PluginModule | null): ManifestModule | null => {
+		if (m === null || m.file === null) return null;
+		const out: ManifestModule = { id: m.virtual, file: m.file, names: m.names };
+		if (m.statics !== null && m.statics.names.length !== 0)
+			out.static = m.statics.names;
+		return out;
+	};
+	const static_of = (id: string): PluginModule | undefined => {
+		const hit = by_id.get(id)?.module;
+		return hit?.statics != null && hit.statics.names.length !== 0
+			? hit
+			: undefined;
+	};
 
 	return {
-		/** the plugins compile option, one array for every document */
-		bundles,
+		/**
+		 * the plugins compile option, one array for every document, a new one
+		 * once resolved when a plugin serves a static directive
+		 */
+		get bundles(): Bundle[] {
+			return bundles;
+		},
 		/** a plugin has document wide directive handlers, so one no component takes may still render */
 		handles_directives: written.some((bundle) => {
 			const parse = bundle?.parse;
@@ -131,6 +177,20 @@ export function plugin_registry(written: readonly Bundle[]) {
 		},
 		resolved(): boolean {
 			return resolved;
+		},
+		/** the component file of a static directive a virtual id serves */
+		static_file(id: string, name: string): string | undefined {
+			return static_of(id)?.statics!.files[name];
+		},
+		/** the module of a virtual id that serves a static directive, undefined for none */
+		static_module(id: string): string | undefined {
+			return static_of(id)?.file ?? undefined;
+		},
+		/** true when a plugin serves a static directive, known once resolved */
+		has_static(): boolean {
+			return directives.some(
+				(m) => m !== null && m.statics !== null && m.statics.names.length !== 0
+			);
 		},
 		/** the plugins for the editor manifest, in the order of the option */
 		describe(): ManifestPlugin[] {
@@ -165,4 +225,14 @@ export function plugin_registry(written: readonly Bundle[]) {
 			});
 		},
 	};
+}
+
+/** the exports of a module a plugin names, read from disk once */
+async function scan_module(file: string) {
+	const [fs, { scan_exports_detail }] = await Promise.all([
+		import('node:fs/promises'),
+		import('./scan_exports.js'),
+	]);
+	const code = await fs.readFile(file, 'utf8');
+	return scan_exports_detail(code, file.endsWith('.svelte') ? 'svelte' : 'js');
 }

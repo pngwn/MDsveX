@@ -12,14 +12,13 @@ import type { Bundle, ComponentSource, ParsePlugin } from '../src/main';
 
 const STEPS_MODULE = '@acme/steps/directives';
 
-/** the steps plugin of the design, static is set and must not matter yet */
+/** the steps plugin of the design */
 function steps(log?: string[]): Bundle {
 	return {
 		name: 'steps',
 		module: STEPS_MODULE,
 		directives: {
 			steps: {
-				static: true,
 				children: {
 					heading(node, ctx) {
 						log?.push('heading ' + ctx.index);
@@ -31,7 +30,7 @@ function steps(log?: string[]): Bundle {
 					},
 				},
 			},
-			step: { static: true },
+			step: {},
 		},
 	};
 }
@@ -654,7 +653,7 @@ describe('CompilerSession with bundles', () => {
 		const plain: Bundle = {
 			name: 'plain',
 			module: '@acme/plain',
-			directives: { note: {}, tip: { static: true } },
+			directives: { note: {}, tip: {} },
 		};
 		expect(compiler.compile('::note[]\n', { plugins: [plain] }).code).toBe(
 			"<script>\nimport { note as Note_MDSVEX_D_G } from '@acme/plain';\n</script><Note_MDSVEX_D_G />"
