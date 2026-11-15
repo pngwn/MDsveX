@@ -1,6 +1,6 @@
 {
 	"name": "@mdsvex/plugin-embeds",
-	"version": "0.1.0-next.0",
+	"version": "0.1.0-next.1",
 	"description": "Video embeds for mdsvex: YouTube and Vimeo players named by their title",
 	"type": "module",
 	"scripts": {

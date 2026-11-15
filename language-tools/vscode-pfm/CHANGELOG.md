@@ -1,5 +1,24 @@
 # vscode-pfm
 
+## 0.1.0-next.4
+
+### Patch Changes
+
+- [#1245](https://github.com/pngwn/MDsveX/pull/1245) [`09100bf`](https://github.com/pngwn/MDsveX/commit/09100bf02b7aa771c8bea99b61fa4b40508c8147) Thanks [@pngwn](https://github.com/pngwn)! - The editor no longer warns of an unknown language on a fence a plugin claims, such as `mermaid` with `@mdsvex/plugin-diagram`, as the build does not.
+
+- [#1257](https://github.com/pngwn/MDsveX/pull/1257) [`64563b7`](https://github.com/pngwn/MDsveX/commit/64563b775f51b610bf1a4377256b1fbb70c5683d) Thanks [@pngwn](https://github.com/pngwn)! - The editor highlights a document as the parser reads it in more places:
+  - an unclosed `*`, `_` or `~~` no longer colors the rest of the file, it ends with its paragraph, and a mark opens after punctuation, as in `(*note*)`, and runs on over the lines of a block quote
+  - `**bold**` is bold, not an empty mark followed by text
+  - headings, fences and comments in block quotes and list items, a fence on the line of its list marker, and a heading at any indent
+  - a container directive with a label, `::::figure[The *penguin*](id=fig)`, and only the arguments the parser takes, a quoted `)` among them
+  - link text holds marks and images, as in a badge `[![npm](badge.svg)](url)`
+  - an import over several lines, and no import in a line of prose that starts with the word
+  - `<svelte:head>` is a tag, an autolink takes any scheme, a code span closes only on a run of its own length, and a superscript no longer runs over a code span
+  - an unclosed tag ends at a blank line
+
+- Updated dependencies []:
+  - @mdsvex/typescript-plugin@0.1.0-next.4
+
 ## 0.1.0-next.3
 
 ### Patch Changes
