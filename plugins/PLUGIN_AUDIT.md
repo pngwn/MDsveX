@@ -116,7 +116,7 @@ How blocks render, and how authors style them. **Shared state:** none at runtime
 | Feature | Plugins | Delivery | Notes |
 | --- | --- | --- | --- |
 | **Task lists** | part of remark-gfm (181M) | `core`, exists | `- [x]`. A replaced `li` gets `checked`. |
-| **Callouts and GitHub alerts** | remark-github-blockquote-alert (3.8M), remark-github-admonitions-to-directives (119k), remark-github-alerts (113k), rehype-callouts (92k), remark-hint, remark-obsidian-callout | `component` (`:::note`) + `core` (`> [!NOTE]`, deferred) | The alert syntax duplicates `:::note`, but it degrades well on GitHub (PFM principle 7). Deferred for now; it will probably be supported properly. |
+| **Callouts and GitHub alerts** | remark-github-blockquote-alert (3.8M), remark-github-admonitions-to-directives (119k), remark-github-alerts (113k), rehype-callouts (92k), remark-hint, remark-obsidian-callout | `component`, exists (`@mdsvex/plugin-callouts`), and the migrator | `:::note`, `:::tip`, `:::important`, `:::warning` and `:::caution`, a static component with a default or custom title. Core does not read `> [!NOTE]`: `.svx` is never shown as a GitHub preview, so the alert syntax would only be a second way to write `:::note`. `@mdsvex/migrate` rewrites GitHub alerts as these directives and leaves a note at Obsidian's other kinds and at a callout that folds. |
 | **Styling hooks** | rehype-class-names (1.4M), rehype-add-classes (35k) | `plugin`, a recipe in the docs, no package | Classes or attributes per element without writing a component, for example `table: { class: 'table' }` or `not-prose` on code. Three lines of `parse_plugins`. |
 | **Unwrap lone images** | rehype-unwrap-images (404k), remark-unwrap-images (137k) | `core` option, exists (`unwrap_images`) | Off by default. A `<figure>` can't sit inside a `<p>`, so this comes before figures. |
 | **Figure and caption** | @microflash/rehype-figure (80k), rehype-figure, remark-figure-caption, remark-captions, rehype-semantic-images | `component`, exists (`@mdsvex/plugin-figures`) | `:::figure[Caption](id=fig:x)` around an image, a code block, a table or anything else renders a `<figure>` with the bracket text as its caption. The `id` is optional and stays on the element. It is the one way to make a figure: a lone image stays an image, unwrapped by `unwrap_images`. A numbering plugin numbers a figure through plugin data, which the component reads from Svelte context. Code fences also take `title` and `caption`. |
@@ -252,7 +252,7 @@ Ranked on usefulness to mdsvex users × popularity × cost. Items tagged `core` 
 | 7 | TOC as data | Navigation | plugin, exists | ~1.9M combined |
 | 8 | Relative images as imports, with size and loading | Resolution | vite, exists. With `@sveltejs/enhanced-img` installed every image it optimises is imported with `?enhanced` and renders as a `<picture>` with its `width` and `height`. Lazy loading is an `img` replacement. No images plugin | Svelte-specific; #611 |
 | 9 | Smart punctuation | Typography | core option, exists | 17.7M; issue #825 |
-| 10 | Callouts and GitHub alerts | Presentation | component + core | ~4.2M combined |
+| 10 | Callouts and GitHub alerts | Presentation | component + migrator, exists (`@mdsvex/plugin-callouts`) | ~4.2M combined |
 | 11 | Emoji shortcodes | Typography | plugin, exists | 9.7M |
 | 12 | Styling hooks | Presentation | plugin, a recipe in the docs | 1.4M |
 | 13 | Reading time | Document data | plugin, exists | 1M |
@@ -294,7 +294,7 @@ Ranked on usefulness to mdsvex users × popularity × cost. Items tagged `core` 
 Decided 2026-10-10:
 
 - **Core defaults.** Heading ids and unwrapping lone images go into core, each behind an option. Both are built, and off by default.
-- **GitHub alerts.** Deferred for now. They will probably be supported properly.
+- **GitHub alerts.** Deferred for now. They will probably be supported properly. Superseded 2026-11-15, see below.
 - **Custom heading ids.** Deferred until it's certain they're needed. The syntax would use square brackets, like directives.
 - **Transclusion and wiki links.** Done last. Transclusion should reuse existing constructs. New syntax only if its value is very strong.
 - **Autolink literals.** Not supported. `<https://…>` already exists, and the shorthand adds little.
@@ -314,5 +314,9 @@ Decided 2026-10-24:
 - **Diagrams draw with pele or mermaid.** pele draws Mermaid syntax at build time and the page ships the SVG, mermaid draws in the browser. `engine: 'auto'` takes pele when it is installed. Both are optional peers, and the choice is made once when the plugin is set up, so a package that is not installed is never imported.
 - **Mermaid wraps the fence instead of replacing `pre`.** A site has one `pre`, so a Mermaid `pre` would fight the site's own and the copy button.
 - **A figure is the `:::figure[Caption](id=…)` directive of `@mdsvex/plugin-figures`, and only that.** It holds an image or anything else, the id is optional, and a lone image with a title is not a figure. A numbering plugin numbers a figure whose id it knows by writing the number to its plugin data, and the figure component puts it in front of the caption.
+
+Decided 2026-11-15:
+
+- **GitHub alerts are a migration, not syntax.** Core does not read `> [!NOTE]`. A `.svx` file is never rendered as a GitHub preview, so the alert syntax degrading well there buys nothing, and plugins never add syntax. `@mdsvex/migrate` rewrites the five GitHub kinds as container directives, text after the marker as the label, and `@mdsvex/plugin-callouts` supplies static components for them. Obsidian's other kinds and its folding markers stay block quotes with a migrator note.
 
 Nothing is open.
