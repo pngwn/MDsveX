@@ -1071,7 +1071,15 @@ export function mdsvex(options: MdsvexOptions = {}): Plugin[] {
 				plugins?.static_module(id)) === undefined
 		)
 			return resolved;
-		return { ...resolved, id: live_id(resolved.id) };
+		return {
+			...resolved,
+			id: live_id(resolved.id),
+			// rolldown matches the sideEffects globs of the package against the id
+			// with its query, a glob naming the module misses it and the module is
+			// dropped with the css it imports, which is all a page of shells needs it for
+			moduleSideEffects:
+				resolved.moduleSideEffects === false ? false : 'no-treeshake',
+		};
 	}
 
 	/** undefined for an id that is no snippet, sub requests of one are not it either */
