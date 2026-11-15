@@ -29,6 +29,7 @@
 	"dependencies": {
 		"@fontsource/source-code-pro": "^5.2.5",
 		"@mdsvex/plugin-anchors": "workspace:*",
+		"@mdsvex/plugin-callouts": "workspace:*",
 		"@mdsvex/plugin-citations": "workspace:*",
 		"@mdsvex/plugin-code-blocks": "workspace:*",
 		"@mdsvex/plugin-diagram": "workspace:*",

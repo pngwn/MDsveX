@@ -1,0 +1,36 @@
+<script>
+  let count = $state(0);
+</script>
+
+# Callouts
+
+:::note
+Highlights information that users should take into account, even when skimming.
+:::
+
+:::tip
+Optional information to help a user be more successful.
+:::
+
+:::important
+Crucial information necessary for users to succeed.
+:::
+
+:::warning[Breaking _change_]
+Critical content demanding immediate user attention due to potential risks.
+
+- the `layout` option is now `templates`
+- the `smartypants` option is now `smart_punctuation`
+:::
+
+:::caution
+Negative potential consequences of an action.
+:::
+
+::::note[Nested]
+A live counter inside: <button onclick={() => count++}>clicked {count}</button>
+
+:::tip
+A callout in a callout.
+:::
+::::
