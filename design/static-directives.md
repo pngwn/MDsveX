@@ -1,6 +1,6 @@
 # Static directives: design
 
-Status: draft (2026-11-13). Every open question decided the same day: Option A, `.static.svelte` file names, and the recommendations for Q2 to Q5. Phases 1 to 5 are built (2026-11-14, see §8). In dev and in a build a static directive renders as its shell, with its styles and assets, and the browser never loads its component. A plugin's module declares one by the same file rule, and the check of §6 runs at startup and before each render. Left: the first-party plugins switch (phase 6) and moving `<svelte:head>` (Q4). Replaces §5 of `design/plugin-directives.md` and answers its Q4 (styles), Q5 (where static is declared) and Q6 (loading components at build time). The build-time render was first checked by a spike (§9).
+Status: draft (2026-11-13). Every open question decided the same day: Option A, `.static.svelte` file names, and the recommendations for Q2 to Q5. Phases 1 to 6 are built (2026-11-14, see §8). In dev and in a build a static directive renders as its shell, with its styles and assets, and the browser never loads its component. A plugin's module declares one by the same file rule, and the check of §6 runs at startup and before each render. The first-party steps, elements and embeds are static. Left: moving `<svelte:head>` (Q4). Replaces §5 of `design/plugin-directives.md` and answers its Q4 (styles), Q5 (where static is declared) and Q6 (loading components at build time). The build-time render was first checked by a spike (§9).
 
 A static directive is a directive whose component is rendered once at build time. Its HTML is written into the document's markup. No component code ships for it, and it adds no hydration work. The children of a static directive stay ordinary document markup, so `{expr}`, live components and live directives inside it still work (the "shell with holes" of `plugin-directives.md` §5.2, kept as it was).
 
@@ -108,7 +108,7 @@ mdsvex could compile the component and call it static when it has no state, effe
 
 The alternative is to keep `static: true` on the entry, as `plugin-directives.md` §3.1 drafted. It costs no scan and lets a plugin compute the mode from its options. Its problem: when a site overrides the component, the flag describes a component that no longer renders. That is Q2.
 
-**Which first-party directives would be static:** `steps`/`step`, `figure`, the elements (`badge`, `kbd`, `abbr`, `mark`, `ins`, `ruby`), callouts, and the embeds that render a plain iframe or image. `tabs`, `accordion` (if it animates) and anything that coordinates through context stay live.
+**Which first-party directives are static** (phase 6): `steps`/`step`, all eight elements (`details`, `accordion`, `kbd`, `ruby`, `badge`, `mark`, `ins`, `abbr`; `details` is the native element and `accordion` does not animate), and the `youtube` and `vimeo` embeds. `figure` stays live, as it reads its number from plugin data through context so it can show it while a document streams. `tabs`, the toc, citations, numbering and anything else that coordinates through context stay live.
 
 ## 4. Where the render runs
 
@@ -230,7 +230,7 @@ Unchanged from `plugin-directives.md` §5.4: no runtime (no handlers, effects or
 | 3    | built: stripped registration module, side-effect import of it, styles (§5.4), asset marks (§5.3)                                                                      |
 | 4    | built: the child server, the process cache, the no-config-file error                                                                                                  |
 | 5    | built: the check (§6), plugins move to `.static.svelte` names, `BundleDirective.static` dropped                                                                       |
-| 6    | first-party plugins switch the directives listed in §3                                                                                                                |
+| 6    | built: first-party plugins switch the directives listed in §3                                                                                                         |
 
 ### 8.1 What phase 2 found
 
@@ -271,6 +271,16 @@ Unchanged from `plugin-directives.md` §5.4: no runtime (no handlers, effects or
 - **The names reach compile on the vite plugin's own copy of the bundle,** under `Symbol.for('mdsvex.static_names')` from an internal module, so the public `Bundle` type gains nothing. The registry hands out a new bundles array once the scan found one, as compile keys what it unpacks by the array.
 - **A config with plugins and no `components` option** now gets the static environment, since a plugin may serve a static directive.
 - **Not checked yet:** a plugin published to npm whose module Vite prebundles in dev. Its re-exports are inlined in the prebundled file, so the live variant has nothing to blank and the client loads the static component's code in dev. A build is unaffected. Phase 6 meets it first, and `optimizeDeps.exclude` of the plugin's module is the likely answer.
+
+### 8.5 What phase 6 found
+
+- **A plugin's styled module re-exported through `export * from './unstyled.js'`.** The scan reads only the module the bundle names, so the static components one module down were invisible and would have rendered live without a word. The styled modules now repeat the re-exports. Registration follows an `export *`, and a named re-export, into any JS or TS module and errors when it reaches a static component. Component files are leaves and are never read, so a large barrel costs no extra reads.
+- **An installed plugin crashed a dev server at startup** once the optimizer was on, which every test app had turned off. The client environment resolves a plugin's module to its prebundled file under `.vite/deps`, which does not exist yet when the startup scan reads it, and a prebundled module has its re-exports inlined, so the live variant would ship the static components too. In dev mdsvex adds the package of each plugin's module to `optimizeDeps.exclude`. A plugin forced back in with `optimizeDeps.include` warns and renders its directives live. This bug came with phase 5.
+- **The public component paths stay,** `@mdsvex/plugin-steps/Steps.svelte` points at `dist/Steps.static.svelte`. The docs tell users to import them to wrap one, and the mode follows the resolved file, so a site that overrides `step` with the plugin's own component gets a static `step`.
+- **An embed with an id dropped its label in the component,** which a shell treats as an error. The embeds handler removes the label once its text is the frame's `title`, where the component would have dropped it anyway, and a `text` hook keeps the plain text of the document reading the title.
+- **`svelte-package` keeps the `.static.` names** in `dist`, with a `.static.svelte.d.ts` beside each.
+- **A plugin's css was lost in a Vite 8 build.** Rolldown matches the `sideEffects` globs of a package against the id with its query, so `directives.js?mdsvex-live` matched no glob and was dropped with the css it imports, though Vite had resolved the file as a side effect. Vite 7 builds with Rollup, which kept it. The live module now resolves with `moduleSideEffects: 'no-treeshake'`, or `false` when its package says the module has none. `packages/test-app/test/static_css_build.spec.ts` builds with the app's Vite 8 and reads the css of each page from the manifest.
+- **Checked on the test app,** which runs all sixteen first-party plugins: in dev the steps, elements and embeds pages fetched each plugin's `directives.js?mdsvex-live` and stylesheet and no `.static.svelte` file. `vite build` from the command line took 6s, and no client chunk held component code (the embed URLs are built at runtime by the component and appear only as finished URLs in shells). In `vite preview` each of those pages linked its plugin's stylesheet and no other, `/toc` the steps one for the steps it holds.
 
 ## 9. Spike (2026-11-13)
 

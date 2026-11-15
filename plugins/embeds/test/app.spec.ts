@@ -100,14 +100,15 @@ describe('in a vite app', () => {
 		);
 	});
 
-	test('the client gets the components and the stylesheet', async () => {
+	test('the client gets the stylesheet, the static components only when imported', async () => {
 		const client = server.environments.client;
 		const entry = await client.transformRequest(
-			'/node_modules/@mdsvex/plugin-embeds/dist/directives.js'
+			'/node_modules/@mdsvex/plugin-embeds/dist/directives.js?mdsvex-live'
 		);
 		expect(entry?.code).toMatch(/import ".*\/dist\/embeds\.css"/);
+		expect(entry?.code).not.toContain('.static.svelte');
 		const youtube = await client.transformRequest(
-			'/node_modules/@mdsvex/plugin-embeds/dist/YouTube.svelte'
+			'/node_modules/@mdsvex/plugin-embeds/dist/YouTube.static.svelte'
 		);
 		expect(youtube?.code).toMatch(/svelte.internal.client/);
 	});

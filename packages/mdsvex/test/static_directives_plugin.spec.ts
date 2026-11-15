@@ -272,8 +272,11 @@ describe('static directives', () => {
 });
 
 describe('static directive registration errors', () => {
-	async function start_error(barrel: string): Promise<string> {
-		const root = write_app({ 'src/lib/directives/index.ts': barrel });
+	async function start_error(
+		barrel: string,
+		more: Record<string, string> = {}
+	): Promise<string> {
+		const root = write_app({ 'src/lib/directives/index.ts': barrel, ...more });
 		let server: ViteDevServer | undefined;
 		try {
 			// a registration error stops the server at start, as every one does
@@ -319,6 +322,33 @@ describe('static directive registration errors', () => {
 		);
 		expect(message).toContain(
 			're-exports with export * from the static component "./Callout.static.svelte"'
+		);
+	});
+
+	test('a static component behind export * of another module', async () => {
+		const message = await start_error(
+			"export * from './more.ts';\nexport { default as badge } from './Badge.svelte';",
+			{
+				'src/lib/directives/more.ts':
+					"export { default as callout } from './Callout.static.svelte';",
+			}
+		);
+		expect(message).toContain(
+			'[mdsvex] <root>/src/lib/directives/index.ts re-exports the static directive ' +
+				'"callout" through "./more.ts", mdsvex reads static components only in the module it is given'
+		);
+	});
+
+	test('a static component re-exported by name through another module', async () => {
+		const message = await start_error(
+			"export { callout } from './more.ts';\nexport { default as badge } from './Badge.svelte';",
+			{
+				'src/lib/directives/more.ts':
+					"export { default as callout } from './Callout.static.svelte';",
+			}
+		);
+		expect(message).toContain(
+			're-exports the static directive "callout" through "./more.ts"'
 		);
 	});
 

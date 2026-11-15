@@ -14,3 +14,5 @@ export { default as counter } from './Counter.svelte';
 The component renders through your own Vite config in dev and in `vite build`, so aliases, `define`, Svelte options and other plugins apply to it. Its scoped styles and the assets it imports reach the page as they would from a live component. A plugin declares a static directive the same way, by the file name of the component its module re-exports, and the unused `static` key of a plugin directive is gone.
 
 A static component that uses something which can never run in static output, such as an event handler, `bind:`, `use:`, `{@attach}`, a transition or `getContext`, is an error naming each use. A component that does not render a snippet it is given exactly once, or that writes `<svelte:head>` content, is an error too.
+
+A static component must be re-exported from the directives module itself. One that module reaches through `export * from` another module, or through a named re-export of one, is an error that says how to re-export it, rather than rendering live without a word.

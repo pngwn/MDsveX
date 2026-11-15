@@ -29,20 +29,26 @@ function embed(
 			}
 			return () => {
 				const args = node.attrs.args;
-				if (args?.title !== undefined) return;
-				// an expression is not known until the page runs, it leaves a gap
-				const title = node.text_content.replace(/\s+/g, ' ').trim();
-				if (title === '') {
-					ctx.warn(
-						'embed_without_title',
-						`::${name} has no title, a screen reader names the frame "${site} video", write the title in its brackets`,
-						node
-					);
-					return;
+				if (args?.title === undefined) {
+					// an expression is not known until the page runs, it leaves a gap
+					const title = node.text_content.replace(/\s+/g, ' ').trim();
+					if (title === '') {
+						ctx.warn(
+							'embed_without_title',
+							`::${name} has no title, a screen reader names the frame "${site} video", write the title in its brackets`,
+							node
+						);
+					} else node.attrs.args = { ...args, title };
 				}
-				node.attrs.args = { ...args, title };
+				// a frame shows no label, and a static component must render each snippet it gets
+				if (typeof id === 'string' && id !== '') {
+					for (let c = node.first_child; c !== null; c = c.next)
+						if (c.type === 'directive_label') c.remove();
+				}
 			};
 		},
+		// the label is gone once it is the title of a frame
+		text: (args, label) => (label === '' ? args.title : label),
 	};
 }
 

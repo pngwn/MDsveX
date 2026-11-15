@@ -58,9 +58,10 @@ Built with [`svelte-package`](https://svelte.dev/docs/kit/packaging), after `tsc
 - **`svelte` is a peer dependency.**
 - **The bundle's `module` is a subpath of the package**, such as `@mdsvex/plugin-steps/directives`. That file exports one component for each directive, under the directive's name. In `exports` it has a `svelte` condition and no `default`, as the Svelte packaging guide asks, so vite-plugin-svelte treats the package as a component library and compiles it for the server too. The Vite plugin resolves `module` from the Vite root, so the user's install is the one used.
 - **Write components in JavaScript with JSDoc types.** `svelte-package` only strips TypeScript from a component when a preprocessor is configured, and there is none.
-- **Relative imports carry their extension**, `./unstyled.js` and `./Steps.svelte`, since the files are not bundled.
+- **Relative imports carry their extension**, `./unstyled.js` and `./Steps.static.svelte`, since the files are not bundled.
 - **Styles go in a `.css` file the module imports**, not in a `<style>` block, so a user can leave them out or replace them. List it in `sideEffects`, with the module that imports it.
-- **Keep a component free of state, effects and context** if it could be rendered at build time later (static directives in `design/plugin-directives.md`).
+- **A component with no runtime is a static directive.** Name its file `Name.static.svelte`, and mdsvex renders it once at build time and ships none of its code. It uses no handlers, bindings, transitions or context, which mdsvex checks when it starts, and renders each snippet it gets exactly once, which mdsvex checks when it renders. Keep the public export path without `.static` (`"./Steps.svelte": "./dist/Steps.static.svelte"`), so an import that wraps the component does not depend on its mode.
+- **Re-export a static component from the module the bundle names**, as `export { default as name } from './Name.static.svelte'`. mdsvex reads only that module for static components, so a styled module that does `export * from './unstyled.js'` is an error once `unstyled.js` re-exports one. Repeat the re-exports in both modules instead.
 
 ## Releasing
 
