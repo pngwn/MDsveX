@@ -1,6 +1,5 @@
 <script>
 import { page } from "$app/state";
-import Perch from "$lib/design/penguin/Perch.svelte";
 import ReadingSwitch from "$lib/docs/ReadingSwitch.svelte";
 import { provide_reading } from "$lib/docs/reading.svelte";
 import { nav, pages } from "./nav.js";
@@ -66,13 +65,10 @@ $effect(() => {
 			<!-- over a page with an example; a page without one hides it (below) -->
 			<div class="tools"><ReadingSwitch /></div>
 
-			<!-- the line bird stands on the double bar of the page's last score, if it has one -->
 			{#key page.url.pathname}
-				<Perch>
-					<article class="prose">
-						{@render children()}
-					</article>
-				</Perch>
+				<article class="prose">
+					{@render children()}
+				</article>
 			{/key}
 		</div>
 	</div>

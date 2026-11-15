@@ -109,7 +109,7 @@
 	<section class="piece" aria-labelledby="title-score">
 		<h2 id="title-score">The name, as written</h2>
 		<div class="title-score">
-			<Score source={title} {palette} label="md, an expression, ex, as a heading" />
+			<Score source={title} {palette} text bars label="md, an expression, ex, as a heading" />
 		</div>
 	</section>
 
@@ -120,7 +120,7 @@
 			characters it holds.
 		</p>
 		<div class="score">
-			<Score source={streamed} {palette} stream={player.pos} label="A source streamed into the parser" />
+			<Score source={streamed} {palette} text bars stream={player.pos} label="A source streamed into the parser" />
 		</div>
 		<div class="transport">
 			<button type="button" onclick={() => player.toggle()}>{player.playing ? 'Pause' : 'Play'}</button>
@@ -140,7 +140,7 @@
 		<section class="piece" aria-labelledby="piece-{piece.id}">
 			<h2 id="piece-{piece.id}">{piece.title}</h2>
 			<div class="score">
-				<Score source={piece.source} {palette} label={piece.title} />
+				<Score source={piece.source} {palette} text bars label={piece.title} />
 			</div>
 		</section>
 	{/each}
@@ -187,7 +187,7 @@
 		<h2 id="piece-nested">{nested.title}</h2>
 		<Perch>
 			<div class="score">
-				<Score source={nested.source} {palette} label={nested.title} />
+				<Score source={nested.source} {palette} text bars label={nested.title} />
 			</div>
 		</Perch>
 	</section>
