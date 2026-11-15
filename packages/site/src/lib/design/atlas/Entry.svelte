@@ -31,7 +31,7 @@
 </script>
 
 {#snippet score()}
-	<Score source={c.source} {palette} staves bind:focus label="{c.name}, as the parser reads it" />
+	<Score source={c.source} {palette} staves text bars bind:focus label="{c.name}, as the parser reads it" />
 {/snippet}
 
 <article class="plate" id={c.id} style:--own-line="var(--line-{own})" style:--own-name="var(--name-{own})" aria-labelledby="{c.id}-name">

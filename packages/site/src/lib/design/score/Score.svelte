@@ -16,9 +16,10 @@
 	// - nested: a block that takes more than one system is drawn once, over its
 	//   first, as wide as its widest line, with a bracket down the margin
 	// - a bar where a phrase opens and one where it closes, 1.5px like its line
-	// - text phrases quiet, unnamed, their rows closed up
+	// - text phrases quiet, unnamed, their rows closed up, given `text`
 	// - names hugging the corner of their opening bar and their line
-	// - a bar line after the last line of a block, the double bar at the end
+	// - a bar line after the last line of a block, the double bar at the end,
+	//   given `bars`
 	// - pointing at a phrase washes its characters in its own colour and steps
 	//   everything else back
 	//
@@ -60,6 +61,14 @@
 		 * a docs example compiled with a config that sets it
 		 */
 		syntax?: Syntax;
+		/**
+		 * draw the text phrases, the quiet strokes under plain runs of text, and
+		 * their rows. Off, only structure is drawn and the source reads clearer;
+		 * the atlas and the design page turn it on
+		 */
+		text?: boolean;
+		/** draw a bar line after each block and the double bar at the end */
+		bars?: boolean;
 	}
 
 	let {
@@ -71,6 +80,8 @@
 		label = 'The parser’s reading of the source',
 		cue = [],
 		syntax = {},
+		text = false,
+		bars = false,
 	}: Props = $props();
 
 	const NBSP = String.fromCharCode(160);
@@ -80,7 +91,10 @@
 	let bar = $derived(streaming ? reading.bars[Math.max(0, Math.min(stream!, reading.bars.length - 1))] : settled(reading));
 	let length = $derived(source.length);
 	let fed = $derived(streaming ? bar.fed : length);
-	let drawn = $derived(strokes(bar, streaming));
+	let drawn = $derived.by(() => {
+		const all = strokes(bar, streaming);
+		return text ? all : all.filter((m) => m.ink !== 'text');
+	});
 
 	/** each markup character takes the name tone of the construct it belongs to */
 	let owner = $derived.by(() => {
@@ -385,7 +399,7 @@
 				></span>
 			{/each}
 
-			{#if closes}
+			{#if closes && bars}
 				<span class="barline" style:grid-row={rows.length + 1} style:grid-column="{to + 2} / {to + 3}"></span>
 			{/if}
 

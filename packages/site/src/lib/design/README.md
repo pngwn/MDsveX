@@ -28,6 +28,7 @@ The 1.0 design foundation, phase 0 of `design/SITE_PLAN.md`. `design/SCORE.md` i
 - `focus`, bindable, the lit phrase `{ start, end, kind }`, for output beside the score to light with it. `tone(focus.kind)` from `kinds.ts` gives its colour as `var(--line-<tone>)`.
 - `syntax`, the parser's syntax choices, `{ unwrap_images }`, for an example compiled with a config that sets them.
 - `cue`, source ranges `[start, end)` the page points at, ruled under their cells in the ink, for a contrast to show which characters made the difference.
+- `text` and `bars`, both off by default. `text` draws the text phrases, the quiet strokes under plain runs of text, and their rows; `bars` draws a bar line after each block and the double bar at the end. The atlas and the design page turn both on. The docs leave them off, so the structure reads over the source.
 - `label`, the figure's accessible name. The source is also given whole to screen readers; the drawing is hidden from them.
 
 A docs page doesn't import it. It flags a fence, and `packages/site/build/examples.js` makes the fence a directive at build time (`src/lib/docs/Pair.svelte` and `Contrast.svelte`):
