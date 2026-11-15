@@ -825,9 +825,18 @@ interface Unpacked {
 	parse: Merge<ParsePlugin>;
 	/** the fence languages the bundles claim, null when none does */
 	fences: FenceClaims | null;
+	/** the bundles it was made from, an array changed in place unpacks again */
+	from: Bundle[];
 }
 
 const unpacked = new WeakMap<Bundle[], Unpacked>();
+
+/** the array still holds the bundles it was unpacked from, in order */
+function same_bundles(bundles: Bundle[], from: Bundle[]): boolean {
+	if (bundles.length !== from.length) return false;
+	for (let i = 0; i < from.length; i++) if (bundles[i] !== from[i]) return false;
+	return true;
+}
 
 function bundle_error(i: number, bundle: unknown, message: string): Error {
 	const name =
@@ -852,7 +861,7 @@ function is_record(value: unknown): value is Record<string, unknown> {
  */
 function unpack(bundles: Bundle[]): Unpacked {
 	const hit = unpacked.get(bundles);
-	if (hit !== undefined) return hit;
+	if (hit !== undefined && same_bundles(bundles, hit.from)) return hit;
 	if (!Array.isArray(bundles))
 		throw new Error('[mdsvex] plugins must be an array of plugins');
 	const tables: BoundTables = [];
@@ -942,6 +951,7 @@ function unpack(bundles: Bundle[]): Unpacked {
 		components: new Merge(components),
 		parse: new Merge(parse),
 		fences: fences === null ? null : new FenceClaims(fences),
+		from: bundles.slice(),
 	};
 	unpacked.set(bundles, out);
 	return out;
