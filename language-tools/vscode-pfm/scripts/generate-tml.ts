@@ -199,9 +199,10 @@ function fence(language: Language) {
 		: [language.source];
 	return {
 		name: 'markup.fenced_code.block.pfm',
-		begin: `^([ \\t]*(?:>[ \\t]*)*)(\`{3,})(${language.identifiers.map(escape).join('|')})(?=[ \\t]|$)([^\`]*)$`,
+		begin: `^([ \\t]*(?:>[ \\t]*|(?:[-*+]|\\d{1,9}[.)])[ \\t]+)*)(\`{3,})(${language.identifiers.map(escape).join('|')})(?=[ \\t]|$)([^\`]*)$`,
 		end: '^[ \\t]*(?:>[ \\t]*)*(\\2`*)[ \\t]*$',
 		beginCaptures: {
+			1: { patterns: [{ include: '#container-prefix' }] },
 			2: { name: 'punctuation.definition.code.begin.pfm' },
 			3: { name: 'fenced_code.block.language.pfm' },
 			4: { patterns: [{ include: '#fence-meta' }] },

@@ -37,21 +37,69 @@
 		},
 
 		"import-statement": {
-			"name": "meta.import.pfm",
-			"match": "^(import)\\b(.*)$",
-			"captures": {
-				"1": { "name": "keyword.control.import.pfm" },
-				"2": { "patterns": [{ "include": "source.ts" }] }
-			}
+			"patterns": [
+				{
+					"comment": "a brace left open on the first line runs to the line that closes it, the embedded grammar would hold the brace past it",
+					"name": "meta.import.pfm",
+					"begin": "^(import)\\b(?=[^{}]*\\{[^}]*$)",
+					"end": "(\\})(.*)$|^(?=[ \\t]*$)",
+					"beginCaptures": {
+						"1": { "name": "keyword.control.import.pfm" }
+					},
+					"endCaptures": {
+						"1": { "name": "punctuation.definition.block.ts" },
+						"2": { "patterns": [{ "include": "source.ts" }] }
+					},
+					"patterns": [{ "include": "#import-specifiers" }]
+				},
+				{
+					"comment": "a line of prose that starts with the word is no import, an import names its module",
+					"name": "meta.import.pfm",
+					"match": "^(import)\\b(?=\\s*[\"']|.*\\bfrom\\s*[\"'])(.*)$",
+					"captures": {
+						"1": { "name": "keyword.control.import.pfm" },
+						"2": { "patterns": [{ "include": "source.ts" }] }
+					}
+				}
+			]
+		},
+
+		"import-specifiers": {
+			"patterns": [
+				{ "match": "//.*$", "name": "comment.line.double-slash.ts" },
+				{ "match": "/\\*.*?\\*/", "name": "comment.block.ts" },
+				{ "match": "\"[^\"]*\"|'[^']*'", "name": "string.quoted.ts" },
+				{ "match": "\\b(?:as|type)\\b", "name": "keyword.control.as.ts" },
+				{ "match": "\\{", "name": "punctuation.definition.block.ts" },
+				{ "match": ",", "name": "punctuation.separator.comma.ts" },
+				{
+					"match": "[A-Za-z_$][\\w$]*",
+					"name": "variable.other.readwrite.alias.ts"
+				}
+			]
+		},
+
+		"container-prefix": {
+			"comment": "the quote and list markers before a block on its line",
+			"patterns": [
+				{ "match": ">", "name": "punctuation.definition.quote.begin.pfm" },
+				{
+					"match": "[-*+]|\\d+[.)]",
+					"name": "punctuation.definition.list.begin.pfm"
+				}
+			]
 		},
 
 		"heading": {
-			"name": "markup.heading.pfm",
-			"match": "^(#{1,6})\\s+(.+)$",
+			"comment": "at any indent, PFM has no indented code, and after any quote and list markers",
+			"match": "^([ \\t]*(?:>[ \\t]*|(?:[-*+]|\\d{1,9}[.)])[ \\t]+)*)((#{1,6})(?:[ \\t]+(.*?))?)[ \\t]*$",
 			"captures": {
-				"1": { "name": "punctuation.definition.heading.pfm" },
-				"2": {
-					"name": "entity.name.section.pfm",
+				"1": { "patterns": [{ "include": "#container-prefix" }] },
+				"2": { "name": "markup.heading.pfm" },
+				"3": { "name": "punctuation.definition.heading.pfm" },
+				"4": {
+					"comment": "a capture with patterns drops the scopes of the captures around it",
+					"name": "markup.heading.pfm entity.name.section.pfm",
 					"patterns": [{ "include": "#inline" }]
 				}
 			}
@@ -72,7 +120,7 @@
 			"patterns": [
 				{ "include": "#table-row-continued" },
 				{ "include": "#list-item-continued" },
-				{ "include": "#inline" }
+				{ "include": "#inline-quoted" }
 			]
 		},
 
@@ -168,9 +216,10 @@
 				{
 					"comment": "any other language, or none, the info string may start with its meta",
 					"name": "markup.fenced_code.block.pfm",
-					"begin": "^([ \\t]*(?:>[ \\t]*)*)(`{3,})((?:[^\\s`=\\[{/]+(?=[ \\t]|$))?)([^`]*)$",
+					"begin": "^([ \\t]*(?:>[ \\t]*|(?:[-*+]|\\d{1,9}[.)])[ \\t]+)*)(`{3,})((?:[^\\s`=\\[{/]+(?=[ \\t]|$))?)([^`]*)$",
 					"end": "^[ \\t]*(?:>[ \\t]*)*(\\2`*)[ \\t]*$",
 					"beginCaptures": {
+						"1": { "patterns": [{ "include": "#container-prefix" }] },
 						"2": { "name": "punctuation.definition.code.begin.pfm" },
 						"3": { "name": "fenced_code.block.language.pfm" },
 						"4": { "patterns": [{ "include": "#fence-meta" }] }
@@ -275,9 +324,9 @@
 		},
 
 		"svelte-block": {
-			"name": "meta.svelte.block.pfm",
 			"patterns": [
 				{
+					"name": "meta.svelte.block.pfm",
 					"begin": "(\\{)(#)(if|each|await|key)",
 					"end": "(\\})",
 					"beginCaptures": {
@@ -291,6 +340,7 @@
 					"patterns": [{ "include": "source.ts" }]
 				},
 				{
+					"name": "meta.svelte.block.pfm",
 					"begin": "(\\{)(:)(else if|else|then|catch)",
 					"end": "(\\})",
 					"beginCaptures": {
@@ -304,6 +354,7 @@
 					"patterns": [{ "include": "source.ts" }]
 				},
 				{
+					"name": "meta.svelte.block.pfm",
 					"match": "(\\{)(/)(if|each|await|key)(\\})",
 					"captures": {
 						"1": { "name": "punctuation.definition.block.begin.pfm" },
@@ -341,7 +392,11 @@
 
 		"inline": {
 			"patterns": [
+				{ "include": "#html-comment" },
+				{ "include": "#svelte-block" },
+				{ "include": "#svelte-tag" },
 				{ "include": "#svelte-expression" },
+				{ "include": "#autolink" },
 				{ "include": "#component-tag" },
 				{ "include": "#html-tag" },
 				{ "include": "#math-span" },
@@ -356,9 +411,96 @@
 				{ "include": "#link" },
 				{ "include": "#image" },
 				{ "include": "#link-reference" },
-				{ "include": "#autolink" },
 				{ "include": "#hard-break" },
 				{ "include": "#escape" }
+			]
+		},
+
+		"inline-quoted": {
+			"comment": "the inline of a line in a block quote, where a mark runs on over the next quoted lines",
+			"patterns": [
+				{ "include": "#emphasis-quoted" },
+				{ "include": "#strong-quoted" },
+				{ "include": "#strikethrough-quoted" },
+				{ "include": "#inline" }
+			]
+		},
+
+		"quote-continued": {
+			"comment": "the markers that start a quoted line inside a mark",
+			"match": "^[ \\t]*(?:>[ \\t]*)+",
+			"name": "punctuation.definition.quote.begin.pfm"
+		},
+
+		"emphasis-quoted": {
+			"name": "markup.italic.pfm",
+			"begin": "(?<=^|[\\s\\p{P}\\p{S}])(_)(?=\\S)",
+			"end": "(?!\\G)(?<=\\S)(_)(?=[\\s\\p{P}\\p{S}]|$)|^(?=[ \\t]*(?:>[ \\t]*)*$|(?![ \\t]*>)|[ \\t]*(?:>[ \\t]*)+(?:#{1,6}(?:[ \\t]|$)|`{3,}|[-*+][ \\t]|\\d{1,9}[.)][ \\t]|\\||:{2,}))",
+			"beginCaptures": {
+				"1": {
+					"name": "punctuation.definition.italic.begin.pfm"
+				}
+			},
+			"endCaptures": {
+				"1": {
+					"name": "punctuation.definition.italic.end.pfm"
+				}
+			},
+			"patterns": [
+				{
+					"include": "#quote-continued"
+				},
+				{
+					"include": "#inline"
+				}
+			]
+		},
+
+		"strong-quoted": {
+			"name": "markup.bold.pfm",
+			"begin": "(?<=^|[\\s\\p{P}\\p{S}])(\\*)(?=\\S)",
+			"end": "(?!\\G)(?<=\\S)(\\*)(?=[\\s\\p{P}\\p{S}]|$)|^(?=[ \\t]*(?:>[ \\t]*)*$|(?![ \\t]*>)|[ \\t]*(?:>[ \\t]*)+(?:#{1,6}(?:[ \\t]|$)|`{3,}|[-*+][ \\t]|\\d{1,9}[.)][ \\t]|\\||:{2,}))",
+			"beginCaptures": {
+				"1": {
+					"name": "punctuation.definition.bold.begin.pfm"
+				}
+			},
+			"endCaptures": {
+				"1": {
+					"name": "punctuation.definition.bold.end.pfm"
+				}
+			},
+			"patterns": [
+				{
+					"include": "#quote-continued"
+				},
+				{
+					"include": "#inline"
+				}
+			]
+		},
+
+		"strikethrough-quoted": {
+			"name": "markup.strikethrough.pfm",
+			"begin": "(~~)(?=\\S)",
+			"end": "(?<=\\S)(~~)|^(?=[ \\t]*(?:>[ \\t]*)*$|(?![ \\t]*>)|[ \\t]*(?:>[ \\t]*)+(?:#{1,6}(?:[ \\t]|$)|`{3,}|[-*+][ \\t]|\\d{1,9}[.)][ \\t]|\\||:{2,}))",
+			"beginCaptures": {
+				"1": {
+					"name": "punctuation.definition.strikethrough.begin.pfm"
+				}
+			},
+			"endCaptures": {
+				"1": {
+					"name": "punctuation.definition.strikethrough.end.pfm"
+				}
+			},
+			"patterns": [
+				{
+					"include": "#quote-continued"
+				},
+				{
+					"include": "#inline"
+				}
 			]
 		},
 
@@ -378,7 +520,7 @@
 		"component-tag": {
 			"name": "meta.tag.component.pfm",
 			"begin": "(<)([A-Z][a-zA-Z0-9]*)",
-			"end": "(/?>)",
+			"end": "(/?>)|^(?=[ \\t]*$)",
 			"beginCaptures": {
 				"1": { "name": "punctuation.definition.tag.begin.html" },
 				"2": { "name": "support.class.component.svelte" }
@@ -391,8 +533,8 @@
 
 		"html-tag": {
 			"name": "meta.tag.html.pfm",
-			"begin": "(</?)(\\w[\\w-]*)",
-			"end": "(/?>)",
+			"begin": "(</?)(\\w[\\w-]*(?::[\\w-]+)?)",
+			"end": "(/?>)|^(?=[ \\t]*$)",
 			"beginCaptures": {
 				"1": { "name": "punctuation.definition.tag.begin.html" },
 				"2": { "name": "entity.name.tag.html" }
@@ -452,7 +594,7 @@
 
 		"code-span": {
 			"name": "markup.inline.raw.string.pfm",
-			"match": "(`+)(.+?)(\\1)",
+			"match": "(?<!`)(`+)(?!`)(.+?)(?<!`)(\\1)(?!`)",
 			"captures": {
 				"1": { "name": "punctuation.definition.raw.begin.pfm" },
 				"2": { "name": "markup.raw.inline.pfm" },
@@ -462,8 +604,8 @@
 
 		"emphasis": {
 			"name": "markup.italic.pfm",
-			"begin": "(?<=\\s|^)(_)(?=\\S)",
-			"end": "(_)(?=\\s|$|[.,;:!?)])",
+			"begin": "(?<=^|[\\s\\p{P}\\p{S}])(_)(?=\\S)",
+			"end": "(?!\\G)(?<=\\S)(_)(?=[\\s\\p{P}\\p{S}]|$)|^(?=[ \\t]*$|[ \\t]*(?:>|#{1,6}(?:[ \\t]|$)|`{3,}|[-*+][ \\t]|\\d{1,9}[.)][ \\t]|\\||:{2,}))",
 			"beginCaptures": {
 				"1": { "name": "punctuation.definition.italic.begin.pfm" }
 			},
@@ -475,8 +617,8 @@
 
 		"strong": {
 			"name": "markup.bold.pfm",
-			"begin": "(?<=\\s|^)(\\*)(?=\\S)",
-			"end": "(\\*)(?=\\s|$|[.,;:!?)])",
+			"begin": "(?<=^|[\\s\\p{P}\\p{S}])(\\*)(?=\\S)",
+			"end": "(?!\\G)(?<=\\S)(\\*)(?=[\\s\\p{P}\\p{S}]|$)|^(?=[ \\t]*$|[ \\t]*(?:>|#{1,6}(?:[ \\t]|$)|`{3,}|[-*+][ \\t]|\\d{1,9}[.)][ \\t]|\\||:{2,}))",
 			"beginCaptures": {
 				"1": { "name": "punctuation.definition.bold.begin.pfm" }
 			},
@@ -488,8 +630,8 @@
 
 		"strikethrough": {
 			"name": "markup.strikethrough.pfm",
-			"begin": "(~~)",
-			"end": "(~~)",
+			"begin": "(~~)(?=\\S)",
+			"end": "(?<=\\S)(~~)|^(?=[ \\t]*$|[ \\t]*(?:>|#{1,6}(?:[ \\t]|$)|`{3,}|[-*+][ \\t]|\\d{1,9}[.)][ \\t]|\\||:{2,}))",
 			"beginCaptures": {
 				"1": { "name": "punctuation.definition.strikethrough.begin.pfm" }
 			},
@@ -501,7 +643,7 @@
 
 		"directive": {
 			"name": "meta.directive.pfm",
-			"match": "(?<![\\w:])(:{1,3})([A-Za-z_][\\w-]*)(\\[)((?:[^\\[\\]\\n\\\\]|\\\\.|\\[[^\\[\\]\\n]*\\])*)(\\])(?:(\\()([^)\\n]*)(\\)))?",
+			"match": "(?<![\\w:])(:{1,3})([A-Za-z_][\\w-]*)(\\[)((?:[^\\[\\]\\n\\\\]|\\\\.|\\[[^\\[\\]\\n]*\\])*)(\\])(?:(\\()((?:[ \\t]*[A-Za-z_][\\w-]*[ \\t]*=[ \\t]*(?:\"(?:[^\"\\\\\\n]|\\\\.)*\"|'(?:[^'\\\\\\n]|\\\\.)*'|(?![\"'])[^,\\s)]+)[ \\t]*(?:,[ \\t]*[A-Za-z_][\\w-]*[ \\t]*=[ \\t]*(?:\"(?:[^\"\\\\\\n]|\\\\.)*\"|'(?:[^'\\\\\\n]|\\\\.)*'|(?![\"'])[^,\\s)]+)[ \\t]*)*|[ \\t]*))(\\)))?",
 			"captures": {
 				"1": { "name": "punctuation.definition.directive.pfm" },
 				"2": { "name": "entity.name.tag.directive.pfm" },
@@ -521,34 +663,32 @@
 		},
 
 		"directive-block": {
-			"comment": "a leaf or container directive without brackets, alone on its line after any quote and list markers",
-			"match": "^([ \\t]*(?:>[ \\t]*|(?:[-*+]|\\d+[.)])[ \\t]+)*)((:{2,})([A-Za-z][\\w-]*)(?:(\\()([^)\\n]*)(\\)))?)[ \\t]*$",
+			"comment": "a leaf or container directive alone on its line after any quote and list markers, a container may open with any run of colons",
+			"match": "^([ \\t]*(?:>[ \\t]*|(?:[-*+]|\\d+[.)])[ \\t]+)*)((:{2,})([A-Za-z][\\w-]*)(?:(\\[)((?:[^\\[\\]\\n\\\\]|\\\\.|\\[[^\\[\\]\\n]*\\])*)(\\]))?(?:(\\()((?:[ \\t]*[A-Za-z_][\\w-]*[ \\t]*=[ \\t]*(?:\"(?:[^\"\\\\\\n]|\\\\.)*\"|'(?:[^'\\\\\\n]|\\\\.)*'|(?![\"'])[^,\\s)]+)[ \\t]*(?:,[ \\t]*[A-Za-z_][\\w-]*[ \\t]*=[ \\t]*(?:\"(?:[^\"\\\\\\n]|\\\\.)*\"|'(?:[^'\\\\\\n]|\\\\.)*'|(?![\"'])[^,\\s)]+)[ \\t]*)*|[ \\t]*))(\\)))?)[ \\t]*$",
 			"captures": {
-				"1": {
-					"patterns": [
-						{ "match": ">", "name": "punctuation.definition.quote.begin.pfm" },
-						{
-							"match": "[-*+]|\\d+[.)]",
-							"name": "punctuation.definition.list.begin.pfm"
-						}
-					]
-				},
+				"1": { "patterns": [{ "include": "#container-prefix" }] },
 				"2": { "name": "meta.directive.pfm" },
 				"3": { "name": "punctuation.definition.directive.pfm" },
 				"4": { "name": "entity.name.tag.directive.pfm" },
-				"5": { "name": "punctuation.definition.directive.args.begin.pfm" },
+				"5": { "name": "punctuation.definition.directive.label.begin.pfm" },
 				"6": {
-					"name": "meta.directive.args.pfm",
+					"name": "meta.directive.pfm meta.directive.label.pfm",
+					"patterns": [{ "include": "#inline" }]
+				},
+				"7": { "name": "punctuation.definition.directive.label.end.pfm" },
+				"8": { "name": "punctuation.definition.directive.args.begin.pfm" },
+				"9": {
+					"name": "meta.directive.pfm meta.directive.args.pfm",
 					"patterns": [{ "include": "#directive-arg" }]
 				},
-				"7": { "name": "punctuation.definition.directive.args.end.pfm" }
+				"10": { "name": "punctuation.definition.directive.args.end.pfm" }
 			}
 		},
 
 		"directive-arg": {
 			"patterns": [
 				{
-					"match": "([A-Za-z_][\\w-]*)\\s*(=)\\s*(\"[^\"]*\"|'[^']*'|[^,\\s)]*)",
+					"match": "([A-Za-z_][\\w-]*)\\s*(=)\\s*((?:\"(?:[^\"\\\\\\n]|\\\\.)*\"|'(?:[^'\\\\\\n]|\\\\.)*'|(?![\"'])[^,\\s)]+))",
 					"captures": {
 						"1": { "name": "entity.other.attribute-name.pfm" },
 						"2": { "name": "punctuation.separator.key-value.pfm" },
@@ -582,10 +722,13 @@
 
 		"link": {
 			"name": "meta.link.inline.pfm",
-			"match": "(\\[)([^\\]]*)(\\])(\\()([^)]*)(\\))",
+			"match": "(\\[)((?:[^\\[\\]\\\\]|\\\\.|\\[(?:[^\\[\\]\\\\]|\\\\.|\\[(?:[^\\[\\]\\\\]|\\\\.)*\\])*\\])*)(\\])(\\()([^)]*)(\\))",
 			"captures": {
 				"1": { "name": "punctuation.definition.link.begin.pfm" },
-				"2": { "name": "string.other.link.title.pfm" },
+				"2": {
+					"name": "string.other.link.title.pfm",
+					"patterns": [{ "include": "#inline" }]
+				},
 				"3": { "name": "punctuation.definition.link.end.pfm" },
 				"4": { "name": "punctuation.definition.link.begin.pfm" },
 				"5": { "name": "markup.underline.link.pfm" },
@@ -607,7 +750,7 @@
 
 		"autolink": {
 			"name": "meta.link.autolink.pfm",
-			"match": "(<)(https?://[^>]+)(>)",
+			"match": "(<)((?!svelte:)[A-Za-z][A-Za-z0-9+.-]{1,31}:[^\\s<>]*)(>)",
 			"captures": {
 				"1": { "name": "punctuation.definition.link.begin.pfm" },
 				"2": { "name": "markup.underline.link.pfm" },
@@ -636,7 +779,7 @@
 
 		"superscript": {
 			"name": "markup.superscript.pfm",
-			"match": "(?<!\\\\)(\\^)(?!\\s)([^\\^\\n]*?[^\\^\\s\\\\])(\\^)",
+			"match": "(?<!\\\\)(?<!\\\\\\[)(\\^)(?!\\s)((?:[^\\^\\n`\\\\]|\\\\.|`[^`\\n]*`)*?(?:[^\\^\\s\\\\`]|`[^`\\n]*`))(\\^)",
 			"captures": {
 				"1": { "name": "punctuation.definition.superscript.begin.pfm" },
 				"3": { "name": "punctuation.definition.superscript.end.pfm" }
@@ -646,11 +789,14 @@
 		"link-reference": {
 			"comment": "a link or an image that names a definition",
 			"name": "meta.link.reference.pfm",
-			"match": "(!)?(\\[)([^\\]]*)(\\])(\\[)([^\\]]*)(\\])",
+			"match": "(!)?(\\[)((?:[^\\[\\]\\\\]|\\\\.|\\[(?:[^\\[\\]\\\\]|\\\\.|\\[(?:[^\\[\\]\\\\]|\\\\.)*\\])*\\])*)(\\])(\\[)([^\\]]*)(\\])",
 			"captures": {
 				"1": { "name": "punctuation.definition.image.pfm" },
 				"2": { "name": "punctuation.definition.link.begin.pfm" },
-				"3": { "name": "string.other.link.title.pfm" },
+				"3": {
+					"name": "string.other.link.title.pfm",
+					"patterns": [{ "include": "#inline" }]
+				},
 				"4": { "name": "punctuation.definition.link.end.pfm" },
 				"5": { "name": "punctuation.definition.constant.begin.pfm" },
 				"6": { "name": "constant.other.reference.link.pfm" },
