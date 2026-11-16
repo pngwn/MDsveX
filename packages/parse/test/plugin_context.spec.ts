@@ -808,6 +808,28 @@ describe('parse_markdown_svelte: the plugin context', () => {
 		expect(seen).toEqual([undefined, { title: 't' }, { title: 't' }]);
 	});
 
+	it('gives the frontmatter option the filename', () => {
+		const files: unknown[] = [];
+		const read: ParsePlugin = {
+			heading: { parse: (_n, ctx) => void ctx.frontmatter },
+		};
+		for (const filename of ['/docs/a.svx', undefined]) {
+			parse_markdown_svelte(doc, {
+				filename,
+				frontmatter(_text, file) {
+					files.push(file);
+					return {};
+				},
+				plugins: [read],
+			});
+		}
+		expect(files).toEqual([
+			{ filename: '/docs/a.svx' },
+			{ filename: undefined },
+		]);
+		expect(Object.keys(files[1] as object)).toEqual(['filename']);
+	});
+
 	it('never calls the frontmatter option when no handler reads it', () => {
 		let calls = 0;
 		parse_markdown_svelte(doc, {

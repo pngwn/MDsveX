@@ -532,7 +532,7 @@ function check_frontmatter(ctx: Context, frontmatter: Node): void {
 				ctx,
 				property,
 				"manual",
-				"`frontmatter.parse` now gets one argument, the text between the fences, and returns the metadata. It no longer gets a `messages` array.",
+				"`frontmatter.parse` now gets the text between the fences and `{ filename }`, and returns the metadata. It no longer gets a `messages` array.",
 			);
 		}
 	}

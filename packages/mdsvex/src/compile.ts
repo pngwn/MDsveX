@@ -38,7 +38,7 @@ import {
 	metadata_export,
 	parse_frontmatter,
 } from './frontmatter.js';
-import type { FrontmatterOptions } from './frontmatter.js';
+import type { FrontmatterFile, FrontmatterOptions } from './frontmatter.js';
 import { PLUGIN_DATA_EXPORT, plugin_data_export } from './plugin_data.js';
 import type { PluginData, PluginDataContext } from './plugin_data.js';
 import { scope_of } from './root_scope.js';
@@ -106,7 +106,7 @@ export type {
 export type TextRun = Parameters<NonNullable<ParsePlugin['text']>>[0];
 export type { Mapping, MappingData, SourceMapV3, MapTrace };
 export type { ComponentSource };
-export type { FrontmatterOptions };
+export type { FrontmatterFile, FrontmatterOptions };
 export { FrontmatterError } from './frontmatter.js';
 export { PluginDataError } from './plugin_data.js';
 export {
@@ -1331,7 +1331,8 @@ class PluginHost {
 			this.source,
 			nodes.value_start_at(first),
 			nodes.value_end_at(first),
-			this.parse
+			this.parse,
+			this.filename
 		);
 		this.parsed_frontmatter = true;
 		return (this.metadata = metadata);
@@ -1641,7 +1642,8 @@ const NONE = 0xffffffff;
 function metadata_of(
 	nodes: NodeBuffer,
 	source: string,
-	parse: FrontmatterParse
+	parse: FrontmatterParse,
+	filename: string | undefined
 ): Metadata | undefined {
 	// frontmatter can only be the first node
 	const first = nodes.first_child_at(0);
@@ -1651,7 +1653,8 @@ function metadata_of(
 		source,
 		nodes.value_start_at(first),
 		nodes.value_end_at(first),
-		parse
+		parse,
+		filename
 	);
 }
 
@@ -1835,7 +1838,7 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 	// a handler that read the frontmatter already parsed it
 	const metadata =
 		host === null
-			? metadata_of(nodes, source, inputs.frontmatter_parse)
+			? metadata_of(nodes, source, inputs.frontmatter_parse, inputs.filename)
 			: host.frontmatter();
 	let images: UrlSwaps | null =
 		inputs.import_images === true &&
@@ -2652,7 +2655,12 @@ export class CompilerSession {
 				metadata =
 					first === NONE || (nodes.kind_at(first) as number) !== K_FRONTMATTER
 						? undefined
-						: metadata_of(nodes, source, inputs.frontmatter_parse);
+						: metadata_of(
+								nodes,
+								source,
+								inputs.frontmatter_parse,
+								inputs.filename
+							);
 			}
 			spans = this.spans = take_math();
 			// only a document the parser noted a footnote in is looked through

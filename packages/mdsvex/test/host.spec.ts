@@ -150,7 +150,9 @@ describe('queue_manifest', () => {
 
 describe('query modules', () => {
 	test('build the modules of ?metadata and ?data', () => {
-		expect(metadata_module('---\ntitle: a\n---\n\n# x\n', undefined)).toBe(
+		expect(
+			metadata_module('---\ntitle: a\n---\n\n# x\n', undefined, undefined)
+		).toBe(
 			'export const metadata = {"title":"a"};\nexport default metadata;\n'
 		);
 		expect(data_module(undefined, undefined)).toBe(

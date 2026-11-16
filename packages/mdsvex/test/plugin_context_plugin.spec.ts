@@ -84,6 +84,21 @@ describe('vite plugin: the context of parse plugins', () => {
 			'export const metadata = {"raw":"anything\\n"};'
 		);
 	});
+
+	test('frontmatter.parse gets the filename ctx.frontmatter is read for', () => {
+		const seen: Record<string, unknown>[] = [];
+		const { transform } = plugin({
+			plugins: [spy(seen)],
+			frontmatter: {
+				parse: (_raw, { filename }) => ({
+					slug: filename?.slice(filename.lastIndexOf('/') + 1, -4),
+				}),
+			},
+		});
+		const out = transform('---\nanything\n---\n\n# one\n');
+		expect(seen[0].frontmatter).toEqual({ slug: 'page' });
+		expect(out.code).toContain('export const metadata = {"slug":"page"};');
+	});
 });
 
 describe('vite plugin: a dev server', () => {

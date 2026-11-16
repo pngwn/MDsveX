@@ -528,7 +528,7 @@ const { nodes, warnings, data } = parse_markdown_svelte(source, {
 });
 ```
 
-- **`frontmatter` is the parser of the frontmatter,** not its value. The parser does not read YAML, so without the option `ctx.frontmatter` is `undefined`.
+- **`frontmatter` is the parser of the frontmatter,** not its value. The parser does not read YAML, so without the option `ctx.frontmatter` is `undefined`. Its second argument is `{ filename }`, the `filename` option, `undefined` without one.
 - **`warnings` and `data` are `undefined`** when no handler left any, and always without plugins.
 
 ## Handler Lifecycle

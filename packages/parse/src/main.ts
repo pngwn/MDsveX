@@ -12929,7 +12929,8 @@ function plugin_document(
 				return undefined;
 			read = true;
 			return (metadata = parse(
-				source.slice(nodes.value_start_at(first), nodes.value_end_at(first))
+				source.slice(nodes.value_start_at(first), nodes.value_end_at(first)),
+				{ filename }
 			));
 		},
 	};

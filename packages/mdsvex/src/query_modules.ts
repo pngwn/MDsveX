@@ -38,17 +38,21 @@ export function frontmatter_bounds(source: string): [number, number] | null {
 	return null;
 }
 
-/** the frontmatter of a document without a parse of its body, undefined when it has none */
+/**
+ * the frontmatter of a document without a parse of its body, undefined when
+ * it has none, filename is the path the parser is given
+ */
 export function read_metadata(
 	raw: string,
-	parse: FrontmatterOptions['parse']
+	parse: FrontmatterOptions['parse'],
+	filename: string | undefined
 ): Record<string, unknown> | undefined {
 	// the parser reads \r\n and a lone \r as \n, and so do its offsets
 	const source = raw.indexOf('\r') === -1 ? raw : raw.replace(/\r\n?/g, '\n');
 	const bounds = frontmatter_bounds(source);
 	return bounds === null
 		? undefined
-		: parse_frontmatter(source, bounds[0], bounds[1], parse);
+		: parse_frontmatter(source, bounds[0], bounds[1], parse, filename);
 }
 
 /**
@@ -57,9 +61,10 @@ export function read_metadata(
  */
 export function metadata_module(
 	raw: string,
-	parse: FrontmatterOptions['parse']
+	parse: FrontmatterOptions['parse'],
+	filename: string | undefined
 ): string {
-	const metadata = read_metadata(raw, parse);
+	const metadata = read_metadata(raw, parse, filename);
 	// a compiled document has no export then, this one stays so a named import links
 	const named =
 		metadata === undefined

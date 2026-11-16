@@ -37,9 +37,13 @@ export interface ParseOptions extends SyntaxOptions {
 
 	/**
 	 * parses the frontmatter for plugin handlers, called once with the text
-	 * between the fences when a handler first reads ctx.frontmatter
+	 * between the fences and the filename when a handler first reads
+	 * ctx.frontmatter
 	 */
-	frontmatter?: (text: string) => Record<string, unknown> | undefined;
+	frontmatter?: (
+		text: string,
+		file: { filename: string | undefined }
+	) => Record<string, unknown> | undefined;
 }
 
 /** structured output produced by the markdown parser. */
