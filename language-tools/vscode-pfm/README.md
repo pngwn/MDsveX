@@ -1,4 +1,4 @@
-# PFM for VS Code
+# mdsvex for VS Code
 
 Language support for [mdsvex](https://github.com/pngwn/MDsveX) documents, the `.pfm` and `.svx` files written in PFM (Penguin-Flavoured Markdown).
 
