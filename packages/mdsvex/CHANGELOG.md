@@ -1,5 +1,24 @@
 # mdsvex
 
+## 1.0.0-next.6
+
+### Patch Changes
+
+- [#1258](https://github.com/pngwn/MDsveX/pull/1258) [`af55b25`](https://github.com/pngwn/MDsveX/commit/af55b2500671d573abd7e917541a9afc2dd780cc) Thanks [@pngwn](https://github.com/pngwn)! - A plugin replaced or added in the same `plugins` array runs on the next compile, so a playground or editor can swap a reconfigured plugin into the array it already has.
+
+- [#1258](https://github.com/pngwn/MDsveX/pull/1258) [`af55b25`](https://github.com/pngwn/MDsveX/commit/af55b2500671d573abd7e917541a9afc2dd780cc) Thanks [@pngwn](https://github.com/pngwn)! - `vite build --sourcemap` maps the code of a document back to the lines of its `.svx` file. In dev, code a document renders far from where its markdown wrote it, such as a script after a heading, maps to its line too.
+
+- [#1258](https://github.com/pngwn/MDsveX/pull/1258) [`af55b25`](https://github.com/pngwn/MDsveX/commit/af55b2500671d573abd7e917541a9afc2dd780cc) Thanks [@pngwn](https://github.com/pngwn)! - `select_template` in `compile` and `compile_async` gets the file path first, as it does in the Vite plugin, so one callback works in both. The path is the `filename` option, `undefined` without one.
+
+  ```js
+  compile(source, {
+  	filename: '/site/docs/intro.svx',
+  	templates,
+  	select_template: (id, metadata) =>
+  		id?.includes('/docs/') ? 'docs' : undefined,
+  });
+  ```
+
 ## 1.0.0-next.5
 
 ### Minor Changes
