@@ -24,7 +24,7 @@ interface MdsvexOptions {
 	component_mode?: 'markdown' | 'all';
 	plugins?: Bundle[];
 	parse_plugins?: ParsePlugin[];
-	highlight?: HighlightOptions | Highlighter | false;
+	highlight?: PluginHighlightOptions | Highlighter | false;
 	math?: MathOptions | MathRenderer | false;
 	footnotes?: { label?: string; back_label?: string; strict?: boolean };
 	unwrap_images?: boolean;
@@ -36,7 +36,7 @@ interface MdsvexOptions {
 	};
 	rewrite?: (
 		url: string,
-		ctx: { filename?: string; type: 'link' | 'image'; written: string }
+		ctx: { filename: string | undefined; type: 'link' | 'image'; written: string }
 	) => string | null | undefined | void;
 	heading_ids?:
 		| boolean
@@ -48,6 +48,7 @@ interface MdsvexOptions {
 				dashes?: boolean;
 				ellipses?: boolean;
 		  };
+	text?: { code_blocks?: boolean };
 }
 ```
 
@@ -114,7 +115,7 @@ select_template: (id: string, metadata: Record<string, unknown>) => string | fal
 ```
 
 :::notes
-See [choosing a template](/docs/guides/templates#choosing-a-template).
+See [choosing a template](/docs/guides/templates#choosing-a-template). `id` is the path of the file. [`compile`](/docs/reference/compile) takes the same callback, with its `filename` as the path.
 :::
 ::::
 
@@ -152,7 +153,7 @@ See [`component_mode: 'all'`](/docs/guides/components#component_mode-all).
 How code is highlighted. Options configure twinkleplop, a function replaces it, and `false` renders plain code.
 
 ```ts
-highlight: HighlightOptions | Highlighter | false = {};
+highlight: PluginHighlightOptions | Highlighter | false = {};
 ```
 
 :::notes
@@ -485,3 +486,21 @@ Text inside a component or any other element is prose and is changed.
 ::::
 
 [`heading_ids`](/docs/reference/options#heading_ids) makes its ids from the text as written, so turning this on does not change any anchor. `compile()` takes the option too. It belongs to the compile and to the incremental HTML renderer, so the streaming Svelte renderer shows text as written. The editor reads the option from the manifest the plugin writes, or from `smart_punctuation` in an `mdsvex.config.json`.
+
+## `text`
+
+::::plate[What a `?text` import reads](mark="?text", tone=text)
+What a [`?text`](/docs/guides/search-and-feeds) import reads. `code_blocks: false` leaves out code fences, `math` fences and `<pre>` elements, so a search index holds only prose:
+
+```ts
+text: { code_blocks?: boolean } = {};
+```
+
+```js
+mdsvex({ text: { code_blocks: false } });
+```
+
+:::notes
+[`compile_text`](/docs/guides/search-and-feeds#text-with-compile) takes `code_blocks` beside the options of `compile`.
+:::
+::::

@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest';
 
 import {
 	compile,
+	compile_async,
 	CompilerSession,
 	DirectiveError,
 	DirectiveOwnerError,
@@ -634,6 +635,28 @@ describe('CompilerSession with bundles', () => {
 		expect(arena_of(compiler)).toBe(arena);
 		compiler.compile(DOC, { plugins: [steps()] });
 		expect(arena_of(compiler)).not.toBe(arena);
+	});
+
+	test('a bundle replaced in the same array is the one that runs', async () => {
+		const log: string[] = [];
+		const tagged = (tag: string): Bundle => ({
+			name: 'tagged',
+			parse: { heading: { parse: () => void log.push(tag) } },
+		});
+		for (const run of [
+			(plugins: Bundle[]) => compile('# hi\n', { plugins }),
+			(plugins: Bundle[]) => compile_async('# hi\n', { plugins }),
+		]) {
+			log.length = 0;
+			const plugins = [tagged('first')];
+			await run(plugins);
+			// a playground swaps a reconfigured plugin into the array it has
+			plugins[0] = tagged('second');
+			await run(plugins);
+			plugins.push(tagged('third'));
+			await run(plugins);
+			expect(log).toEqual(['first', 'second', 'second', 'third']);
+		}
 	});
 
 	test('documents with and without bundles share one session', () => {

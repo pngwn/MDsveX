@@ -100,6 +100,35 @@ export async function load({ route }) {
 :::
 ::::
 
+## TypeScript
+
+::::plate[Types for these imports](mark=".d.ts", tone=expr)
+`mdsvex/globals` in `compilerOptions.types`, beside `vite/client`, types the query imports: `?metadata`, `?data` and `?text`.
+
+A plain `./post.svx` import is a file TypeScript can't read itself. In the editor, the mdsvex extension's [TypeScript plugin](/docs/reference/packages#editor-tools) reads it, with the exports the document has. `tsc` loads no plugins, so a type check on the command line needs a declaration in the project. A [`?template=`](/docs/guides/templates#opting-out) import is not a file at all, so it needs one in the editor too:
+
+```ts
+// src/svx.d.ts
+declare module '*.svx' {
+	import type { Component } from 'svelte';
+	const component: Component;
+	export default component;
+	export const metadata: Record<string, unknown> | undefined;
+}
+
+declare module '*?template=false' {
+	import type { Component } from 'svelte';
+	const component: Component;
+	export default component;
+	export const metadata: Record<string, unknown> | undefined;
+}
+```
+
+:::notes
+A module pattern holds one `*`, so each `?template=` value you import with needs a block of its own. The file has no top-level `import`, so its blocks declare modules rather than add to them.
+:::
+::::
+
 ## Supported YAML
 
 ::::plate[The built-in parser](mark="key:", tone=text)

@@ -2,7 +2,7 @@
  * cursor, zero-allocation tree traversal over NodeBuffer.
  *
  * single reusable object that provides tree-traversal semantics
- * (gotofirstchild / gotonextsibling / gotoparent) while reading
+ * (goto_first_child / goto_next_sibling / goto_parent) while reading
  * directly from the node words underneath. no per-node
  * objects are created, text is lazily sliced from the source
  * string only when requested.
@@ -11,16 +11,22 @@
  *
  * usage:
  *
- *   const tree = new treebuilder(128);
- *   const parser = new pfmparser(tree);
+ *   import { PFMParser } from '@mdsvex/parse';
+ *   import { TreeBuilder } from '@mdsvex/parse/tree-builder';
+ *   import { Cursor } from '@mdsvex/parse/cursor';
+ *
+ *   const tree = new TreeBuilder(128);
+ *   const parser = new PFMParser(tree);
  *   parser.parse(source);
- *   const cursor = new cursor(tree.get_buffer(), source);
+ *   const cursor = new Cursor(tree.get_buffer(), source);
  *
  *   // walk tree
- *   if (cursor.gotofirstchild()) {
- *     do { process(cursor); } while (cursor.gotonextsibling());
- *     cursor.gotoparent();
+ *   if (cursor.goto_first_child()) {
+ *     do { process(cursor); } while (cursor.goto_next_sibling());
+ *     cursor.goto_parent();
  *   }
+ *
+ * offsets are utf-16 code unit indices into the source as parsed
  */
 
 import { NodeField, type NodeBuffer } from './utils.js';
@@ -82,22 +88,22 @@ export class Cursor {
 		return p === NONE ? -1 : this.n[p * NodeField.stride] & 0xff;
 	}
 
-	/** byte offset where the current node starts in source. */
+	/** offset where the current node starts in source */
 	get start(): number {
 		return this.n[this.b + NodeField.start];
 	}
 
-	/** byte offset where the current node ends in source. */
+	/** offset where the current node ends in source */
 	get end(): number {
 		return this.n[this.b + NodeField.end];
 	}
 
-	/** byte offset where the current node's value content starts. */
+	/** offset where the value content of the current node starts */
 	get value_start(): number {
 		return this.n[this.b + NodeField.value_start];
 	}
 
-	/** byte offset where the current node's value content ends. */
+	/** offset where the value content of the current node ends */
 	get value_end(): number {
 		return this.n[this.b + NodeField.value_end];
 	}
@@ -133,7 +139,7 @@ export class Cursor {
 		return slot === 0 ? undefined : this.buf._meta[slot - 1];
 	}
 
-	/** slice the source string by byte offsets. for resolving metadata offset pairs. */
+	/** slice the source by offsets, for metadata offset pairs */
 	slice(start: number, end: number): string {
 		return this.src.slice(start, end);
 	}

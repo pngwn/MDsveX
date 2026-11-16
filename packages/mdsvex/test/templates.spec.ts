@@ -7,7 +7,12 @@ import { describe, expect, test } from 'vitest';
 import { mappings_to_v3 } from '@mdsvex/render/sourcemap';
 import { component_imports } from '@mdsvex/render/html-cursor';
 
-import { compile, CompilerSession, FrontmatterError } from '../src/main';
+import {
+	compile,
+	compile_async,
+	CompilerSession,
+	FrontmatterError,
+} from '../src/main';
 import type {
 	CompileOptions,
 	ComponentSource,
@@ -94,11 +99,15 @@ describe('template selection', () => {
 
 	test('select_template runs without a frontmatter template key', () => {
 		const seen: unknown[] = [];
-		const select = (metadata: Record<string, unknown>) => {
-			seen.push(metadata);
+		const select = (
+			filename: string | undefined,
+			metadata: Record<string, unknown>
+		) => {
+			seen.push([filename, metadata]);
 			return metadata.kind === 'guide' ? 'docs' : undefined;
 		};
 		const guide = compile('---\nkind: guide\n---\n\n# Hi\n', {
+			filename: '/site/guide.svx',
 			templates,
 			select_template: select,
 		});
@@ -108,11 +117,36 @@ describe('template selection', () => {
 			compile('# no frontmatter\n', { templates, select_template: select })
 				.template
 		).toBe('default');
-		expect(seen).toEqual([{ kind: 'guide' }, {}]);
+		expect(seen).toEqual([
+			['/site/guide.svx', { kind: 'guide' }],
+			[undefined, {}],
+		]);
 		// false is none even with a default
 		expect(
 			compile('# Hi\n', { templates, select_template: () => false }).template
 		).toBeUndefined();
+	});
+
+	test('select_template picks by filename in compile and compile_async', async () => {
+		const options = {
+			templates,
+			select_template: (filename: string | undefined) =>
+				filename?.includes('/docs/') ? 'docs' : undefined,
+		};
+		expect(
+			compile('# Hi\n', { ...options, filename: '/site/docs/a.svx' }).template
+		).toBe('docs');
+		expect(
+			(
+				await compile_async('# Hi\n', {
+					...options,
+					filename: '/site/docs/a.svx',
+				})
+			).template
+		).toBe('docs');
+		expect(
+			compile('# Hi\n', { ...options, filename: '/site/blog/a.svx' }).template
+		).toBe('default');
 	});
 
 	test('the default entry, default_template in its place, otherwise none', () => {

@@ -107,7 +107,7 @@ Appends text to a node's content. Multiple `T` opcodes for the same node should 
 
 The flag says the author escaped the first character of `content` with a backslash. The backslash is not sent. A client that only shows the text ignores the flag. One that rewrites text, as `WireTreeBuilder` does for the text handler of a parse plugin, keeps where those characters are and leaves them alone.
 
-Text is always resolved to strings on the wire, the client never sees byte offsets or needs the source markdown.
+Text is always resolved to strings on the wire, the client never sees source offsets or needs the source markdown.
 
 ### A, Attr
 
@@ -502,10 +502,10 @@ The parser runs server-side (or in a worker) and produces batches via the `WireE
 Parse a complete markdown string in one call:
 
 ```javascript
-import { PFMParser, WireEmitter } from '@mdsvex/parse';
+import { PFMParser, WireEmitter, normalize_newlines } from '@mdsvex/parse';
 
 const emitter = new WireEmitter();
-emitter.set_source(source);
+emitter.set_source(normalize_newlines(source));
 
 const parser = new PFMParser(emitter);
 parser.parse(source);
@@ -519,7 +519,7 @@ const batch = emitter.flush(); // single batch with all opcodes
 Feed chunks as they arrive (e.g., from an LLM stream, file read, or network):
 
 ```javascript
-import { PFMParser, WireEmitter } from '@mdsvex/parse';
+import { PFMParser, WireEmitter, normalize_newlines } from '@mdsvex/parse';
 
 const emitter = new WireEmitter();
 const parser = new PFMParser(emitter);
@@ -529,7 +529,7 @@ let accumulated = '';
 
 function onChunk(chunk) {
 	accumulated += chunk;
-	emitter.set_source(accumulated); // must be the full source so far
+	emitter.set_source(normalize_newlines(accumulated)); // the full source so far
 	parser.feed(chunk); // only the new chunk
 	const batch = emitter.flush(); // opcodes produced by this chunk
 	if (batch.length > 0) {
@@ -538,7 +538,7 @@ function onChunk(chunk) {
 }
 
 function onEnd() {
-	emitter.set_source(accumulated);
+	emitter.set_source(normalize_newlines(accumulated));
 	parser.finish(); // finalize all open nodes
 	const batch = emitter.flush();
 	if (batch.length > 0) {
@@ -563,10 +563,25 @@ function onEnd() {
 
 | Method               | Description                                                                                                                                                           |
 | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `set_source(source)` | Set the **full accumulated source** string. Must be called before each `feed()` and before `finish()`. The emitter uses this to resolve byte offsets to text content. |
+| `set_source(source)` | Set the **full accumulated source** string, with its line endings normalized as the parser normalizes them (`normalize_newlines`). Must be called before each `feed()` and before `finish()`. The emitter uses this to resolve source offsets to text content. |
 | `flush()`            | Return all accumulated opcodes as a batch (array of tuples) and clear the internal buffer. The first flush includes the `S` (schema) opcode.                          |
 | `flush_json()`       | Convenience, calls `flush()` and returns `JSON.stringify(result)`.                                                                                                    |
 | `reset()`            | Reset all state for reuse with a new parse.                                                                                                                           |
+
+#### Source offsets
+
+The `start` and `end` an `Emitter` gets are JavaScript string indices, UTF-16 code units, not UTF-8 bytes. In `é🐧\n\n# Hi` the heading starts at 5: `é` is one code unit and `🐧` two. Its UTF-8 byte offset would be 8.
+
+They index the source after line endings are normalized. `parse()` and `feed()` turn every `\r\n` and every lone `\r` into `\n` before the parser sees them, and `feed()` holds back a chunk's trailing `\r` until the next chunk shows whether a `\n` follows. `normalize_newlines(source)` makes the same string, and it is what `set_source()` needs, or the text the emitter slices drifts by one character for each `\r\n` before it.
+
+A lone `\r` becomes one `\n`, so it moves no offset. A `\r\n` becomes one character, so each one moves every offset after it back by one. `raw_offsets(raw)` maps them back: it returns `null` for a source with no `\r\n`, else an object whose `to_raw(offset)` gives the index in the source as written.
+
+```javascript
+import { raw_offsets } from '@mdsvex/parse';
+
+const map = raw_offsets(raw);
+const at = map === null ? offset : map.to_raw(offset);
+```
 
 ### How stalling works
 
@@ -727,6 +742,6 @@ source.onmessage = (event) => {
 
 2. **Text nodes are invisible.** The parser uses internal text nodes (kind=1, "text"), but these are suppressed on the wire. Their content is flattened into `T` opcodes on the parent. The client never sees text nodes.
 
-3. **No source access needed.** All byte offsets are resolved to strings by the emitter. The client works purely with text content and structural opcodes.
+3. **No source access needed.** All source offsets are resolved to strings by the emitter. The client works purely with text content and structural opcodes.
 
 4. **Batch-per-chunk.** Each `feed()` call produces exactly one batch. The transport layer decides how to frame batches. The client applies them in order.

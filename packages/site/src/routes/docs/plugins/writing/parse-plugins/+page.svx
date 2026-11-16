@@ -91,7 +91,7 @@ The node is a view of the tree as it is being built:
 | `text_content` | the text inside it |
 | `parent`, `first_child`, `last_child`, `next`, `prev` | its neighbours, each a node or `null` |
 | `depth`, `href`, `title`, `info`, `math`, `ordered`, `start`, `tight` | what its type has: the depth of a heading, the url of a link, the info string of a fence |
-| `position` | `{ start, end }`, each with an `offset`, a `line` and a `column`. `end` is not set until the node closes |
+| `position` | `{ start, end }`, each with an `offset`, a `line` and a `column`. `offset` is a string index, in UTF-16 code units, into the source with every `\r\n` made a `\n`. `end` is not set until the node closes |
 | `pending` | `true` while the parser may still take the node back |
 | `prepend(type, attrs)`, `append(type, attrs)` | adds a child and returns it. For `'text'` the second argument is the text |
 | `wrap_inner(type, attrs)` | puts a new node between the node and its children |

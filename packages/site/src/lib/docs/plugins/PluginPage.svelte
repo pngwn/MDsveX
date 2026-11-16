@@ -28,15 +28,31 @@
 	// the mark, the first syntax with what is written in its brackets left out: `::toc[]`, `[](#id)`
 	const glyph = $derived(first ? first.mark.replace(/\[[^\]]*\]/g, '[]').replace(/\[\]\(([^)]*)\)/, '[]($1)').replace(/\(([^)]*)=[^)]*\)/, '') : '·');
 	const concerns = $derived(CONCERNS.filter((c) => p.concerns.includes(c.id)));
-	const install = $derived(['pnpm add -D', `${p.package}@next`, ...p.peers.filter((x) => !x.optional).map((x) => x.name)].join(' '));
+	// the plugin needs one of its optional peers, the install line takes the first listed
 	const optional = $derived(p.peers.filter((x) => x.optional).map((x) => x.name));
+	const install_with = (peer?: string) =>
+		['pnpm add -D', `${p.package}@next`, ...(p.example.with ?? []).map((w) => `${w}@next`), ...p.peers.filter((x) => !x.optional).map((x) => x.name), ...(peer ? [peer] : [])].join(' ');
+	const install = $derived(install_with(optional[0]));
+	const alternatives = $derived(optional.slice(1).map(install_with));
 	const config = $derived.by(() => {
 		const others = p.example.with ?? [];
 		const factories = [...others.map((w) => w.replace('@mdsvex/plugin-', '').replace(/-/g, '_')), p.factory];
 		const imports = [...others.map((w, i) => `import { ${factories[i]} } from '${w}';`), `import { ${p.factory} } from '${p.package}';`];
-		const parts = [p.needs?.heading_ids && 'heading_ids: true', p.needs?.unwrap_images && 'unwrap_images: true', `plugins: [${factories.map((f) => `${f}()`).join(', ')}]`].filter(Boolean);
+		const calls = factories.map((f, i) => (i === factories.length - 1 && p.example.options && Object.keys(p.example.options).length ? `${f}(${literal(p.example.options)})` : `${f}()`));
+		const parts = [p.needs?.heading_ids && 'heading_ids: true', p.needs?.unwrap_images && 'unwrap_images: true', `plugins: [${calls.join(', ')}]`].filter(Boolean);
 		return `${imports.join('\n')}\n\nmdsvex({ ${parts.join(', ')} });`;
 	});
+
+	/** the example options as a reader would write them */
+	function literal(value: unknown): string {
+		if (typeof value === 'string') return `'${value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+		if (Array.isArray(value)) return `[${value.map(literal).join(', ')}]`;
+		if (value !== null && typeof value === 'object') {
+			const entries = Object.entries(value).map(([k, v]) => `${/^[A-Za-z_$][\w$]*$/.test(k) ? k : literal(k)}: ${literal(v)}`);
+			return entries.length ? `{ ${entries.join(', ')} }` : '{}';
+		}
+		return String(value);
+	}
 </script>
 
 <div class="wide plugin" style:--own-line="var(--line-{own})" style:--own-name="var(--name-{own})">
@@ -52,8 +68,9 @@
 			<div>
 				<p class="label-h">Install</p>
 				<pre class="code riso"><code>{install}</code></pre>
-				{#if optional.length}
-					<p class="note">With {#each optional as name, i (name)}{i ? ' or ' : ''}<code>{name}</code>{/each}, its optional peers, installed beside it.</p>
+				{#if alternatives.length}
+					<p class="note">It needs one of {#each optional as name, i (name)}{i ? ' or ' : ''}<code>{name}</code>{/each}, its optional peers. For {#each optional.slice(1) as name, i (name)}{i ? ' or ' : ''}<code>{name}</code>{/each} instead:</p>
+					{#each alternatives as line (line)}<pre class="code riso"><code>{line}</code></pre>{/each}
 				{/if}
 			</div>
 			<div>

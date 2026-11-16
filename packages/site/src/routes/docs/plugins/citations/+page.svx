@@ -73,4 +73,21 @@ The citations and their entries are [plugin data](/docs/plugins/writing/plugin-d
 <Bibliography data={plugin_data?.citations} />
 ```
 
-The file is read while the document compiles, so the Vite plugin and [`compile_async`](/docs/reference/compile#compile_async), with a `read` option, take a document that cites, and `compile` throws a `PluginAsyncError`. The formatting is small on purpose: names, year, title, where it was published, the publisher and a link. Citation styles such as APA or Chicago, locators like page numbers, and telling apart two works of one author in one year need a full CSL processor.
+The file is read while the document compiles, so the Vite plugin and [`compile_async`](/docs/reference/compile#compile_async) take a document that cites, and `compile` throws a `PluginAsyncError`. `compile_async` needs the document's `filename`, to find the file the frontmatter names, and a [`read`](/docs/reference/compile#compile_async) option, to load it:
+
+```js
+import { readFile } from 'node:fs/promises';
+import { compile_async } from 'mdsvex/compile';
+import { citations } from '@mdsvex/plugin-citations';
+
+// ./refs.json in the frontmatter is /site/refs.json
+const { code, data } = await compile_async(source, {
+	filename: '/site/post.svx',
+	read: (file) => readFile(file, 'utf8'),
+	plugins: [citations()]
+});
+```
+
+For a custom list, `bibliography_of(plugin_data.citations, style)` gives the entries in the order the list shows them, each with its `id`, its `label` and the ids of the citations of it in `cited_by`. `entry_parts(entry, style)` splits an entry into the pieces of its text, each `{ kind, text }` with `kind` one of `text`, `title` or `url`. `entry_id(key)` and `citation_id(n)` are the ids the plugin gives a list item and the nth citation, from 0, so links match the ones it renders. All four come from `@mdsvex/plugin-citations`.
+
+The formatting is small on purpose: names, year, title, where it was published, the publisher and a link. Citation styles such as APA or Chicago, locators like page numbers, and telling apart two works of one author in one year need a full CSL processor.

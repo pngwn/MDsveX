@@ -62,3 +62,14 @@ numbering({
 - **`prefix`** replaces the word: `:ref[fig:sales](prefix=Chart)` reads "Chart 1" and `prefix="Bar chart"` "Bar chart 1", the word as written, so a reference to several ids takes the plural. Only the literal `prefix=false` leaves the word out, "1" or "1 and 2". A capital for the start of a sentence is a word too, `prefix=Fig.` beside `prefixes: { fig: ['fig.', 'figs.'] }`.
 - **Ids of different kinds** in one reference are a warning. It reads each kind with its own word, "Figure 1 and Table 1", and ignores a written `prefix`.
 - **In a streaming view** a number is known when its target closes, and never changes. A reference to a target that has not arrived reads "Figure ?" until it does. Components read the numbers from [plugin data](/docs/plugins/writing/plugin-data), `plugin_data.numbering['target:' + id]`, through Svelte context.
+
+A reference component of your own can read the same way the plugin's does with `ref_parts` from `@mdsvex/plugin-numbering`. It takes the ids, the words, and a function that finds a target, and returns the pieces of the text, each `{ text, href? }`:
+
+```js
+import { AND, PREFIXES, ref_parts } from '@mdsvex/plugin-numbering';
+
+ref_parts(['fig:a', 'fig:b'], { prefixes: PREFIXES, and: AND }, (id) => numbering['target:' + id]);
+// [{ text: 'Figures ' }, { text: '1', href: '#fig:a' }, { text: ' and ' }, { text: '2', href: '#fig:b' }]
+```
+
+`prefix` in the words is the `prefix` arg, a word, `false` or `undefined`.

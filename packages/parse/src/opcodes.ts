@@ -9,6 +9,10 @@ export interface IdSource {
 /**
  * emitter interface for pfm parser opcodes.
  *
+ * offsets are utf-16 code unit indices, not utf-8 bytes, into the source after
+ * normalize_newlines, so a crlf source is shorter than the file and RawOffsets
+ * maps them back to it
+ *
  * the parser calls these methods as it processes input. implementations
  * decide what to do with each opcode:
  * - treebuilder: reconstructs a NodeBuffer (backward compat)
@@ -22,7 +26,7 @@ export interface Emitter {
 	 * node takes the next id, so a builder can use ids as slot indices
 	 * @param id monotonic node id (unique within this parse).
 	 * @param kind node kind (heading, paragraph, emphasis, etc.).
-	 * @param start source byte offset where this node starts.
+	 * @param start source offset where this node starts
 	 * @param parent id of the parent node (-1 for root's parent).
 	 * @param extra kind-specific extra value (e.g. heading depth).
 	 * @param pending true if this node is speculative (may be revoked).
@@ -40,7 +44,7 @@ export interface Emitter {
 	 * close a previously opened node, a pending node is final from here on
 	 * unless it is a paragraph, which a commit or a revoke settles later
 	 * @param id id of the node to close.
-	 * @param end source byte offset where this node ends.
+	 * @param end source offset where this node ends
 	 * @param kind kind at open, a revoke may have rewritten it since, omitting
 	 *   it makes the builder track revokes
 	 */
@@ -60,8 +64,8 @@ export interface Emitter {
 	 * headings, code fences, code spans and html comments get a value range and
 	 * take no id
 	 * @param parent id of the parent node.
-	 * @param start source byte offset of text start.
-	 * @param end source byte offset of text end.
+	 * @param start source offset of text start
+	 * @param end source offset of text end
 	 * @param parent_kind parent kind at open, as for close
 	 */
 	text(
@@ -144,7 +148,7 @@ export interface Emitter {
 	 * report the parser's current cursor position. called at the end of
 	 * each feed() and finish(). emitters can use this as the boundary
 	 * for eager text emission during streaming.
-	 * @param pos current byte offset in the source.
+	 * @param pos current offset in the source
 	 */
 	cursor(pos: number): void;
 

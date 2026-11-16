@@ -5,6 +5,7 @@
 	// on each change compiles in the browser with the plugin on and mounts where
 	// the built output was. A plugin that can't run in the browser keeps its
 	// built output and says why
+	import { untrack } from 'svelte';
 	import Score from '$lib/design/score/Score.svelte';
 	import type { Plugin } from './types';
 
@@ -21,13 +22,14 @@
 
 	const built = $derived(plugin.example.output);
 
-	let source = $state('');
-	let editing = $state(false);
 	// a plugin that leaves the page as it was opens on what it gives instead
-	let view = $state<'page' | 'html' | 'data' | 'warnings'>('page');
+	const opening = (o: Plugin['example']['output']) => (o.unchanged && o.warnings.length ? 'warnings' : o.unchanged && o.data ? 'data' : 'page');
+	// set here too as effects never run on the server, so the page shows its source without javascript
+	let source = $state(untrack(() => plugin.example.source));
+	let editing = $state(false);
+	let view = $state<'page' | 'html' | 'data' | 'warnings'>(untrack(() => opening(plugin.example.output)));
 	$effect.pre(() => {
-		const o = plugin.example.output;
-		view = o.unchanged && o.warnings.length ? 'warnings' : o.unchanged && o.data ? 'data' : 'page';
+		view = opening(plugin.example.output);
 	});
 	let status = $state<'built' | 'loading' | 'live' | 'error'>('built');
 	let live = $state<{ data: Record<string, unknown> | null; warnings: Plugin['example']['output']['warnings']; error: string | null } | null>(null);

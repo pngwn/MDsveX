@@ -8,7 +8,7 @@ Popularity is **npm downloads for the month to 2026-10-09**. Some numbers are in
 - `rehype-attr`, `rehype-ignore` and `rehype-rewrite` by @uiw/react-md-editor.
 - `remark-cjk-friendly`, probably by one large tool.
 
-**Status as of 2026-10-24.** The tables say what exists on `next` today: "exists" names the option or package, "in progress" is being built, and a row with neither is not built. The same answers, written for someone with a 0.x plugin list, are in the docs, in the section "Coming from remark and rehype plugins" of [`packages/site/src/routes/_docs.svtext`](../packages/site/src/routes/_docs.svtext).
+**Status as of 2026-10-24.** The tables say what exists on `next` today: "exists" names the option or package, "in progress" is being built, and a row with neither is not built. The same answers, written for someone with a 0.x plugin list, are in the docs, in the guide [`packages/site/src/routes/docs/guides/remark-and-rehype/+page.svx`](../packages/site/src/routes/docs/guides/remark-and-rehype/+page.svx).
 
 ## How this is organised
 

@@ -136,6 +136,22 @@ mdsvex({
 ```
 ::::
 
+::::plate[`select_template` with `compile`](mark="(id)", tone=expr)
+[`compile`](/docs/reference/compile) and `compile_async` take the same `select_template`, with the compile's `filename` as the path:
+
+```js
+compile(source, {
+	filename: '/site/docs/intro.svx',
+	templates,
+	select_template: (id) => (id?.includes('/docs/') ? 'docs' : undefined)
+});
+```
+
+:::edges
+- A compile without a `filename` passes `undefined` as the path, so a callback shared with the Vite plugin reads it with `id?.`.
+:::
+::::
+
 ## Opting out
 
 ::::plate[`template: false`](mark="false", tone=text)
@@ -158,6 +174,10 @@ To choose for one import only, add `?template=` to it. `?template=false` unwraps
 
 <Intro />
 ```
+
+:::notes
+TypeScript can't resolve an import with a query of its own, so a `?template=` import needs a declaration in the project, see [types for these imports](/docs/guides/frontmatter#typescript).
+:::
 ::::
 
 ## Template props

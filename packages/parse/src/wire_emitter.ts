@@ -44,7 +44,7 @@ import { AttrSpans, NodeKind, build_attrs, is_raw_text_tag } from "./utils.js";
  * Design:
  *   - optimistic: speculative nodes are sent immediately, revocation is the rare path
  *   - text nodes (kind=1) are invisible on the wire, flattened into T on parent
- *   - byte offsets resolved server-side, client never needs the source string
+ *   - utf-16 source offsets resolved server-side, client never needs the source string
  *   - one batch per feed() call; transport layer decides framing
  */
 
@@ -93,9 +93,9 @@ const KIND_NAMES: string[] = [
 
 /** tracks progressive text emission for a node. */
 interface TextState {
-	/** byte offset where content starts in source. */
+	/** offset where content starts in source */
 	start: number;
-	/** byte offset up to which content has been sent. */
+	/** offset up to which content has been sent */
 	sent: number;
 	/** wire target id: parent id for text nodes, self id for leaves. */
 	target: number;

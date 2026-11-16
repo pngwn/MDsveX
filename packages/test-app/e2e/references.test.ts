@@ -2,10 +2,9 @@ import { expect, test } from "@playwright/test";
 
 test("a mention, an issue and a commit become links", async ({ page }) => {
 	await page.goto("/references");
-	await expect(page.getByRole("link", { name: "@ada" })).toHaveAttribute(
-		"href",
-		"https://github.com/ada",
-	);
+	await expect(
+		page.getByRole("link", { name: "@ada", exact: true }),
+	).toHaveAttribute("href", "https://github.com/ada");
 	await expect(page.getByRole("link", { name: "#123" })).toHaveAttribute(
 		"href",
 		"https://github.com/pngwn/MDsveX/issues/123",
