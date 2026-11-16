@@ -45,7 +45,7 @@
 
 <figure class="pair wide" class:paired class:scored={reading.on}>
 	<div class="write">
-		<div class="head riso">
+		<div class="head">
 			{#if paired}<span class="label">You write</span>{/if}
 			{#if file}<span class="file">{file}</span>{/if}
 			<span class="pick" role="group" aria-label="Show {name} as">
@@ -64,9 +64,9 @@
 
 	{#if paired}
 		<div class="get">
-			<div class="head riso"><span class="label">{error ? 'Its compile throws' : 'You get'}</span></div>
+			<div class="head"><span class="label">{error ? 'Its compile throws' : 'You get'}</span></div>
 			{#if error}
-				<p class="error riso"><span>Error</span> {error}</p>
+				<p class="error"><span>Error</span> {error}</p>
 			{:else}
 				<Output source={read} {compiled} bind:focus {name} />
 			{/if}

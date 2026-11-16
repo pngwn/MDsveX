@@ -6,7 +6,7 @@
 	import Perch from '../penguin/Perch.svelte';
 	import Score, { type Focus } from '../score/Score.svelte';
 	import { tone } from '../score/kinds';
-	import { by_id, FAMILIES, type Construct } from './constructs';
+	import { by_id, FAMILIES, parts_of, type Construct } from './constructs';
 	import Output from './Output.svelte';
 	import type { Compiled, Notes } from './types';
 
@@ -24,6 +24,7 @@
 	let focus = $state<Focus | null>(null);
 
 	const own = $derived(tone(c.kinds[0]));
+	const parts = $derived(parts_of(c));
 	const family = $derived(FAMILIES.find((f) => f.id === c.family)!);
 	const related = $derived((c.related ?? []).map((id) => by_id.get(id)!).filter(Boolean));
 	// the score is set as large as the plate holds its longest line, as v7 set its specimen
@@ -31,12 +32,12 @@
 </script>
 
 {#snippet score()}
-	<Score source={c.source} {palette} staves text bars bind:focus label="{c.name}, as the parser reads it" />
+	<Score source={c.source} {palette} staves riso {parts} bind:focus label="{c.name}, as the parser reads it" />
 {/snippet}
 
 <article class="plate" id={c.id} style:--own-line="var(--line-{own})" style:--own-name="var(--name-{own})" aria-labelledby="{c.id}-name">
 	<header class="head">
-		<span class="glyph" class:long={c.glyph.length > 3} aria-hidden="true">{c.glyph}</span>
+		<span class="glyph" aria-hidden="true">{c.glyph}</span>
 		<div class="title">
 			<p class="kicker"><em class="family" data-family={c.family}>{family.name.toLowerCase()}</em></p>
 			<h2 id="{c.id}-name"><a href="#{c.id}">{c.name}</a></h2>
@@ -89,35 +90,52 @@
 		scroll-margin-top: 1.5rem;
 	}
 
-	/* v7's head: the mark set big in its colour, the name beside it, both on the hairline */
+	/* v7's head: the mark in its colour beside the name, on the name's baseline,
+	   the kicker over the name and the lede under it. Every mark is set at one
+	   size in a column four characters wide, so the names line up plate to plate
+	   and a short mark leaves its room at the right, not over the name */
 	.head {
+		--head-size: clamp(2.5rem, 5.5vw, 4.5rem);
 		display: grid;
-		grid-template-columns: auto minmax(0, 1fr);
-		align-items: end;
-		gap: clamp(1rem, 3vw, 2.5rem);
+		grid-template-columns: calc(var(--head-size) * 2.2) minmax(0, 1fr);
+		grid-template-rows: auto auto auto;
+		align-items: baseline;
+		column-gap: clamp(1rem, 3vw, 2.5rem);
 		padding: clamp(1rem, 3vw, 2rem) clamp(1rem, 3cqi, 2.25rem);
 		border-bottom: 1px solid var(--ink);
 	}
 
+	.title {
+		display: contents;
+	}
+
 	.glyph {
-		font: 400 clamp(4rem, 11vw, 9rem) / 0.8 var(--face-mono);
+		grid-column: 1;
+		grid-row: 2;
+		font: 400 var(--head-size) / 0.95 var(--face-mono);
 		font-variant-ligatures: none;
-		letter-spacing: 0.02em;
+		letter-spacing: -0.06em;
 		color: var(--own-name);
 		white-space: nowrap;
 	}
 
-	/* four characters or more would push the name off the plate */
-	.glyph.long {
-		font-size: clamp(2rem, 4.5vw, 3.75rem);
-	}
-
-	.title {
-		min-width: 0;
+	.kicker,
+	h2,
+	.what {
+		grid-column: 2;
 	}
 
 	.kicker {
+		grid-row: 1;
 		margin: 0 0 0.5rem;
+	}
+
+	h2 {
+		grid-row: 2;
+	}
+
+	.what {
+		grid-row: 3;
 	}
 
 	.family {
@@ -142,7 +160,7 @@
 
 	h2 {
 		margin: 0;
-		font: 500 clamp(2.5rem, 5.5vw, 4.5rem) / 0.95 var(--face-display);
+		font: 500 var(--head-size) / 0.95 var(--face-display);
 		letter-spacing: -0.01em;
 	}
 
@@ -172,7 +190,7 @@
 		border-bottom: 1px solid var(--ink);
 	}
 
-	/* v7's specimen: the underlay as large as the longest line allows, up to 2.6rem,
+	/* v7's specimen: the underlay as large as the longest line allows, up to 2.25rem,
 	   tracked a little tighter as it gets smaller. The score's bracket margin and its
 	   spare cell come off the width first. Its floor is 0.8125rem, not v7's 0.7rem:
 	   a line too long for the plate wraps to the next system here rather than
@@ -180,7 +198,7 @@
 	.reading {
 		container-type: inline-size;
 		min-width: 0;
-		--size: clamp(0.8125rem, calc((100cqi - 2.5rem) / (var(--cols) + 2)), 2.6rem);
+		--size: clamp(0.8125rem, calc((100cqi - 2.5rem) / (var(--cols) + 2)), 2.25rem);
 		--track: clamp(0.2em, calc(var(--size) * 0.5 - 0.3rem), 0.5em);
 	}
 
@@ -278,29 +296,13 @@
 	/* v7 on a phone: the head is one row, the mark and the name, the line under both */
 	@container (max-width: 36rem) {
 		.head {
-			align-items: center;
+			--head-size: 2.25rem;
 			gap: 0.25rem 1rem;
 			padding: 1rem;
 		}
 
-		.glyph {
-			font-size: 3rem;
-		}
-
-		.glyph.long {
-			font-size: 1.5rem;
-		}
-
-		.title {
-			display: contents;
-		}
-
 		.kicker {
 			display: none;
-		}
-
-		h2 {
-			font-size: 2.25rem;
 		}
 
 		.what {

@@ -33,7 +33,7 @@
 	</figcaption>
 	<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 	<pre
-		class="code riso"
+		class="code"
 		class:dimmed={!!lit}
 		style:--wash-c={focus ? `var(--line-${tone(focus.kind)})` : undefined}
 		tabindex="0"
@@ -79,8 +79,9 @@
 		color: var(--ink);
 		font: 400 0.8125rem / 1.6 var(--face-mono);
 		font-variant-ligatures: none;
-		white-space: pre-wrap;
-		overflow-wrap: anywhere;
+		/* laid out a block a line (indent.ts), so it scrolls rather than wraps,
+		   which would break the indents */
+		white-space: pre;
 		tab-size: 2;
 	}
 

@@ -5,12 +5,16 @@
 // source range it came from and the output range it became. They are what lets
 // a phrase on the score wash its output (wash.ts), with nothing matched by text.
 //
+// The code is shown indented (indent.ts), to read rather than as compiled; the
+// indenting is only whitespace, so the mappings move with it.
+//
 // The notes are markdown too, compiled the same way, so their `code` is set by
 // mdsvex rather than by a regex here
 import { compile } from 'mdsvex/compile';
 import { create_highlight } from 'mdsvex/highlight';
 import { load_math } from 'mdsvex/math';
 import { constructs, type Construct } from './constructs';
+import { indent } from './indent';
 import type { Compiled, Notes, Segment } from './types';
 
 /**
@@ -57,7 +61,9 @@ export async function compile_construct(c: Construct): Promise<Compiled> {
 	const used: string[] = [];
 	if (c.needs?.includes('math')) used.push('math, Temml');
 	if (c.needs?.includes('highlight')) used.push('highlight');
-	return { code: result.code, segments: segments_of(result), with: used };
+	const laid = indent(result.code);
+	const segments = segments_of(result).map(([s, e, g, h]): Segment => [s, e, laid.at(g), laid.at(h)]);
+	return { code: laid.code, segments, with: used };
 }
 
 /** a line of notes as inline markup: mdsvex's paragraph, without the paragraph */

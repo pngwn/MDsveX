@@ -27,7 +27,7 @@ onMount(() => {
 		<p class="lede">mdsvex is markdown with Svelte in it. Learn the language, follow a guide, add a plugin, or look something up.</p>
 	</header>
 
-	<nav class="sections riso" aria-label="Docs">
+	<nav class="sections" aria-label="Docs">
 		{#each nav as section}
 			<section>
 				<h2>{section.title}</h2>
@@ -73,7 +73,7 @@ onMount(() => {
 	.sections h2,
 	.label {
 		margin: 0 0 0.6rem;
-		/* a mono label: the nav's riso, not the linen texture.css gives headings */
+		/* a mono label, not the linen texture.css gives headings */
 		mask-image: none;
 		font: 400 0.8125rem / 1.4 var(--face-mono);
 		color: var(--quiet);

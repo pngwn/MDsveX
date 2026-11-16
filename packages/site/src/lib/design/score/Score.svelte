@@ -5,6 +5,16 @@
 		end: number;
 		kind: string;
 	}
+
+	/**
+	 * a named span of the source that is no node of its own, a link's
+	 * destination or a directive's name, drawn under the underlay `[start, end)`
+	 */
+	export interface Part {
+		start: number;
+		end: number;
+		name: string;
+	}
 </script>
 
 <script lang="ts">
@@ -69,6 +79,13 @@
 		text?: boolean;
 		/** draw a bar line after each block and the double bar at the end */
 		bars?: boolean;
+		/**
+		 * the named parts of a construct that the parser makes no node of, ruled
+		 * under the underlay with their names below, apart from the nodes over it
+		 */
+		parts?: Part[];
+		/** the underlay takes riso, for a score set at display size */
+		riso?: boolean;
 	}
 
 	let {
@@ -82,6 +99,8 @@
 		syntax = {},
 		text = false,
 		bars = false,
+		parts = [],
+		riso = false,
 	}: Props = $props();
 
 	const NBSP = String.fromCharCode(160);
@@ -191,6 +210,8 @@
 		sys: System;
 		rows: Row[];
 		brackets: Bracket[];
+		/** the parts under this system's underlay, in its columns */
+		under: (Part & { x0: number; x1: number; head: boolean; tail: boolean })[];
 		/** a block ends here, a bar line closes the system */
 		closes: boolean;
 		/** the column the system's widest phrase runs to */
@@ -246,7 +267,16 @@
 			const closes =
 				k === laid.length - 1 || drawn.some((m) => m.depth === 1 && m.ink !== 'text' && spans.get(m.key)![1] === k);
 			const to = Math.max(sys.end - sys.start, ...rows.flatMap((r) => r.placed.map((p) => p.x1)));
-			return { sys, rows, brackets, closes, to };
+			const under = parts
+				.filter((p) => p.start < sys.end && p.end > sys.start)
+				.map((p) => ({
+					...p,
+					x0: Math.max(p.start, sys.start) - sys.start,
+					x1: Math.min(p.end, sys.end) - sys.start,
+					head: p.start >= sys.start,
+					tail: p.end <= sys.end,
+				}));
+			return { sys, rows, brackets, closes, to, under };
 		}),
 	);
 
@@ -305,6 +335,14 @@
 		return !!focus && focus.start === s.start && focus.end === (s.end ?? fed) && (!focus.kind || focus.kind === s.kind);
 	}
 
+	/** a part lights as the innermost node around it, so the output washes in that node's colour */
+	function part_kind(p: Part) {
+		const around = bar.phrases
+			.filter((q) => q.kind !== 'text' && q.start <= p.start && p.end <= (q.end ?? fed))
+			.sort((a, b) => b.depth - a.depth)[0];
+		return around?.kind ?? '';
+	}
+
 	// pointing at a phrase lights it, pointing at a character lights the innermost node it is in
 	function over(e: PointerEvent) {
 		const el = (e.target as HTMLElement).closest<HTMLElement>('[data-start]');
@@ -338,7 +376,8 @@
 	<!-- the drawing is a character per cell, so a screen reader gets the source whole -->
 	<pre class="said">{source}</pre>
 
-	{#each engraved as { sys, rows, brackets, closes, to }, k (sys.start)}
+	{#each engraved as { sys, rows, brackets, closes, to, under }, k (sys.start)}
+		{@const below = under.length ? 1 : 0}
 		<div
 			class="system"
 			class:closes
@@ -346,6 +385,7 @@
 			aria-hidden="true"
 			style:--cols={cols}
 			style:--template={rows.map((r) => (r.quiet ? 'var(--_quiet-row)' : r.raised ? 'var(--_raised-row)' : 'var(--_row)')).join(' ')}
+			style:--under={below ? 'var(--_part-row)' : undefined}
 		>
 			{#if staves}
 				{#each rows as row, r (row.key)}
@@ -395,7 +435,7 @@
 					class:last={b.last}
 					style:--c="var(--line-{b.stroke.tone})"
 					style:--level={b.level}
-					style:grid-row="{b.row} / {b.last ? rows.length + 2 : rows.length + 3}"
+					style:grid-row="{b.row} / {b.last ? rows.length + 2 + below : rows.length + 3 + below}"
 				></span>
 			{/each}
 
@@ -403,7 +443,28 @@
 				<span class="barline" style:grid-row={rows.length + 1} style:grid-column="{to + 2} / {to + 3}"></span>
 			{/if}
 
-			<div class="underlay" style:grid-row={rows.length + 1}>
+			{#each under as p (p.start)}
+				{@const kind = part_kind(p)}
+				<span
+					class="part"
+					class:lit={!!focus && focus.start === p.start && focus.end === p.end}
+					style:grid-row={rows.length + 2}
+					style:grid-column="{p.x0 + 2} / {p.x1 + 2}"
+					style:--c="var(--line-{tone(kind)})"
+					style:--n="var(--name-{tone(kind)})"
+					data-start={p.start}
+					data-end={p.end}
+					data-kind={kind}
+					title="{p.name}, characters {p.start} to {p.end}"
+				>
+					<i class="line"></i>
+					{#if p.head}<i class="head"></i>{/if}
+					{#if p.tail}<i class="tick"></i>{/if}
+					{#if p.head}<em class="name">{p.name}</em>{/if}
+				</span>
+			{/each}
+
+			<div class="underlay" class:riso style:grid-row={rows.length + 1}>
 				{#each source.slice(sys.start, sys.end) as ch, i (i)}
 					{@const at = sys.start + i}
 					{@const marked = !!bar.marks[at] && at < fed}
@@ -449,6 +510,8 @@
 		--_line-gap: var(--line-gap, 1.4rem);
 		--_block-gap: var(--block-gap, 2.5rem);
 		--_underlay-gap: var(--underlay-gap, 0.55rem);
+		/* the row of parts under the underlay: their rule and their names */
+		--_part-row: calc(var(--_name-size) + 0.7rem);
 		/* how far in each nested bracket steps */
 		--_inset: var(--inset, 0.5rem);
 		--_margin: var(--margin, calc(var(--_inset) * var(--levels) + 0.5rem));
@@ -515,19 +578,21 @@
 		mask-composite: var(--linen-composite, add);
 	}
 
+	/* a system inside a nested block can have no rows of phrases, so --template
+	   is empty: the fallback keeps the declaration valid, and with it the gap */
 	.system {
 		display: grid;
 		grid-template-columns: var(--_margin) repeat(var(--cols), calc(1ch + var(--_track))) minmax(0, 1fr);
-		grid-template-rows: var(--template) auto var(--_line-gap);
+		grid-template-rows: var(--template,) auto var(--under,) var(--_line-gap);
 		position: relative;
 	}
 
 	.system.closes {
-		grid-template-rows: var(--template) auto var(--_block-gap);
+		grid-template-rows: var(--template,) auto var(--under,) var(--_block-gap);
 	}
 
 	.system.fine {
-		grid-template-rows: var(--template) auto 0;
+		grid-template-rows: var(--template,) auto var(--under,) 0;
 	}
 
 	/* with no staves, the bar line belongs to the underlay alone, just past its last character */
@@ -588,12 +653,13 @@
 		border-bottom: var(--_w) solid currentColor;
 	}
 
-	/* a bar where the node opens and where it closes, centred on its line */
+	/* a bar where the node opens and where it closes, centred on its line, one
+	   height for structure and text */
 	.head,
 	.tick {
 		position: absolute;
-		bottom: -0.35rem;
-		height: 0.7rem;
+		bottom: -0.275rem;
+		height: 0.55rem;
 	}
 
 	.head {
@@ -672,8 +738,6 @@
 
 	.text .head,
 	.text .tick {
-		height: 0.4rem;
-		bottom: -0.2rem;
 		border-width: 1px;
 	}
 
@@ -684,6 +748,10 @@
 		position: relative;
 		padding-top: var(--_underlay-gap);
 		line-height: 1.25;
+	}
+
+	/* riso is for display sizes; at a body size it reads as noise on the code */
+	.underlay.riso {
 		mask-image: var(--riso-image, none);
 		mask-size: var(--riso-size, auto);
 		mask-composite: var(--riso-composite, add);
@@ -711,7 +779,36 @@
 		background-color: color-mix(in srgb, var(--wash-c, var(--line-list)) 13%, transparent);
 	}
 
-	.dimmed :is(.phrase, .bracket-of, .barline):not(.lit) {
+	/* a part hangs under its characters: a 1px rule with its ends turned up to
+	   them, its name under the rule. Hairline and below, so it reads as a note on
+	   the source, not as one more node over it */
+	.part {
+		--past: calc(var(--_track) * 0.5 + 3px);
+		position: relative;
+		color: var(--c);
+		cursor: default;
+	}
+
+	.part .line {
+		top: 0.15rem;
+		bottom: auto;
+		border-bottom-width: 1px;
+	}
+
+	.part .head,
+	.part .tick {
+		top: calc(0.15rem - 0.3rem + 1px);
+		bottom: auto;
+		height: 0.3rem;
+		border-width: 1px;
+	}
+
+	.part .name {
+		bottom: auto;
+		top: 0.35rem;
+	}
+
+	.dimmed :is(.phrase, .bracket-of, .barline, .part):not(.lit) {
 		opacity: 0.35;
 	}
 
@@ -780,6 +877,7 @@
 
 	@media (prefers-reduced-motion: no-preference) {
 		.phrase,
+		.part,
 		.bracket-of,
 		.barline,
 		.ch {

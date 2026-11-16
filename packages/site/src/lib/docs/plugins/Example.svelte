@@ -154,7 +154,7 @@
 			{#each Object.entries(plugin.example.files) as [path, text] (path)}
 				<details class="file">
 					<summary><span class="label">and the file it reads,</span> <code>{path}</code></summary>
-					<pre class="code riso"><code>{text}</code></pre>
+					<pre class="code"><code>{text}</code></pre>
 				</details>
 			{/each}
 		{/if}
@@ -189,11 +189,11 @@
 		<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 		<div class="rendered" hidden={view !== 'page' || !mounted} bind:this={target} onclick={stay}></div>
 		{#if view === 'html'}
-			<pre class="code riso"><code>{live ? html : built.pretty}</code></pre>
+			<pre class="code"><code>{live ? html : built.pretty}</code></pre>
 		{:else if view === 'data'}
-			<pre class="code riso"><code>plugin_data = {JSON.stringify(output.data, (k, v) => (k === 'position' ? undefined : v), '\t')}</code></pre>
+			<pre class="code"><code>plugin_data = {JSON.stringify(output.data, (k, v) => (k === 'position' ? undefined : v), '\t')}</code></pre>
 		{:else if view === 'warnings'}
-			<ol class="warnings riso">
+			<ol class="warnings">
 				{#each output.warnings as w, i (i)}
 					<li><span class="line">line {w.line ?? '?'}</span> <code>{w.code}</code> {w.message}</li>
 				{/each}
@@ -204,7 +204,7 @@
 		{/if}
 	</div>
 
-	<figcaption class="riso">
+	<figcaption>
 		<span role="status">{said}</span>
 		{#if plugin.live}
 			<span class="blocked">It can’t run in the browser yet: {plugin.live}.</span>

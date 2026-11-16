@@ -57,7 +57,7 @@
 			</div>
 		{/each}
 	</div>
-	<p class="readout riso" aria-hidden="true">
+	<p class="readout" aria-hidden="true">
 		{#if hovered}<span class="r-mark" style:color="var(--name-{hovered.tone})">{hovered.mark}</span> {hovered.name}{:else}&nbsp;{/if}
 	</p>
 </nav>

@@ -30,7 +30,7 @@
 
 <span class="phrase" class:quiet style:--c-line="var(--line-{t})" style:--c-name="var(--name-{t})">
 	{#if name}<em class="name" aria-hidden="true">{name}</em>{/if}
-	<code class="underlay riso">{#each runs as r, i (i)}{#if r.syntax}<span class="own">{r.text}</span>{:else}{r.text}{/if}{/each}</code>
+	<code class="underlay">{#each runs as r, i (i)}{#if r.syntax}<span class="own">{r.text}</span>{:else}{r.text}{/if}{/each}</code>
 </span>
 
 <style>

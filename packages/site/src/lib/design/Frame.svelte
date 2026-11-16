@@ -37,14 +37,13 @@
 
 <div class="design-frame" data-theme={theme} style={texture_style}>
 	{#if nav}
-		<header class="nav riso">{@render nav()}</header>
+		<header class="nav">{@render nav()}</header>
 	{/if}
 
 	<main>{@render children()}</main>
 
 	<footer>
-		<!-- the rule stays plain, the meta under it takes riso -->
-		<div class="riso">
+		<div>
 			{#if footer}
 				{@render footer()}
 			{:else}
@@ -103,7 +102,7 @@
 		margin: 0 auto;
 	}
 
-	/* meta is in the mono, with riso, SCORE.md: one mono for source, code and labels */
+	/* meta is in the mono, SCORE.md: one mono for source, code and labels */
 	.nav {
 		padding: 1.25rem 0;
 		font: 400 0.8125rem / 1.4 var(--face-mono);

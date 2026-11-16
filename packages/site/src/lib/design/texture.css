@@ -10,7 +10,8 @@
 	mask-composite: var(--linen-composite, add);
 }
 
-/* Berkeley Mono: riso, like a typewriter's ribbon */
+/* Berkeley Mono at display sizes: riso, like a typewriter's ribbon. Code,
+   labels and meta at a body size stay plain, the grain reads as noise there */
 .riso {
 	mask-image: var(--riso-image, none);
 	mask-size: var(--riso-size, auto);

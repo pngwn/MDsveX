@@ -57,7 +57,7 @@
 <header class="hero">
 	<div class="title">
 		<div class="title-score">
-			<Score source={title} palette="voice" staves text bars label="The construct atlas, as a heading with emphasis" />
+			<Score source={title} palette="voice" staves text bars riso label="The construct atlas, as a heading with emphasis" />
 		</div>
 		<h1 class="rag">The <em>construct</em> atlas</h1>
 		<p class="sub">Penguin-Flavoured Markdown, one construct at a time.</p>
@@ -107,7 +107,7 @@
 	</div>
 </div>
 
-<footer class="colophon riso">
+<footer class="colophon">
 	<p>
 		Every score on this page is <code>@mdsvex/parse</code> reading its source, and every output is mdsvex’s
 		<code>compile</code>, run when the site is built. Nothing is drawn by hand.

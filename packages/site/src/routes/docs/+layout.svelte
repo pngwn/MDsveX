@@ -45,12 +45,12 @@ $effect(() => {
 {:else}
 	<div class="docs">
 		<!-- a column beside the page, and on a phone a list to open over it -->
-		<nav class="side riso" aria-label="Docs">
+		<nav class="side" aria-label="Docs">
 			<a class="index" href="/docs">All docs</a>
 			{@render contents()}
 		</nav>
 
-		<details class="drawer riso">
+		<details class="drawer">
 			<summary>
 				<span class="where">{section?.title ?? "Docs"}</span>
 				<span class="what">{current?.title ?? ""}</span>
@@ -102,7 +102,7 @@ $effect(() => {
 		display: none;
 	}
 
-	/* the nav is meta, in the mono with riso; SCORE.md: one mono for labels */
+	/* the nav is meta, in the mono; SCORE.md: one mono for labels */
 	nav {
 		font: 400 0.8125rem / 1.45 var(--face-mono);
 		font-variant-ligatures: none;
@@ -121,7 +121,7 @@ $effect(() => {
 
 	nav h2 {
 		margin: 1.75rem 0 0.5rem;
-		/* a mono label: the nav's riso, not the linen texture.css gives headings */
+		/* a mono label, not the linen texture.css gives headings */
 		mask-image: none;
 		font: inherit;
 		color: var(--quiet);

@@ -58,7 +58,7 @@
 				<span class="none">no syntax of its own</span>
 			{/each}
 		</span>
-		<span class="meta riso">
+		<span class="meta">
 			{#if hit}
 				<span class="why">matched {#each hit.why as w, i (i)}{i ? ', ' : ''}{w.field} <b>{w.text.length > 48 ? w.text.slice(0, 46) + '…' : w.text}</b>{/each}</span>
 			{/if}
@@ -73,7 +73,7 @@
 	{#if open}
 		<div class="body">
 			<Example plugin={p} />
-			<p class="links riso">
+			<p class="links">
 				<a href={p.href}>{p.title}, the whole page</a>
 				<code>pnpm add -D {p.package}@next{needs.filter((n) => p.peers.some((x) => x.name === n)).map((n) => ` ${n}`).join('')}</code>
 			</p>

@@ -15,7 +15,7 @@
 	onMount(() => reading.restore());
 </script>
 
-<div class="switch riso {look}">
+<div class="switch {look}">
 	<button type="button" role="switch" aria-checked={reading.on} onclick={() => reading.set(!reading.on)}>
 		<span class="track" aria-hidden="true"><span class="knob"></span></span>
 		<span class="what">Show the reading</span>
