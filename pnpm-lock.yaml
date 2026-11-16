@@ -530,6 +530,9 @@ importers:
       '@mdsvex/parse':
         specifier: workspace:^
         version: link:../parse
+      '@types/node':
+        specifier: ^22.15.2
+        version: 22.15.2
       mdsvex:
         specifier: workspace:^
         version: link:../mdsvex

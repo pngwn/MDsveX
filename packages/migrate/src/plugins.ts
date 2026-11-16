@@ -31,7 +31,7 @@ const HIGHLIGHT: Replacement = {
 };
 const MATH: Replacement = {
 	message:
-		"Math is built in: a `math` fence and a code span in dollars. Pass `math: true` to `migrate` to rewrite `$x$` and `$$x$$` in your documents.",
+		"Math is built in: a `math` fence and a code span in dollars. Pass `math: true` to `migrate`, or `--math` to `mdsvex-migrate`, to rewrite `$x$` and `$$x$$` in your documents.",
 };
 const KATEX: Replacement = {
 	message:

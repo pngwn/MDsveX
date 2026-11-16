@@ -7,6 +7,37 @@ to mdsvex next.
 The source document is parsed with the [remark](https://github.com/remarkjs/remark)
 (unified) ecosystem into an `mdast` tree, then re-serialised under PFM's rules.
 
+## Command line
+
+```sh
+npx @mdsvex/migrate src/routes svelte.config.js
+```
+
+`mdsvex-migrate` rewrites files in place, so commit first. What it does with a
+path depends on what the path is:
+
+| Path                          | Migrated as                                                     |
+| ----------------------------- | --------------------------------------------------------------- |
+| a directory                   | every `.md` and `.svx` file in it, outside `node_modules` and dot folders |
+| `.js`, `.ts`, `.mjs`, `.cts`... | a config, with `migrate_config`                                 |
+| `.svelte`                     | a layout, with `check_template`, which only prints notes        |
+| any other file                | a document, with `migrate_document`                             |
+
+| Option                 |                                                                |
+| ---------------------- | -------------------------------------------------------------- |
+| `--smartypants`        | the documents were written for the 0.x default, `smartypants: true` |
+| `--smartypants=<json>` | a 0.x smartypants object, `'{"dashes":"inverted"}'`            |
+| `--math`               | the documents were written for remark-math                     |
+| `--check`              | write nothing, exit 1 when a file would change                 |
+
+Each note is printed as `path:line:column message`, at its line in the file
+before it was migrated. Migrate the config first: its notes say whether your
+documents need `--smartypants` or `--math`.
+
+A document with CRLF line endings is written with CRLF. `migrate_file(name,
+source, options)` does the same from code, choosing what to run by the file
+name.
+
 ## Usage
 
 ```ts

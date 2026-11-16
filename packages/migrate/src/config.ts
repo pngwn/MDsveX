@@ -648,7 +648,7 @@ const INVERTED =
 	"`dashes: 'inverted'` is gone. `--` is an en dash now and `---` an em dash.";
 const BACKTICKS = "Backtick quotes are gone.";
 const REWRITE =
-	"Pass your old `smartypants` value to `migrate`, `migrate(source, { smartypants: true })` for the default, and your documents are rewritten to render as they did.";
+	"Pass your old `smartypants` value to `migrate`, `migrate(source, { smartypants: true })` or `mdsvex-migrate --smartypants` for the default, and your documents are rewritten to render as they did.";
 
 /** what the documents of a 0.x config need, the default had both */
 function smart_note(ctx: Context, node: Node, lead: string, dashes: string, backticks: boolean): void {

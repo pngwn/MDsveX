@@ -10,6 +10,7 @@
 		"forceConsistentCasingInFileNames": true,
 		"esModuleInterop": true,
 		"strict": true,
+		"types": ["node"],
 		"outDir": "tsc"
 	}
 }
