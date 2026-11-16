@@ -1,5 +1,14 @@
 # @mdsvex/language-server
 
+## 0.1.0-next.6
+
+### Patch Changes
+
+- [#1258](https://github.com/pngwn/MDsveX/pull/1258) [`af55b25`](https://github.com/pngwn/MDsveX/commit/af55b2500671d573abd7e917541a9afc2dd780cc) Thanks [@pngwn](https://github.com/pngwn)! - The language packages accept TypeScript 6 as well as 5, so they install beside SvelteKit 3, whose optional TypeScript peer is `^6.0.0`, without a peer override.
+
+- Updated dependencies [[`af55b25`](https://github.com/pngwn/MDsveX/commit/af55b2500671d573abd7e917541a9afc2dd780cc)]:
+  - @mdsvex/language-core@0.1.0-next.6
+
 ## 0.1.0-next.5
 
 ### Patch Changes

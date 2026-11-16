@@ -1,7 +1,7 @@
 {
 	"name": "incremental-parse-test",
 	"private": true,
-	"version": "1.0.0-next.5",
+	"version": "1.0.0-next.6",
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",

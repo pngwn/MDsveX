@@ -1,5 +1,13 @@
 # vscode-pfm
 
+## 0.1.0-next.6
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @mdsvex/migrate@0.2.0-next.5
+  - @mdsvex/typescript-plugin@0.1.0-next.6
+
 ## 0.1.0-next.5
 
 ### Minor Changes
