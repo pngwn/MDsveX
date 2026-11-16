@@ -1,5 +1,14 @@
 # @mdsvex/repl
 
+## 0.0.1-next.4
+
+### Patch Changes
+
+- Updated dependencies [[`3da2c4d`](https://github.com/pngwn/MDsveX/commit/3da2c4d2f90f709fd80371b0107283ead13d83b8)]:
+  - mdsvex@1.0.0-next.5
+  - @mdsvex/parse@1.0.0-next.4
+  - @mdsvex/render@1.0.0-next.5
+
 ## 0.0.1-next.3
 
 ### Patch Changes

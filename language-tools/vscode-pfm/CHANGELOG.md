@@ -1,5 +1,19 @@
 # vscode-pfm
 
+## 0.1.0-next.5
+
+### Minor Changes
+
+- [#1263](https://github.com/pngwn/MDsveX/pull/1263) [`8c782b6`](https://github.com/pngwn/MDsveX/commit/8c782b621f8c0b315f7dbbd80a8d584dcbaa1edd) Thanks [@pngwn](https://github.com/pngwn)! - Add **mdsvex: Migrate File from mdsvex 0.x**, which migrates the document, config or layout in the editor with `@mdsvex/migrate` in one undoable edit and lists its notes in the **mdsvex migrate** output panel. The `mdsvex.migrate.smartypants` and `mdsvex.migrate.math` settings pass the 0.x options.
+
+### Patch Changes
+
+- [#1260](https://github.com/pngwn/MDsveX/pull/1260) [`03b42f0`](https://github.com/pngwn/MDsveX/commit/03b42f0f11dd370df1d1927dd9499966117423a4) Thanks [@pngwn](https://github.com/pngwn)! - The extension installs from the VS Code Marketplace and Open VSX. The Marketplace has no prerelease versions, so a prerelease ships as a pre-release on an odd minor: `0.1.0-next.5` installs as `0.3.5`, and a release such as `1.0.0` keeps its version.
+
+- Updated dependencies [[`3da2c4d`](https://github.com/pngwn/MDsveX/commit/3da2c4d2f90f709fd80371b0107283ead13d83b8), [`8c782b6`](https://github.com/pngwn/MDsveX/commit/8c782b621f8c0b315f7dbbd80a8d584dcbaa1edd)]:
+  - @mdsvex/migrate@0.2.0-next.5
+  - @mdsvex/typescript-plugin@0.1.0-next.5
+
 ## 0.1.0-next.4
 
 ### Patch Changes

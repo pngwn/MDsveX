@@ -1,5 +1,12 @@
 # @mdsvex/language-server
 
+## 0.1.0-next.5
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @mdsvex/language-core@0.1.0-next.5
+
 ## 0.1.0-next.4
 
 ### Patch Changes

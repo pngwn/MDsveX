@@ -1,5 +1,26 @@
 # parse
 
+## 1.0.0-next.4
+
+### Minor Changes
+
+- [#1259](https://github.com/pngwn/MDsveX/pull/1259) [`3da2c4d`](https://github.com/pngwn/MDsveX/commit/3da2c4d2f90f709fd80371b0107283ead13d83b8) Thanks [@pngwn](https://github.com/pngwn)! - `frontmatter.parse` gets the path of the document as its second argument, `{ filename }`, so a value that comes from where a document lives can go into `metadata`:
+
+  ```js
+  import { parse } from 'yaml';
+
+  mdsvex({
+  	frontmatter: {
+  		parse: (raw, { filename }) => ({
+  			slug: filename?.split('/').at(-2),
+  			...parse(raw),
+  		}),
+  	},
+  });
+  ```
+
+  The same parser runs for the compiled document, a `?metadata` import and `ctx.frontmatter`, so all three see the same values. `filename` is `undefined` when the document is compiled without a path. The `frontmatter` option of `parse_markdown_svelte` gets the same second argument, from its `filename` option.
+
 ## 1.0.0-next.3
 
 ### Minor Changes
