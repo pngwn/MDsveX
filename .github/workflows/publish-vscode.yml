@@ -1,7 +1,7 @@
 name: Publish VS Code extension
 
 # publishes vscode-pfm when its version has no vscode-pfm@<version> tag yet
-# the marketplace needs a trusted publishing policy on the pngwn publisher for this file, with no environment
+# the marketplace needs a trusted publishing policy on the mdsvex publisher for this file, with no environment
 # open vsx needs an OVSX_PAT secret and is skipped without it
 
 on:
