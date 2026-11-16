@@ -33,6 +33,7 @@ const SHIPPED = [
 	"images/icon.png",
 	"syntaxes/pfm.tmLanguage.json",
 	"dist/extension.cjs",
+	"dist/migrate.cjs",
 	"server/server.cjs",
 ];
 

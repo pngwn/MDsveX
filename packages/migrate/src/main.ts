@@ -138,3 +138,4 @@ export { migrate_frontmatter } from "./frontmatter.js";
 export { migrate_config } from "./config.js";
 export { check_template } from "./template.js";
 export type { MigrateResult, MigrationNote, NoteKind } from "./notes.js";
+export { migrate_file, kind_of, type FileKind, type FileResult } from "./file.js";

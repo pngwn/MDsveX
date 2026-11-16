@@ -6,6 +6,7 @@ export default defineConfig({
 		lib: {
 			entry: {
 				main: resolve(__dirname, "tsc/main.js"),
+				bin: resolve(__dirname, "tsc/bin.js"),
 			},
 			formats: ["es"],
 		},
@@ -21,9 +22,11 @@ export default defineConfig({
 				/^unist/,
 				/^acorn/,
 				/^@sveltejs\/acorn-typescript/,
+				/^node:/,
 			],
 			output: {
 				entryFileNames: "[name].js",
+				banner: (chunk) => (chunk.name === "bin" ? "#!/usr/bin/env node" : ""),
 			},
 		},
 	},

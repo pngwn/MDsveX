@@ -16,6 +16,8 @@ export default defineConfig({
 			external: ["vscode"],
 			output: {
 				entryFileNames: "extension.cjs",
+				chunkFileNames: (chunk) =>
+					chunk.facadeModuleId?.includes("/migrate/") ? "migrate.cjs" : "[name].cjs",
 			},
 		},
 	},

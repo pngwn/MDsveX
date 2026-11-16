@@ -5,6 +5,9 @@
 	"main": "./dist/main.js",
 	"module": "./dist/main.js",
 	"types": "./dist/main.d.ts",
+	"bin": {
+		"mdsvex-migrate": "./dist/bin.js"
+	},
 	"files": [
 		"dist"
 	],
@@ -50,6 +53,7 @@
 	},
 	"devDependencies": {
 		"@mdsvex/parse": "workspace:^",
+		"@types/node": "^22.15.2",
 		"mdsvex": "workspace:^",
 		"npm-run-all2": "^7.0.2",
 		"shx": "^0.3.4"

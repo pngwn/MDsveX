@@ -12,9 +12,14 @@ import {
 	TransportKind,
 } from "vscode-languageclient/node";
 
+import { register_migrate } from "./migrate";
+
 let client: LanguageClient | undefined;
 
 export async function activate(context: vscode.ExtensionContext) {
+	// before the server starts so the command is ready at once
+	register_migrate(context);
+
 	const serverModule = context.asAbsolutePath(
 		path.join("server", "server.cjs"),
 	);
