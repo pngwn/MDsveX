@@ -1,0 +1,96 @@
+name: Publish VS Code extension
+
+# publishes vscode-pfm when its version has no vscode-pfm@<version> tag yet
+# the marketplace needs a trusted publishing policy on the pngwn publisher for this file, with no environment
+# open vsx needs an OVSX_PAT secret and is skipped without it
+
+on:
+  push:
+    branches:
+      - next
+      - main
+    paths:
+      - 'language-tools/vscode-pfm/package.json'
+  workflow_dispatch:
+
+concurrency:
+  group: publish-vscode
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # push the version tag
+      id-token: write # marketplace trusted publishing
+    env:
+      OVSX_PAT: ${{ secrets.OVSX_PAT }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check for an unpublished version
+        id: check
+        run: |
+          version=$(node -p "require('./language-tools/vscode-pfm/package.json').version")
+          tag="vscode-pfm@$version"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null; then
+            echo "$tag is already published"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.check.outputs.publish == 'true'
+        run: npm i -g pnpm@10.33.0
+      - if: steps.check.outputs.publish == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'pnpm'
+          cache-dependency-path: '**/pnpm-lock.yaml'
+      - if: steps.check.outputs.publish == 'true'
+        run: pnpm i --frozen-lockfile
+
+      - name: Build
+        if: steps.check.outputs.publish == 'true'
+        run: pnpm --filter "vscode-pfm..." --filter "@mdsvex/language-server..." -r build
+
+      - name: Package
+        id: package
+        if: steps.check.outputs.publish == 'true'
+        run: pnpm --filter vscode-pfm package
+
+      - uses: actions/upload-artifact@v4
+        if: steps.check.outputs.publish == 'true'
+        with:
+          name: vscode-pfm-${{ steps.package.outputs.version }}
+          path: ${{ steps.package.outputs.vsix }}
+
+      - name: Publish to the VS Code Marketplace
+        if: steps.check.outputs.publish == 'true'
+        working-directory: language-tools/vscode-pfm
+        env:
+          VSIX: ${{ steps.package.outputs.vsix }}
+          PRE_RELEASE: ${{ steps.package.outputs.pre_release }}
+        run: |
+          flags=""
+          if [ "$PRE_RELEASE" = "true" ]; then flags="--pre-release"; fi
+          pnpm exec vsce publish --oidc --skip-duplicate $flags --packagePath "$VSIX"
+
+      - name: Publish to Open VSX
+        if: steps.check.outputs.publish == 'true' && env.OVSX_PAT != ''
+        working-directory: language-tools/vscode-pfm
+        env:
+          VSIX: ${{ steps.package.outputs.vsix }}
+        # the vsix carries the prerelease flag
+        run: pnpm exec ovsx publish "$VSIX" --pat "$OVSX_PAT" --skip-duplicate
+
+      - name: Tag the published version
+        if: steps.check.outputs.publish == 'true'
+        env:
+          TAG: ${{ steps.check.outputs.tag }}
+        run: |
+          git tag "$TAG"
+          git push origin "refs/tags/$TAG"

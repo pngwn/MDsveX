@@ -51,3 +51,4 @@ packages/test-app/test/.tmp-*/
 # plugin test apps and what svelte-package leaves behind
 plugins/*/test/.tmp-*/
 plugins/*/.svelte-kit/
+*.vsix
