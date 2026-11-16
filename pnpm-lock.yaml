@@ -168,6 +168,9 @@ importers:
 
   language-tools/vscode-pfm:
     dependencies:
+      '@mdsvex/migrate':
+        specifier: workspace:*
+        version: link:../../packages/migrate
       '@mdsvex/typescript-plugin':
         specifier: workspace:*
         version: link:../typescript-plugin

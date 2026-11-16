@@ -128,6 +128,73 @@
 				}
 			}
 		],
+		"commands": [
+			{
+				"command": "mdsvex.migrate",
+				"title": "Migrate File from mdsvex 0.x",
+				"category": "mdsvex"
+			}
+		],
+		"menus": {
+			"commandPalette": [
+				{
+					"command": "mdsvex.migrate",
+					"when": "editorIsOpen && resourceExtname =~ /^\\.(svx|pfm|md|markdown|svelte|[cm]?[jt]s)$/i"
+				}
+			]
+		},
+		"configuration": {
+			"title": "mdsvex",
+			"properties": {
+				"mdsvex.migrate.smartypants": {
+					"type": [
+						"boolean",
+						"object"
+					],
+					"default": false,
+					"scope": "resource",
+					"markdownDescription": "The `smartypants` option the documents were written for in mdsvex 0.x, which was `true` unless a config set it. `Migrate File from mdsvex 0.x` then rewrites dashes and backtick quotes so the page renders as it did. An object such as `{ \"dashes\": \"inverted\" }` is read as the 0.x object.",
+					"properties": {
+						"quotes": {
+							"type": "boolean"
+						},
+						"ellipses": {
+							"type": "boolean"
+						},
+						"backticks": {
+							"type": [
+								"boolean",
+								"string"
+							],
+							"enum": [
+								true,
+								false,
+								"all"
+							]
+						},
+						"dashes": {
+							"type": [
+								"boolean",
+								"string"
+							],
+							"enum": [
+								true,
+								false,
+								"oldschool",
+								"inverted"
+							]
+						}
+					},
+					"additionalProperties": false
+				},
+				"mdsvex.migrate.math": {
+					"type": "boolean",
+					"default": false,
+					"scope": "resource",
+					"markdownDescription": "The documents were written for `remark-math` in mdsvex 0.x. `Migrate File from mdsvex 0.x` then rewrites `$x$` and `$$x$$` as PFM math."
+				}
+			}
+		},
 		"configurationDefaults": {
 			"[pfm]": {
 				"editor.quickSuggestions": {
@@ -150,6 +217,7 @@
 		"package": "node --no-warnings scripts/package.ts"
 	},
 	"dependencies": {
+		"@mdsvex/migrate": "workspace:*",
 		"@mdsvex/typescript-plugin": "workspace:*",
 		"@volar/vscode": "^2.4.28",
 		"vscode-languageclient": "^9.0.1"
