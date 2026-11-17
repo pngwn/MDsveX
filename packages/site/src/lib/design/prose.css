@@ -184,12 +184,16 @@
 
 	/* on a phone a code block in the page runs edge to edge, one in an example keeps its box */
 	.prose > pre,
-	.prose > .twinkleplop-block {
+	.prose > .twinkleplop-block,
+	.prose > .tabs-code {
 		margin-inline: calc(var(--gutter, 1rem) * -1);
 	}
 
 	.prose > pre,
-	.prose > .twinkleplop-block > :is(pre, .twinkleplop-title) {
+	.prose > .twinkleplop-block > :is(pre, .twinkleplop-title),
+	.prose > .tabs-code > .tabs-list,
+	.prose > .tabs-code > .tab-panel > pre,
+	.prose > .tabs-code > .tab-panel > .twinkleplop-block > pre {
 		padding-inline: var(--gutter, 1rem);
 		border-inline: 0;
 	}

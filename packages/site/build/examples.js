@@ -208,9 +208,8 @@ export function example({ highlight }) {
 		const label = node.first_child?.type === "directive_label" ? node.first_child.text_content : "";
 		const args = node.attrs.args ?? {};
 		const id = args.id ? ctx.id(args.id, { fixed: true }) : ctx.id(slug(label));
-		const n = (ctx.scratch[kind] = (ctx.scratch[kind] ?? 0) + 1);
 		const section = ctx.scratch.section ?? "";
-		node.attrs.args = { ...args, id, section, n: String(n) };
+		node.attrs.args = { ...args, id };
 		ctx.add("plates", { id, kind, mark: args.mark ?? "", tone: args.tone ?? "other", title: label, section });
 	}
 

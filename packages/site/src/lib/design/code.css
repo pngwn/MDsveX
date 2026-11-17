@@ -41,6 +41,47 @@
 	overflow-wrap: anywhere;
 }
 
+/* the tab list of a code group drawn as the title bar, the plugin rules sit in :where so these win */
+.design-frame .tabs-code {
+	margin: 1.5rem 0;
+}
+
+.design-frame .tabs-code > .tabs-list {
+	gap: 1.25rem;
+	padding: 0 1rem;
+	border: 1px solid var(--staff);
+	border-bottom: 0;
+	box-shadow: inset 0 -1px var(--staff);
+	background: var(--well-chrome);
+}
+
+.design-frame .tabs-code > .tabs-list > .tab {
+	padding: 0.625rem 0 0.375rem;
+	border-bottom: 1.5px solid transparent;
+	color: var(--quiet);
+	font: 400 0.75rem / 1.5 var(--face-mono);
+	font-variant-ligatures: none;
+	letter-spacing: 0.02em;
+}
+
+.design-frame .tabs-code > .tabs-list > .tab:hover {
+	color: var(--ink);
+}
+
+.design-frame .tabs-code > .tabs-list > .tab[aria-selected='true'] {
+	border-bottom-color: var(--ink);
+	color: var(--ink);
+}
+
+.design-frame .tabs-code > .tab-panel > :is(pre, .twinkleplop-block) {
+	margin: 0;
+}
+
+/* the tab already names the fence */
+.design-frame .tabs-code > .tab-panel > .twinkleplop-block > .twinkleplop-title {
+	display: none;
+}
+
 .design-frame .twinkleplop-caption {
 	margin-top: 0.5rem;
 	color: var(--quiet);

@@ -3,26 +3,29 @@ title: Quick start
 order: 2
 ---
 
-[kit3]: https://svelte.dev/docs/kit/migrating-to-sveltekit-3
 [subpath]: https://nodejs.org/api/packages.html#subpath-imports
 [twinkleplop]: https://twinkleplop.pngwn.at
 # Quick start
 
 ## Install it
 
-Install it as a dev-dependency.
+Install it as a dev-dependency:
 
-With `npm`:
+:::tabs(group=pm)
 
-```bash
+```bash [npm]
 npm i --save-dev mdsvex@next
 ```
 
-With `pnpm`:
-
-```bash
+```bash [pnpm]
 pnpm add --save-dev mdsvex@next
 ```
+
+```bash [bun]
+bun add --dev mdsvex@next
+```
+
+:::
 
 mdsvex needs Svelte 5 and Vite 6 or later.
 
@@ -31,7 +34,7 @@ mdsvex needs Svelte 5 and Vite 6 or later.
 mdsvex is a Vite plugin. It turns markdown files into Svelte components, and the Svelte plugin compiles them like any other component.
 
 ::::plate[SvelteKit](mark="kit", tone=expr, id=sveltekit)
-SvelteKit 3 has no `svelte.config.js`, so mdsvex goes in `vite.config.js`, beside `sveltekit()`:
+Add mdsvex to your Vite config:
 
 ```js title="vite.config.js"
 import { sveltekit } from '@sveltejs/kit/vite';
@@ -44,7 +47,7 @@ export default defineConfig({
 ```
 
 :::notes
-Declare the extensions once, in `mdsvex()`. It registers them with SvelteKit, so you don't repeat them in `sveltekit({ extensions })`. The order of the two plugins doesn't matter.
+Declare the extensions in `mdsvex()`. It registers them with SvelteKit, so you don't repeat them in `sveltekit({ extensions })`. Order doesn't matter.
 
 Any markdown file is now a component, and a `+page.svx` is a route:
 
@@ -59,7 +62,7 @@ src/routes/
 ::::
 
 ::::plate[Options that point at a file](mark="#lib", tone=expr)
-Options that point at a file, such as [`templates`](/docs/reference/options#templates) and [`components`](/docs/reference/options#components), resolve the way an import from your project root would. That includes aliases, packages, relative paths and SvelteKit 3's `#lib` [subpath imports][subpath], which replace `$lib` (see the [SvelteKit 3 migration guide][kit3]):
+Options that point at a file, such as [`templates`](/docs/reference/options#templates) and [`components`](/docs/reference/options#components), resolve the way an import from your project root would. That includes aliases, packages, relative paths and SvelteKit 3's `#lib` [subpath imports][subpath]:
 
 ```json
 {
@@ -85,7 +88,7 @@ Imports inside a document work the same way, `import Chart from '#lib/Chart.svel
 ::::
 
 ::::plate[Vite without SvelteKit](mark="vite", tone=expr, id=vite-without-sveltekit)
-With `@sveltejs/vite-plugin-svelte` on its own, add the extensions to `svelte()` as well. mdsvex can't register them there.
+When using `@sveltejs/vite-plugin-svelte`, add the extensions to `svelte()` as well. mdsvex can't register them there.
 
 ```js title="vite.config.js"
 import { svelte } from '@sveltejs/vite-plugin-svelte';
@@ -98,16 +101,28 @@ export default defineConfig({
 ```
 
 :::edges
-- If one is missing, the build stops with an error that names it.
+- If one is missing, the build errors explaining the problem.
 :::
 ::::
 
 ::::plate[Highlighting code](mark="```", tone=fence, id=highlighting-code)
 Fenced code is highlighted by default, with [twinkleplop][twinkleplop]. mdsvex adds no CSS, so install a theme and import it once, in your root layout:
 
-```bash
+:::tabs(group=pm)
+
+```bash [npm]
 npm i --save-dev @twinkleplop/theme-github
 ```
+
+```bash [pnpm]
+pnpm add --save-dev @twinkleplop/theme-github
+```
+
+```bash [bun]
+bun add --dev @twinkleplop/theme-github
+```
+
+:::
 
 ```svelte title="src/routes/+layout.svelte"
 <script>
