@@ -37,7 +37,7 @@ const WORDS: Partial<Record<KindName, string>> = {
 	code_span: 'code', code_fence: 'code block', block_quote: 'quote', list_item: 'item',
 	directive_container: 'directive', directive_leaf: 'directive', directive_inline: 'directive',
 	directive_label: 'label', svelte_block: 'logic block', svelte_tag: 'tag',
-	thematic_break: 'rule', hard_break: 'line break', footnote_reference: 'footnote',
+	thematic_break: 'rule', hard_break: 'line break', footnote_reference: 'footnote reference',
 	footnote_definition: 'footnote', import_statement: 'import',
 };
 

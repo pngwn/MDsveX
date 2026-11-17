@@ -30,6 +30,24 @@ export interface Construct {
 	commonmark: string;
 	needs?: Needs[];
 	related?: string[];
+	/**
+	 * the parts of the source the parser makes no node of, named under the
+	 * score: each a piece of the source and its name, found in order, and after
+	 * `after` when it is given
+	 */
+	parts?: [text: string, name: string, after?: string][];
+}
+
+/** a construct's parts as source ranges, each looked for after the one before */
+export function parts_of(c: Construct): { start: number; end: number; name: string }[] {
+	let from = 0;
+	return (c.parts ?? []).map(([text, name, after]) => {
+		if (after !== undefined) from = c.source.indexOf(after, from) + after.length;
+		const start = c.source.indexOf(text, from);
+		if (start < 0) throw new Error(`${c.id}: part ${JSON.stringify(text)} is not in its source`);
+		from = start + text.length;
+		return { start, end: from, name };
+	});
 }
 
 export const FAMILIES: { id: Family; name: string; line: string }[] = [
@@ -194,6 +212,7 @@ export const constructs: Construct[] = [
 		glyph: '[^]',
 		kinds: ['footnote_reference', 'footnote_definition'],
 		source: 'A claim[^1].\n\n[^1]: The source.',
+		parts: [['[^1]', 'label', '\n']],
 		what: 'A reference is a label in brackets after a caret. A definition is the same at the start of a line, with a colon and its text.',
 		edges: [
 			'A reference is one by its syntax alone, defined or not, before or after: escape a bracket, `\\[^abc]`, to write it as text.',
@@ -227,6 +246,11 @@ export const constructs: Construct[] = [
 		glyph: 'a\\',
 		kinds: ['text'],
 		source: 'Braces are Svelte, so \\{ this \\} is text,\nas is &#123; and a | b.',
+		parts: [
+			['\\{', 'escape'],
+			['\\}', 'escape'],
+			['&#123;', 'character reference'],
+		],
 		what: 'Everything the parser reads as no construct at all. A backslash before punctuation makes it text, and a character reference is its character.',
 		edges: [
 			'`\\{` and `&#123;` are how you write a brace that is not Svelte.',
@@ -334,6 +358,11 @@ export const constructs: Construct[] = [
 		glyph: '[]()',
 		kinds: ['link'],
 		source: '[the docs](/docs/{slug} "Read")',
+		parts: [
+			['the docs', 'text'],
+			['/docs/{slug}', 'destination'],
+			['"Read"', 'title'],
+		],
 		what: 'Link text in brackets, then the destination and an optional title in parentheses.',
 		edges: [
 			'A bare brace in the destination is a Svelte expression; `\\{` is a literal brace.',
@@ -501,6 +530,11 @@ export const constructs: Construct[] = [
 		glyph: ':',
 		kinds: ['directive_inline'],
 		source: 'Press :kbd[Ctrl](os=mac) to copy.',
+		parts: [
+			['kbd', 'name'],
+			['Ctrl', 'label'],
+			['os=mac', 'args'],
+		],
 		what: 'A colon, a name, text in brackets and optional named arguments, in running text.',
 		edges: [
 			'The brackets are required, even empty (`:name[]`), so `:tada:` and `std::vector` stay text.',
@@ -517,6 +551,10 @@ export const constructs: Construct[] = [
 		glyph: '::',
 		kinds: ['directive_leaf', 'directive_label'],
 		source: '::figure[A penguin](src=./penguin.png)',
+		parts: [
+			['figure', 'name'],
+			['src=./penguin.png', 'args'],
+		],
 		what: 'Two colons and a name, alone on its line, with optional text and arguments.',
 		edges: [
 			'Brackets are optional: `::name` is a directive with no text.',
@@ -533,6 +571,10 @@ export const constructs: Construct[] = [
 		glyph: ':::',
 		kinds: ['directive_container', 'directive_label'],
 		source: ':::note[Heads up](tone=warn)\nMarkdown *inside* it.\n:::',
+		parts: [
+			['note', 'name'],
+			['tone=warn', 'args'],
+		],
 		what: 'Three colons and a name open it, a line of three colons closes it, and it holds the same blocks the document does.',
 		edges: [
 			'Its label becomes a `label` snippet and its arguments props of the component it maps to.',
@@ -563,7 +605,7 @@ export const constructs: Construct[] = [
 		id: 'import',
 		name: 'Import',
 		family: 'document',
-		glyph: 'imp',
+		glyph: '↑',
 		kinds: ['import_statement'],
 		source: 'import Counter from "./Counter.svelte";\n\n<Counter />',
 		what: 'An `import` line at the top of the document, moved into the component\'s script.',

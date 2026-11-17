@@ -88,7 +88,7 @@ A page that colours by voice rather than by construct, a Title or a small mark, 
 Chosen by pngwn on 2026-11-01, from the plates on `/experiments/01-wordmark/v7` (built in `lib/experiments/01-wordmark/print.ts`, now `lib/design/texture.ts`). The texture follows the face:
 
 - **Playfair: linen.** A fine thread weave in the ink, for titles and the typeset `mdsvex`. Only display sizes get the ragged edge; at small sizes it hurts legibility.
-- **Berkeley Mono: riso.** Grain and paper flecks, like a typewriter, for the underlay, code and meta.
+- **Berkeley Mono: riso, at display sizes only.** Grain and paper flecks, like a typewriter, for the Title and the atlas's scores. Code, labels, meta and a docs score at a body size stay plain: there the grain reads as noise.
 - **Source Serif 4: plain.** Body text stays clean for reading.
 
 Every face keeps its own colour; the texture shows as gaps where the paper comes through. Phrase names are Playfair, so they take linen; at 14px the weave is faint and doesn't muddy them. Phrase lines, bars and rules are not type, and stay plain. The mono gets no dark specks; they can't show on black.

@@ -1,4 +1,5 @@
-/* code, design/SCORE.md: Berkeley Mono with riso, on the paper, never ligated.
+/* code, design/SCORE.md: Berkeley Mono on the paper, never ligated, plain:
+   riso is for display sizes, and at a body size it reads as noise.
    Highlighted code takes the score's colours, so a `#` in a fence is the
    heading's aqua and a `{` the expression's orange, the same as a phrase over
    it: syntax set apart by colour, never by an in-between weight, which Berkeley
@@ -15,14 +16,6 @@
 	tab-size: 2;
 	color: var(--ink);
 	background: none;
-}
-
-/* the rule stays plain, the type takes riso */
-.design-frame pre > code,
-.design-frame :not(pre) > code {
-	mask-image: var(--riso-image, none);
-	mask-size: var(--riso-size, auto);
-	mask-composite: var(--riso-composite, add);
 }
 
 .design-frame pre > code {

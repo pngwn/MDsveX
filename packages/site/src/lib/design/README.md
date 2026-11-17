@@ -11,7 +11,7 @@ The 1.0 design foundation, phase 0 of `design/SITE_PLAN.md`. `design/SCORE.md` i
 | `score/` | the engine: `reading.ts` (what the parser said), `layout.ts` (where it goes), `kinds.ts` (names and tones per parser kind), `Score.svelte`, and `player.svelte.ts` to play a stream |
 | `penguin/` | the line bird (`Pngwn`), `Perch` to stand it at the end of a line, `BirdsEye` for held characters |
 | `Frame.svelte` | the page frame: paper, faces, texture, a `nav` slot, a footer, `theme` of `auto`, `light` or `dark`. The root layout puts every page but the playground in it |
-| `base.css`, `code.css`, `prose.css` | the page under the frame; code in the mono with riso, highlighted in the score's colours; `.prose`, the docs' long reading type |
+| `base.css`, `code.css`, `prose.css` | the page under the frame; code in the plain mono (riso only at display sizes), highlighted in the score's colours; `.prose`, the docs' long reading type |
 | `theme.svelte.ts` | the frame's theme in context, `use_theme()` to read or set it; `?theme=dark` on any page sets it |
 
 ## Score

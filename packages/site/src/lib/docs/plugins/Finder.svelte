@@ -131,7 +131,7 @@
 			aria-describedby="tries"
 		/>
 	</label>
-	<p class="tries riso" id="tries">
+	<p class="tries" id="tries">
 		<span>Try</span>
 		{#each TRY as word (word)}
 			<button type="button" onclick={() => try_word(word)}>{word}</button>
@@ -203,7 +203,7 @@
 
 <section class="own" aria-labelledby="own">
 	<div class="own-head">
-		<p class="kicker riso">Nothing fits?</p>
+		<p class="kicker">Nothing fits?</p>
 		<h2 id="own">Write your own</h2>
 		<p>
 			A plugin is a function that returns a bundle: the directives it owns, the components that render them, and handlers that reshape
@@ -213,7 +213,7 @@
 	<ol class="path">
 		{#each writing as page, i (page.href)}
 			<li>
-				<span class="n riso">{i + 1}</span>
+				<span class="n">{i + 1}</span>
 				<a href={page.href}>{page.title}</a>
 			</li>
 		{/each}

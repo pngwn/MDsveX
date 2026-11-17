@@ -67,15 +67,15 @@
 		<div class="setup">
 			<div>
 				<p class="label-h">Install</p>
-				<pre class="code riso"><code>{install}</code></pre>
+				<pre class="code"><code>{install}</code></pre>
 				{#if alternatives.length}
 					<p class="note">It needs one of {#each optional as name, i (name)}{i ? ' or ' : ''}<code>{name}</code>{/each}, its optional peers. For {#each optional.slice(1) as name, i (name)}{i ? ' or ' : ''}<code>{name}</code>{/each} instead:</p>
-					{#each alternatives as line (line)}<pre class="code riso"><code>{line}</code></pre>{/each}
+					{#each alternatives as line (line)}<pre class="code"><code>{line}</code></pre>{/each}
 				{/if}
 			</div>
 			<div>
 				<p class="label-h">Turn it on</p>
-				<pre class="code riso"><code>{config}</code></pre>
+				<pre class="code"><code>{config}</code></pre>
 				{#if p.waits}
 					<p class="note">It waits, as {p.waits}: the Vite plugin and <code>compile_async</code> compile such a document, <code>compile</code> throws a <code>PluginAsyncError</code>.</p>
 				{/if}
@@ -87,7 +87,7 @@
 			<div class="phrases">
 				{#each p.syntax as s (s.mark)}<Syntax sample={s} />{/each}
 			</div>
-			<p class="said riso">{reads_line(p).join(' · ')}</p>
+			<p class="said">{reads_line(p).join(' · ')}</p>
 		</div>
 
 		<div class="example">
@@ -108,7 +108,7 @@
 					{#each p.options as o (o.name)}
 						<div class="option">
 							<dt>
-								<code class="sig riso"><span class="o-name">{o.name}</span>{o.optional ? '?' : ''}: <span class="type">{o.type}</span>{#if o.default}<span class="default">{' = '}{o.default}</span>{/if}</code>
+								<code class="sig"><span class="o-name">{o.name}</span>{o.optional ? '?' : ''}: <span class="type">{o.type}</span>{#if o.default}<span class="default">{' = '}{o.default}</span>{/if}</code>
 							</dt>
 							<dd>{o.text.replace(/^./, (c) => c.toUpperCase())}</dd>
 						</div>
@@ -121,7 +121,7 @@
 
 		<!-- the texture inside: a mask on the part would clip its hairline -->
 		<footer class="parts">
-			<div class="riso">
+			<div>
 				{#if p.exports.components.length}
 					<p><span class="label">Components</span> {#each p.exports.components as c, i (c)}{i ? ', ' : ''}<code>{p.package}/{c}</code>{/each}</p>
 				{/if}

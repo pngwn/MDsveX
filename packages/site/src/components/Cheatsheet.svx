@@ -20,9 +20,7 @@
     font-variant-ligatures: none;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    mask-image: var(--riso-image, none);
-    mask-size: var(--riso-size, auto);
-    mask-composite: var(--riso-composite, add);
+    mask-image: none;
   }
 
   .cheatsheet :global(h3) {

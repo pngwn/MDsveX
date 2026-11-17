@@ -2,7 +2,7 @@
 	// the home page: 01's v7 (lib/experiments/01-wordmark/v7 on
 	// p/mdsvex-1.0-design), laid out like a title page, the opening, then the
 	// lede, the install line and the contents. The paper is 01's dots, linen on
-	// Playfair, riso on the mono, the body plain
+	// Playfair, riso on the Title's mono, the body plain
 	import Title from '$lib/design/title/Title.svelte';
 
 	const movements = [
@@ -25,11 +25,6 @@
 
 <div class="home">
 	<section class="cover">
-		<!-- a title page: the edition at the left, the dialect where a composer goes -->
-		<p class="credits linen">
-			<span>1.0</span>
-			<span>Penguin-Flavoured Markdown</span>
-		</p>
 		<Title />
 		<p class="sub linen">Markdown with Svelte in it.</p>
 	</section>
@@ -39,9 +34,8 @@
 			Write documents in markdown, put Svelte components and expressions anywhere in them, and get a Svelte component
 			out.
 		</p>
-		<!-- riso on the line, as v7 had it: the mask clips to the line box, so the
-		     rule under the code is cut off and the command stands alone -->
-		<p class="install riso"><code>pnpm add -D mdsvex</code></p>
+		<!-- the command stands alone, with no rule under it, as v7 had it -->
+		<p class="install"><code>pnpm add -D mdsvex</code></p>
 	</section>
 
 	<section class="contents" aria-labelledby="contents">
@@ -97,15 +91,6 @@
 		--title: min(22vw, 36svh);
 	}
 
-	.credits {
-		display: flex;
-		justify-content: space-between;
-		align-self: stretch;
-		margin: 0 0 clamp(2rem, 6svh, 4rem);
-		font-family: var(--face-display);
-		font-size: clamp(1rem, 1.4vw, 1.25rem);
-	}
-
 	.sub {
 		margin: 1.5rem 0 0;
 		font-family: var(--face-display);
@@ -133,8 +118,6 @@
 	}
 
 	.install code {
-		padding-bottom: 0.3rem;
-		border-bottom: 1px solid var(--staff);
 		font-family: var(--face-mono);
 		font-size: 1rem;
 		letter-spacing: 0.08em;

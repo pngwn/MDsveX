@@ -188,14 +188,15 @@
 	}
 
 	/* a bar where the node opens and one where it closes, v12's marks (pngwn's
-	   pick over v7's dot and tick), 1.5px like the line and centred on it */
+	   pick over v7's dot and tick), 1.5px like the line and centred on it. One
+	   height for structure and text, so the rows above and below match */
 	.phrase::before,
 	.phrase::after {
 		content: '';
 		position: absolute;
-		bottom: calc(0.75px - 0.35rem);
+		bottom: calc(0.75px - 0.275rem);
 		width: 1.5px;
-		height: 0.7rem;
+		height: 0.55rem;
 		background: var(--voice);
 	}
 
@@ -209,9 +210,8 @@
 
 	.phrase.text::before,
 	.phrase.text::after {
-		bottom: calc(0.5px - 0.2rem);
+		bottom: calc(0.5px - 0.275rem);
 		width: 1px;
-		height: 0.4rem;
 	}
 
 	/* a phrase carried across a break runs to the edge of the system */

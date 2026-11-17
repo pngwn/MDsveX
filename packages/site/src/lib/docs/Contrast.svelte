@@ -33,7 +33,7 @@
 
 {#snippet witness(who: string, html: string, code: string)}
 	<section class="reading" aria-label="As {who} reads it">
-		<p class="who riso">{who}</p>
+		<p class="who">{who}</p>
 		<!-- the reading as a reader sees it: the real html, set as a page would set it -->
 		<div class="rendered">{@html html}</div>
 		<div class="html">{@html code}</div>
@@ -42,7 +42,7 @@
 
 <figure class="contrast wide">
 	<div class="source-of">
-		<div class="head riso">
+		<div class="head">
 			<span class="label">You write</span>
 			<span class="pick" role="group" aria-label="Show the source as">
 				<button type="button" aria-pressed={!reading.on} onclick={() => reading.set(false)}>source</button>

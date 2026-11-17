@@ -42,7 +42,7 @@
 
 	const headed = $derived(!!(label || title));
 	// a long mark is set smaller, so it sits in its cell
-	const long = $derived((mark ?? '').length > (size === 'page' ? 7 : 3));
+	const long = $derived((mark ?? '').length > (size === 'page' ? 7 : 5));
 </script>
 
 <article
@@ -55,7 +55,7 @@
 	aria-labelledby={headed && id ? `${id}-title` : undefined}
 >
 	{#if mark !== undefined}
-		<div class="plate-mark" aria-hidden="true"><span class="glyph" class:long>{mark}</span></div>
+		<div class="plate-mark" class:long aria-hidden="true"><span class="glyph">{mark}</span></div>
 	{/if}
 	{#if headed}
 		<div class="plate-title">
@@ -79,6 +79,10 @@
 	   and an auto column would grow to it, past the page */
 	.plate {
 		--mark-w: 7.5rem;
+		--title-size: clamp(1.75rem, 5cqi, 2.75rem);
+		--title-lh: 1.06;
+		--glyph-size: 2rem;
+		--title-top: 1.5rem;
 		/* in vw, not cqi: a part that is a container itself, a pair, would read
 		   cqi off its own width for its hairline, and miss the plate's edge */
 		--pad: clamp(1rem, 2.4vw, 2.25rem);
@@ -96,6 +100,9 @@
 
 	.plate.page {
 		--mark-w: 9rem;
+		--title-size: clamp(2.25rem, 7cqi, 3.5rem);
+		--title-lh: 1.02;
+		--glyph-size: 1.75rem;
 		margin: 0;
 	}
 
@@ -103,15 +110,22 @@
 		grid-template-columns: 0 minmax(0, 50%) minmax(0, 1fr);
 	}
 
-	/* the mark, as its cell in the atlas's grid, with a short bar of its colour under it */
+	/* the mark, as its cell in the atlas's grid, with a short bar of its colour
+	   under it. The head is three rows, the kicker, the title and the lede; the
+	   cell spans them as a subgrid, so the mark sits in the title's row on its
+	   baseline, and any room in the cell is left under it */
 	.plate-mark {
 		position: relative;
 		grid-column: 1;
-		grid-row: 1 / span 2;
+		grid-row: 1 / span 3;
 		display: grid;
-		place-items: center;
-		padding: 1.5rem 0.5rem 2rem;
+		grid-template-rows: subgrid;
+		padding: 0 0.5rem 2rem;
 		border-right: 1px solid var(--ink);
+	}
+
+	.plate-mark.long {
+		--glyph-size: 1.25rem;
 	}
 
 	.plate-mark::after {
@@ -125,38 +139,51 @@
 	}
 
 	.glyph {
-		font: 400 2rem / 1 var(--face-mono);
+		grid-row: 2;
+		justify-self: center;
+		align-self: baseline;
+		font: 400 var(--glyph-size) / 1 var(--face-mono);
 		font-variant-ligatures: none;
 		color: var(--own-name);
 		white-space: nowrap;
 	}
 
-	.page .glyph {
-		font-size: 1.75rem;
-	}
-
-	.glyph.long {
-		font-size: 1.25rem;
-	}
-
+	/* its kicker and title are rows of the plate's own grid */
 	.plate-title {
-		grid-column: 2 / -1;
-		grid-row: 1;
-		min-width: 0;
-		padding: 1.5rem var(--pad) 0.75rem;
+		display: contents;
 	}
 
-	/* with no lede under it, the title closes the head */
-	.plate:not(:has(> :global(.plate-lede))) .plate-title {
-		padding-bottom: 1.5rem;
+	.kicker,
+	.plate .name {
+		grid-column: 2 / -1;
+		min-width: 0;
+		padding-inline: var(--pad);
 	}
 
 	.kicker {
+		grid-row: 1;
 		display: flex;
 		flex-wrap: wrap;
 		align-items: baseline;
 		gap: 0.25rem 0.875rem;
-		margin: 0 0 0.25rem;
+		margin: 0;
+		padding-top: var(--title-top);
+		padding-bottom: 0.25rem;
+	}
+
+	.plate .name {
+		grid-row: 2;
+		align-self: baseline;
+		padding-bottom: 0.75rem;
+	}
+
+	.plate-title:not(:has(.kicker)) .name {
+		padding-top: var(--title-top);
+	}
+
+	/* with no lede under it, the title closes the head */
+	.plate:not(:has(> :global(.plate-lede))) .name {
+		padding-bottom: 1.5rem;
 	}
 
 	.kicker em {
@@ -172,14 +199,9 @@
 	.plate .name {
 		position: static;
 		margin: 0;
-		font: 400 clamp(1.75rem, 5cqi, 2.75rem) / 1.06 var(--face-display);
+		font: 400 var(--title-size) / var(--title-lh) var(--face-display);
 		letter-spacing: -0.01em;
 		text-wrap: balance;
-	}
-
-	.page .name {
-		font-size: clamp(2.25rem, 7cqi, 3.5rem);
-		line-height: 1.02;
 	}
 
 	.name a {
@@ -201,7 +223,7 @@
 	/* the lede, in the head beside the mark, at a reading measure */
 	.plate > :global(.plate-lede) {
 		grid-column: 2 / -1;
-		grid-row: 2;
+		grid-row: 3;
 		min-width: 0;
 		padding: 0 var(--pad) 1.5rem;
 	}
@@ -311,18 +333,19 @@
 	   narrow mark and a title the size of a lede's line */
 	.plate:has(> :global(.contrast)) {
 		--mark-w: 5rem;
+		--glyph-size: 1.375rem;
+		--title-size: 1.375rem;
+		--title-lh: 1.2;
+		--title-top: 1rem;
 	}
 
-	.plate:has(> :global(.contrast)) .glyph {
-		font-size: 1.375rem;
-	}
-
-	.plate:has(> :global(.contrast)) .glyph.long {
-		font-size: 0.875rem;
+	.plate:has(> :global(.contrast)) .plate-mark.long {
+		--glyph-size: 0.875rem;
 	}
 
 	.plate:has(> :global(.contrast)) .plate-mark {
-		padding: 1rem 0.25rem 1.75rem;
+		padding-inline: 0.25rem;
+		padding-bottom: 1.75rem;
 	}
 
 	.plate:has(> :global(.contrast)) .plate-mark::after {
@@ -330,15 +353,6 @@
 		right: 0.75rem;
 		bottom: 0.875rem;
 		height: 0.3rem;
-	}
-
-	.plate:has(> :global(.contrast)) .plate-title {
-		padding-top: 1rem;
-	}
-
-	.plate:has(> :global(.contrast)) .name {
-		font-size: 1.375rem;
-		line-height: 1.2;
 	}
 
 	/* its notes are the one line of what to write instead, as the table's cell was */
@@ -361,19 +375,16 @@
 		.plate,
 		.plate.page {
 			--mark-w: 4.5rem;
+			--glyph-size: 1.375rem;
 		}
 
-		.glyph,
-		.page .glyph {
-			font-size: 1.375rem;
-		}
-
-		.glyph.long {
-			font-size: 0.875rem;
+		.plate-mark.long {
+			--glyph-size: 0.875rem;
 		}
 
 		.plate-mark {
-			padding: 1rem 0.25rem 1.75rem;
+			padding-inline: 0.25rem;
+			padding-bottom: 1.75rem;
 		}
 
 		.plate-mark::after {

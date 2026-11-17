@@ -164,8 +164,8 @@
 				</p>
 			</div>
 			<div>
-				<p class="face-name">Berkeley Mono, riso, for source, code and meta</p>
-				<pre class="code riso">const out = await compile(source);
+				<p class="face-name">Berkeley Mono for source, code and meta, riso at display sizes</p>
+				<pre class="code">const out = await compile(source);
 // 0O 1lI |/ -- => {'{{ }}'} ...</pre>
 			</div>
 		</div>
