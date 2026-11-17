@@ -169,8 +169,7 @@ A claim[^1] and another[^2].
 
 Two exports of a [components module](/docs/guides/components) replace footnotes:
 
-```js
-// src/lib/markdown.js
+```js title="src/lib/markdown.js"
 export { default as footnote } from './markdown/Footnote.svelte';
 export { default as footnotes } from './markdown/Footnotes.svelte';
 ```
@@ -191,8 +190,7 @@ export { default as footnotes } from './markdown/Footnotes.svelte';
 ::::plate[A note in a hover card](mark="note", tone=comp)
 `note` is what a side note or a hover card needs. A note holds blocks, and HTML allows no block inside the paragraph a reference is in, so draw it once the page is in the browser, as this card does on hover, or somewhere outside the paragraph:
 
-```svelte
-<!-- src/lib/markdown/Footnote.svelte -->
+```svelte title="src/lib/markdown/Footnote.svelte"
 <script>
 	let { children, note } = $props();
 
@@ -213,8 +211,7 @@ export { default as footnotes } from './markdown/Footnotes.svelte';
 ::::plate[`footnotes`](mark="<ol>", tone=comp)
 `footnotes` replaces the section and gets the `<ol>` of notes as its `children`:
 
-```svelte
-<!-- src/lib/markdown/Footnotes.svelte -->
+```svelte title="src/lib/markdown/Footnotes.svelte"
 <script>
 	let { children } = $props();
 </script>

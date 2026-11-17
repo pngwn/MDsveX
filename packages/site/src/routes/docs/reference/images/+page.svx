@@ -79,8 +79,7 @@ mdsvex({ import_images: false });
 ::::plate[With enhanced-img](mark="?enh", tone=link)
 With [`@sveltejs/enhanced-img`][enhanced-img] in your Vite plugins, markdown images are optimised with nothing more to write. mdsvex sees `enhancedImages()` and imports every image it can optimise (avif, gif, heif, jpeg, jpg, png, tiff and webp) with `?enhanced`:
 
-```js
-// vite.config.js
+```js title="vite.config.js"
 import { enhancedImages } from '@sveltejs/enhanced-img';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { mdsvex } from 'mdsvex';

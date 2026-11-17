@@ -85,6 +85,7 @@ const FLAGS = ["score", "result", "error", "commonmark"];
 
 /** a fence's first line naming its file, `// src/lib/markdown.js` or `<!-- src/lib/Post.svelte -->` */
 const PATH_LINE = /^\s*(?:\/\/|\/\*|<!--)\s*([\w@#$./-]+\.(?:js|ts|svelte|svx))\s*(?:\*\/|-->)?\s*$/;
+const PATH_TITLE = /^[\w@#$./-]+\.(?:js|ts|svelte|svx)$/;
 
 /** what a fence's meta asks of it, null for an svx or md fence that asks nothing */
 function flags(info) {
@@ -213,13 +214,10 @@ export function example({ highlight }) {
 		ctx.add("plates", { id, kind, mark: args.mark ?? "", tone: args.tone ?? "other", title: label, section });
 	}
 
-	/**
-	 * what a fence shows that a later example may compile with: the file it
-	 * names on its first line or with `file=`, and a `js config` fence's config
-	 */
+	/** the file a fence names by title, file or first line, and the config of a js config fence, for later examples to compile with */
 	function remember(node, source, ctx) {
-		const { lang, props } = fence_meta(node.info);
-		const file = props.find(([key, value]) => key === "file" && typeof value === "string")?.[1] ?? source.split("\n")[0].match(PATH_LINE)?.[1];
+		const { lang, props, title } = fence_meta(node.info);
+		const file = (title !== undefined && PATH_TITLE.test(title) ? title : undefined) ?? props.find(([key, value]) => key === "file" && typeof value === "string")?.[1] ?? source.split("\n")[0].match(PATH_LINE)?.[1];
 		if (file) (ctx.scratch.files ??= {})[file.replace(/^\.?\//, "")] = source;
 		const config = props.some(([key, value]) => key === "config" && value === true);
 		if (config && (lang === "js" || lang === "javascript")) ctx.scratch.config = { code: source, line: node.position.start.line };

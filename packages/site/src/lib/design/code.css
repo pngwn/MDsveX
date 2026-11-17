@@ -8,14 +8,43 @@
 
 .design-frame pre {
 	margin: 1.5rem 0;
-	padding: 0.25rem 0 0.25rem 1rem;
-	border-left: 1.5px solid var(--staff);
+	padding: 0.75rem 1rem;
+	border: 1px solid var(--staff);
+	border-radius: 0;
 	overflow-x: auto;
 	font: 400 0.875rem / 1.6 var(--face-mono);
 	font-variant-ligatures: none;
 	tab-size: 2;
 	color: var(--ink);
-	background: none;
+	background: var(--well);
+}
+
+/* a titled fence, its figcaption drawn as a bar over the sheet */
+.design-frame .twinkleplop-block {
+	margin: 1.5rem 0;
+}
+
+.design-frame .twinkleplop-block > pre {
+	margin: 0;
+}
+
+.design-frame .twinkleplop-title {
+	display: block;
+	padding: 0.375rem 1rem;
+	border: 1px solid var(--staff);
+	border-bottom: 0;
+	background: var(--well-chrome);
+	color: var(--ink);
+	font: 400 0.75rem / 1.5 var(--face-mono);
+	font-variant-ligatures: none;
+	letter-spacing: 0.02em;
+	overflow-wrap: anywhere;
+}
+
+.design-frame .twinkleplop-caption {
+	margin-top: 0.5rem;
+	color: var(--quiet);
+	font-size: 0.875rem;
 }
 
 .design-frame pre > code {

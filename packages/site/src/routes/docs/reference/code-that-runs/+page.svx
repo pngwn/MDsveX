@@ -37,8 +37,7 @@ See the [code that runs playground example](/playground/run).
 ::::plate[A `pre` that runs blocks](mark="<pre>", tone=comp)
 mdsvex hands over the module and nothing else, so a document with a block that runs needs a `pre` replacement, from a [`components` module](/docs/guides/components#the-components-option) or a [template](/docs/guides/components#replacing-elements-in-a-template). This one renders a Svelte block as a component and calls the default export of a script block, each above its code:
 
-```svelte
-<!-- src/lib/markdown/Pre.svelte -->
+```svelte title="src/lib/markdown/Pre.svelte"
 <script>
 	let { lang, module, load, children } = $props();
 
@@ -62,8 +61,7 @@ mdsvex hands over the module and nothing else, so a document with a block that r
 {@render children()}
 ```
 
-```js
-// src/lib/markdown.js
+```js title="src/lib/markdown.js"
 export { default as pre } from './markdown/Pre.svelte';
 ```
 

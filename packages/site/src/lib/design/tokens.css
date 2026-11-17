@@ -18,6 +18,10 @@
 	--quiet-line: light-dark(#8b8e99, #6e717c);
 	/* source the parser has not been fed yet, while streaming */
 	--faint: light-dark(#c9cad1, #3d3f48);
+	/* off the paper away from the ink, a tint toward it drops the item and link names below 4.5 to 1 */
+	--well: light-dark(#ffffff, #0d0e11);
+	/* the bar over a code block that holds its file name */
+	--well-chrome: light-dark(#efeee8, #22232a);
 
 	/* by voice, for a Title or a small mark that colours by family, not construct */
 	--voice-blue: light-dark(#2a2fd4, #5573fe);

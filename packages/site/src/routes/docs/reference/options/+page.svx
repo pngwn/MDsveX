@@ -198,8 +198,7 @@ An image on a line of its own is a paragraph, so it renders as `<p><img /></p>`.
 unwrap_images: boolean = false;
 ```
 
-```svelte
-<!-- src/lib/Figure.svelte -->
+```svelte title="src/lib/Figure.svelte"
 <script>
 	let { src, alt, title } = $props();
 </script>
@@ -210,8 +209,7 @@ unwrap_images: boolean = false;
 </figure>
 ```
 
-```js
-// src/lib/markdown.js
+```js title="src/lib/markdown.js"
 export { default as img } from './Figure.svelte';
 ```
 

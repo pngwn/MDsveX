@@ -33,8 +33,7 @@ mdsvex is a Vite plugin. It turns markdown files into Svelte components, and the
 ::::plate[SvelteKit](mark="kit", tone=expr, id=sveltekit)
 SvelteKit 3 has no `svelte.config.js`, so mdsvex goes in `vite.config.js`, beside `sveltekit()`:
 
-```js
-// vite.config.js
+```js title="vite.config.js"
 import { sveltekit } from '@sveltejs/kit/vite';
 import { mdsvex } from 'mdsvex';
 import { defineConfig } from 'vite';
@@ -88,8 +87,7 @@ Imports inside a document work the same way, `import Chart from '#lib/Chart.svel
 ::::plate[Vite without SvelteKit](mark="vite", tone=expr, id=vite-without-sveltekit)
 With `@sveltejs/vite-plugin-svelte` on its own, add the extensions to `svelte()` as well. mdsvex can't register them there.
 
-```js
-// vite.config.js
+```js title="vite.config.js"
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { mdsvex } from 'mdsvex';
 import { defineConfig } from 'vite';
@@ -111,8 +109,7 @@ Fenced code is highlighted by default, with [twinkleplop][twinkleplop]. mdsvex a
 npm i --save-dev @twinkleplop/theme-github
 ```
 
-```svelte
-<!-- src/routes/+layout.svelte -->
+```svelte title="src/routes/+layout.svelte"
 <script>
 	import '@twinkleplop/theme-github';
 

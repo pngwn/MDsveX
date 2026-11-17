@@ -69,8 +69,7 @@ plugin_data.reading_time; // { words: 420, minutes: 3 }
 ::::plate[`?data`](mark="?data", tone=link)
 To list documents with what their plugins left, import them with the `?data` query:
 
-```js
-// src/routes/blog/+page.js
+```js title="src/routes/blog/+page.js"
 const posts = import.meta.glob('./*/+page.svx', { query: '?data', eager: true });
 
 export function load() {

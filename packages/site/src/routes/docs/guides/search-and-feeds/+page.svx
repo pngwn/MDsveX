@@ -61,13 +61,11 @@ Runs of spaces and line ends inside a block are one space, a hard break (a backs
 ::::plate[A search index](mark="find", tone=expr)
 Build the records once, at build time, and load them into [FlexSearch][flexsearch] in the page that searches. Each section is a record, so with [`heading_ids`](/docs/reference/options#heading_ids) on a hit goes to its heading. Without it a section has no `id`, and every hit on a page links to the top of the page:
 
-```js
-// vite.config.js
+```js title="vite.config.js"
 mdsvex({ heading_ids: true });
 ```
 
-```js
-// src/routes/search.json/+server.js
+```js title="src/routes/search.json/+server.js"
 import { json } from '@sveltejs/kit';
 
 const pages = import.meta.glob('../docs/**/+page.svx', {
@@ -117,13 +115,11 @@ Each record gets an `id` of its own rather than using its `href`. Two sections c
 ::::plate[An RSS feed](mark="rss", tone=link)
 `?metadata` gives the title and date, `?text` the body. A feed needs absolute links, and a prerendered route has no request to take the origin from, so `url.origin` is `http://sveltekit-prerender` unless the config names the site's origin:
 
-```js
-// vite.config.js
+```js title="vite.config.js"
 sveltekit({ paths: { origin: 'https://example.com' } });
 ```
 
-```js
-// src/routes/rss.xml/+server.js
+```js title="src/routes/rss.xml/+server.js"
 import { resolve } from '$app/paths';
 
 const metadata = import.meta.glob('../blog/*/+page.svx', {
@@ -179,8 +175,7 @@ An Atom feed is the same with `<entry>` and `<summary>`. For a feed with the HTM
 ::::plate[llms.txt](mark="llms", tone=text)
 [`llms.txt`][llms-txt] is markdown: a title, a summary and a list of links. `?text` gives each link its title and a first paragraph. The links are absolute, so set `paths.origin` as for the feed:
 
-```js
-// src/routes/llms.txt/+server.js
+```js title="src/routes/llms.txt/+server.js"
 import { resolve } from '$app/paths';
 
 const pages = import.meta.glob('../docs/**/+page.svx', {

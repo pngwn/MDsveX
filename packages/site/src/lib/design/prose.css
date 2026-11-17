@@ -19,6 +19,11 @@
 	max-width: 100%;
 }
 
+/* a titled code block is a figure, kept to the measure of one without a title */
+.prose > figure.twinkleplop-block {
+	max-width: var(--prose-measure);
+}
+
 .prose :is(h1, h2, h3, h4) {
 	position: relative;
 	font-family: var(--face-display);
@@ -177,12 +182,16 @@
 		font-size: 1.5rem;
 	}
 
-	/* a code block of the page's own runs to the screen's edge; one in an
-	   example keeps its rule beside the example's labels */
-	.prose > pre {
-		margin-inline: calc(var(--gutter, 1rem) * -1) 0;
-		padding-left: calc(var(--gutter, 1rem) - 1.5px);
-		border-left: 0;
+	/* on a phone a code block in the page runs edge to edge, one in an example keeps its box */
+	.prose > pre,
+	.prose > .twinkleplop-block {
+		margin-inline: calc(var(--gutter, 1rem) * -1);
+	}
+
+	.prose > pre,
+	.prose > .twinkleplop-block > :is(pre, .twinkleplop-title) {
+		padding-inline: var(--gutter, 1rem);
+		border-inline: 0;
 	}
 
 	.prose td code {

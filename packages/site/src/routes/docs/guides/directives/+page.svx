@@ -19,14 +19,12 @@ See the [directives playground example](/playground/directives).
 ::::plate[A `directives` export](mark="* as", tone=directive)
 Directives come from a `directives` namespace export. Any module that can replace elements can have one, the `components` modules and a template's `<script module>` alike:
 
-```js
-// src/lib/markdown.js
+```js title="src/lib/markdown.js"
 export { default as img } from './Image.svelte';
 export * as directives from './directives.js';
 ```
 
-```js
-// src/lib/directives.js
+```js title="src/lib/directives.js"
 export { default as Callout } from './Callout.svelte';
 export { default as youtube } from './YouTube.svelte';
 export { default as abbr } from './Abbr.svelte';
@@ -111,8 +109,7 @@ A name starts with a letter, then letters, digits, `_` or `-`. A name that isn't
 - `label` is a snippet of the bracket text of a leaf or container. Its inline markdown is rendered, and empty or missing brackets pass no `label`.
 - `children` is a snippet of an inline directive's bracket text, or of a container's body.
 
-```svelte
-<!-- src/lib/Callout.svelte -->
+```svelte title="src/lib/Callout.svelte"
 <script>
 	let { kind = 'note', label, children } = $props();
 </script>

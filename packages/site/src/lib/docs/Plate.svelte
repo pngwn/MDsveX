@@ -254,22 +254,45 @@
 		display: none;
 	}
 
-	/* a fence is a part too, its own padding kept, the part's given as margin.
-	   It wraps rather than scrolls: a scrolling box would clip its hairline */
-	.plate > :global(pre) {
-		margin-block: 1.25rem;
-		padding-block: 0.25rem;
+	/* a fence fills its part and wraps, a scroll box would clip its hairline,
+	   these repeat the :not of the part rule above to outrank it */
+	.plate > :global(:is(pre, .twinkleplop-block):not(.plate-lede)) {
+		margin: 0;
+		background: var(--well);
+	}
+
+	.plate > :global(pre:not(.plate-lede)),
+	.plate > :global(.twinkleplop-block > pre) {
+		padding: 1.25rem var(--pad);
+		border: 0;
+	}
+
+	.plate > :global(.twinkleplop-block:not(.plate-lede)) {
+		padding: 0;
+	}
+
+	.plate > :global(.twinkleplop-block > .twinkleplop-title) {
+		padding: 0.75rem var(--pad) 0.375rem;
+		border: 0;
+		border-bottom: 1px solid var(--staff);
+	}
+
+	.plate > :global(pre),
+	.plate > :global(.twinkleplop-block > pre) {
 		overflow: visible;
 		white-space: pre-wrap;
 		overflow-wrap: anywhere;
 	}
 
-	.plate > :global(pre > code) {
+	.plate > :global(pre > code),
+	.plate > :global(.twinkleplop-block > pre > code) {
 		width: auto;
 	}
 
-	.plate > :global(pre)::before {
-		top: -1.25rem;
+	/* the part spans the plate, so its hairline is its own width */
+	.plate > :global(:is(pre, .twinkleplop-block):not(.plate-lede))::before {
+		left: 0;
+		right: 0;
 	}
 
 	/* a table is a part that scrolls in its own box. prose.css caps it at 100%,
@@ -290,12 +313,8 @@
 		border-top: 0;
 	}
 
-	/* a fence the example under it is compiled with: one part, no hairline between */
-	.plate > :global(pre + :is(.pair, .contrast)) {
-		padding-top: 0;
-	}
-
-	.plate > :global(pre + :is(.pair, .contrast))::before {
+	/* a fence and the example compiled with it are one part, no hairline between */
+	.plate > :global(:is(pre, .twinkleplop-block) + :is(.pair, .contrast))::before {
 		display: none;
 	}
 

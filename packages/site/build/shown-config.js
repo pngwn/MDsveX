@@ -115,7 +115,7 @@ function spec_from(spec, from) {
 function exports_of(path, files, where, what) {
 	const found = [path, `${path}.js`, `${path}.ts`, `${path}.svelte`].find((p) => p in files);
 	if (!found)
-		throw new Error(`${where} names ${what} ${path}, which no fence above shows (a fence whose first line is its path, \`// ${path}\`)`);
+		throw new Error(`${where} names ${what} ${path}, which no fence above shows (a fence titled with its path, \`title="${path}"\`)`);
 	return { path: found, ...read_exports(files[found], found.endsWith(".svelte") ? "svelte" : "js") };
 }
 

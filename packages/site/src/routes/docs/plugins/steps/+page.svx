@@ -70,8 +70,7 @@ The numbers are drawn by a small stylesheet that comes with the components, from
 
 To change the markup, export your own `steps` or `step` from a [directives module](/docs/guides/directives#declaring-directives). It replaces the plugin's component and gets the same props, `label` (the title, or the bracket text of the container) and `children`:
 
-```svelte
-<!-- src/lib/Step.svelte -->
+```svelte title="src/lib/Step.svelte"
 <script>
 	let { label, children } = $props();
 </script>
@@ -82,8 +81,7 @@ To change the markup, export your own `steps` or `step` from a [directives modul
 </li>
 ```
 
-```js
-// src/lib/directives.js
+```js title="src/lib/directives.js"
 export { default as step } from './Step.svelte';
 ```
 
