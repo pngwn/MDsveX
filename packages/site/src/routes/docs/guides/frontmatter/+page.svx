@@ -40,8 +40,7 @@ import { metadata } from './article.svx';
 ::::plate[Listing posts](mark="glob", tone=expr)
 To list posts in SvelteKit, import their metadata with `import.meta.glob` and the `?metadata` query:
 
-```js
-// src/routes/blog/+page.js
+```js title="src/routes/blog/+page.js"
 const posts = import.meta.glob('./*/+page.svx', {
 	query: '?metadata',
 	import: 'metadata',
@@ -66,8 +65,7 @@ A `?metadata` import reads only the frontmatter, so the list does not load the c
 ::::plate[In a layout](mark="route", tone=expr)
 A SvelteKit layout can read the frontmatter of the page it wraps the same way. Without `eager`, each page's metadata loads on its own, and the id of the route picks it:
 
-```js
-// src/routes/+layout.js
+```js title="src/routes/+layout.js"
 const pages = import.meta.glob('./**/+page.svx', {
 	query: '?metadata',
 	import: 'metadata'
@@ -82,8 +80,7 @@ export async function load({ route }) {
 }
 ```
 
-```svelte
-<!-- src/routes/+layout.svelte -->
+```svelte title="src/routes/+layout.svelte"
 <script>
 	let { data, children } = $props();
 </script>
@@ -107,8 +104,7 @@ export async function load({ route }) {
 
 A plain `./post.svx` import is a file TypeScript can't read itself. In the editor, the mdsvex extension's [TypeScript plugin](/docs/reference/packages#editor-tools) reads it, with the exports the document has. `tsc` loads no plugins, so a type check on the command line needs a declaration in the project. A [`?template=`](/docs/guides/templates#opting-out) import is not a file at all, so it needs one in the editor too:
 
-```ts
-// src/svx.d.ts
+```ts title="src/svx.d.ts"
 declare module '*.svx' {
 	import type { Component } from 'svelte';
 	const component: Component;

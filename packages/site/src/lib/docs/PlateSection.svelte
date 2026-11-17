@@ -1,6 +1,5 @@
 <script lang="ts">
-	// a named part of a plate, `:::notes` or `:::edges`: what follows the example,
-	// and where the construct stops holding. Side by side in a wide plate
+	// notes or edges in a plate, side by side when wide, with no heading
 	import type { Snippet } from 'svelte';
 
 	interface Props {
@@ -12,7 +11,6 @@
 </script>
 
 <section class="plate-{kind}" aria-label={kind === 'notes' ? 'Notes' : 'Edges'}>
-	<h4>{kind === 'notes' ? 'Notes' : 'Edges'}</h4>
 	{@render children?.()}
 </section>
 
@@ -35,12 +33,6 @@
 		margin: 0 0 0.5rem;
 	}
 
-	/* under section, so it outranks .prose h4 */
-	section h4 {
-		margin: 0 0 0.5rem;
-		font: italic 400 1rem / 1.2 var(--face-display);
-	}
-
 	section :global(ul) {
 		display: grid;
 		gap: 0.375rem;
@@ -54,6 +46,11 @@
 
 	section :global(li::marker) {
 		color: var(--own-line);
+	}
+
+	/* the voice red stays red in every palette, --line-item does not */
+	.plate-edges :global(li::marker) {
+		color: var(--voice-rose);
 	}
 
 	/* an edge's fence and its error, set small */

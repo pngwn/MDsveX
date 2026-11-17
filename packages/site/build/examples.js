@@ -25,6 +25,7 @@ import { compile as compile_svelte } from "svelte/compiler";
 import { commonmark } from "../src/lib/docs/commonmark.js";
 import { compile_svx, pretty, rendered } from "../src/lib/docs/render.js";
 import { cue_ranges, options_for, segments_of } from "../src/lib/docs/setup.js";
+import { format_output } from "./format-output.js";
 import { config_of, syntax_of } from "./shown-config.js";
 
 // an object with every key, for the names and files an example only mentions
@@ -85,6 +86,7 @@ const FLAGS = ["score", "result", "error", "commonmark"];
 
 /** a fence's first line naming its file, `// src/lib/markdown.js` or `<!-- src/lib/Post.svelte -->` */
 const PATH_LINE = /^\s*(?:\/\/|\/\*|<!--)\s*([\w@#$./-]+\.(?:js|ts|svelte|svx))\s*(?:\*\/|-->)?\s*$/;
+const PATH_TITLE = /^[\w@#$./-]+\.(?:js|ts|svelte|svx)$/;
 
 /** what a fence's meta asks of it, null for an svx or md fence that asks nothing */
 function flags(info) {
@@ -207,19 +209,15 @@ export function example({ highlight }) {
 		const label = node.first_child?.type === "directive_label" ? node.first_child.text_content : "";
 		const args = node.attrs.args ?? {};
 		const id = args.id ? ctx.id(args.id, { fixed: true }) : ctx.id(slug(label));
-		const n = (ctx.scratch[kind] = (ctx.scratch[kind] ?? 0) + 1);
 		const section = ctx.scratch.section ?? "";
-		node.attrs.args = { ...args, id, section, n: String(n) };
+		node.attrs.args = { ...args, id };
 		ctx.add("plates", { id, kind, mark: args.mark ?? "", tone: args.tone ?? "other", title: label, section });
 	}
 
-	/**
-	 * what a fence shows that a later example may compile with: the file it
-	 * names on its first line or with `file=`, and a `js config` fence's config
-	 */
+	/** the file a fence names by title, file or first line, and the config of a js config fence, for later examples to compile with */
 	function remember(node, source, ctx) {
-		const { lang, props } = fence_meta(node.info);
-		const file = props.find(([key, value]) => key === "file" && typeof value === "string")?.[1] ?? source.split("\n")[0].match(PATH_LINE)?.[1];
+		const { lang, props, title } = fence_meta(node.info);
+		const file = (title !== undefined && PATH_TITLE.test(title) ? title : undefined) ?? props.find(([key, value]) => key === "file" && typeof value === "string")?.[1] ?? source.split("\n")[0].match(PATH_LINE)?.[1];
 		if (file) (ctx.scratch.files ??= {})[file.replace(/^\.?\//, "")] = source;
 		const config = props.some(([key, value]) => key === "config" && value === true);
 		if (config && (lang === "js" || lang === "javascript")) ctx.scratch.config = { code: source, line: node.position.start.line };
@@ -276,6 +274,25 @@ export function example({ highlight }) {
 			},
 		},
 		parse: {
+			// prettier is async and ctx.defer can only change the fence, not the example around it
+			async document(root) {
+				const examples = [];
+				const walk = (parent) => {
+					for (let node = parent.first_child; node !== null; node = node.next) {
+						if (node.type === "text") continue;
+						if (node.type === "directive_container" && node.attrs.name === "example" && typeof node.attrs.args?.code === "string") examples.push(node);
+						walk(node);
+					}
+				};
+				walk(root);
+				await Promise.all(
+					examples.map(async (node) => {
+						const args = node.attrs.args;
+						const laid = await format_output(args.code, JSON.parse(args.segments));
+						node.attrs.args = { ...args, code: laid.code, segments: JSON.stringify(laid.segments) };
+					}),
+				);
+			},
 			heading: {
 				parse(node, ctx) {
 					// the section a plate is in, for its kicker and the strip

@@ -34,8 +34,7 @@ The themes are `@twinkleplop/theme-github`, `theme-atom-one`, `theme-ayu`, `them
 ::::plate[The reader's system setting](mark="dark", tone=other)
 To follow the reader's system setting, import the light variant and add the dark one under a media query:
 
-```svelte
-<!-- src/routes/+layout.svelte -->
+```svelte title="src/routes/+layout.svelte"
 <script>
 	import '@twinkleplop/theme-github/light';
 	import '../app.css';
@@ -46,8 +45,7 @@ To follow the reader's system setting, import the light variant and add the dark
 {@render children()}
 ```
 
-```css
-/* src/app.css */
+```css title="src/app.css"
 @import '@twinkleplop/theme-github/dark' (prefers-color-scheme: dark);
 ```
 ::::
@@ -494,8 +492,7 @@ A [`pre` replacement](/docs/guides/components) wraps the highlighted block. It g
 ::::plate[A copy button](mark="copy", tone=comp)
 A copy button with a filename:
 
-```svelte
-<!-- src/lib/markdown/Pre.svelte -->
+```svelte title="src/lib/markdown/Pre.svelte"
 <script>
 	let { code, title, children } = $props();
 
@@ -517,8 +514,7 @@ A copy button with a filename:
 </div>
 ```
 
-```js
-// src/lib/markdown.js
+```js title="src/lib/markdown.js"
 export { default as pre } from './markdown/Pre.svelte';
 ```
 
@@ -580,8 +576,7 @@ type Highlighter = (
 ::::plate[With Shiki](mark="shiki", tone=expr)
 With [Shiki][shiki]:
 
-```js
-// vite.config.js
+```js title="vite.config.js"
 import { sveltekit } from '@sveltejs/kit/vite';
 import { mdsvex } from 'mdsvex';
 import { createHighlighter } from 'shiki';

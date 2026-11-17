@@ -62,8 +62,7 @@ Finding the date waits, so the Vite plugin and `compile_async` take a document w
 
 A [`?data` import](/docs/plugins/writing/plugin-data) gives all of it without rendering the document, which is what a page that lists posts wants:
 
-```svelte
-<!-- src/routes/blog/+page.svelte -->
+```svelte title="src/routes/blog/+page.svelte"
 <script>
 	const posts = import.meta.glob('./*/+page.svx', { query: '?data', eager: true });
 </script>

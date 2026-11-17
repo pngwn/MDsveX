@@ -20,8 +20,7 @@ npm i --save-dev @mdsvex/migrate@next
 
 It is a library of functions. A short script runs them over a project. Commit your work first, then set `config` to the file that calls `mdsvex()`, `layouts` to your layout components, and `options` to what your documents were written for:
 
-```js
-// migrate.js
+```js title="migrate.js"
 import { readFileSync, writeFileSync, globSync } from 'node:fs';
 import { migrate_document, migrate_config, check_template } from '@mdsvex/migrate';
 

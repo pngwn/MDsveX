@@ -26,10 +26,7 @@
 		label?: Snippet;
 		/** the title, as text */
 		title?: string;
-		/** over the title: the section a docs plate is in, and its place */
-		section?: string;
-		n?: string;
-		/** over the title, in place of the section */
+		/** concerns and package of a plugin page, over the title */
 		kicker?: Snippet;
 		/** a page's own plate takes the page's heading */
 		level?: 'h1' | 'h2' | 'h3';
@@ -38,7 +35,7 @@
 		children?: Snippet;
 	}
 
-	let { id, mark, tone = 'other', label, title, section, n, kicker, level = 'h3', size = 'concept', children }: Props = $props();
+	let { id, mark, tone = 'other', label, title, kicker, level = 'h3', size = 'concept', children }: Props = $props();
 
 	const headed = $derived(!!(label || title));
 	// a long mark is set smaller, so it sits in its cell
@@ -59,10 +56,8 @@
 	{/if}
 	{#if headed}
 		<div class="plate-title">
-			{#if kicker || section}
-				<p class="kicker">
-					{#if kicker}{@render kicker()}{:else}<em>{section!.toLowerCase()}</em>{#if n}<span class="count">{n.padStart(2, '0')}</span>{/if}{/if}
-				</p>
+			{#if kicker}
+				<p class="kicker">{@render kicker()}</p>
 			{/if}
 			<svelte:element this={level} class="name" id={id ? `${id}-title` : undefined}>
 				{#if id && level !== 'h1'}<a href="#{id}">{#if label}{@render label()}{:else}{title}{/if}</a>{:else if label}{@render label()}{:else}{title}{/if}
@@ -186,16 +181,6 @@
 		padding-bottom: 1.5rem;
 	}
 
-	.kicker em {
-		font: italic 400 0.9375rem / 1 var(--face-display);
-		color: var(--own-name);
-	}
-
-	.count {
-		font: 400 0.75rem / 1.3 var(--face-mono);
-		color: var(--quiet);
-	}
-
 	.plate .name {
 		position: static;
 		margin: 0;
@@ -254,22 +239,71 @@
 		display: none;
 	}
 
-	/* a fence is a part too, its own padding kept, the part's given as margin.
-	   It wraps rather than scrolls: a scrolling box would clip its hairline */
-	.plate > :global(pre) {
-		margin-block: 1.25rem;
-		padding-block: 0.25rem;
+	/* a fence fills its part and wraps, a scroll box would clip its hairline,
+	   these repeat the :not of the part rule above to outrank it */
+	.plate > :global(:is(pre, .twinkleplop-block):not(.plate-lede)) {
+		margin: 0;
+		background: var(--well);
+	}
+
+	.plate > :global(pre:not(.plate-lede)),
+	.plate > :global(.twinkleplop-block > pre) {
+		padding: 1.25rem var(--pad);
+		border: 0;
+	}
+
+	.plate > :global(.twinkleplop-block:not(.plate-lede)) {
+		padding: 0;
+	}
+
+	.plate > :global(.twinkleplop-block > .twinkleplop-title) {
+		padding: 0.75rem var(--pad) 0.375rem;
+		border: 0;
+		border-bottom: 1px solid var(--staff);
+	}
+
+	.plate > :global(pre),
+	.plate > :global(.twinkleplop-block > pre) {
 		overflow: visible;
 		white-space: pre-wrap;
 		overflow-wrap: anywhere;
 	}
 
-	.plate > :global(pre > code) {
+	.plate > :global(pre > code),
+	.plate > :global(.twinkleplop-block > pre > code) {
 		width: auto;
 	}
 
-	.plate > :global(pre)::before {
-		top: -1.25rem;
+	/* a code group fills its part the same way, its tab list the title bar */
+	.plate > :global(.tabs-code:not(.plate-lede)) {
+		margin: 0;
+		padding: 0;
+		background: var(--well);
+	}
+
+	.plate > :global(.tabs-code > .tabs-list) {
+		padding-inline: var(--pad);
+		border: 0;
+	}
+
+	.plate > :global(.tabs-code > .tab-panel > pre),
+	.plate > :global(.tabs-code > .tab-panel > .twinkleplop-block > pre) {
+		padding: 1.25rem var(--pad);
+		border: 0;
+		overflow: visible;
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+	}
+
+	.plate > :global(.tabs-code > .tab-panel > pre > code),
+	.plate > :global(.tabs-code > .tab-panel > .twinkleplop-block > pre > code) {
+		width: auto;
+	}
+
+	/* the part spans the plate, so its hairline is its own width */
+	.plate > :global(:is(pre, .twinkleplop-block, .tabs-code):not(.plate-lede))::before {
+		left: 0;
+		right: 0;
 	}
 
 	/* a table is a part that scrolls in its own box. prose.css caps it at 100%,
@@ -290,12 +324,8 @@
 		border-top: 0;
 	}
 
-	/* a fence the example under it is compiled with: one part, no hairline between */
-	.plate > :global(pre + :is(.pair, .contrast)) {
-		padding-top: 0;
-	}
-
-	.plate > :global(pre + :is(.pair, .contrast))::before {
+	/* a fence and the example compiled with it are one part, no hairline between */
+	.plate > :global(:is(pre, .twinkleplop-block) + :is(.pair, .contrast))::before {
 		display: none;
 	}
 

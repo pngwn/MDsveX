@@ -11,8 +11,7 @@ Custom components replace the elements markdown produces. A `## heading` can ren
 ::::plate[A template's exports](mark="as h2", tone=comp)
 A template's `<script module>` exports replace elements by name, in the documents it wraps:
 
-```svelte
-<!-- src/lib/templates/Docs.svelte -->
+```svelte title="src/lib/templates/Docs.svelte"
 <script module>
 	export { default as h2 } from './docs/Heading.svelte';
 	export { default as pre } from './docs/CodeBlock.svelte';
@@ -57,8 +56,7 @@ mdsvex({
 ::::plate[Every document](mark=".js", tone=comp)
 `components` names one or more modules whose exports replace elements in every document, including documents with no template:
 
-```js
-// src/lib/markdown.js
+```js title="src/lib/markdown.js"
 export { default as img } from './Image.svelte';
 export { default as a } from './Link.svelte';
 ```
@@ -118,8 +116,7 @@ Every replacement gets the element's attributes as props, including any a parse 
 ::::plate[One component, several elements](mark="h2 h3", tone=comp)
 One component can serve several elements:
 
-```svelte
-<!-- src/lib/templates/docs/Heading.svelte -->
+```svelte title="src/lib/templates/docs/Heading.svelte"
 <script>
 	let { level, id, children } = $props();
 </script>
@@ -169,8 +166,7 @@ mdsvex({
 ::::plate[A tag of your own](mark="warning", tone=comp)
 With `component_mode: 'all'`, a lowercase tag matching an export is replaced too. A `warning` export gives every document a `<warning>` tag, with no import:
 
-```js
-// src/lib/markdown.js
+```js title="src/lib/markdown.js"
 export { default as warning } from './Warning.svelte';
 ```
 
@@ -203,8 +199,7 @@ Markdown inside a component always uses the document's replacements, never ones 
 ::::plate[A document of its own](mark="?=", tone=link)
 Until then, move that markdown into a document of its own, and give it a template with the replacements you want. Here that is an `aside` entry in `templates`, which `?template=` picks on the import:
 
-```svelte
-<!-- src/lib/templates/Aside.svelte -->
+```svelte title="src/lib/templates/Aside.svelte"
 <script module>
 	export { default as p } from './aside/Paragraph.svelte';
 </script>

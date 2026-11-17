@@ -1,6 +1,7 @@
 import { sveltekit } from "@sveltejs/kit/vite";
 import { anchors } from "@mdsvex/plugin-anchors";
 import { link_check } from "@mdsvex/plugin-link-check";
+import { tabs } from "@mdsvex/plugin-tabs";
 import { mdsvex } from "mdsvex";
 import { create_highlight, load_default_languages } from "mdsvex/highlight";
 import { example, examples } from "./build/examples.js";
@@ -36,6 +37,8 @@ export default ({ command }) => {
 				plugins: [
 					anchors({ position: "prepend" }),
 					link_check({ routes: "src/routes", strict: build }),
+					// install commands by package manager
+					tabs(),
 					// a fence flagged score or result, drawn as its score or beside its html
 					example({ highlight: result_highlight }),
 				],

@@ -11,8 +11,7 @@ A template is a Svelte component that wraps documents. It's the place for a docu
 ::::plate[Name your templates](mark="#lib", tone=comp)
 Name your templates in the `templates` option:
 
-```js
-// vite.config.js
+```js title="vite.config.js"
 mdsvex({
 	templates: {
 		default: '#lib/templates/Post.svelte',
@@ -40,8 +39,7 @@ Each value is a specifier, resolved from the project root like an import, or a `
 ::::plate[A template renders the document](mark="{@}", tone=expr)
 A template renders the document with `{@render children()}`:
 
-```svelte
-<!-- src/lib/templates/Post.svelte -->
+```svelte title="src/lib/templates/Post.svelte"
 <script>
 	let { title, date, children } = $props();
 </script>
