@@ -25,6 +25,7 @@ import { compile as compile_svelte } from "svelte/compiler";
 import { commonmark } from "../src/lib/docs/commonmark.js";
 import { compile_svx, pretty, rendered } from "../src/lib/docs/render.js";
 import { cue_ranges, options_for, segments_of } from "../src/lib/docs/setup.js";
+import { format_output } from "./format-output.js";
 import { config_of, syntax_of } from "./shown-config.js";
 
 // an object with every key, for the names and files an example only mentions
@@ -273,6 +274,25 @@ export function example({ highlight }) {
 			},
 		},
 		parse: {
+			// prettier is async and ctx.defer can only change the fence, not the example around it
+			async document(root) {
+				const examples = [];
+				const walk = (parent) => {
+					for (let node = parent.first_child; node !== null; node = node.next) {
+						if (node.type === "text") continue;
+						if (node.type === "directive_container" && node.attrs.name === "example" && typeof node.attrs.args?.code === "string") examples.push(node);
+						walk(node);
+					}
+				};
+				walk(root);
+				await Promise.all(
+					examples.map(async (node) => {
+						const args = node.attrs.args;
+						const laid = await format_output(args.code, JSON.parse(args.segments));
+						node.attrs.args = { ...args, code: laid.code, segments: JSON.stringify(laid.segments) };
+					}),
+				);
+			},
 			heading: {
 				parse(node, ctx) {
 					// the section a plate is in, for its kicker and the strip
