@@ -3,10 +3,6 @@
 	// (build/examples.js): you write, as written or as its score, beside you get,
 	// what mdsvex compiles it to. The score and the output share one focus, so
 	// pointing at either washes both, as on the atlas (its Output.svelte).
-	//
-	// The page's "Show the reading" picks source or score for every example on
-	// it; an example's own toggle overrides that until the page's switch is next
-	// flipped. A fence flagged `score` opens on its score whatever the page says
 	import type { Snippet } from 'svelte';
 	import Output from '$lib/design/atlas/Output.svelte';
 	import Score, { type Focus } from '$lib/design/score/Score.svelte';
@@ -17,8 +13,6 @@
 		source: string;
 		/** the file it stands for, said over it */
 		file?: string;
-		/** `open`: it opens on its score */
-		score?: string;
 		/** what mdsvex compiles it to, and the compile's mappings as JSON, for `result` */
 		code?: string;
 		segments?: string;
@@ -30,10 +24,9 @@
 		children?: Snippet;
 	}
 
-	let { source, file, score, code, segments, error, syntax, children }: Props = $props();
+	let { source, file, code, segments, error, syntax, children }: Props = $props();
 
-	// svelte-ignore state_referenced_locally
-	const reading = new ExampleReading(use_reading(), score === 'open');
+	const reading = new ExampleReading(use_reading());
 	let focus = $state<Focus | null>(null);
 
 	const read = $derived(source.endsWith('\n') ? source : `${source}\n`);
@@ -49,13 +42,13 @@
 			{#if paired}<span class="label">You write</span>{/if}
 			{#if file}<span class="file">{file}</span>{/if}
 			<span class="pick" role="group" aria-label="Show {name} as">
-				<button type="button" aria-pressed={!reading.on} onclick={() => reading.set(false)}>source</button>
-				<button type="button" aria-pressed={reading.on} onclick={() => reading.set(true)}>score</button>
+				<button type="button" aria-pressed={!reading.on} onclick={() => reading.set(false)}>Source</button>
+				<button type="button" aria-pressed={reading.on} onclick={() => reading.set(true)}>Annotated source</button>
 			</span>
 		</div>
 		{#if reading.on}
 			<div class="score">
-				<Score source={read} syntax={read_with} bind:focus label="{name}, as the parser reads it" />
+				<Score explore compiled={code ? compiled : undefined} source={read} syntax={read_with} bind:focus label="{name}, as the parser reads it" />
 			</div>
 		{:else}
 			<div class="source">{@render children?.()}</div>
@@ -109,8 +102,8 @@
 	}
 
 	.label {
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
+		font: 600 0.875rem / 1.4 var(--face-text);
+		color: var(--ink);
 	}
 
 	.file {
@@ -119,7 +112,7 @@
 
 	.pick {
 		display: flex;
-		gap: 0.75rem;
+		gap: 0.25rem;
 		margin-left: auto;
 	}
 
@@ -129,7 +122,7 @@
 	}
 
 	.pick button {
-		padding: 0;
+		padding: 0.375rem 0.5rem;
 		border: 0;
 		font: inherit;
 		color: var(--quiet);
@@ -180,5 +173,12 @@
 
 	.error span {
 		color: var(--name-item);
+	}
+	@container (max-width: 38rem) {
+		.file {
+			order: 1;
+			flex: 1 0 100%;
+			overflow-wrap: anywhere;
+		}
 	}
 </style>

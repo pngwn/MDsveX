@@ -35,7 +35,7 @@ Curly quotes, dashes and other Unicode punctuation count as punctuation there…
 - **`:::notes` and `:::edges`.** They sit side by side when the plate is wide.
 - **Fence flags**, on `svx` fences:
   - `result`: you write beside what mdsvex compiles it to.
-  - `score`: the parser's reading. With `result` too, the pair opens on the score.
+  - `score`: source with optional parser annotations. The section preference sets its initial view.
   - `error`: the build fails unless the compile throws, and shows the error.
   - `commonmark`: the source read by CommonMark and by mdsvex. Add `gfm` for GFM's reading, and `cue="regex"` to rule on the score the characters that make the difference.
   - `templates`: compile with the templates guide's `default` and `docs` templates.
@@ -63,7 +63,7 @@ Curly quotes, dashes and other Unicode punctuation count as punctuation there…
     - The options that are the same in both pass through, such as `heading_ids`, `smart_punctuation`, `unwrap_images`, `wrap_static`, `footnotes`, `frontmatter`, `import_images`, `plugins` and `parse_plugins`.
   - **`components` names modules the page shows.** It reads them from the fences above whose first line is their path, `// src/lib/markdown.js`, with `#lib/` and `$lib/` as `src/lib/`. Their `directives` namespace export becomes the directives. The guides/directives page shows the real unknown-directive error this way.
   - **Anything it can't honour fails the build** and names it: an option it doesn't map yet (`links`, `routes`, `templates`, `select_template`), an import it doesn't load, or a module no fence shows. Then extend `build/shown-config.js`, don't hand-write the output.
-  - **`result`, `error` and `score` honour it.** A score alone still compiles with its config, so a config that doesn't compile fails the build. Each is compiled once, with its config, and its output through Svelte, so it can't fail for missing the options it shows. With "Show the reading" on, a score parses with the config's `unwrap_images`. Plugins act after the parse: their work shows in "you get", not in the score.
+  - **`result`, `error` and `score` honour it.** A score alone still compiles with its config, so a config that doesn't compile fails the build. Each is compiled once, with its config, and its output through Svelte, so it can't fail for missing the options it shows. With “Annotated source” selected, a score parses with the config's `unwrap_images`. Plugins act after the parse: their work shows in "you get", not in the score.
   - **Worked examples:** reference/options (`heading_ids`), guides/directives (the `error`), plugins/writing/parse-plugins (`sections`).
 - **`::marks`.** A line of its own after the page's intro. It draws the strip of the page's plates, grouped by their `##` sections. Use it on a page with a dozen plates or more, where a reader wants to jump.
 - **`::::added` holding `:::add[what you write](mark=…, tone=…)`.** A grid of small marks, each with what you get as its body. Use it for a list of short syntax with no example of its own, like Learn's "Added to CommonMark". Each cell joins the strip.
@@ -115,7 +115,7 @@ When a page says PFM differs from CommonMark or GFM, and a short source shows it
    - an `error` that compiles fails;
    - a `cue` that matches nothing fails.
 2. **Read it at 375, 1440 and 1920.** Plates run to the page's right gutter on wide screens. Nothing may pass the right edge. Measure element right edges against the viewport, not `scrollWidth`: `.design-frame` clips.
-3. **Turn on "Show the reading".** Every example becomes its score, a contrast's score shows its cue, and the choice survives a reload.
+3. **Turn on annotations in “Default example view”.** Every example becomes its score, a contrast's score shows its cue, and the choice survives a reload.
 4. **Check anchors.** Click the strip's cells and every anchor other pages link to (`grep -rn "your-page#" packages/site/src/routes`).
 5. **Run the builds.** `pnpm --filter "@mdsvex/site^..." build`, then `pnpm --filter @mdsvex/site build`. The site build is strict: a broken link, anchor or example fails it.
 6. **Watch the console.** No errors, in dev or in `vite preview`.

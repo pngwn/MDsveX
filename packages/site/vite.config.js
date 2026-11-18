@@ -1,6 +1,7 @@
 import { sveltekit } from "@sveltejs/kit/vite";
 import { anchors } from "@mdsvex/plugin-anchors";
 import { link_check } from "@mdsvex/plugin-link-check";
+import { toc } from "@mdsvex/plugin-toc";
 import { tabs } from "@mdsvex/plugin-tabs";
 import { mdsvex } from "mdsvex";
 import { create_highlight, load_default_languages } from "mdsvex/highlight";
@@ -33,9 +34,9 @@ export default ({ command }) => {
 			mdsvex({
 				heading_ids: true,
 				highlight,
-				// the empty anchors scroll tracking reads
 				plugins: [
-					anchors({ position: "prepend" }),
+					anchors({ attrs: { class: "permalink" } }),
+					toc({ max_depth: 2 }),
 					link_check({ routes: "src/routes", strict: build }),
 					// install commands by package manager
 					tabs(),

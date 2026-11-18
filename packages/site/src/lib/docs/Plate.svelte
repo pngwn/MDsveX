@@ -44,6 +44,7 @@
 
 <article
 	class="plate wide {size}"
+	class:wide-mark={size === 'page' && (mark?.length ?? 0) > 4}
 	class:headed
 	class:marked={mark !== undefined}
 	{id}
@@ -74,7 +75,7 @@
 	   and an auto column would grow to it, past the page */
 	.plate {
 		--mark-w: 7.5rem;
-		--title-size: clamp(1.75rem, 5cqi, 2.75rem);
+		--title-size: clamp(1.75rem, 4cqi, 2.25rem);
 		--title-lh: 1.06;
 		--glyph-size: 2rem;
 		--title-top: 1.5rem;
@@ -114,6 +115,8 @@
 		grid-column: 1;
 		grid-row: 1 / span 3;
 		display: grid;
+		min-width: 0;
+		grid-template-columns: minmax(0, 1fr);
 		grid-template-rows: subgrid;
 		padding: 0 0.5rem 2rem;
 		border-right: 1px solid var(--ink);
@@ -140,7 +143,9 @@
 		font: 400 var(--glyph-size) / 1 var(--face-mono);
 		font-variant-ligatures: none;
 		color: var(--own-name);
-		white-space: nowrap;
+		max-width: 100%;
+		overflow-wrap: anywhere;
+		white-space: pre-wrap;
 	}
 
 	/* its kicker and title are rows of the plate's own grid */
@@ -232,7 +237,7 @@
 		top: 0;
 		left: calc(var(--pad) * -1);
 		right: calc(var(--pad) * -1);
-		border-top: 1px solid var(--ink);
+		border-top: 1px solid var(--staff);
 	}
 
 	.plate > :global(:first-child:not(.plate-mark, .plate-title, .plate-lede))::before {
@@ -264,9 +269,8 @@
 
 	.plate > :global(pre),
 	.plate > :global(.twinkleplop-block > pre) {
-		overflow: visible;
-		white-space: pre-wrap;
-		overflow-wrap: anywhere;
+		overflow-x: auto;
+		white-space: pre;
 	}
 
 	.plate > :global(pre > code),
@@ -290,9 +294,8 @@
 	.plate > :global(.tabs-code > .tab-panel > .twinkleplop-block > pre) {
 		padding: 1.25rem var(--pad);
 		border: 0;
-		overflow: visible;
-		white-space: pre-wrap;
-		overflow-wrap: anywhere;
+		overflow-x: auto;
+		white-space: pre;
 	}
 
 	.plate > :global(.tabs-code > .tab-panel > pre > code),
@@ -312,8 +315,8 @@
 	   the hairline is its top border, its image outset to the plate's edges */
 	.plate > :global(table) {
 		max-width: calc(100% - 2 * var(--pad));
-		border-top: 1px solid var(--ink);
-		border-image: linear-gradient(var(--ink), var(--ink)) 1 / 1px 0 0 / 0 var(--pad);
+		border-top: 1px solid var(--staff);
+		border-image: linear-gradient(var(--staff), var(--staff)) 1 / 1px 0 0 / 0 var(--pad);
 	}
 
 	.plate > :global(table)::before {
@@ -344,7 +347,7 @@
 			right: auto;
 			bottom: 0;
 			border-top: 0;
-			border-left: 1px solid var(--ink);
+			border-left: 1px solid var(--staff);
 			translate: calc(var(--pad) * -1) 0;
 		}
 
@@ -355,7 +358,7 @@
 			top: 0;
 			left: calc(var(--pad) * -1);
 			right: calc(var(--pad) * -1);
-			border-top: 1px solid var(--ink);
+			border-top: 1px solid var(--staff);
 		}
 	}
 
@@ -423,4 +426,27 @@
 			bottom: 0.875rem;
 		}
 	}
+
+	@container (max-width: 37.5rem) {
+		.wide-mark > .plate-mark {
+			grid-column: 1 / -1;
+			grid-row: 1;
+			display: block;
+			padding: 0.5rem var(--pad);
+			border: 0;
+			border-bottom: 1px solid var(--staff);
+			--glyph-size: 0.9375rem;
+		}
+		.wide-mark > .plate-mark::after { display: none; }
+		.wide-mark .kicker, .wide-mark .name, .wide-mark > :global(.plate-lede) {
+			grid-column: 1 / -1;
+		}
+		.wide-mark .kicker {
+			grid-row: 2;
+			padding-top: 0.75rem;
+		}
+		.wide-mark .name { grid-row: 3; }
+		.wide-mark > :global(.plate-lede) { grid-row: 4; }
+	}
+
 </style>

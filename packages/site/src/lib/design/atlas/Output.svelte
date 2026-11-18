@@ -11,18 +11,34 @@
 		source: string;
 		compiled: Compiled;
 		focus?: Focus | null;
+		onpick?: (phrase: Focus | null) => void;
 		/** the construct's name, for the figure's accessible name */
 		name: string;
 	}
 
-	let { source, compiled, focus = $bindable(null), name }: Props = $props();
+	let { source, compiled, focus = $bindable(null), onpick, name }: Props = $props();
+
+	const id = $props.id();
+	let expanded = $state(false);
+
+	let long = $state(false);
+	function measure(node: HTMLElement) {
+		const pre = node.parentElement!;
+		const observer = new ResizeObserver(() => {
+			const style = getComputedStyle(pre);
+			const height = node.offsetHeight + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+			long = height > parseFloat(getComputedStyle(document.documentElement).fontSize) * 22;
+		});
+		observer.observe(node);
+		return { destroy: () => observer.disconnect() };
+	}
 
 	let pieces = $derived(cuts(compiled.code, compiled.segments));
 	let lit = $derived(focus ? output_of(compiled.segments, focus.start, focus.end) : null);
 
-	function over(e: PointerEvent) {
-		const el = (e.target as HTMLElement).closest<HTMLElement>('[data-at]');
-		focus = el ? phrase_at(source, compiled.segments, Number(el.dataset.at)) : null;
+	function mapped_phrase(target: EventTarget | null) {
+		const el = target instanceof Element ? target.closest<HTMLElement>('[data-at]') : null;
+		return el ? phrase_at(source, compiled.segments, Number(el.dataset.at)) : null;
 	}
 </script>
 
@@ -31,18 +47,27 @@
 		<span>Compiles to</span>
 		{#if compiled.with.length}<span class="with">with {compiled.with.join(', ')}</span>{/if}
 	</figcaption>
-	<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+	<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
 	<pre
 		class="code"
+		{id}
+		class:expanded
 		class:dimmed={!!lit}
 		style:--wash-c={focus ? `var(--line-${tone(focus.kind)})` : undefined}
 		tabindex="0"
-		onpointerover={over}
-		onpointerleave={() => (focus = null)}><code
+		onpointerover={(e) => { if (!onpick || e.pointerType !== 'touch') focus = mapped_phrase(e.target); }}
+		onclick={onpick && ((e) => { if (window.getSelection()?.isCollapsed !== false) onpick?.(mapped_phrase(e.target)); })}
+		onkeydown={(e) => { if (e.key === 'Escape') onpick?.(null); }}
+		onpointerleave={() => (focus = null)}><code use:measure
 			>{#each pieces as [a, b] (a)}<span class:lit={!!lit && a >= lit[0] && b <= lit[1]} data-at={a}
 					>{compiled.code.slice(a, b)}</span
 				>{/each}</code
 		></pre>
+	{#if long}
+		<button type="button" aria-controls={id} aria-expanded={expanded} onclick={() => expanded = !expanded}>
+			{expanded ? 'Collapse output' : 'Expand output'}
+		</button>
+	{/if}
 </figure>
 
 <style>
@@ -99,11 +124,13 @@
 
 	/* the score's wash, its line tone at 13% over the paper, and everything else stepped back */
 	.lit {
+		text-decoration: underline 1px var(--wash-c);
+		text-underline-offset: 0.18em;
 		background-color: color-mix(in srgb, var(--wash-c, var(--line-list)) 13%, transparent);
 	}
 
 	.dimmed span:not(.lit) {
-		opacity: 0.4;
+		opacity: 0.85;
 	}
 
 	@media (prefers-reduced-motion: no-preference) {
@@ -112,5 +139,15 @@
 				opacity 160ms ease,
 				background-color 160ms ease;
 		}
+	}
+	pre.expanded { max-height: none; }
+	button {
+		justify-self: start;
+		font: 400 0.8125rem/1.4 var(--face-mono);
+		background: var(--paper);
+		color: var(--ink);
+		border: 1px solid var(--staff);
+		padding: 0.375rem 0.625rem;
+		cursor: pointer;
 	}
 </style>

@@ -3,6 +3,7 @@
 	// a hairline, the parser's reading of a real source on its staves and what
 	// mdsvex compiles it to under it, then the notes. The score and the output
 	// share one focus, so pointing at either washes both
+	import { tick } from 'svelte';
 	import Perch from '../penguin/Perch.svelte';
 	import Score, { type Focus } from '../score/Score.svelte';
 	import { tone } from '../score/kinds';
@@ -21,7 +22,33 @@
 
 	let { construct: c, compiled, notes, palette, perch = false }: Props = $props();
 
-	let focus = $state<Focus | null>(null);
+	let reading: HTMLDivElement;
+	let hovered = $state<Focus | null>(null);
+	let picked = $state<Focus | null>(null);
+
+	function highlight() {
+		return hovered ?? picked;
+	}
+
+	function hover(phrase: Focus | null) {
+		hovered = phrase;
+	}
+
+	function pick(phrase: Focus | null) {
+		hovered = null;
+		picked = phrase && picked?.start === phrase.start && picked.end === phrase.end && picked.kind === phrase.kind ? null : phrase;
+	}
+
+	async function pick_output(phrase: Focus | null) {
+		pick(phrase);
+		if (!picked) return;
+		await tick();
+		const cell = reading.querySelector<HTMLElement>('.ch.lit');
+		if (!cell) return;
+		const bounds = cell.getBoundingClientRect();
+		const clearance = parseFloat(getComputedStyle(reading.closest('article')!).scrollMarginTop) || 0;
+		if (bounds.top < clearance || bounds.bottom > window.innerHeight) cell.scrollIntoView({ block: 'center', inline: 'nearest' });
+	}
 
 	const own = $derived(tone(c.kinds[0]));
 	const parts = $derived(parts_of(c));
@@ -32,7 +59,7 @@
 </script>
 
 {#snippet score()}
-	<Score source={c.source} {palette} staves riso {parts} bind:focus label="{c.name}, as the parser reads it" />
+	<Score {picked} onpick={pick} {compiled} source={c.source} {palette} staves riso {parts} bind:focus={highlight, hover} label="{c.name}, as the parser reads it" />
 {/snippet}
 
 <article class="plate" id={c.id} style:--own-line="var(--line-{own})" style:--own-name="var(--name-{own})" aria-labelledby="{c.id}-name">
@@ -46,7 +73,7 @@
 	</header>
 
 	<div class="figure">
-		<div class="reading" style:--cols={cols}>
+		<div class="reading" bind:this={reading} style:--cols={cols}>
 			<p class="label">As the parser reads it</p>
 			{#if perch}
 				<Perch>{@render score()}</Perch>
@@ -54,7 +81,7 @@
 				{@render score()}
 			{/if}
 		</div>
-		<Output source={c.source} {compiled} bind:focus name={c.name} />
+		<Output onpick={pick_output} source={c.source} {compiled} bind:focus={highlight, hover} name={c.name} />
 	</div>
 
 	<div class="notes">

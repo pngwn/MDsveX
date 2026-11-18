@@ -36,15 +36,21 @@
 	// Given `stream`, the bar it names is drawn instead of the settled reading,
 	// with the streaming marks: guesses raised and dashed, revoked guesses struck,
 	// held characters under the bird's eye
+	import type { Compiled } from '../atlas/types';
+	import { output_of } from '../atlas/wash';
 	import BirdsEye from '../penguin/BirdsEye.svelte';
-	import { tone, type Tone } from './kinds';
+	import { spoken, tone, type Tone } from './kinds';
 	import { place, strokes, systems, type Placed, type Stroke, type System } from './layout';
 	import { read, settled } from './reading';
-	import type { Syntax } from '../pfm';
+	import type { KindName, Syntax } from '../pfm';
 
 	interface Props {
 		/** the PFM source to read */
 		source: string;
+		explore?: boolean;
+		picked?: Focus | null;
+		onpick?: (phrase: Focus | null) => void;
+		compiled?: Compiled;
 		/**
 		 * riso, pngwn's pick, or Okabe and Ito's colour blind safe colours, or the
 		 * four voices, colouring by family rather than construct, for a Title
@@ -91,6 +97,10 @@
 	let {
 		source,
 		palette = 'riso',
+		explore = false,
+		picked = null,
+		onpick,
+		compiled,
 		stream,
 		focus = $bindable(null),
 		staves = false,
@@ -114,6 +124,38 @@
 		const all = strokes(bar, streaming);
 		return text ? all : all.filter((m) => m.ink !== 'text');
 	});
+
+	let selection = $state('');
+
+	function matches(phrase: { start: number; end: number | null; kind: string }, other: Focus | null) {
+		return !!other && phrase.start === other.start && (phrase.end ?? fed) === other.end && phrase.kind === other.kind;
+	}
+
+	const choices = $derived(onpick ? [
+		...drawn.map((s) => ({ name: s.name, start: s.start, end: s.end ?? fed, kind: s.kind })),
+		...parts.map((p) => ({ ...p, kind: part_kind(p) }))
+	] : []);
+	const group = $props.id();
+	const selected = $derived(onpick
+		? picked && (choices.find((p) => matches(p, picked)) ?? { ...picked, name: spoken({ kind: picked.kind as KindName }) })
+		: drawn.find((stroke) => stroke.key === selection));
+	const mapped = $derived(compiled && selected ? output_of(compiled.segments, selected.start, selected.end ?? fed) : null);
+
+	function select_phrase(key: string) {
+		selection = key;
+		const stroke = drawn.find((item) => item.key === key);
+		focus = stroke ? { start: stroke.start, end: stroke.end ?? fed, kind: stroke.kind } : null;
+	}
+
+	function step_phrase(event: KeyboardEvent) {
+		if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+		if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+		event.preventDefault();
+		const select = event.currentTarget as HTMLSelectElement;
+		const next = select.selectedIndex + (event.key === 'ArrowDown' ? 1 : -1);
+		const option = select.options[Math.max(0, Math.min(next, select.length - 1))];
+		select_phrase(option.value);
+	}
 
 	/** each markup character takes the name tone of the construct it belongs to */
 	let owner = $derived.by(() => {
@@ -344,30 +386,36 @@
 	}
 
 	// pointing at a phrase lights it, pointing at a character lights the innermost node it is in
-	function over(e: PointerEvent) {
-		const el = (e.target as HTMLElement).closest<HTMLElement>('[data-start]');
-		if (!el) return (focus = null);
+	function phrase_at_target(target: EventTarget | null): Focus | null {
+		const el = target instanceof Element ? target.closest<HTMLElement>('[data-start]') : null;
+		if (!el) return null;
 		const start = Number(el.dataset.start);
 		if (el.dataset.end) {
-			focus = { start, end: Number(el.dataset.end), kind: el.dataset.kind ?? '' };
-			return;
+			return { start, end: Number(el.dataset.end), kind: el.dataset.kind ?? '' };
 		}
 		const inner = bar.phrases
 			.filter((p) => p.kind !== 'text' && p.start <= start && start < (p.end ?? fed))
 			.sort((a, b) => b.depth - a.depth)[0];
-		focus = inner ? { start: inner.start, end: inner.end ?? fed, kind: inner.kind } : null;
+		return inner ? { start: inner.start, end: inner.end ?? fed, kind: inner.kind } : null;
 	}
 </script>
 
+<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 <figure
 	class="score"
+	class:pickable={!!onpick}
 	class:dimmed={!!focus}
 	data-palette={palette}
 	style:--wash-c={focus ? `var(--line-${tone(focus.kind)})` : undefined}
 	style:--levels={levels}
 	bind:clientWidth={width}
 	aria-label={label}
-	onpointerover={over}
+	onpointerover={(e) => { if (!onpick || e.pointerType !== 'touch') focus = phrase_at_target(e.target); }}
+	onclick={onpick && ((e) => {
+		if (e.target instanceof Element && e.target.closest('[data-start]') && window.getSelection()?.isCollapsed !== false) {
+			onpick?.(phrase_at_target(e.target));
+		}
+	})}
 	onpointerleave={() => (focus = null)}
 >
 	<span class="probe cellw" bind:this={probe} aria-hidden="true"></span>
@@ -375,6 +423,21 @@
 	<em class="probe namew" bind:this={name_probe} aria-hidden="true">aceimnorst</em>
 	<!-- the drawing is a character per cell, so a screen reader gets the source whole -->
 	<pre class="said">{source}</pre>
+	{#if onpick && choices.length}
+		<fieldset class="said">
+			<legend>{label}, choose a phrase</legend>
+			{#each choices as phrase, i (i)}
+				<label>
+					<input type="radio" name={group} checked={matches(phrase, picked)}
+						onfocus={(e) => { if (e.currentTarget.matches(':focus-visible')) focus = phrase; }}
+						onblur={() => focus = null}
+						onchange={() => onpick?.(phrase)}
+						onkeydown={(e) => { if (e.key === 'Escape') onpick?.(null); }} />
+					{phrase.name}, characters {phrase.start + 1}–{phrase.end}
+				</label>
+			{/each}
+		</fieldset>
+	{/if}
 
 	{#each engraved as { sys, rows, brackets, closes, to, under }, k (sys.start)}
 		{@const below = under.length ? 1 : 0}
@@ -491,6 +554,21 @@
 		</div>
 	{/each}
 </figure>
+{#if (explore || onpick) && drawn.length}
+	<div class="explore">
+		{#if !onpick}
+			<label>Explore a phrase
+				<select value={selection} onchange={(e) => select_phrase(e.currentTarget.value)} onkeydown={step_phrase} onfocus={() => select_phrase(selection)}>
+					<option value="">Choose a phrase</option>
+					{#each drawn as stroke (stroke.key)}
+						<option value={stroke.key}>{stroke.name} · {stroke.start + 1}–{stroke.end ?? fed}</option>
+					{/each}
+				</select>
+			</label>
+		{/if}
+		<p role="status">{#if selected}{selected.name}, characters {selected.start + 1}–{selected.end ?? fed}: <code>{source.slice(selected.start, selected.end ?? fed)}</code>{#if compiled && mapped} → <code>{compiled.code.slice(...mapped)}</code>{/if}{/if}</p>
+	</div>
+{/if}
 
 <style>
 	.score {
@@ -809,11 +887,11 @@
 	}
 
 	.dimmed :is(.phrase, .bracket-of, .barline, .part):not(.lit) {
-		opacity: 0.35;
+		opacity: 0.85;
 	}
 
 	.dimmed .ch:not(.lit) {
-		opacity: 0.4;
+		opacity: 0.85;
 	}
 
 	/* streaming, only given a stream. A guess is written small, raised and
@@ -886,4 +964,30 @@
 				background-color 160ms ease;
 		}
 	}
+	.pickable :is(.phrase, .part, .ch) { cursor: pointer; }
+	.pickable:has(input:focus-visible) { outline: 2px solid var(--ink); outline-offset: 3px; }
+	.explore:has(> p:only-child:empty) { display: none; }
+	.explore {
+		margin-top: 0.625rem;
+		font: 400 0.8125rem/1.5 var(--face-mono);
+		color: var(--quiet);
+	}
+	.explore label {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem 0.5rem;
+		align-items: baseline;
+	}
+	.explore select {
+		max-width: 100%;
+		font: inherit;
+		color: var(--ink);
+		background: var(--paper);
+		border: 1px solid var(--staff);
+	}
+	.explore p {
+		margin: 0.375rem 0 0;
+		overflow-wrap: anywhere;
+	}
+	.explore p:empty { display: none; }
 </style>

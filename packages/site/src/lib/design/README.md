@@ -34,9 +34,9 @@ The 1.0 design foundation, phase 0 of `design/SITE_PLAN.md`. `design/SCORE.md` i
 A docs page doesn't import it. It flags a fence, and `packages/site/build/examples.js` makes the fence a directive at build time (`src/lib/docs/Pair.svelte` and `Contrast.svelte`):
 
 ````md
-```svx score         the score, the source a click away
+```svx score         source with optional parser annotations
 ```svx result        you write beside you get, mdsvex's compile, the score a click away
-```svx result score  both, opening on the score
+```svx result score  source and compiled output in the preferred example view
 ```svx error         you write beside the error its compile gives
 ```svx commonmark    the source read by CommonMark and by mdsvex, a `cue` ruled on the score
 ````

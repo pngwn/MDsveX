@@ -178,7 +178,7 @@
 		},
 	});
 
-	let mobile = $derived(width < 540);
+	let mobile = $derived(width < 800);
 
 	$effect(() => {
 		$toggleable = mobile && orientation === 'columns' && embedded !== 'output-only';
@@ -215,7 +215,7 @@
 			max="-41px"
 		>
 			{#snippet a()}
-				<section>
+				<section inert={$toggleable && show_output}>
 					<ComponentSelector {workspace} entry={current_entry()} />
 
 					<Editor {workspace} />
@@ -223,7 +223,7 @@
 			{/snippet}
 
 			{#snippet b()}
-				<section>
+				<section inert={$toggleable && !show_output}>
 					<Output
 						status={status_visible ? status : null}
 						{embedded}
@@ -242,13 +242,11 @@
 
 	{#if $toggleable}
 		<ScreenToggle
-			bind:checked={
-				() => show_output,
-				(v) => {
-					toggled ||= true;
-					show_output = v;
-				}
-			}
+			checked={show_output}
+			onchange={(value) => {
+				toggled = true;
+				show_output = value;
+			}}
 		/>
 	{/if}
 </div>
@@ -313,20 +311,17 @@
 		transition: transform 0.3s;
 	}
 
-	/* on mobile the split pane is fixed */
-	@media (max-width: 799px) {
-		.container-normal :global {
-			[data-pane='main'] {
-				--pos: 50% !important;
-			}
+	.toggleable :global {
+		[data-pane='main'] {
+			--pos: 50% !important;
+		}
 
-			[data-pane='editor'] {
-				--pos: 54px !important;
-			}
+		[data-pane='editor'] {
+			--pos: 54px !important;
+		}
 
-			[data-pane] svelte-split-pane-divider {
-				cursor: default;
-			}
+		[data-pane] svelte-split-pane-divider {
+			pointer-events: none;
 		}
 	}
 </style>

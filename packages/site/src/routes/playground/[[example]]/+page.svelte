@@ -1,8 +1,9 @@
 <script lang="ts">
-import { goto, replaceState } from "$app/navigation";
+import { afterNavigate, goto, replaceState } from "$app/navigation";
 import { page } from "$app/state";
 import { untrack } from "svelte";
 import { Repl, decode_state, encode_state, type ReplState } from "@mdsvex/repl";
+import { pages } from "../../docs/nav.js";
 import { examples } from "$lib/playground/examples";
 // mdsvex adds no css, the preview gets a theme the way a project imports one
 import code_theme from "@twinkleplop/theme-ayu?inline";
@@ -10,6 +11,13 @@ import code_theme from "@twinkleplop/theme-ayu?inline";
 let { data } = $props();
 
 let repl: ReturnType<typeof Repl> | undefined = $state();
+let guide = $state<{ href: string; title: string }>();
+afterNavigate(({ from }) => {
+	const url = from?.url ?? (document.referrer ? new URL(document.referrer) : null);
+	if (url?.origin !== location.origin) return;
+	const previous = pages.find((item) => item.href === url.pathname);
+	if (previous) guide = { href: previous.href + url.search + url.hash, title: previous.title };
+});
 let edited = $state(false);
 let copied = $state(false);
 let save_timeout: ReturnType<typeof setTimeout> | undefined;
@@ -82,6 +90,7 @@ function onhashchange() {
 		<span class="divider">/</span>
 		<span class="label">playground</span>
 
+		{#if guide}<a class="guide" href={guide.href}>Back to {guide.title}</a>{/if}
 		<select
 			aria-label="example"
 			value={data.example.slug}
@@ -96,7 +105,7 @@ function onhashchange() {
 			{#if edited}
 				<button onclick={reset} title="discard edits and reload the example">reset</button>
 			{/if}
-			<button onclick={share} title="copy a link to this playground">
+			<button class="share" onclick={share} title="copy a link to this playground">
 				{copied ? "copied" : "share"}
 			</button>
 		</div>
@@ -143,7 +152,7 @@ function onhashchange() {
 	}
 
 	.home {
-		color: var(--accent);
+		color: var(--text-primary);
 		text-decoration: none;
 		font-weight: 600;
 	}
@@ -195,5 +204,31 @@ function onhashchange() {
 		--repl-border: var(--border);
 		--repl-fg-accent: var(--accent);
 		--repl-font-family-mono: var(--font-mono);
+	}
+	header { flex: none; }
+	.guide {
+		color: var(--text-primary);
+		text-underline-offset: 0.2em;
+	}
+	select { min-width: 0; }
+	.share { min-width: 5rem; }
+	.playground :global(:is(a, button, select, input, [tabindex]):focus-visible) {
+		outline: 2px solid #ffe9b5;
+		outline-offset: -2px;
+	}
+	@media (max-width: 42rem) {
+		header {
+			height: auto;
+			flex-wrap: wrap;
+			gap: 0.375rem 0.5rem;
+			padding: 0.5rem 0.75rem;
+		}
+		select {
+			order: 2;
+			flex: 1 1 100%;
+			margin: 0;
+		}
+		.guide { order: 3; }
+		.actions { margin-left: auto; }
 	}
 </style>

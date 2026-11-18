@@ -28,10 +28,11 @@ const current = (href) =>
 {:else}
 	<Frame theme={theme.value}>
 		{#snippet nav()}
+			{#if page.url.pathname.startsWith("/docs/")}<a class="skip" href="#docs-article">Skip to article</a>{/if}
 			<nav class="site" aria-label="Site">
 				<a class="home" href="/" aria-current={page.url.pathname === "/" ? "page" : undefined}>mdsvex</a>
 				<ul>
-					{#each links as [href, title]}
+					{#each links as [href, title] (href)}
 						<li><a {href} aria-current={current(href)}>{title}</a></li>
 					{/each}
 				</ul>
@@ -47,12 +48,12 @@ const current = (href) =>
 		display: flex;
 		align-items: baseline;
 		justify-content: space-between;
-		gap: 1.5rem;
+		gap: clamp(0.5rem, 3vw, 1.5rem);
 	}
 
 	ul {
 		display: flex;
-		gap: 1.25rem;
+		gap: clamp(0.5rem, 3vw, 1.25rem);
 		margin: 0;
 		padding: 0;
 		list-style: none;
@@ -81,4 +82,13 @@ const current = (href) =>
 	.home[aria-current="page"] {
 		text-decoration: none;
 	}
+	.skip {
+		position: absolute;
+		z-index: 5;
+		transform: translateY(-200%);
+		padding: 0.5rem;
+		color: var(--ink);
+		background: var(--paper);
+	}
+	.skip:focus { transform: none; }
 </style>

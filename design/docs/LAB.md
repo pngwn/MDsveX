@@ -11,7 +11,7 @@ All three use the real prose, the real compile and the real parser:
 
 ## What all three share
 
-- **The page switch, "Show the reading".** It turns every example on the page into its score. Each example keeps its own source/score toggle, which holds until the page switch is next flipped. It defaults off in Learn, Guides and Plugins and on in Reference and Internals. The reader's choice is kept per section in `localStorage` (`reading.svelte.ts`). It costs authors nothing, because the template provides it from the route's section. An example flagged `score` still opens on its score.
+- **The page switch, "Default example view".** It turns every example on the page into its score. Each example keeps its own source/score toggle, which holds until the page switch is next flipped. It defaults off in Learn, Guides and Plugins and on in Reference and Internals. The reader's choice is kept per section in `localStorage` (`reading.svelte.ts`). It costs authors nothing, because the template provides it from the route's section.
 - **The CommonMark table became eleven contrasts.** Each one is a source, CommonMark's reading and mdsvex's reading, each shown rendered and as html, plus the table's "write this instead". The two `_`/`*` rows share one source. With the score on, the characters that make the difference are ruled under their cells (new `cue` prop on `Score.svelte`, its own commit `0f37ab90`). That covers the four spaces of indent, the two trailing spaces, the `##` that stays and the `===` line.
 - **The strip.** Every mark the page teaches, in its construct's colour, each one a link to where the page takes it up. Each direction draws it its own way.
 

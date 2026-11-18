@@ -95,8 +95,9 @@ export async function run(
 	needs: Needs | undefined,
 	target: HTMLElement,
 ): Promise<Run> {
-	const t = await load_tools();
+	let generated = false;
 	try {
+		const t = await load_tools();
 		const plugins = await Promise.all([...(example.with ?? []).map((w) => bundle_of(w)), bundle_of(name, example.options)]);
 		const result: any = await t.compile_async(source, {
 			filename: '/docs/example.svx',
@@ -107,6 +108,7 @@ export async function run(
 			plugins,
 			read: reader(example.files),
 		} as any);
+		generated = true;
 		const { js } = t.compile_svelte(result.code, { generate: 'client', filename: 'Example.svelte', css: 'injected' });
 		const modules: Modules = { ...t.runtime };
 		for (const spec of imports_of(js.code)) {
@@ -127,8 +129,10 @@ export async function run(
 			destroy: () => t.unmount(mounted),
 		};
 	} catch (error) {
+		const issue = error as Error & { start?: { line: number; column: number } };
+		const where = issue.start?.line ? ` (${generated ? 'generated Svelte, ' : ''}line ${issue.start.line}, column ${issue.start.column + 1})` : '';
 		return {
-			output: { data: null, warnings: [], error: (error as Error).message.replace(/^\[mdsvex\] /, '') },
+			output: { data: null, warnings: [], error: (issue.message ?? String(error)).replace(/^\[mdsvex\] /, '') + where },
 			destroy: () => {},
 		};
 	}

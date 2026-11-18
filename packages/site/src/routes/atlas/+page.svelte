@@ -17,6 +17,7 @@
 
 	const title = '# The _construct_ atlas';
 
+	let index_height = $state(0);
 	let palette = $state<'riso' | 'cvd'>('riso');
 	let current = $state(constructs[0].id);
 
@@ -62,7 +63,7 @@
 		<h1 class="rag">The <em>construct</em> atlas</h1>
 		<p class="sub">Penguin-Flavoured Markdown, one construct at a time.</p>
 	</div>
-	<div class="foot">
+	<div class="foot" data-palette={palette}>
 		<Strip />
 		<div class="lede">
 			<p>
@@ -79,10 +80,10 @@
 	<p class="key-lead">
 		<strong>Reading a score.</strong> Each line over the source is one node, from its first character to its last, with a bar where it
 		opens and one where it closes, and its name in the corner. Each row of lines sits on a stave. Quiet unnamed lines are text. Each
-		construct has its own colour.
+		construct has its own colour. The family headings use a separate set of four colours.
 	</p>
 	<div class="key">
-		<p>Point at a phrase, or at the output, to light the two together.</p>
+		<p>Hover over a phrase or its output to see the match. Click or tap to keep it highlighted, and tap again to clear it. Use the arrow keys to explore a focused score.</p>
 		<div class="pick" role="group" aria-label="Colours">
 			<button type="button" aria-pressed={palette === 'riso'} onclick={() => set_palette('riso')}>Riso inks</button>
 			<button type="button" aria-pressed={palette === 'cvd'} onclick={() => set_palette('cvd')}>Colour blind safe</button>
@@ -90,8 +91,8 @@
 	</div>
 </section>
 
-<div class="atlas" data-palette={palette}>
-	<div class="index-col">
+<div class="atlas" data-palette={palette} style:--index-height={index_height ? `${index_height}px` : undefined}>
+	<div class="index-col" bind:offsetHeight={index_height}>
 		<Index {current} />
 	</div>
 	<div class="plates">
@@ -223,9 +224,7 @@
 		margin: 0 0 0.75rem;
 	}
 
-	.key strong {
-		font-weight: 600;
-	}
+
 
 	.pick {
 		display: inline-flex;
@@ -260,7 +259,7 @@
 	/* round one's atlas: the plates, with the grid of marks pinned beside them */
 	.atlas {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) minmax(17rem, 23rem);
+		grid-template-columns: minmax(0, 1fr) clamp(15rem, 25%, 23rem);
 		gap: clamp(1.25rem, 3vw, 2.5rem);
 		align-items: start;
 	}
@@ -282,7 +281,7 @@
 	}
 
 	/* a phone: the grid is one row pinned over the plates */
-	@media (max-width: 60rem) {
+	@media (max-width: 68rem) {
 		.atlas {
 			grid-template-columns: minmax(0, 1fr);
 		}
@@ -300,7 +299,7 @@
 		}
 
 		.plates :global(.plate) {
-			scroll-margin-top: 7rem;
+			scroll-margin-top: calc(var(--index-height, 8rem) + 0.75rem);
 		}
 	}
 

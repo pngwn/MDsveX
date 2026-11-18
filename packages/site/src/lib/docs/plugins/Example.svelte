@@ -5,7 +5,7 @@
 	// on each change compiles in the browser with the plugin on and mounts where
 	// the built output was. A plugin that can't run in the browser keeps its
 	// built output and says why
-	import { untrack } from 'svelte';
+	import { tick, untrack } from 'svelte';
 	import Score from '$lib/design/score/Score.svelte';
 	import type { Plugin } from './types';
 
@@ -36,6 +36,10 @@
 	let html = $state('');
 	let mounted = $state(false);
 	let target: HTMLElement | undefined = $state();
+	const diagnostic_id = $props.id();
+	let diagnostic = $state('');
+	const explanation = $derived(diagnostic.match(/https:\/\/svelte\.dev\/e\/[\w-]+/)?.[0]);
+	let edit_button: HTMLButtonElement | undefined = $state();
 	let area: HTMLTextAreaElement | undefined = $state();
 
 	$effect.pre(() => {
@@ -45,10 +49,10 @@
 	const output = $derived(live ?? built);
 	const views = $derived(
 		[
-			['page', 'page'],
-			['html', 'html'],
-			output.data ? ['data', 'plugin_data'] : null,
-			output.warnings.length ? ['warnings', `warnings ${output.warnings.length}`] : null,
+			['page', 'Preview'],
+			['html', 'HTML'],
+			output.data ? ['data', 'Plugin data'] : null,
+			output.warnings.length ? ['warnings', `Warnings (${output.warnings.length})`] : null,
 		].filter(Boolean) as [typeof view, string][],
 	);
 
@@ -61,19 +65,28 @@
 	let timer: ReturnType<typeof setTimeout> | undefined;
 	let generation = 0;
 
-	async function compile_now() {
-		if (!target) return;
-		const mine = ++generation;
-		const { run } = await import('./live');
+	async function compile_now(mine: number) {
+		if (!target || mine !== generation) return;
+		let run: typeof import('./live').run;
+		try {
+			({ run } = await import('./live'));
+		} catch {
+			if (mine === generation) {
+				diagnostic = 'The compiler could not load. Edit the source to retry.';
+				status = 'error';
+			}
+			return;
+		}
 		// a fresh element for each run, so a failed one leaves the last good output
 		const next = document.createElement('div');
 		const result = await run(plugin.package, source, plugin.example, plugin.needs, next);
 		if (mine !== generation) return result.destroy();
-		live = result.output;
-		if (result.output.error) {
+		diagnostic = result.output.error ?? '';
+		if (diagnostic) {
 			status = 'error';
 			return;
 		}
+		live = result.output;
 		destroy();
 		destroy = result.destroy;
 		target.replaceChildren(...next.childNodes);
@@ -84,19 +97,30 @@
 
 	async function edit() {
 		editing = true;
-		if (plugin.live) return;
-		status = 'loading';
-		await compile_now();
+		await tick();
 		area?.focus();
+		if (plugin.live || status !== 'built') return;
+		status = 'loading';
+		await compile_now(++generation);
+	}
+
+	async function done() {
+		editing = false;
+		await tick();
+		edit_button?.focus();
 	}
 
 	function changed() {
 		if (plugin.live) return;
 		clearTimeout(timer);
-		timer = setTimeout(compile_now, 200);
+		const mine = ++generation;
+		timer = setTimeout(() => compile_now(mine), 200);
 	}
 
 	function reset() {
+		clearTimeout(timer);
+		generation++;
+		diagnostic = '';
 		source = plugin.example.source;
 		live = null;
 		status = 'built';
@@ -106,7 +130,11 @@
 		mounted = false;
 	}
 
-	$effect(() => () => destroy());
+	$effect(() => () => {
+		generation++;
+		clearTimeout(timer);
+		destroy();
+	});
 
 	/** an example's links go where the example's site would, not this one: they stay put */
 	function stay(e: MouseEvent) {
@@ -115,10 +143,10 @@
 
 	const said = $derived(
 		{
-			built: 'Built with the plugin on when the site was built.',
+			built: 'Build-time preview.',
 			loading: 'Loading mdsvex and Svelte…',
 			live: 'Compiled in your browser with the plugin on.',
-			error: 'This edit does not compile; the last output stays.',
+			error: 'Compilation failed.',
 		}[status],
 	);
 </script>
@@ -129,9 +157,10 @@
 			<span class="label">You write</span>
 			<span class="actions">
 				{#if !editing}
-					<button type="button" onclick={edit}>{plugin.live ? 'Show source' : 'Edit'}</button>
-				{:else if status !== 'built' && source !== plugin.example.source}
-					<button type="button" onclick={reset}>Reset</button>
+					<button type="button" bind:this={edit_button} onclick={edit}>{plugin.live ? 'Show source' : 'Edit'}</button>
+				{:else}
+					{#if source !== plugin.example.source}<button type="button" onclick={reset}>Reset example</button>{/if}
+					<button type="button" onclick={done}>{plugin.live ? 'Close source' : 'Done editing'}</button>
 				{/if}
 			</span>
 		</div>
@@ -142,14 +171,30 @@
 				oninput={changed}
 				readonly={!!plugin.live}
 				spellcheck="false"
+				aria-invalid={!!diagnostic}
+				aria-describedby={diagnostic ? diagnostic_id : undefined}
 				aria-label="The example's source{plugin.live ? ', read only' : ''}"
 				rows={Math.min(16, source.split('\n').length + 1)}
 			></textarea>
 		{/if}
-		<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-		<div class="score" class:quiet={editing} onclick={editing ? undefined : edit}>
-			<Score source={source.endsWith('\n') ? source : `${source}\n`} label="The example, as the parser reads it" />
-		</div>
+		{#if diagnostic}
+			<p class="failed" id={diagnostic_id} role="status">{diagnostic.replace(explanation ?? '', '').trim()}
+				{#if explanation}<a href={explanation}>Compiler explanation</a>{/if}
+			</p>
+		{/if}
+		{#snippet annotated()}
+			<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+			<div class="score" class:editable={!editing} onclick={(event) => {
+				if (!editing && event.target instanceof Element && !event.target.closest('.explore')) edit();
+			}}>
+				<Score explore source={source.endsWith('\n') ? source : `${source}\n`} label="The example, as the parser reads it" />
+			</div>
+		{/snippet}
+		{#if editing}
+			<details class="file"><summary>Annotated source</summary>{@render annotated()}</details>
+		{:else}
+			{@render annotated()}
+		{/if}
 		{#if plugin.example.files}
 			{#each Object.entries(plugin.example.files) as [path, text] (path)}
 				<details class="file">
@@ -162,7 +207,7 @@
 
 	<div class="half get">
 		<div class="head">
-			<span class="label">You get</span>
+			<span class="label">{diagnostic ? 'Last successful preview' : 'You get'}</span>
 			{#if views.length > 1}
 				<span class="pick" role="group" aria-label="Show the output as">
 					{#each views as [v, name] (v)}
@@ -198,9 +243,6 @@
 					<li><span class="line">line {w.line ?? '?'}</span> <code>{w.code}</code> {w.message}</li>
 				{/each}
 			</ol>
-		{/if}
-		{#if live?.error}
-			<p class="failed" role="status"><code>{live.error}</code></p>
 		{/if}
 	</div>
 
@@ -297,15 +339,18 @@
 	}
 
 	.score {
-		cursor: text;
 		overflow-x: auto;
 	}
 
-	/* while the textarea is the source, the score under it follows what is typed */
-	.score.quiet {
-		cursor: auto;
-		margin-top: 1rem;
+	.editable :global(figure.score) { cursor: text; }
+
+	.actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.375rem;
 	}
+	.failed { overflow-wrap: anywhere; }
+	.failed a { display: block; }
 
 	textarea {
 		box-sizing: border-box;

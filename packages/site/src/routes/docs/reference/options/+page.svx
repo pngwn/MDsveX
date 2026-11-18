@@ -6,6 +6,11 @@ order: 1
 
 `mdsvex()` takes one object of options. They apply to every document.
 
+::marks
+
+<details>
+<summary>Full TypeScript definition</summary>
+
 ```ts
 interface MdsvexOptions {
 	extensions?: string[];
@@ -52,7 +57,7 @@ interface MdsvexOptions {
 }
 ```
 
-::marks
+</details>
 
 ## `extensions`
 

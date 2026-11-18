@@ -2,9 +2,9 @@
 // fence can ask to be drawn as its score, shown with what it compiles to, or
 // read by CommonMark beside mdsvex.
 //
-//   ```svx score          the parser's score of the example, the source a click away
+//   ```svx score          source with optional parser annotations
 //   ```svx result         you write beside you get, what mdsvex compiles it to
-//   ```svx result score   both, opening on the score
+//   ```svx result score   source and compiled output in the preferred example view
 //   ```svx error          you write beside the error its compile gives
 //   ```svx commonmark     the source read by CommonMark and by mdsvex, side by side
 //
@@ -96,7 +96,6 @@ function flags(info) {
 	if (!FLAGS.some((flag) => on.has(flag))) return null;
 	const value = (key) => props.find(([k, v]) => k === key && typeof v === "string")?.[1];
 	return {
-		score: on.has("score"),
 		result: on.has("result"),
 		error: on.has("error"),
 		commonmark: on.has("commonmark"),
@@ -153,7 +152,6 @@ export function example({ highlight }) {
 	function example_args(source, asked, node, ctx) {
 		const args = { source };
 		if (asked.file) args.file = asked.file;
-		if (asked.score) args.score = "open";
 		const config = asked.config ? shown_config(node, ctx) : null;
 		const syntax = config && syntax_of(config);
 		if (syntax) args.syntax = syntax;
@@ -263,6 +261,8 @@ export function example({ highlight }) {
 				},
 			},
 			plate_lede: {},
+			doc_title: {},
+			command_group: {},
 			notes: {},
 			edges: {},
 			marks: {},
@@ -277,14 +277,17 @@ export function example({ highlight }) {
 			// prettier is async and ctx.defer can only change the fence, not the example around it
 			async document(root) {
 				const examples = [];
+				let indexed = false;
 				const walk = (parent) => {
 					for (let node = parent.first_child; node !== null; node = node.next) {
 						if (node.type === "text") continue;
+						if (node.type === "directive_leaf" && node.attrs.name === "marks") indexed = true;
 						if (node.type === "directive_container" && node.attrs.name === "example" && typeof node.attrs.args?.code === "string") examples.push(node);
 						walk(node);
 					}
 				};
 				walk(root);
+				if (indexed) root.append("paragraph").append("link", { href: "#section-index" }).append("text", "Back to page index");
 				await Promise.all(
 					examples.map(async (node) => {
 						const args = node.attrs.args;
@@ -296,6 +299,9 @@ export function example({ highlight }) {
 			heading: {
 				parse(node, ctx) {
 					// the section a plate is in, for its kicker and the strip
+					if (node.depth === 1 && ctx.filename?.endsWith("/+page.svx")) {
+						node.wrap_from("directive_container", { name: "doc_title" }).close();
+					}
 					if (node.depth !== 2) return;
 					return () => {
 						ctx.scratch.section = node.text_content.trim();
