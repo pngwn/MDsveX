@@ -3,10 +3,11 @@
 	// p/mdsvex-1.0-design), laid out like a title page, the opening, then the
 	// lede, the install line and the contents. The paper is 01's dots, linen on
 	// Playfair, riso on the Title's mono, the body plain
+	import install from '$lib/docs/install-pnpm.sh?raw';
 	import Title from '$lib/design/title/Title.svelte';
 
 	const movements = [
-		['Getting started', 'Install it, then add it to Vite or SvelteKit.', '/docs/learn/quick-start'],
+		['Quick start', 'Install it, then add it to Vite or SvelteKit.', '/docs/learn/quick-start'],
 		['Markdown', 'PFM, and where it parts from CommonMark.', '/docs/learn/markdown'],
 		['Svelte in markdown', 'Expressions, components and blocks, anywhere.', '/docs/learn/markdown#svelte-in-markdown'],
 		['Frontmatter', 'YAML, checked against the template’s props.', '/docs/guides/frontmatter'],
@@ -14,7 +15,7 @@
 		['Custom components', 'Replace any element with your own.', '/docs/guides/components'],
 		['Directives', 'A name and its args, mapped to a component.', '/docs/guides/directives'],
 		['Plugins', 'Act on the document as it is parsed.', '/docs/plugins'],
-		['Tooling', 'Editor, formatter and grammar read PFM alike.', '/docs/guides/prettier'],
+		['Formatting with Prettier', 'Format markdown and Svelte together.', '/docs/guides/prettier'],
 	];
 	const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX'];
 </script>
@@ -27,6 +28,7 @@
 	<section class="cover">
 		<Title />
 		<p class="sub linen">Markdown with Svelte in it.</p>
+		<nav class="start" aria-label="Get started"><a href="/docs/learn/quick-start">Quick start</a><a href="/playground">Try an example</a></nav>
 	</section>
 
 	<section class="first">
@@ -35,18 +37,18 @@
 			out.
 		</p>
 		<!-- the command stands alone, with no rule under it, as v7 had it -->
-		<p class="install"><code>pnpm add -D mdsvex</code></p>
+		<p class="install"><span>Install the prerelease</span><code>{install.trim()}</code></p>
 	</section>
 
 	<section class="contents" aria-labelledby="contents">
 		<h2 id="contents">Contents</h2>
 		<ol>
 			{#each movements as [name, line, href], i (name)}
-				<li>
+				<li><a class="movement" {href}>
 					<span class="num linen">{ROMAN[i]}</span>
-					<a class="mv linen" {href}>{name}</a>
+					<span class="mv linen">{name}</span>
 					<span class="tempo">{line}</span>
-				</li>
+				</a></li>
 			{/each}
 		</ol>
 	</section>
@@ -57,7 +59,7 @@
 	   centres beat into soft round dots where they cross, with a little shade at
 	   the top and the foot. Fixed, so the page scrolls over it. The rings take
 	   either theme's ink; the shade always darkens */
-	:global(.design-frame:has(.home)) {
+	:global(.design-frame:has(.cover)) {
 		background-image:
 			repeating-radial-gradient(circle at 13% 27%, color-mix(in srgb, var(--ink) 1.2%, transparent) 0 1px, transparent 1px 3px),
 			repeating-radial-gradient(circle at 71% 63%, color-mix(in srgb, var(--ink) 1%, transparent) 0 1px, transparent 1px 4px),
@@ -144,7 +146,7 @@
 		list-style: none;
 	}
 
-	li {
+	.movement {
 		display: grid;
 		grid-template-columns: 3.5rem minmax(0, 1fr) minmax(0, 1.4fr);
 		align-items: baseline;
@@ -168,7 +170,7 @@
 		text-decoration: none;
 	}
 
-	.mv:hover {
+	.movement:hover .mv {
 		text-decoration: underline 1px;
 		text-underline-offset: 0.2em;
 	}
@@ -184,12 +186,38 @@
 			--u: 1.2rem;
 		}
 
-		li {
-			grid-template-columns: 2.5rem minmax(0, 1fr);
+		.movement {
+			grid-template-columns: 1.75rem minmax(0, 1fr);
+			column-gap: 0.75rem;
 		}
 
 		.tempo {
 			grid-column: 2;
 		}
+	}
+	.start {
+		display: flex;
+		gap: 1.5rem;
+		margin-top: 1rem;
+	}
+	.start a {
+		padding: 0.5rem 0;
+		color: var(--ink);
+		font: 400 0.875rem/1.5 var(--face-mono);
+		text-underline-offset: 0.25em;
+	}
+	.start a + a { color: var(--quiet); }
+	.install span {
+		display: block;
+		margin-bottom: 0.375rem;
+		color: var(--quiet);
+	}
+	.movement {
+		color: inherit;
+		text-decoration: none;
+	}
+	.movement:focus-visible {
+		outline: 2px solid var(--ink);
+		outline-offset: 2px;
 	}
 </style>

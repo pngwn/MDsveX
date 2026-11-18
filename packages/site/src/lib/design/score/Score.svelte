@@ -36,6 +36,8 @@
 	// Given `stream`, the bar it names is drawn instead of the settled reading,
 	// with the streaming marks: guesses raised and dashed, revoked guesses struck,
 	// held characters under the bird's eye
+	import type { Compiled } from '../atlas/types';
+	import { output_of } from '../atlas/wash';
 	import BirdsEye from '../penguin/BirdsEye.svelte';
 	import { tone, type Tone } from './kinds';
 	import { place, strokes, systems, type Placed, type Stroke, type System } from './layout';
@@ -45,6 +47,8 @@
 	interface Props {
 		/** the PFM source to read */
 		source: string;
+		explore?: boolean;
+		compiled?: Compiled;
 		/**
 		 * riso, pngwn's pick, or Okabe and Ito's colour blind safe colours, or the
 		 * four voices, colouring by family rather than construct, for a Title
@@ -91,6 +95,8 @@
 	let {
 		source,
 		palette = 'riso',
+		explore = false,
+		compiled,
 		stream,
 		focus = $bindable(null),
 		staves = false,
@@ -114,6 +120,26 @@
 		const all = strokes(bar, streaming);
 		return text ? all : all.filter((m) => m.ink !== 'text');
 	});
+
+	let selection = $state('');
+	const selected = $derived(drawn.find((stroke) => stroke.key === selection));
+	const mapped = $derived(compiled && selected ? output_of(compiled.segments, selected.start, selected.end ?? fed) : null);
+
+	function select_phrase(key: string) {
+		selection = key;
+		const stroke = drawn.find((item) => item.key === key);
+		focus = stroke ? { start: stroke.start, end: stroke.end ?? fed, kind: stroke.kind } : null;
+	}
+
+	function step_phrase(event: KeyboardEvent) {
+		if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+		if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+		event.preventDefault();
+		const select = event.currentTarget as HTMLSelectElement;
+		const next = select.selectedIndex + (event.key === 'ArrowDown' ? 1 : -1);
+		const option = select.options[Math.max(0, Math.min(next, select.length - 1))];
+		select_phrase(option.value);
+	}
 
 	/** each markup character takes the name tone of the construct it belongs to */
 	let owner = $derived.by(() => {
@@ -491,6 +517,19 @@
 		</div>
 	{/each}
 </figure>
+{#if explore && drawn.length}
+	<div class="explore">
+		<label>Explore a phrase
+			<select value={selection} onchange={(e) => select_phrase(e.currentTarget.value)} onkeydown={step_phrase} onfocus={() => select_phrase(selection)}>
+				<option value="">Choose a phrase</option>
+				{#each drawn as stroke (stroke.key)}
+					<option value={stroke.key}>{stroke.name} · {stroke.start + 1}–{stroke.end ?? fed}</option>
+				{/each}
+			</select>
+		</label>
+		<p role="status">{#if selected}{selected.name}, characters {selected.start + 1}–{selected.end ?? fed}: <code>{source.slice(selected.start, selected.end ?? fed)}</code>{#if compiled && mapped} → <code>{compiled.code.slice(...mapped)}</code>{/if}{/if}</p>
+	</div>
+{/if}
 
 <style>
 	.score {
@@ -809,11 +848,11 @@
 	}
 
 	.dimmed :is(.phrase, .bracket-of, .barline, .part):not(.lit) {
-		opacity: 0.35;
+		opacity: 0.85;
 	}
 
 	.dimmed .ch:not(.lit) {
-		opacity: 0.4;
+		opacity: 0.85;
 	}
 
 	/* streaming, only given a stream. A guess is written small, raised and
@@ -886,4 +925,27 @@
 				background-color 160ms ease;
 		}
 	}
+	.explore {
+		margin-top: 0.625rem;
+		font: 400 0.8125rem/1.5 var(--face-mono);
+		color: var(--quiet);
+	}
+	.explore label {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem 0.5rem;
+		align-items: baseline;
+	}
+	.explore select {
+		max-width: 100%;
+		font: inherit;
+		color: var(--ink);
+		background: var(--paper);
+		border: 1px solid var(--staff);
+	}
+	.explore p {
+		margin: 0.375rem 0 0;
+		overflow-wrap: anywhere;
+	}
+	.explore p:empty { display: none; }
 </style>

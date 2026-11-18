@@ -7,9 +7,9 @@ import { page } from "$app/state";
 </svelte:head>
 
 <div class="prose">
-	<h1>{page.status}</h1>
-	<p>{page.error?.message ?? `Encountered a ${page.status} error`}</p>
-	<p><a href="/docs">The docs</a> or <a href="/">the start</a>.</p>
+	<h1>{page.status === 404 ? "Page not found" : "Something went wrong"}</h1>
+	<p>Error {page.status}{page.status !== 404 && page.error?.message ? ` · ${page.error.message}` : ""}</p>
+	<p><a href="/docs">Documentation</a> or <a href="/">Home</a>.</p>
 </div>
 
 <style>

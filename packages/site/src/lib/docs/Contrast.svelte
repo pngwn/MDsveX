@@ -45,12 +45,12 @@
 		<div class="head">
 			<span class="label">You write</span>
 			<span class="pick" role="group" aria-label="Show the source as">
-				<button type="button" aria-pressed={!reading.on} onclick={() => reading.set(false)}>source</button>
-				<button type="button" aria-pressed={reading.on} onclick={() => reading.set(true)}>score</button>
+				<button type="button" aria-pressed={!reading.on} onclick={() => reading.set(false)}>Source</button>
+				<button type="button" aria-pressed={reading.on} onclick={() => reading.set(true)}>Annotated source</button>
 			</span>
 		</div>
 		{#if reading.on}
-			<Score source={source.endsWith('\n') ? source : `${source}\n`} cue={ranges} label="The source as mdsvex reads it" />
+			<Score explore source={source.endsWith('\n') ? source : `${source}\n`} cue={ranges} label="The source as mdsvex reads it" />
 		{:else}
 			<div class="fence">{@render children?.()}</div>
 		{/if}
@@ -110,18 +110,18 @@
 
 	.label,
 	.who {
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
+		font: 600 0.875rem / 1.4 var(--face-text);
+		color: var(--ink);
 	}
 
 	.pick {
 		display: flex;
-		gap: 0.75rem;
+		gap: 0.25rem;
 		margin-left: auto;
 	}
 
 	.pick button {
-		padding: 0;
+		padding: 0.375rem 0.5rem;
 		border: 0;
 		font: inherit;
 		color: var(--quiet);
@@ -145,8 +145,6 @@
 
 	.who {
 		margin: 0;
-		font: 400 0.75rem / 1.4 var(--face-mono);
-		color: var(--quiet);
 	}
 
 	.rendered {
@@ -197,7 +195,7 @@
 	/* the html wraps in its column rather than scrolling under the next */
 	.html :global(pre) {
 		margin: 0;
-		font-size: 0.75rem;
+		font-size: 0.8125rem;
 		line-height: 1.5;
 	}
 

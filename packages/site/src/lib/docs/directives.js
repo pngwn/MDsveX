@@ -11,3 +11,5 @@ export { default as edges } from "./Edges.svelte";
 export { default as marks } from "./Marks.svelte";
 export { default as added } from "./Added.svelte";
 export { default as add } from "./Add.svelte";
+export { default as doc_title } from "./DocTitle.svelte";
+export { default as command_group } from "./CommandGroup.svelte";

@@ -31,6 +31,16 @@
 </script>
 
 <nav class="index" aria-label="Constructs">
+	<label class="choose">
+		Construct
+		<select value={current} onchange={(e) => (location.hash = e.currentTarget.value)}>
+			{#each groups as group (group.id)}
+				<optgroup label={group.name}>
+					{#each group.items as c (c.id)}<option value={c.id}>{c.name}</option>{/each}
+				</optgroup>
+			{/each}
+		</select>
+	</label>
 	<div class="groups" bind:this={strip}>
 		{#each groups as group (group.id)}
 			<div class="group" data-family={group.id}>
@@ -231,7 +241,21 @@
 	}
 
 	/* a phone: one row of every mark, pinned over the plates, the families still headed */
-	@media (max-width: 60rem) {
+	.choose { display: none; }
+
+	@media (max-width: 68rem) {
+		.index { gap: 0.375rem; }
+		.choose {
+			display: flex;
+			align-items: center;
+			gap: 0.75rem;
+		}
+		select {
+			font: inherit;
+			color: var(--ink);
+			background: var(--paper);
+			max-width: 70%;
+		}
 		.groups {
 			display: flex;
 			gap: 0.75rem;

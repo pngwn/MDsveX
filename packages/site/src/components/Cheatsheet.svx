@@ -87,8 +87,7 @@ Quick installation instructions.
 npm i -D mdsvex@next
 ```
 
-```bash
-pnpm add -D mdsvex@next
+```bash src=../lib/docs/install-pnpm.sh
 ```
 
   </div>

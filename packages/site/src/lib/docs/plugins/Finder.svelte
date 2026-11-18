@@ -11,7 +11,7 @@
 	import Score from '$lib/design/score/Score.svelte';
 	import { pages } from '../../../routes/docs/nav.js';
 	import { CONCERNS, type ConcernId } from './concerns';
-	import { CORE, core_terms } from './core';
+	import { CORE, core_terms, type Core } from './core';
 	import Result from './Result.svelte';
 	import { hit, keep, words_of, type Hit } from './search';
 	import type { Plugin, Term } from './types';
@@ -64,6 +64,9 @@
 	);
 	const unsorted = $derived(concern ? [] : data.plugins.filter((p) => p.concerns.length === 0));
 
+	const exact = $derived(core.find((c) => c.options?.includes(query.trim().toLowerCase())));
+	const related_core = $derived(core.filter((c) => c !== exact));
+
 	const count = (id: ConcernId) => data.plugins.filter((p) => p.concerns.includes(id)).length;
 
 	function sync() {
@@ -95,7 +98,7 @@
 		// `/` focuses search, as it does on most docs sites, unless the reader is typing somewhere
 		const key = (e: KeyboardEvent) => {
 			const t = e.target as HTMLElement;
-			if (e.key !== '/' || t.closest('input, textarea, [contenteditable]')) return;
+			if (e.key !== '/' || t.closest('input, textarea, select, [contenteditable]')) return;
 			e.preventDefault();
 			input?.focus();
 		};
@@ -107,6 +110,22 @@
 		return () => removeEventListener('keydown', key);
 	});
 </script>
+
+{#snippet builtins(items: Core[], title: string)}
+	{#if items.length}
+		<div class="group core">
+			<h2 class="group-head"><em>{title}</em></h2>
+			<ul class="core-list">
+				{#each items as c (c.href)}
+					<li>
+						<a href={c.href}>{c.name}</a>
+						<span>{#each c.line.split('`') as part, i (i)}{#if i % 2}<code>{part}</code>{:else}{part}{/if}{/each}</span>
+					</li>
+				{/each}
+			</ul>
+		</div>
+	{/if}
+{/snippet}
 
 <div class="wide finder">
 <header class="hero">
@@ -122,8 +141,8 @@
 		<span class="ask">What do you want to do?</span>
 		<input
 			bind:this={input}
-			bind:value={query}
-			oninput={sync}
+			value={query}
+			oninput={(e) => { query = e.currentTarget.value; sync(); }}
 			type="search"
 			placeholder="a task, a syntax, an option"
 			autocomplete="off"
@@ -139,6 +158,12 @@
 		<span class="key" aria-hidden="true">or press <kbd>/</kbd></span>
 	</p>
 
+	<label class="task-filter">Filter by task
+		<select value={concern ?? ''} onchange={(e) => { concern = e.currentTarget.value as ConcernId || null; sync(); }}>
+			<option value="">All tasks</option>
+			{#each CONCERNS as c (c.id)}<option value={c.id}>{c.name} ({count(c.id)})</option>{/each}
+		</select>
+	</label>
 	<nav class="concerns" aria-label="By concern">
 		<ul>
 			{#each CONCERNS as c (c.id)}
@@ -159,27 +184,23 @@
 	</p>
 
 	{#if searching}
-		<div class="group">
-			<h2 class="group-head"><em>{found.length ? 'plugins' : 'no plugin'}</em> <span class="line">for “{query}”{concern ? `, to ${CONCERNS.find((c) => c.id === concern)?.name.toLowerCase()}` : ''}</span></h2>
-			{#each found as { plugin, hit: h } (plugin.id)}
-				<Result {plugin} hit={h} />
-			{/each}
-		</div>
-		{#if core.length}
-			<div class="group core">
-				<h2 class="group-head"><em>built in</em> <span class="line">no plugin needed</span></h2>
-				<ul class="core-list">
-					{#each core as c (c.href)}
-						<li>
-							<a href={c.href}>{c.name}</a>
-							<span>{#each c.line.split('`') as part, i (i)}{#if i % 2}<code>{part}</code>{:else}{part}{/if}{/each}</span>
-						</li>
-					{/each}
-				</ul>
+		{#if exact}{@render builtins([exact], 'Built-in option')}{/if}
+		{#if found.length}
+			<div class="group">
+				<h2 class="group-head"><em>Plugins</em> <span class="line">for “{query}”{concern ? `, to ${CONCERNS.find((c) => c.id === concern)?.name.toLowerCase()}` : ''}</span></h2>
+				{#each found as { plugin, hit: h } (plugin.id)}
+					<Result {plugin} hit={h} />
+				{/each}
 			</div>
 		{/if}
+		{@render builtins(related_core, 'Built in')}
 		{#if !found.length && !core.length}
-			<p class="empty">Nothing matches. Browse by concern above, or <a href="/docs/plugins/writing/bundles">write your own</a>: a plugin is a function that returns a bundle.</p>
+			<div class="empty">
+				<p>No results for “{query}”{concern ? ' in ' + CONCERNS.find((c) => c.id === concern)?.name : ''}.</p>
+				<button type="button" onclick={() => try_word('')}>Clear search and browse {concern ? CONCERNS.find((c) => c.id === concern)?.name : 'all tasks'}</button>
+				{#if concern}<button type="button" onclick={() => { concern = null; try_word(''); }}>Clear filters</button>{/if}
+				<a href="/docs/plugins/writing/bundles">Write your own plugin</a>
+			</div>
 		{/if}
 	{:else}
 		{#each groups as g (g.id)}
@@ -432,21 +453,25 @@
 		background: color-mix(in srgb, var(--ink) 7%, transparent);
 	}
 
-	/* a phone: the concerns scroll in one row, as the atlas's marks do */
+	.task-filter { display: none; }
+	.empty button, .task-filter select {
+		background: var(--paper);
+		color: var(--ink);
+		font: inherit;
+		padding: 0.5rem;
+		border: 1px solid var(--quiet-line);
+	}
+	.empty button { cursor: pointer; }
+	.empty a {
+		display: block;
+		margin-top: 0.75rem;
+	}
 	@media (max-width: 40rem) {
-		.finder .concerns {
-			margin: 0 calc(var(--gutter) * -1);
-		}
-
-		.finder .concerns ul {
-			flex-wrap: nowrap;
-			overflow-x: auto;
-			scrollbar-width: none;
-			padding: 0 var(--gutter) 0.625rem;
-		}
-
-		.finder .concerns li {
-			flex: none;
+		.finder .concerns { display: none; }
+		.task-filter {
+			display: grid;
+			gap: 0.375rem;
+			font: 400 0.875rem / 1.4 var(--face-mono);
 		}
 	}
 

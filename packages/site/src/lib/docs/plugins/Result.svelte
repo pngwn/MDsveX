@@ -60,7 +60,7 @@
 		</span>
 		<span class="meta">
 			{#if hit}
-				<span class="why">matched {#each hit.why as w, i (i)}{i ? ', ' : ''}{w.field} <b>{w.text.length > 48 ? w.text.slice(0, 46) + '…' : w.text}</b>{/each}</span>
+				<span class="why">{#each hit.why as w, i (i)}{i ? ', ' : ''}{needs.includes(w.text) ? 'Requires' : 'Matched ' + w.field} <b>{w.text.length > 48 ? w.text.slice(0, 46) + '…' : w.text}</b>{/each}</span>
 			{/if}
 			{#each reads_line(p) as r (r)}<span>{r}</span>{/each}
 			{#if needs.length}<span>needs {needs.join(', ')}</span>{/if}
@@ -86,6 +86,7 @@
 
 <style>
 	.result {
+		container-type: inline-size;
 		border-top: 1px solid var(--staff);
 	}
 
@@ -94,14 +95,15 @@
 	}
 
 	summary {
+		position: relative;
 		display: grid;
-		grid-template-columns: minmax(9rem, 12rem) minmax(0, 1fr) minmax(15rem, 24rem);
+		grid-template-columns: minmax(9rem, 0.8fr) minmax(14rem, 1.3fr) minmax(12rem, 1fr);
 		grid-template-areas:
 			'name what syntax'
 			'name meta meta';
 		gap: 0.25rem 1.5rem;
 		align-items: baseline;
-		padding: 1rem 0 0.875rem;
+		padding: 1rem 1.5rem 0.875rem 0;
 		cursor: pointer;
 		list-style: none;
 	}
@@ -131,9 +133,11 @@
 	}
 
 	/* the open mark of a details, drawn as a small bar line beside the name */
-	.name::after {
+	summary::after {
 		content: '';
-		display: inline-block;
+		position: absolute;
+		right: 3px;
+		top: 1.6rem;
 		width: 0.4em;
 		height: 0.4em;
 		margin-left: 0.4em;
@@ -142,7 +146,7 @@
 		transform: translateY(-0.2em) rotate(45deg);
 	}
 
-	.result[open] .name::after {
+	.result[open] summary::after {
 		transform: translateY(0) rotate(-135deg);
 	}
 
@@ -221,7 +225,13 @@
 		overflow-wrap: anywhere;
 	}
 
-	@media (max-width: 52rem) {
+	.result:not([open]) .syntax > :global(:nth-child(n + 2)),
+	.result:not([open]) .meta > :not(.why),
+	.result:not([open]) .meta:not(:has(.why)) {
+		display: none;
+	}
+
+	@container (max-width: 47rem) {
 		summary {
 			grid-template-columns: minmax(0, 1fr);
 			grid-template-areas: 'name' 'what' 'syntax' 'meta';
@@ -229,7 +239,8 @@
 		}
 
 		.name-col {
-			grid-template-columns: auto 1fr;
+			display: flex;
+			flex-wrap: wrap;
 			align-items: baseline;
 			gap: 0.75rem;
 		}
@@ -238,9 +249,5 @@
 			margin-top: 0.125rem;
 		}
 
-		/* a phone keeps a row to two syntaxes, the rest are in its example */
-		.syntax > :global(:nth-child(n + 3)) {
-			display: none;
-		}
 	}
 </style>

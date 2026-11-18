@@ -62,14 +62,6 @@
 	font-size: 0.82em;
 }
 
-/* the anchors plugin's link, empty, before the text: the place a scroll lands */
-.prose :is(h1, h2, h3, h4) > a:empty {
-	position: absolute;
-	inset: 0 auto auto 0;
-	width: 0;
-	height: 0;
-}
-
 .prose p,
 .prose ul,
 .prose ol,
@@ -200,5 +192,17 @@
 
 	.prose td code {
 		white-space: normal;
+	}
+}
+
+.prose a.permalink { text-decoration: none; }
+.prose a.permalink:is(:hover, :focus-visible) { text-decoration: underline 1px; text-underline-offset: 0.18em; }
+
+@media (max-width: 40rem) {
+	.prose table :is(th, td):first-child {
+		position: sticky;
+		left: 0;
+		z-index: 1;
+		background: var(--paper);
 	}
 }

@@ -59,7 +59,7 @@
 	<Plate id="plugin" mark={glyph} tone={own} title={p.title} level="h1" size="page">
 		{#snippet kicker()}
 			{#each concerns as c, i (c.id)}<a class="concern" href="/docs/plugins?for={c.id}"><em>{c.name.toLowerCase()}</em></a>{i < concerns.length - 1 ? ' ' : ''}{/each}
-			<code class="pkg">{p.package}@{p.version}</code>
+			<code class="pkg">{p.package}<wbr />@{p.version}</code>
 		{/snippet}
 
 		<div class="plate-lede"><p class="what">{p.description}</p></div>
@@ -320,5 +320,17 @@
 		color: var(--ink);
 		text-decoration: underline 1px var(--staff);
 		text-underline-offset: 0.2em;
+	}
+	@container (max-width: 37.5rem) {
+		.pkg {
+			flex-basis: 100%;
+			margin-left: 0;
+			overflow-wrap: anywhere;
+		}
+	}
+	.setup > :first-child pre code {
+		width: auto;
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
 	}
 </style>

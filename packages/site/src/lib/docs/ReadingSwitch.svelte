@@ -1,6 +1,4 @@
 <script lang="ts">
-	// the page's switch, one line of meta: what it does, and its state as a
-	// switch. The docs template puts it over every page that has an example
 	import { onMount } from 'svelte';
 	import { use_reading } from './reading.svelte';
 
@@ -18,9 +16,9 @@
 <div class="switch {look}">
 	<button type="button" role="switch" aria-checked={reading.on} onclick={() => reading.set(!reading.on)}>
 		<span class="track" aria-hidden="true"><span class="knob"></span></span>
-		<span class="what">Show the reading</span>
+		<span class="what">Default example view</span>
 	</button>
-	<span class="note">{reading.on ? 'every example drawn as its score' : 'every example as you write it'}</span>
+	<span class="note">{reading.on ? 'Annotated source' : 'Source'}</span>
 </div>
 
 <style>
@@ -38,7 +36,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.5rem;
-		padding: 0;
+		padding: 0.375rem 0;
 		border: 0;
 		font: inherit;
 		color: var(--ink);

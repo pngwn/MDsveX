@@ -1,17 +1,33 @@
 <script>
+import { afterNavigate } from "$app/navigation";
 import { page } from "$app/state";
-import ReadingSwitch from "$lib/docs/ReadingSwitch.svelte";
 import { provide_reading } from "$lib/docs/reading.svelte";
 import { nav, pages } from "./nav.js";
 
 let { children } = $props();
+let drawer = $state();
+let sidebar = $state();
+
+afterNavigate(({ from, to }) => {
+	if (drawer?.open && from?.url?.pathname !== to?.url?.pathname) {
+		drawer.open = false;
+		if (!to?.url.hash) {
+			const heading = document.querySelector("#docs-article h1");
+			heading?.setAttribute("tabindex", "-1");
+			heading?.focus({ preventScroll: true });
+		}
+	}
+	const active = sidebar?.querySelector('[aria-current="page"]');
+	if (active && sidebar.clientHeight) {
+		const offset = active.getBoundingClientRect().top - sidebar.getBoundingClientRect().top;
+		if (offset < 0 || offset + active.offsetHeight > sidebar.clientHeight)
+			sidebar.scrollTop += offset - sidebar.clientHeight / 2;
+	}
+});
 
 const current = $derived(pages.find((p) => p.href === page.url.pathname));
 const section = $derived(nav.find((s) => s.key === current?.section));
 
-// "Show the reading", off in Learn, Guides and Plugins, where the score is a
-// detail, on in Reference and Internals, where it is the point; a reader's
-// choice is kept per section
 const reading = provide_reading(page.url.pathname.split("/")[2] || "learn");
 $effect(() => {
 	if (current) reading.enter(current.section);
@@ -25,7 +41,7 @@ $effect(() => {
 {#snippet contents()}
 	{#each nav as s (s.key)}
 		<h2>{s.title}</h2>
-		{#each s.groups as group}
+		{#each s.groups as group (group.title)}
 			{#if group.title}
 				<h3>{group.title}</h3>
 			{/if}
@@ -45,12 +61,12 @@ $effect(() => {
 {:else}
 	<div class="docs">
 		<!-- a column beside the page, and on a phone a list to open over it -->
-		<nav class="side" aria-label="Docs">
+		<nav bind:this={sidebar} class="side" aria-label="Docs">
 			<a class="index" href="/docs">All docs</a>
 			{@render contents()}
 		</nav>
 
-		<details class="drawer">
+		<details bind:this={drawer} class="drawer">
 			<summary>
 				<span class="where">{section?.title ?? "Docs"}</span>
 				<span class="what">{current?.title ?? ""}</span>
@@ -61,10 +77,7 @@ $effect(() => {
 			</nav>
 		</details>
 
-		<div class="page">
-			<!-- over a page with an example; a page without one hides it (below) -->
-			<div class="tools"><ReadingSwitch /></div>
-
+		<div class="page" id="docs-article" tabindex="-1">
 			{#key page.url.pathname}
 				<article class="prose">
 					{@render children()}
@@ -90,16 +103,6 @@ $effect(() => {
 
 	.page {
 		min-width: 0;
-	}
-
-	.tools {
-		display: flex;
-		justify-content: flex-end;
-		margin-bottom: 0.5rem;
-	}
-
-	.page:not(:has(:is(.pair, .contrast))) .tools {
-		display: none;
 	}
 
 	/* the nav is meta, in the mono; SCORE.md: one mono for labels */
@@ -169,7 +172,7 @@ $effect(() => {
 	}
 
 	/* a phone: the column goes, its list opens from a line above the page */
-	@media (max-width: 860px) {
+	@media (max-width: 63rem) {
 		.docs {
 			grid-template-columns: minmax(0, 1fr);
 			padding-top: 0.5rem;

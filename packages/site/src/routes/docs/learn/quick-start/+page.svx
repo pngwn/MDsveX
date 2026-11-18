@@ -9,16 +9,16 @@ order: 2
 
 ## Install it
 
-Install it as a dev-dependency:
+Install the prerelease as a development dependency.
 
+:::::command_group
 :::tabs(group=pm)
 
 ```bash [npm]
 npm i --save-dev mdsvex@next
 ```
 
-```bash [pnpm]
-pnpm add --save-dev mdsvex@next
+```bash [pnpm] src=../../../../lib/docs/install-pnpm.sh
 ```
 
 ```bash [bun]
@@ -26,6 +26,7 @@ bun add --dev mdsvex@next
 ```
 
 :::
+:::::
 
 mdsvex needs Svelte 5 and Vite 6 or later.
 
@@ -61,6 +62,24 @@ src/routes/
 :::
 ::::
 
+::::plate[Vite without SvelteKit](mark="vite", tone=expr, id=vite-without-sveltekit)
+When using `@sveltejs/vite-plugin-svelte`, add the extensions to `svelte()` as well. mdsvex can't register them there.
+
+```js title="vite.config.js"
+import { svelte } from '@sveltejs/vite-plugin-svelte';
+import { mdsvex } from 'mdsvex';
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+	plugins: [mdsvex(), svelte({ extensions: ['.svelte', '.svx'] })]
+});
+```
+
+:::edges
+- If one is missing, the build errors explaining the problem.
+:::
+::::
+
 ::::plate[Options that point at a file](mark="#lib", tone=expr)
 Options that point at a file, such as [`templates`](/docs/reference/options#templates) and [`components`](/docs/reference/options#components), resolve the way an import from your project root would. That includes aliases, packages, relative paths and SvelteKit 3's `#lib` [subpath imports][subpath]:
 
@@ -87,27 +106,10 @@ Imports inside a document work the same way, `import Chart from '#lib/Chart.svel
 :::
 ::::
 
-::::plate[Vite without SvelteKit](mark="vite", tone=expr, id=vite-without-sveltekit)
-When using `@sveltejs/vite-plugin-svelte`, add the extensions to `svelte()` as well. mdsvex can't register them there.
-
-```js title="vite.config.js"
-import { svelte } from '@sveltejs/vite-plugin-svelte';
-import { mdsvex } from 'mdsvex';
-import { defineConfig } from 'vite';
-
-export default defineConfig({
-	plugins: [mdsvex(), svelte({ extensions: ['.svelte', '.svx'] })]
-});
-```
-
-:::edges
-- If one is missing, the build errors explaining the problem.
-:::
-::::
-
-::::plate[Highlighting code](mark="```", tone=fence, id=highlighting-code)
+::::::plate[Highlighting code](mark="```", tone=fence, id=highlighting-code)
 Fenced code is highlighted by default, with [twinkleplop][twinkleplop]. mdsvex adds no CSS, so install a theme and import it once, in your root layout:
 
+:::::command_group
 :::tabs(group=pm)
 
 ```bash [npm]
@@ -123,6 +125,7 @@ bun add --dev @twinkleplop/theme-github
 ```
 
 :::
+:::::
 
 ```svelte title="src/routes/+layout.svelte"
 <script>
@@ -137,4 +140,4 @@ bun add --dev @twinkleplop/theme-github
 :::notes
 Without a theme, code renders in one colour. The theme gives light colours, and dark ones under a `.dark` class. To follow the reader's system setting instead, see [themes](/docs/reference/highlighting#themes).
 :::
-::::
+::::::

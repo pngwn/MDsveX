@@ -82,10 +82,8 @@ export class ExampleReading {
 	#page: PageReading;
 	#own = $state<{ on: boolean; at: number } | null>(null);
 
-	/** `scored`, it opens on its score whatever the page says, until the page's switch is flipped */
-	constructor(page: PageReading, scored = false) {
+	constructor(page: PageReading) {
 		this.#page = page;
-		if (scored) this.#own = { on: true, at: page.flips };
 	}
 
 	get on() {

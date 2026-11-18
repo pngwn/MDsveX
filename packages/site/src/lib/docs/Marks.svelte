@@ -15,7 +15,8 @@
 		section: string;
 	}
 
-	const data = getContext<{ current?: { docs?: { plates?: Mark[] } } } | undefined>(Symbol.for('mdsvex.plugin_data'));
+	const data = getContext<{ current?: { docs?: { plates?: Mark[] }; toc?: { headings: { id: string; text: string }[] } } } | undefined>(Symbol.for('mdsvex.plugin_data'));
+	const sections = data?.current?.toc?.headings ?? [];
 	const marks = (data?.current?.docs?.plates ?? []).map((m) => ({ ...m, name: m.title }));
 
 	let hovered = $state<(typeof marks)[number] | null>(null);
@@ -30,7 +31,13 @@
 </script>
 
 {#if marks.length}
-<nav class="marks wide" aria-label="On this page">
+<nav class="marks wide" id="section-index" aria-label="On this page">
+	<strong>On this page</strong>
+	<ul class="sections">
+		{#each sections as section (section.id)}<li><a href="#{section.id}">{section.text}</a></li>{/each}
+	</ul>
+	<details>
+	<summary>Browse all {marks.length} entries</summary>
 	<div class="groups">
 		{#each groups as g (g.section)}
 			<div class="group">
@@ -60,6 +67,7 @@
 	<p class="readout" aria-hidden="true">
 		{#if hovered}<span class="r-mark" style:color="var(--name-{hovered.tone})">{hovered.mark}</span> {hovered.name}{:else}&nbsp;{/if}
 	</p>
+	</details>
 </nav>
 {/if}
 
@@ -191,5 +199,39 @@
 			width: 2.75rem;
 			height: 2.75rem;
 		}
+	}
+	.sections {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.375rem 1rem;
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	.sections li { margin: 0; }
+	summary {
+		cursor: pointer;
+		padding-block: 0.5rem;
+	}
+	@media (max-width: 40rem) {
+		.cells { display: grid; }
+		.cell {
+			width: auto;
+			height: auto;
+			padding: 0.5rem;
+			display: flex;
+			gap: 0.75rem;
+		}
+		.cell::after { display: none; }
+		.cell .sr {
+			position: static;
+			width: auto;
+			height: auto;
+			clip-path: none;
+			white-space: normal;
+			color: var(--ink);
+		}
+		.groups { display: grid; }
+		.readout { display: none; }
 	}
 </style>

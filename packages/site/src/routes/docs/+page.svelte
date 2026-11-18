@@ -25,18 +25,25 @@ onMount(() => {
 	<header class="prose">
 		<h1 class="rag">Docs</h1>
 		<p class="lede">mdsvex is markdown with Svelte in it. Learn the language, follow a guide, add a plugin, or look something up.</p>
+			<nav class="tasks" aria-label="Common tasks">
+			<a href="/docs/learn/quick-start">Quick start</a>
+			<a href="/docs/learn/markdown">Learn Markdown</a>
+			<a href="/docs/reference/options">Look up an option</a>
+			<a href="/docs/plugins">Find a plugin</a>
+			<a href="#at-a-glance">Cheat sheet</a>
+		</nav>
 	</header>
 
 	<nav class="sections" aria-label="Docs">
-		{#each nav as section}
+		{#each nav as section (section.key)}
 			<section>
 				<h2>{section.title}</h2>
-				{#each section.groups as group}
+				{#each section.groups as group (group.title)}
 					{#if group.title}
 						<h3>{group.title}</h3>
 					{/if}
 					<ul>
-						{#each group.pages as p}
+						{#each group.pages as p (p.href)}
 							<li><a href={p.href}>{p.title}</a></li>
 						{/each}
 					</ul>
@@ -115,4 +122,11 @@ onMount(() => {
 	.label {
 		margin-bottom: 1.25rem;
 	}
+	.tasks {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem 1.25rem;
+		font: 400 0.875rem/1.5 var(--face-mono);
+	}
+	.tasks a { padding-block: 0.35rem; }
 </style>
