@@ -233,6 +233,11 @@
 		--padding-left: 26px;
 		--padding-right: 14px;
 		padding: 0 var(--padding-right) 0 var(--padding-left);
+		color: var(--repl-fg-3);
+
+		&:hover {
+			color: var(--repl-fg-1);
+		}
 
 		&.editable {
 			--padding-right: 18px;
@@ -272,6 +277,7 @@
 
 		&[aria-current='true'] {
 			border-bottom: 1px solid var(--repl-fg-accent);
+			color: var(--repl-fg-1);
 
 			&.editable .filename {
 				cursor: text;

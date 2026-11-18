@@ -51,14 +51,19 @@ export const theme = syntaxHighlighting(
 		{ tag: t.strikethrough, textDecoration: 'line-through' },
 		{
 			tag: t.link,
-			color: 'var(--repl-code-text)',
+			color: 'var(--repl-code-link, var(--repl-code-text))',
 			textDecoration: 'underline',
 		},
-		{ tag: t.heading, fontWeight: 'bold', color: 'var(--repl-fg-1)' },
+		{ tag: t.heading, fontWeight: 'bold', color: 'var(--repl-code-heading, var(--repl-fg-1))' },
 		{ tag: [t.atom, t.bool], color: 'var(--repl-code-atom)' },
 		{
-			tag: [t.processingInstruction, t.string, t.inserted],
+			tag: [t.string, t.inserted],
 			color: 'var(--repl-code-string)',
+		},
+		// markdown marks, the # * _ and backticks
+		{
+			tag: t.processingInstruction,
+			color: 'var(--repl-code-mark, var(--repl-code-string))',
 		},
 		{ tag: t.invalid, color: '#ff008c' },
 	])

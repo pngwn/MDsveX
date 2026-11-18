@@ -332,6 +332,12 @@
 		border-bottom: 1px solid transparent;
 		padding: 0 10px;
 		border-radius: 0;
+		color: var(--repl-fg-3);
+
+		&:hover,
+		&[aria-current='true'] {
+			color: var(--repl-fg-1);
+		}
 
 		&[aria-current='true'] {
 			border-bottom: 1px solid var(--repl-fg-accent);
