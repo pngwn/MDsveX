@@ -127,6 +127,8 @@
 	.panel-heading {
 		font: var(--repl-font-ui-small);
 		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--repl-fg-3);
 		height: 32px;
 		padding: 0 8px;
 		text-align: left;

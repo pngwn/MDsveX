@@ -5,10 +5,48 @@ import { untrack } from "svelte";
 import { Repl, decode_state, encode_state, type ReplState } from "@mdsvex/repl";
 import { pages } from "../../docs/nav.js";
 import { examples } from "$lib/playground/examples";
+import Nav from "$lib/Nav.svelte";
+import { google_fonts } from "$lib/design/fonts";
+import { use_theme } from "$lib/design/theme.svelte";
+// outside the frame, so the frame styles are imported here
+import "$lib/design/tokens.css";
+import "$lib/design/base.css";
+import "$lib/design/type.css";
 // mdsvex adds no css, the preview gets a theme the way a project imports one
 import code_theme from "@twinkleplop/theme-ayu?inline";
+import tokens from "$lib/design/tokens.css?inline";
+
+// the preview keeps its own type on the site paper and ink
+const preview_css = `${code_theme}
+${tokens}
+body, body.dark {
+	--bg-1: var(--paper);
+	--bg-2: var(--well);
+	--bg-3: var(--staff);
+	--fg-1: var(--ink);
+	--fg-2: var(--ink);
+	--fg-3: var(--quiet);
+	--link: var(--ink);
+	--link-hover: var(--ink);
+	--link-active: var(--ink);
+	--border-radius: 0;
+	--font-mono: 'Berkeley Mono', 'IBM Plex Mono', ui-monospace, monospace;
+}`;
 
 let { data } = $props();
+
+// the site theme with auto resolved, for the preview iframe
+const theme = use_theme();
+let prefers_dark = $state(false);
+$effect(() => {
+	const query = matchMedia("(prefers-color-scheme: dark)");
+	prefers_dark = query.matches;
+	const follow = () => (prefers_dark = query.matches);
+	query.addEventListener("change", follow);
+	return () => query.removeEventListener("change", follow);
+});
+const choice = $derived(theme?.value ?? "auto");
+const dark = $derived(choice === "dark" || (choice === "auto" && prefers_dark));
 
 let repl: ReturnType<typeof Repl> | undefined = $state();
 let guide = $state<{ href: string; title: string }>();
@@ -82,153 +120,170 @@ function onhashchange() {
 
 <svelte:head>
 	<title>{data.example.title} · mdsvex playground</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+	<link rel="stylesheet" href={google_fonts} />
 </svelte:head>
 
-<div class="playground">
+<div class="playground" data-theme={choice}>
 	<header>
-		<a class="home" href="/">mdsvex</a>
-		<span class="divider">/</span>
-		<span class="label">playground</span>
+		<Nav>
+			<select
+				aria-label="Example"
+				value={data.example.slug}
+				onchange={(e) => goto(`/playground/${e.currentTarget.value}`)}
+			>
+				{#each examples as example (example.slug)}
+					<option value={example.slug}>{example.title}</option>
+				{/each}
+			</select>
 
-		{#if guide}<a class="guide" href={guide.href}>Back to {guide.title}</a>{/if}
-		<select
-			aria-label="example"
-			value={data.example.slug}
-			onchange={(e) => goto(`/playground/${e.currentTarget.value}`)}
-		>
-			{#each examples as example (example.slug)}
-				<option value={example.slug}>{example.title}</option>
-			{/each}
-		</select>
+			{#if guide}<a class="guide" href={guide.href}>Back to {guide.title}</a>{/if}
 
-		<div class="actions">
-			{#if edited}
-				<button onclick={reset} title="discard edits and reload the example">reset</button>
-			{/if}
-			<button class="share" onclick={share} title="copy a link to this playground">
-				{copied ? "copied" : "share"}
-			</button>
-		</div>
+			<span class="actions">
+				{#if edited}
+					<button onclick={reset} title="discard edits and reload the example">reset</button>
+				{/if}
+				<button class="share" onclick={share} title="copy a link to this playground">
+					{copied ? "copied" : "share"}
+				</button>
+			</span>
+		</Nav>
 	</header>
 
 	<main>
-		<Repl bind:this={repl} theme="dark" injected_css={code_theme} {onchange} />
+		<Repl bind:this={repl} theme={dark ? "dark" : "light"} injected_css={preview_css} {onchange} />
 	</main>
 </div>
 
 <style>
-	/* fixed so the page owns the viewport regardless of site global styles */
+	/* fixed so the page owns the viewport like an editor */
 	.playground {
-		--bg-primary: #0a0a0a;
-		--bg-secondary: #111111;
-		--bg-tertiary: #1a1a1a;
-		--bg-hover: #222222;
-		--text-primary: #ededed;
-		--text-secondary: #999999;
-		--accent: #00dc82;
-		--border: #2a2a2a;
-		--border-light: #333333;
-		--radius-sm: 4px;
-		--font-mono: "Berkeley Mono", "JetBrains Mono", "SF Mono", Monaco, Consolas,
-			"Liberation Mono", "Courier New", monospace;
-
+		color-scheme: light dark;
 		position: fixed;
 		inset: 0;
 		display: flex;
 		flex-direction: column;
-		background: var(--bg-primary);
-		color: var(--text-primary);
+		color: var(--ink);
+		background: var(--paper);
+		font: 400 0.8125rem / 1.4 var(--face-mono);
+		font-variant-ligatures: none;
+	}
+
+	.playground[data-theme="light"] {
+		color-scheme: light;
+	}
+
+	.playground[data-theme="dark"] {
+		color-scheme: dark;
 	}
 
 	header {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-		height: 48px;
-		padding: 0 16px;
-		border-bottom: 1px solid var(--border);
-		font-family: var(--font-mono);
-		font-size: 13px;
+		flex: none;
+		padding: 0.875rem clamp(1rem, 2vw, 1.5rem);
+		border-bottom: 1px solid var(--staff);
 	}
 
-	.home {
-		color: var(--text-primary);
-		text-decoration: none;
-		font-weight: 600;
-	}
-
-	.divider,
-	.label {
-		color: var(--text-secondary);
-	}
-
-	select {
-		margin-left: 8px;
-		padding: 4px 8px;
-		background: var(--bg-tertiary);
-		color: var(--text-primary);
-		border: 1px solid var(--border-light);
-		border-radius: var(--radius-sm);
-		font: inherit;
-	}
-
-	.actions {
-		margin-left: auto;
-		display: flex;
-		gap: 8px;
-	}
-
+	select,
 	button {
-		padding: 4px 12px;
-		background: var(--bg-tertiary);
-		color: var(--text-primary);
-		border: 1px solid var(--border-light);
-		border-radius: var(--radius-sm);
+		padding: 0.25rem 0.5rem;
+		border: 1px solid var(--quiet-line);
+		border-radius: 0;
+		color: var(--ink);
+		background: var(--paper);
 		font: inherit;
+		font-variant-ligatures: none;
 		cursor: pointer;
 	}
 
+	select {
+		min-width: 0;
+		max-width: 100%;
+	}
+
+	select:hover,
 	button:hover {
-		border-color: var(--accent);
+		border-color: var(--ink);
+	}
+
+	.guide {
+		color: var(--ink);
+		text-decoration: underline 1px var(--staff);
+		text-underline-offset: 0.3em;
+	}
+
+	.guide:hover {
+		text-decoration-color: var(--ink);
+	}
+
+	.actions {
+		display: flex;
+		gap: 0.5rem;
+		margin-left: auto;
+	}
+
+	/* wide enough for copied so the button does not jump */
+	.share {
+		min-width: 7ch;
 	}
 
 	main {
 		flex: 1;
 		min-height: 0;
 		position: relative;
+	}
 
-		--repl-bg-1: var(--bg-primary);
-		--repl-bg-2: var(--bg-secondary);
-		--repl-bg-3: var(--bg-secondary);
-		--repl-bg-4: var(--bg-hover);
-		--repl-border: var(--border);
-		--repl-fg-accent: var(--accent);
-		--repl-font-family-mono: var(--font-mono);
+	/* theme.css sets the tokens on the repl root, so inherited values lose */
+	main :global(.mdsvex-repl) {
+		color-scheme: inherit;
+
+		--repl-bg-1: var(--paper);
+		--repl-bg-2: var(--paper);
+		--repl-bg-3: var(--paper);
+		--repl-bg-4: var(--well-chrome);
+		--repl-bg-highlight: color-mix(in oklab, var(--line-strong) 28%, transparent);
+		--repl-bg-selection: color-mix(in oklab, var(--line-list) 24%, transparent);
+		--repl-bg-unfocused-selection: color-mix(in oklab, var(--ink) 9%, transparent);
+		--repl-fg-1: var(--ink);
+		--repl-fg-2: var(--ink);
+		--repl-fg-3: var(--quiet);
+		--repl-fg-4: var(--quiet-line);
+		--repl-fg-accent: var(--ink);
+		--repl-border: var(--staff);
+		--repl-border-radius: 0;
+		--repl-shadow: none;
+
+		--repl-font-family-ui: var(--face-mono);
+		--repl-font-family-mono: var(--face-mono);
+		--repl-font-ui-small: 400 0.75rem / 1.5 var(--face-mono);
+		--repl-font-ui-medium: 400 0.8125rem / 1.5 var(--face-mono);
+		--repl-font-mono: 400 0.875rem / 1.6 var(--face-mono);
+
+		--repl-raised-color: var(--quiet-line);
+		--repl-raised-hover-color: var(--ink);
+		--repl-raised-active-color: var(--ink);
+		--repl-raised-width: 1px;
+		--repl-raised-active-width: 1px;
+
+		/* the score colours from code.css */
+		--repl-code-text: var(--ink);
+		--repl-code-keyword: var(--name-logic);
+		--repl-code-function: var(--name-link);
+		--repl-code-string: var(--name-code);
+		--repl-code-comment: var(--quiet);
+		--repl-code-atom: var(--name-strong);
+		--repl-code-heading: var(--name-heading);
+		--repl-code-mark: var(--quiet);
+		--repl-code-link: var(--name-link);
 	}
-	header { flex: none; }
-	.guide {
-		color: var(--text-primary);
-		text-underline-offset: 0.2em;
+
+	/* the repl font shorthands reset ligatures on every element */
+	main :global(*) {
+		font-variant-ligatures: none;
 	}
-	select { min-width: 0; }
-	.share { min-width: 5rem; }
-	.playground :global(:is(a, button, select, input, [tabindex]):focus-visible) {
-		outline: 2px solid #ffe9b5;
+
+	/* pane controls clip, so focus is drawn inside */
+	main :global(:focus-visible) {
 		outline-offset: -2px;
-	}
-	@media (max-width: 42rem) {
-		header {
-			height: auto;
-			flex-wrap: wrap;
-			gap: 0.375rem 0.5rem;
-			padding: 0.5rem 0.75rem;
-		}
-		select {
-			order: 2;
-			flex: 1 1 100%;
-			margin: 0;
-		}
-		.guide { order: 3; }
-		.actions { margin-left: auto; }
 	}
 </style>
