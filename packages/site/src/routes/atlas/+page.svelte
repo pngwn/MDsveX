@@ -83,7 +83,7 @@
 		construct has its own colour. The family headings use a separate set of four colours.
 	</p>
 	<div class="key">
-		<p>Point at a phrase or its output to highlight both. Focus the phrase selector to explore the same reading with the arrow keys.</p>
+		<p>Hover over a phrase or its output to see the match. Click or tap to keep it highlighted, and tap again to clear it. Use the arrow keys to explore a focused score.</p>
 		<div class="pick" role="group" aria-label="Colours">
 			<button type="button" aria-pressed={palette === 'riso'} onclick={() => set_palette('riso')}>Riso inks</button>
 			<button type="button" aria-pressed={palette === 'cvd'} onclick={() => set_palette('cvd')}>Colour blind safe</button>
