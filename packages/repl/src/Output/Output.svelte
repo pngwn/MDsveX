@@ -39,6 +39,20 @@
 
 	let view: View = $state('result');
 
+	function follow_active(rail: HTMLElement) {
+		const reveal = () => {
+			const active = rail.querySelector<HTMLElement>('[aria-current="true"]');
+			if (!active) return;
+			const bounds = rail.getBoundingClientRect();
+			const item = active.getBoundingClientRect();
+			if (item.left < bounds.left) rail.scrollLeft += item.left - bounds.left;
+			else if (item.right > bounds.right) rail.scrollLeft += item.right - bounds.right;
+		};
+		const observer = new ResizeObserver(reveal);
+		observer.observe(rail);
+		return { destroy: () => observer.disconnect() };
+	}
+
 	function output_file(name: string): File {
 		return { type: 'file', name, basename: name, contents: '', text: true };
 	}
@@ -76,15 +90,15 @@
 			? [
 					['result', 'Result'],
 					['pfm', 'PFM AST'],
-					['svelte', 'Svelte output'],
-					['js', 'JS output'],
-					['css', 'CSS output'],
+					['svelte', 'Svelte'],
+					['js', 'JS'],
+					['css', 'CSS'],
 				]
 			: [
 					['result', 'Result'],
-					['js', 'JS output'],
-					['css', 'CSS output'],
-					['ast', 'AST output'],
+					['js', 'JS'],
+					['css', 'CSS'],
+					['ast', 'AST'],
 				]
 	);
 
@@ -217,7 +231,7 @@
 </script>
 
 {#if embedded !== 'output-only'}
-	<div class="view-toggle">
+	<div class="view-toggle" use:follow_active>
 		{#each views as [v, label] (v)}
 			<button aria-current={view === v} onclick={() => (view = v)}>{label}</button>
 		{/each}
@@ -289,7 +303,9 @@
 <style>
 	.view-toggle {
 		height: var(--repl-pane-controls-height);
-		overflow: hidden;
+		overflow-x: auto;
+		overflow-y: hidden;
+		scrollbar-width: thin;
 		white-space: nowrap;
 		box-sizing: border-box;
 		font: var(--repl-font-ui-small);
