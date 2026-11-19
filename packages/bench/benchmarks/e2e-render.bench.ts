@@ -96,6 +96,13 @@ const fixtures = {
 // 	return renderer.html;
 // }
 
+function pfm_html(source: string, plugins?: ParsePlugin[]): string {
+	const result = parse_markdown_svelte(source, plugins ? { plugins } : undefined);
+	const renderer = new CursorHTMLRenderer({ cache: false });
+	renderer.update(result.nodes, result.source);
+	return renderer.html;
+}
+
 const mdexit = createMarkdownExit();
 const remark_html = remark().use(remarkHtml);
 
@@ -103,12 +110,16 @@ const remark_html = remark().use(remarkHtml);
 
 for (const [name, source] of Object.entries(fixtures)) {
 	describe(`e2e: ${name} (${source.length} bytes)`, () => {
-		bench("pfm", () => {
+		bench("pfm (parse only)", () => {
 			parse_markdown_svelte(source);
 		});
 
+		bench("pfm", () => {
+			pfm_html(source);
+		});
+
 		bench("pfm(autolinks)", () => {
-			parse_markdown_svelte(source, { plugins: [pfm_autolink()] })
+			pfm_html(source, [pfm_autolink()]);
 		});
 
 		bench("marked", () => {
