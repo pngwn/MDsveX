@@ -12,6 +12,9 @@ import { marked } from "marked";
 import { createMarkdownExit } from "markdown-exit";
 import { remark } from "remark";
 import { markdownToHtml, defineMdastPlugin , defineHastPlugin} from "satteri";
+import { renderToHtml as words_render } from "@pierre/words";
+
+const words_decoder = new TextDecoder();
 
 function slugify(text: string): string {
 	return text
@@ -126,6 +129,15 @@ for (const [name, source] of Object.entries(fixtures)) {
 
 		bench("satteri (satteri_autolink)", () => {
 			markdownToHtml(source, { mdastPlugins: [satteri_autolink]});
+		});
+
+		// the bytes share wasm memory, a caller has to decode or copy them
+		bench("@pierre/words (bytes)", () => {
+			words_render(source);
+		});
+
+		bench("@pierre/words (decoded string)", () => {
+			words_decoder.decode(words_render(source));
 		});
 
 		bench("satteri (mdast + hast)", () => {

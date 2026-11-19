@@ -35,6 +35,7 @@
     "@lukeed/html": "^1.0.2",
     "@mdsvex/parse": "workspace:^",
     "@mdsvex/render": "workspace:^",
+    "@pierre/words": "0.2.2",
     "@rsvelte/compiler": "0.12.6",
     "@rsvelte/vite-plugin-svelte-native": "0.3.17",
     "@types/node": "^20.12.7",
