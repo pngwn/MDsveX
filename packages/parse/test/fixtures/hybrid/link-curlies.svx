@@ -1,0 +1,22 @@
+<script>
+  export let link = "some/link/to/page";
+  export let title = "This is a title.";
+</script>
+
+Hello I am text and this is a [link]({link}).
+
+Hello I am text and this is a [link]({link} "This is a title").
+
+Hello I am text and this is a [link]({link} "{title}").
+
+Hello I am text and this is a [link]({link}{link} "{title}").
+
+[Compound link](/base/{variable})
+
+![some image1]({link})
+
+![some image2]({assets}/file.jpg "Some title text")
+
+![some image3]({link} "Some title")
+
+![some image4]({link} "{title}")

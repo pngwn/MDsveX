@@ -1,0 +1,119 @@
+import type { NodeBuffer } from '../src/utils';
+
+const SENTINEL = 0xffffffff;
+
+/** Escape a string for display in the AST text format. */
+function escape(s: string): string {
+	return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
+}
+
+/** Format a metadata value for display. */
+function fmt_val(v: unknown): string {
+	if (typeof v === 'string') return `"${escape(v)}"`;
+	if (Array.isArray(v)) return JSON.stringify(v);
+	return String(v);
+}
+
+/**
+ * Node kinds that carry a meaningful value range to display as a quoted string.
+ * Container nodes (paragraph, emphasis, etc.) let children convey content, as
+ * does a block directive, whose bracket text is its directive_label child.
+ */
+const VALUE_KINDS = new Set([
+	'text',
+	'heading',
+	'code_fence',
+	'code_span',
+	'html_comment',
+	'mustache',
+	'svelte_tag',
+	'svelte_branch',
+	'frontmatter',
+	'import_statement',
+]);
+
+/** Metadata keys that need source-resolution (byte ranges -> string). */
+const INFO_KEYS = new Set(['info_start', 'info_end']);
+
+/**
+ * Print a human-readable, diffable text representation of the AST.
+ *
+ * Format:
+ *   root
+ *     heading depth=2 "Hello"
+ *     paragraph
+ *       text "world"
+ *
+ * With spans each node also shows its start and end, and its value range when set:
+ *   heading [0,8] value=[2,7] depth=2 "Hello"
+ */
+export function print_ast(
+	nodes: NodeBuffer,
+	source: string,
+	index: number = 0,
+	depth: number = 0,
+	spans: boolean = false
+): string {
+	const node = nodes.get_node(index);
+	const indent = '  '.repeat(depth);
+	const parts: string[] = [node.kind];
+	// the offsets a printer slices the source with, a value range of 0,0 is unset
+	if (spans) {
+		parts.push(`[${node.start},${node.end}]`);
+		const [vs, ve] = node.value;
+		if (vs !== 0 || ve !== 0) parts.push(`value=[${vs},${ve}]`);
+	}
+
+	// Collect metadata key=value pairs
+	const meta = node.metadata;
+	if (meta) {
+		// Resolve info_start/info_end into a single info="..." attribute
+		if (
+			meta.info_start !== undefined &&
+			meta.info_end !== undefined &&
+			meta.info_start !== meta.info_end
+		) {
+			const info = source.slice(meta.info_start, meta.info_end);
+			if (info) parts.push(`info="${escape(info)}"`);
+		}
+
+		for (const [key, val] of Object.entries(meta)) {
+			if (INFO_KEYS.has(key)) continue;
+			if (val === undefined || val === null) continue;
+			if (key === 'attributes' && typeof val === 'object') {
+				// HTML attributes, format as key=value pairs inline
+				for (const [ak, av] of Object.entries(val)) {
+					parts.push(`${ak}=${fmt_val(av)}`);
+				}
+				continue;
+			}
+			if (key === 'args' && typeof val === 'object') {
+				// directive arguments, format as args.key=value pairs inline
+				for (const [ak, av] of Object.entries(val)) {
+					parts.push(`args.${ak}=${fmt_val(av)}`);
+				}
+				continue;
+			}
+			parts.push(`${key}=${fmt_val(val)}`);
+		}
+	}
+
+	// Quoted value for leaf / value-bearing nodes
+	if (VALUE_KINDS.has(node.kind)) {
+		const [vs, ve] = node.value;
+		if (vs !== SENTINEL && ve !== SENTINEL && ve > vs) {
+			// a stored string is the text when the range does not hold it as written
+			const val = nodes._strings[index] ?? source.slice(vs, ve);
+			parts.push(`"${escape(val)}"`);
+		}
+	}
+
+	const lines: string[] = [indent + parts.join(' ')];
+
+	// Recurse into children
+	for (const child of node.children) {
+		lines.push(print_ast(nodes, source, child, depth + 1, spans));
+	}
+
+	return lines.join('\n');
+}

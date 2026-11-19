@@ -1,0 +1,11 @@
+root
+  paragraph
+    text "<div>"
+  line_break
+  paragraph
+    strong_emphasis
+      text "hello"
+    soft_break
+    text "<foo>"
+    text "<a>"
+  line_break

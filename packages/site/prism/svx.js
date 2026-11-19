@@ -1,4 +1,4 @@
-(function(Prism) {
+(function (Prism) {
 	// Allow only one line break
 	var inner = /(?:\\.|[^\\\n\r]|(?:\r?\n|\r)(?!\r?\n|\r))/.source;
 
@@ -24,57 +24,58 @@
 	var tableCell = /(?:\\.|``.+?``|`[^`\r\n]+`|[^\\|\r\n`])+/.source;
 	var tableRow = /\|?__(?:\|__)+\|?(?:(?:\r?\n|\r)|$)/.source.replace(
 		/__/g,
-		tableCell
+		tableCell,
 	);
-	var tableLine = /\|?[ \t]*:?-{3,}:?[ \t]*(?:\|[ \t]*:?-{3,}:?[ \t]*)+\|?(?:\r?\n|\r)/
-		.source;
+	var tableLine =
+		/\|?[ \t]*:?-{3,}:?[ \t]*(?:\|[ \t]*:?-{3,}:?[ \t]*)+\|?(?:\r?\n|\r)/
+			.source;
 
 	Prism.languages.svx = Prism.languages.extend("svelte", {});
 	Prism.languages.insertBefore("svx", "prolog", {
 		blockquote: {
 			// > ...
 			pattern: /^>(?:[\t ]*>)*/m,
-			alias: "punctuation"
+			alias: "punctuation",
 		},
 		frontmatter: {
 			pattern: /(---\n[\s\S]+?\n---)/,
 			inside: {
 				punctuation: /---(\n*)/,
-				"language-yaml": { pattern: /[\s\S]+/, inside: Prism.languages.yaml }
-			}
+				"language-yaml": { pattern: /[\s\S]+/, inside: Prism.languages.yaml },
+			},
 		},
 		"frontmatter-toml": {
 			pattern: /\+\+\+\n[\s\S]+?\n\+\+\+/,
 			inside: {
 				punctuation: /\+\+\+(\n*)/,
-				"language-toml": { pattern: /[\s\S]+/, inside: Prism.languages.toml }
-			}
+				"language-toml": { pattern: /[\s\S]+/, inside: Prism.languages.toml },
+			},
 		},
 		table: {
 			pattern: RegExp(
 				"^" + tableRow + tableLine + "(?:" + tableRow + ")*",
-				"m"
+				"m",
 			),
 			inside: {
 				"table-data-rows": {
 					pattern: RegExp(
-						"^(" + tableRow + tableLine + ")(?:" + tableRow + ")*$"
+						"^(" + tableRow + tableLine + ")(?:" + tableRow + ")*$",
 					),
 					lookbehind: true,
 					inside: {
 						"table-data": {
 							pattern: RegExp(tableCell),
-							inside: Prism.languages.svx
+							inside: Prism.languages.svx,
 						},
-						punctuation: /\|/
-					}
+						punctuation: /\|/,
+					},
 				},
 				"table-line": {
 					pattern: RegExp("^(" + tableRow + ")" + tableLine + "$"),
 					lookbehind: true,
 					inside: {
-						punctuation: /\||:?-{3,}:?/
-					}
+						punctuation: /\||:?-{3,}:?/,
+					},
 				},
 				"table-header-row": {
 					pattern: RegExp("^" + tableRow + "$"),
@@ -82,25 +83,26 @@
 						"table-header": {
 							pattern: RegExp(tableCell),
 							alias: "important",
-							inside: Prism.languages.svx
+							inside: Prism.languages.svx,
 						},
-						punctuation: /\|/
-					}
-				}
-			}
+						punctuation: /\|/,
+					},
+				},
+			},
 		},
 		code: [
 			{
 				// Prefixed by 4 spaces or 1 tab and preceded by an empty line
-				pattern: /(^[ \t]*(?:\r?\n|\r))(?: {4}|\t).+(?:(?:\r?\n|\r)(?: {4}|\t).+)*/m,
+				pattern:
+					/(^[ \t]*(?:\r?\n|\r))(?: {4}|\t).+(?:(?:\r?\n|\r)(?: {4}|\t).+)*/m,
 				lookbehind: true,
-				alias: "keyword"
+				alias: "keyword",
 			},
 			{
 				// `code`
 				// ``code``
 				pattern: /``.+?``|`[^`\r\n]+`/,
-				alias: "keyword"
+				alias: "keyword",
 			},
 			{
 				// ```optional language
@@ -111,15 +113,15 @@
 				inside: {
 					"code-block": {
 						pattern: /^(```.*(?:\r?\n|\r))[\s\S]+?(?=(?:\r?\n|\r)^```$)/m,
-						lookbehind: true
+						lookbehind: true,
 					},
 					"code-language": {
 						pattern: /^(```).+/,
-						lookbehind: true
+						lookbehind: true,
 					},
-					punctuation: /```/
-				}
-			}
+					punctuation: /```/,
+				},
+			},
 		],
 		title: [
 			{
@@ -132,8 +134,8 @@
 				alias: "important",
 				inside: {
 					punctuation: /==+$|--+$/,
-					"language-javascript": Prism.languages.svelte["language-javascript"]
-				}
+					"language-javascript": Prism.languages.svelte["language-javascript"],
+				},
 			},
 			{
 				// # title 1
@@ -143,9 +145,9 @@
 				alias: "important",
 				inside: {
 					punctuation: /^#+|#+$/,
-					"language-javascript": Prism.languages.svelte["language-javascript"]
-				}
-			}
+					"language-javascript": Prism.languages.svelte["language-javascript"],
+				},
+			},
 		],
 		hr: {
 			// ***
@@ -154,7 +156,7 @@
 			// -----------
 			pattern: /(^\s*)([*-])(?:[\t ]*\2){2,}(?=\s*$)/m,
 			lookbehind: true,
-			alias: "punctuation"
+			alias: "punctuation",
 		},
 		list: {
 			// * item
@@ -163,23 +165,24 @@
 			// 1. item
 			pattern: /(^\s*)(?:[*+-]|\d+\.)(?=[\t ].)/m,
 			lookbehind: true,
-			alias: "punctuation"
+			alias: "punctuation",
 		},
 		"url-reference": {
 			// [id]: http://example.com "Optional title"
 			// [id]: http://example.com 'Optional title'
 			// [id]: http://example.com (Optional title)
 			// [id]: <http://example.com> "Optional title"
-			pattern: /!?\[[^\]]+\]:[\t ]+(?:\S+|<(?:\\.|[^>\\])+>)(?:[\t ]+(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\((?:\\.|[^)\\])*\)))?/,
+			pattern:
+				/!?\[[^\]]+\]:[\t ]+(?:\S+|<(?:\\.|[^>\\])+>)(?:[\t ]+(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\((?:\\.|[^)\\])*\)))?/,
 			inside: {
 				variable: {
 					pattern: /^(!?\[)[^\]]+/,
-					lookbehind: true
+					lookbehind: true,
 				},
 				string: /(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\((?:\\.|[^)\\])*\))$/,
-				punctuation: /^[\[\]!:]|[<>]/
+				punctuation: /^[\[\]!:]|[<>]/,
 			},
-			alias: "url"
+			alias: "url",
 		},
 		bold: {
 			// **strong**
@@ -188,7 +191,7 @@
 			// allow one nested instance of italic text using the same delimiter
 			pattern: createInline(
 				/__(?:(?!_)<inner>|_(?:(?!_)<inner>)+_)+__/.source,
-				true
+				true,
 			),
 			lookbehind: true,
 			greedy: true,
@@ -196,10 +199,10 @@
 				content: {
 					pattern: /(^..)[\s\S]+(?=..$)/,
 					lookbehind: true,
-					inside: {} // see below
+					inside: {}, // see below
 				},
-				punctuation: /\*\*|__/
-			}
+				punctuation: /\*\*|__/,
+			},
 		},
 		italic: {
 			// *em*
@@ -208,7 +211,7 @@
 			// allow one nested instance of bold text using the same delimiter
 			pattern: createInline(
 				/_(?:(?!_)<inner>|__(?:(?!_)<inner>)+__)+_/.source,
-				true
+				true,
 			),
 			lookbehind: true,
 			greedy: true,
@@ -216,10 +219,10 @@
 				content: {
 					pattern: /(^.)[\s\S]+(?=.$)/,
 					lookbehind: true,
-					inside: {} // see below
+					inside: {}, // see below
 				},
-				punctuation: /[*_]/
-			}
+				punctuation: /[*_]/,
+			},
 		},
 		strike: {
 			// ~~strike through~~
@@ -231,10 +234,10 @@
 				content: {
 					pattern: /(^~~?)[\s\S]+(?=\1$)/,
 					lookbehind: true,
-					inside: {} // see below
+					inside: {}, // see below
 				},
-				punctuation: /~~?/
-			}
+				punctuation: /~~?/,
+			},
 		},
 		url: {
 			// [example](http://example.com "Optional title")
@@ -243,29 +246,29 @@
 			pattern: createInline(
 				/!?\[(?:(?!\])<inner>)+\](?:\([^\s)]+(?:[\t ]+"(?:\\.|[^"\\])*")?\)| ?\[(?:(?!\])<inner>)+\])/
 					.source,
-				false
+				false,
 			),
 			lookbehind: true,
 			greedy: true,
 			inside: {
 				variable: {
 					pattern: /(\[)[^\]]+(?=\]$)/,
-					lookbehind: true
+					lookbehind: true,
 				},
 				content: {
 					pattern: /(^!?\[)[^\]]+(?=\])/,
 					lookbehind: true,
-					inside: {} // see below
+					inside: {}, // see below
 				},
 				string: {
-					pattern: /"(?:\\.|[^"\\])*"(?=\)$)/
-				}
-			}
-		}
+					pattern: /"(?:\\.|[^"\\])*"(?=\)$)/,
+				},
+			},
+		},
 	});
 
-	["url", "bold", "italic", "strike"].forEach(function(token) {
-		["url", "bold", "italic", "strike"].forEach(function(inside) {
+	["url", "bold", "italic", "strike"].forEach(function (token) {
+		["url", "bold", "italic", "strike"].forEach(function (inside) {
 			if (token !== inside) {
 				Prism.languages.svx[token].inside.content.inside[inside] =
 					Prism.languages.svx[inside];
@@ -273,7 +276,7 @@
 		});
 	});
 
-	Prism.hooks.add("after-tokenize", function(env) {
+	Prism.hooks.add("after-tokenize", function (env) {
 		if (env.language !== "svx" && env.language !== "mdsvex") {
 			return;
 		}
@@ -316,11 +319,7 @@
 				) {
 					// this might be a language that Prism does not support
 					var alias =
-						"language-" +
-						codeLang.content
-							.trim()
-							.split(/\s+/)[0]
-							.toLowerCase();
+						"language-" + codeLang.content.trim().split(/\s+/)[0].toLowerCase();
 
 					// add alias
 					if (!codeBlock.alias) {
@@ -337,7 +336,7 @@
 		walkTokens(env.tokens);
 	});
 
-	Prism.hooks.add("wrap", function(env) {
+	Prism.hooks.add("wrap", function (env) {
 		if (env.type !== "code-block") {
 			return;
 		}
@@ -360,13 +359,13 @@
 					"md-" + new Date().valueOf() + "-" + Math.floor(Math.random() * 1e16);
 				env.attributes["id"] = id;
 
-				Prism.plugins.autoloader.loadLanguages(codeLang, function() {
+				Prism.plugins.autoloader.loadLanguages(codeLang, function () {
 					var ele = document.getElementById(id);
 					if (ele) {
 						ele.innerHTML = Prism.highlight(
 							ele.textContent,
 							Prism.languages[codeLang],
-							codeLang
+							codeLang,
 						);
 					}
 				});

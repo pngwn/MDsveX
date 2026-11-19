@@ -1,0 +1,57 @@
+---
+title: Limitations
+order: 10
+---
+# Limitations
+
+## No indented code
+
+::::plate[Four spaces of indent](mark="····", tone=fence)
+Indentation means nothing in mdsvex, since it is how markup inside elements and components is laid out. Four spaces of indent don't make a code block.
+
+```svx commonmark cue="^    "
+    code
+```
+
+:::notes
+Use a fence. On the atlas: [code fence](/atlas#code-fence).
+:::
+::::
+
+::::plate[An indented fence](mark="```", tone=fence)
+A fence can be indented, inside an element or not. The indent of its opening fence is not code, and each line of its code loses up to as much leading whitespace, so a fence indented as a whole holds the same code as it does unindented:
+
+````svx result
+<div>
+	```js
+	let x;
+	```
+</div>
+````
+
+:::notes
+A line indented less loses what it has.
+:::
+::::
+
+## Not read yet
+
+::::plate[Bare urls](mark="https:", tone=link)
+Only `<https://example.com>` is a link, unless [`@mdsvex/plugin-references`](/docs/plugins/references) is set to link them.
+
+```svx commonmark gfm cue="https://\S+"
+See https://example.com
+```
+
+:::notes
+On the atlas: [autolink](/atlas#autolink).
+:::
+::::
+
+- **GitHub alerts.** `> [!NOTE]` is a block quote, write [`:::note`](/docs/plugins/callouts). The migrator rewrites them.
+- **Definition lists and wiki links**, see [nothing yet](/docs/guides/remark-and-rehype#nothing-yet). `==mark==` is text too, write [`:mark[text]`](/docs/plugins/elements).
+
+## Not possible yet
+
+- **Replacements of its own for a component.** Markdown inside a component uses the document's replacements, see [nested scopes](/docs/guides/components#nested-scopes) for the way around it.
+- **A plugin that adds syntax.** A plugin changes the tree the parser made, and can rewrite text, but what is markdown is fixed.

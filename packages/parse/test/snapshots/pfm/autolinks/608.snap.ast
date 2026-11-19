@@ -1,0 +1,4 @@
+root
+  paragraph
+    text "< https://foo.bar >"
+  line_break

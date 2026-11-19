@@ -1,20 +1,39 @@
 <script>
-	import './mono.css';
-	import './prism.css';
-	import './style.css';
+import "./mono.css";
+import "./prism.css";
+import "./style.css";
 
-	import '@fontsource/source-code-pro';
+import "@fontsource/source-code-pro";
+
+let {children} = $props()
 </script>
+
+
+
+
 
 <nav class="menu">
 	<div class="inner">
 		<a href="/preprocess">preprocess</a>
-		<a href="/compile">compile-server</a>
-		<a href="/compile-browser">compile-browser</a>
+		<a href="/template">template</a>
+		<a href="/steps">steps</a>
+		<a href="/tabs">tabs</a>
+		<a href="/elements">elements</a>
+		<a href="/callouts">callouts</a>
+		<a href="/embeds">embeds</a>
+		<a href="/figures">figures</a>
+		<a href="/code-blocks">code blocks</a>
+		<a href="/diagram">diagram</a>
+		<a href="/external-links">external links</a>
+		<a href="/toc">toc</a>
+		<a href="/numbering">numbering</a>
+		<a href="/link-check">link check</a>
+		<a href="/run">run</a>
+
 	</div>
 </nav>
 <main>
-	<slot />
+	{@render children?.()}
 </main>
 
 <style>

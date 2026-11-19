@@ -1,0 +1,6 @@
+root
+  paragraph
+    text "<div class"
+    soft_break
+    text "foo"
+  line_break

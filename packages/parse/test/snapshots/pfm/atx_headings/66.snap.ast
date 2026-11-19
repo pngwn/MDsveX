@@ -1,0 +1,9 @@
+root
+  heading depth=1 "foo *bar* \\*baz\\*"
+    text "foo "
+    strong_emphasis
+      text "bar"
+    text " "
+    text "*baz"
+    text "*"
+  line_break

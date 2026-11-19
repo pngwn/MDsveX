@@ -1,5 +1,5 @@
 <script>
-	let current = 'foo';
+let current = "foo";
 </script>
 
 <style>

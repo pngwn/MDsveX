@@ -1,0 +1,3 @@
+root
+  html tag="p"
+    text "...don't affect this element"

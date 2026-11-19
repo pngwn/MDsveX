@@ -1,0 +1,5 @@
+root
+  paragraph
+    directive_inline name="d" args._private="1" args.data-x="2" args.k9="3" args.UPPER="4" args.mixed_Case-9="5"
+      text "keys"
+  line_break

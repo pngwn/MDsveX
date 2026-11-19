@@ -1,0 +1,7 @@
+root
+  line_break
+  thematic_break
+  paragraph
+    text "title: hello"
+  line_break
+  thematic_break

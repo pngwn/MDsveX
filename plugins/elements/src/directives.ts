@@ -1,0 +1,11 @@
+import './elements.css';
+
+// named here, not through unstyled.js, so mdsvex finds the static components
+export { default as details } from './Details.static.svelte';
+export { default as accordion } from './Accordion.static.svelte';
+export { default as kbd } from './Kbd.static.svelte';
+export { default as ruby } from './Ruby.static.svelte';
+export { default as badge } from './Badge.static.svelte';
+export { default as mark } from './Mark.static.svelte';
+export { default as ins } from './Ins.static.svelte';
+export { default as abbr } from './Abbr.static.svelte';

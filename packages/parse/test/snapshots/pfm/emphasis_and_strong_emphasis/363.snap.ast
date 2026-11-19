@@ -1,0 +1,6 @@
+root
+  paragraph
+    text "aa"
+    text "_\"bb\""
+    text "_cc"
+  line_break

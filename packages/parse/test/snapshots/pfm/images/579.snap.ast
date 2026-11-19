@@ -1,0 +1,6 @@
+root
+  paragraph
+    text "My "
+    image src="/path/to/train.jpg" title="title"
+      text "foo bar"
+  line_break

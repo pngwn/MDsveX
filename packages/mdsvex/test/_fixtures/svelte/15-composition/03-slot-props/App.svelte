@@ -1,5 +1,5 @@
 <script>
-	import Hoverable from './Hoverable.svelte';
+import Hoverable from "./Hoverable.svelte";
 </script>
 
 <style>

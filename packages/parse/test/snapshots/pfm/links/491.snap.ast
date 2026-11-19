@@ -1,0 +1,7 @@
+root
+  paragraph
+    text "[link"
+    text "]("
+    text "<foo\nbar>"
+    text ")"
+  line_break

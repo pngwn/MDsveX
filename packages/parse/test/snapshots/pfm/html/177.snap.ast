@@ -1,0 +1,9 @@
+root
+  paragraph
+    html_comment " foo "
+    strong_emphasis
+      text "bar"
+    soft_break
+    strong_emphasis
+      text "baz"
+  line_break

@@ -1,11 +1,11 @@
 <script context="module">
-	const elements = new Set();
+const elements = new Set();
 
-	export function stopAll() {
-		elements.forEach(element => {
-			element.pause();
-		});
-	}
+export function stopAll() {
+	elements.forEach((element) => {
+		element.pause();
+	});
+}
 </script>
 
 <script>

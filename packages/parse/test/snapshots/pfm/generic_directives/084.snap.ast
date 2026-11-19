@@ -1,0 +1,8 @@
+root
+  paragraph
+    link href="target"
+      text "before "
+      directive_inline name="d" args.a="1"
+        text "x"
+      text " after"
+  line_break

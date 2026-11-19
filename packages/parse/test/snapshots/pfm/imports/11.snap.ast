@@ -1,0 +1,6 @@
+root
+  import_statement "import Default, { named } from \"./module\""
+  line_break
+  heading depth=1 "Hello"
+    text "Hello"
+  line_break

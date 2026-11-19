@@ -1,0 +1,18 @@
+root
+  paragraph
+    text "a paragraph"
+  line_break
+  list ordered=false start=0 tight=true
+    list_item checked=true
+      text "interrupts it"
+  line_break
+  line_break
+  list ordered=false start=0 tight=true
+    list_item checked=false
+      text "star"
+  line_break
+  line_break
+  list ordered=false start=0 tight=true
+    list_item checked=true
+      text "plus"
+  line_break

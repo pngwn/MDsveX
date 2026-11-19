@@ -1,0 +1,8 @@
+root
+  import_statement "import {\n  a,\n  b,\n} from \"./ab\";"
+  import_statement "import {\n  c\n} from \"./c\";"
+  import_statement "import D from \"./D.svelte\""
+  line_break
+  heading depth=1 "Hello"
+    text "Hello"
+  line_break

@@ -1,0 +1,7 @@
+root
+  paragraph
+    text ":"
+    directive_inline name="name"
+      text "content"
+    text " extra stuff"
+  line_break

@@ -1,0 +1,12 @@
+root
+  directive_container name="section"
+    paragraph
+      text "Before."
+    line_break
+    line_break
+    thematic_break
+    line_break
+    line_break
+    paragraph
+      text "After."
+    line_break

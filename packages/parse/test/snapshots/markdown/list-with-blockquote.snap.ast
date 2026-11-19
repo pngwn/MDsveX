@@ -1,0 +1,11 @@
+root
+  list ordered=false start=0 tight=false
+    list_item
+      paragraph
+        text "A list item with a blockquote:"
+      block_quote
+        paragraph
+          text "This is a blockquote"
+          soft_break
+          text "inside a list item."
+  line_break

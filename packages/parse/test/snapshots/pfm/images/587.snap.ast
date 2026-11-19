@@ -1,0 +1,10 @@
+root
+  paragraph
+    text "![foo"
+    text "] "
+    soft_break
+    text "["
+    text "]"
+  line_break
+  line_break
+  definition label="foo" href="/url" title="title"

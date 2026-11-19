@@ -1,0 +1,7936 @@
+/**
+ * cursor-based pfm html renderer
+ *
+ * renders html from a cursor over a NodeBuffer
+ * zero per node allocations, the cursor reads node words directly,
+ * text is lazily sliced from source only when needed.
+ *
+ * usage:
+ *
+ *   const cursor = new cursor(tree.get_buffer(), source);
+ *   const html = rendercursor(cursor);
+ */
+
+import { Cursor } from '@mdsvex/parse/cursor';
+import {
+	is_raw_text_tag,
+	spans_have,
+	spans_text,
+	unread_spans,
+} from '@mdsvex/parse/utils';
+import type { AttrSpans } from '@mdsvex/parse/utils';
+import {
+	buf_code,
+	footnote_id,
+	footnote_index,
+	footnote_ref_id,
+} from '@mdsvex/parse/buf-utils';
+import type { FootnoteIndex } from '@mdsvex/parse/buf-utils';
+import type { NodeBuffer } from '@mdsvex/parse/utils';
+import {
+	MapSink,
+	RecordMapping,
+	record_data,
+	record_mappings,
+} from './mappings.js';
+import type { Mapping, MappingData } from './mappings.js';
+import {
+	records_by_offset,
+	reserve_trace,
+	trace_of_records,
+	trace_records_to_v3,
+	trace_free_at,
+	trace_room,
+	trace_take,
+} from './sourcemap.js';
+import type { MapTrace, SourceMapV3 } from './sourcemap.js';
+import {
+	ComponentScope,
+	component_imports,
+	shell_key,
+	side_effect_import,
+} from './scope.js';
+import type {
+	ComponentImport,
+	ReplaceWarning,
+	Shell,
+	ShellTable,
+} from './scope.js';
+import { is_entity_name } from './entities.js';
+import { top_block } from './component.js';
+
+export type { Mapping, CodeInformation, MappingData } from './mappings.js';
+export { MapSink } from './mappings.js';
+export { ComponentScope, component_imports, shell_key } from './scope.js';
+/** @internal a pass over the tree reads references as the renderer does */
+export { is_entity_name } from './entities.js';
+export type {
+	ComponentImport,
+	ComponentSource,
+	DefaultImport,
+	ReplaceWarning,
+	Shell,
+	ShellTable,
+} from './scope.js';
+
+/**
+ * a fence the highlighter rendered, every string is markup svelte reads as
+ * static text, braces in it are entities
+ */
+export interface HighlightedBlock {
+	/** markup ahead of the <pre>, a figure and its title, a pre replacement drops it */
+	before: string;
+	/** the attribute text of the <pre> open tag, null when body is the whole block */
+	attributes: string | null;
+	/** what the <pre> holds */
+	body: string;
+	/** markup after the </pre>, a pre replacement drops it */
+	after: string;
+	/** the props a pre replacement takes ahead of code, title, caption and meta props */
+	props: string;
+	/** the text a reader sees, the code prop of a pre replacement */
+	code: string;
+	/**
+	 * a template literal holding code with its live expressions interpolated,
+	 * the code prop in place of code, null when the block has none
+	 */
+	code_template: string | null;
+	/**
+	 * the live expressions svelte reads in body, triples of their offset in
+	 * body, their offset in the fence text and their length, null for none
+	 */
+	live: number[] | null;
+	/** the messages of meta props a pre replacement drops */
+	dropped: string[] | null;
+}
+
+/** a code span the highlighter rendered, braces in it are entities */
+export interface HighlightedCode {
+	/** the attribute text of the <code> open tag, null when body is the whole span */
+	attributes: string | null;
+	body: string;
+}
+
+export type HighlightWarningCode =
+	| 'code_replacement_skipped'
+	| 'meta_prop_ignored';
+
+/** highlights the code of one render, start is the offset of the node in the source */
+export interface CodeHighlighter {
+	/** null renders the fence plain */
+	block(
+		code: string,
+		lang: string,
+		meta: string,
+		start: number
+	): HighlightedBlock | null;
+	/** a code span with a #! hint, null renders it plain */
+	inline(code: string, lang: string, start: number): HighlightedCode | null;
+	warn(code: HighlightWarningCode, message: string, start: number): void;
+	/**
+	 * true when block renders a math fence as display math, the fence then
+	 * takes the math replacement and never pre, its block has no <pre>
+	 */
+	readonly math?: boolean;
+	/**
+	 * inline math, a code span in dollars, asked only while math is true, the
+	 * body is the whole span and the math replacement takes it as children
+	 */
+	inline_math?(code: string, start: number): HighlightedCode;
+}
+
+/** reads the fence meta conventions for a pre replacement the highlighter left plain */
+export interface PreMeta {
+	/**
+	 * the title, caption and meta props of a pre replacement as props text,
+	 * it warns about the meta props it drops, start is the offset of the fence
+	 */
+	pre_props(meta: string, start: number): string;
+}
+
+/**
+ * a string is escaped as a url of the source is, '' leaves the attribute out,
+ * an expression goes in braces, a picture names an imagetools Picture, a
+ * markdown image renders it as a picture element and a replacement gets it
+ * as its src
+ */
+export type UrlSource =
+	| string
+	| { type: 'expression'; value: string }
+	| { type: 'picture'; value: string };
+
+/** what replaces the src of an image or the href of a link, url is never empty, null or undefined keeps it */
+export type UrlLookup = (
+	url: string,
+	image: boolean
+) => UrlSource | null | undefined;
+
+/** what a fence renders in place of what the document has */
+export interface FenceSource {
+	/** the code, in place of the body of the fence */
+	text: string;
+	/** the info string in place of the written one, '' for none, undefined keeps it */
+	info?: string;
+	/** props text for a pre replacement, each as ' name={value}', after its own props */
+	props?: string;
+}
+
+/** the fences that take their code from elsewhere, by node index */
+export type FenceSources = ReadonlyMap<number, FenceSource>;
+
+/** the opening and closing double quote, then the opening and closing single quote */
+export type SmartQuotes = readonly [string, string, string, string];
+
+/** each kind is on unless it is false */
+export interface SmartPunctuationOptions {
+	/** straight quotes to curly ones, four strings replace the english ones */
+	quotes?: boolean | SmartQuotes;
+	/** two hyphens to an en dash and three to an em dash */
+	dashes?: boolean;
+	/** three dots to an ellipsis */
+	ellipses?: boolean;
+}
+
+/** true is every kind with english quotes, false is none */
+export type SmartPunctuation = boolean | SmartPunctuationOptions;
+
+// must equal NONE in @mdsvex/parse
+const enum Slot {
+	NONE = 0xffffffff,
+}
+
+// code span values arrive as seq, cons and sliced strings, so an indexOf load
+// on them goes megamorphic, calling through one function keeps it monomorphic
+const string_index_of = String.prototype.indexOf;
+
+//  html escaping
+
+const ESCAPE_TEST = /[&<>"]/;
+const ESCAPE_MATCH = /[&<>"]/g;
+const ESCAPE_TABLE: Record<string, string> = {
+	'&': '&amp;',
+	'<': '&lt;',
+	'>': '&gt;',
+	'"': '&quot;',
+};
+function escape_replace(ch: string): string {
+	return ESCAPE_TABLE[ch];
+}
+function escape_html(text: string): string {
+	if (!ESCAPE_TEST.test(text)) return text;
+	return text.replace(ESCAPE_MATCH, escape_replace);
+}
+
+/** the end of the character reference whose & is at m, or -1 */
+function reference_end(s: string, m: number, end: number): number {
+	let i = m + 1;
+	if (i >= end) return -1;
+	let ch = s.charCodeAt(i);
+	if (ch === 35) {
+		// a numeric reference, decimal or hex
+		i++;
+		let max = 7;
+		let hex = false;
+		if (i < end && (s.charCodeAt(i) | 32) === 120) {
+			i++;
+			max = 6;
+			hex = true;
+		}
+		const digits = i;
+		while (i < end && i - digits < max) {
+			ch = s.charCodeAt(i);
+			if (ch >= 48 && ch <= 57) i++;
+			else if (hex && (ch | 32) >= 97 && (ch | 32) <= 102) i++;
+			else break;
+		}
+		if (i === digits || i >= end || s.charCodeAt(i) !== 59) return -1;
+		return i + 1;
+	}
+	// a named reference, the longest html5 name has 31 characters
+	const name = i;
+	while (i < end && i - name < 32) {
+		ch = s.charCodeAt(i);
+		if (
+			((ch | 32) >= 97 && (ch | 32) <= 122) ||
+			(i > name && ch >= 48 && ch <= 57)
+		)
+			i++;
+		else break;
+	}
+	if (i - name < 2 || i >= end || s.charCodeAt(i) !== 59) return -1;
+	return is_entity_name(s.slice(name, i)) ? i + 1 : -1;
+}
+
+/** escape_html that keeps character references, as text and link attributes have them */
+function escape_text_html(text: string): string {
+	if (!ESCAPE_TEST.test(text)) return text;
+	let out = '';
+	let pos = 0;
+	const len = text.length;
+	for (let i = 0; i < len; i++) {
+		const ch = text.charCodeAt(i);
+		let rep: string;
+		if (ch === 38) {
+			if (reference_end(text, i, len) !== -1) continue;
+			rep = '&amp;';
+		} else if (ch === 60) rep = '&lt;';
+		else if (ch === 62) rep = '&gt;';
+		else if (ch === 34) rep = '&quot;';
+		else continue;
+		out += text.slice(pos, i) + rep;
+		pos = i + 1;
+	}
+	return pos === 0 ? text : out + text.slice(pos);
+}
+
+// code shows braces as text, svelte would read them as expressions
+const CODE_TEST = /[&<>"{}]/;
+const CODE_MATCH = /[&<>"{}]/g;
+const CODE_TABLE: Record<string, string> = {
+	'&': '&amp;',
+	'<': '&lt;',
+	'>': '&gt;',
+	'"': '&quot;',
+	'{': '&#123;',
+	'}': '&#125;',
+};
+function code_replace(ch: string): string {
+	return CODE_TABLE[ch];
+}
+function escape_code(text: string): string {
+	if (!CODE_TEST.test(text)) return text;
+	return text.replace(CODE_MATCH, code_replace);
+}
+
+const BRACE_TEST = /[{}]/;
+const BRACE_MATCH = /[{}]/g;
+
+let plain_math = false;
+
+/**
+ * @internal true once when a math fence rendered as code since the last
+ * call, a compile with a math renderer and no highlighter then knows to
+ * render again with one, no document is searched for math up front
+ */
+export function take_plain_math(): boolean {
+	if (!plain_math) return false;
+	plain_math = false;
+	return true;
+}
+
+/**
+ * the language of a fence that renders plain, as an attribute, braces as
+ * code has them, every such fence passes here so it notes a math one
+ */
+function escape_info(info: string): string {
+	if (info === 'math') plain_math = true;
+	if (!CODE_TEST.test(info)) return info;
+	const s = escape_html(info);
+	if (!BRACE_TEST.test(s)) return s;
+	return s.replace(BRACE_MATCH, code_replace);
+}
+
+const QUOTE_MATCH = /"/g;
+
+// a typed value is its source slice with entities as written, so only a
+// quote needs escaping, a plugin node never closes and gets the full escape
+function escape_attr(v: string, typed: boolean): string {
+	if (!typed) return escape_html(v);
+	if (string_index_of.call(v, '"') === -1) return v;
+	return v.replace(QUOTE_MATCH, '&quot;');
+}
+
+//  source escape index
+
+// text nodes arrive in source order, so instead of a regex per value each
+// escapable char keeps its next source position and advances it with indexOf,
+// scanning the source about once per render
+// each pointer is the first match at or after esc_lo, or esc_len for none
+let esc_src = '';
+let esc_len = 0;
+let esc_lo = 0;
+let esc_amp = -1;
+let esc_lt = -1;
+let esc_gt = -1;
+let esc_quot = -1;
+// only code reads the brace pointers, so prose never scans for braces
+let esc_lbrace = -1;
+let esc_rbrace = -1;
+// false for a buffer with no prebuilt strings, so text skips the lookup
+let esc_prebuilt = true;
+// only nodes whose bit is set hold a prebuilt string, a late repair can turn
+// the sparse strings array into a dictionary that hashes on every read
+let esc_bits: Uint8Array | null = null;
+const PREBUILT_BITS_MIN = 1024;
+
+function prebuilt_bits(buf: NodeBuffer): Uint8Array {
+	const bits = new Uint8Array((buf.size >>> 3) + 1);
+	const strings = buf._strings;
+	// for-in walks only the present keys, also of a dictionary array
+	for (const k in strings) {
+		const i = +k;
+		bits[i >>> 3] |= 1 << (i & 7);
+	}
+	return bits;
+}
+
+/** the caller restores the prebuilt state after the render */
+function prebuilt_begin(buf: NodeBuffer): void {
+	const len = buf._strings.length;
+	if (len === 0) esc_prebuilt = false;
+	// a short array stays in fast elements, a direct read beats building the bitmap
+	else if (len > PREBUILT_BITS_MIN) esc_bits = prebuilt_bits(buf);
+}
+
+function esc_reset(src: string): void {
+	esc_src = src;
+	esc_len = src.length;
+	esc_lo = 0;
+	esc_amp = -1;
+	esc_lt = -1;
+	esc_gt = -1;
+	esc_quot = -1;
+	esc_lbrace = -1;
+	esc_rbrace = -1;
+}
+
+function esc_next(ch: string, from: number): number {
+	const i = esc_src.indexOf(ch, from);
+	return i === -1 ? esc_len : i;
+}
+
+/**
+ * equals escape_text_html of c.text, reading source slices through the escape
+ * index, apart from an & a backslash escaped, which the slice no longer shows
+ */
+function escape_node_text(c: Cursor): string {
+	return escape_text_at(c, c.index, c.value_start, c.value_end, false);
+}
+
+function fence_text(c: Cursor): string {
+	if (fs !== null) return fence_text_from(c);
+	return held_text(c);
+}
+
+/** true for a fence, a code span or a comment a plugin put nodes in, their text is its text too */
+function holds(c: Cursor): boolean {
+	return c.words[c.index * W.stride + W.first_child] !== Slot.NONE;
+}
+
+/** c.text of a fence, a code span or a comment, and then the text of the nodes a plugin put in it */
+function held_text(c: Cursor): string {
+	return holds(c) ? buf_code(c.buffer, c.index, c.source) : c.text();
+}
+
+/** equals escape_code of fence_text */
+function escape_fence_text(c: Cursor): string {
+	if (fs !== null) return escape_code(fence_text_from(c));
+	if (holds(c)) return escape_code(buf_code(c.buffer, c.index, c.source));
+	// a fence in a block quote or a list item holds its code as a string, without what they put before its lines
+	const text = c.prebuilt;
+	return text === undefined ? escape_code_text(c) : escape_code(text);
+}
+
+/** equals escape_code of c.text, reading source slices through the escape index */
+function escape_code_text(c: Cursor): string {
+	return escape_text_at(c, c.index, c.value_start, c.value_end, true);
+}
+
+/** equals escape_code of the held_text of a code span */
+function escape_span_text(c: Cursor): string {
+	if (holds(c)) return escape_code(buf_code(c.buffer, c.index, c.source));
+	return escape_code_text(c);
+}
+
+/** m is the first of & < > " at or after vs */
+function escape_code_slice(
+	src: string,
+	vs: number,
+	ve: number,
+	m: number
+): string {
+	if (esc_lbrace < vs) esc_lbrace = esc_next('{', vs);
+	if (esc_rbrace < vs) esc_rbrace = esc_next('}', vs);
+	if (esc_lbrace < m) m = esc_lbrace;
+	if (esc_rbrace < m) m = esc_rbrace;
+	if (m >= ve) return src.slice(vs, ve);
+	return escape_code_hits(src, vs, ve, m);
+}
+
+/** escape_hits for code, m is the first escapable char at or after vs */
+function escape_code_hits(
+	src: string,
+	vs: number,
+	ve: number,
+	m: number
+): string {
+	let text = '';
+	let pos = vs;
+	while (m < ve) {
+		const ch = src.charCodeAt(m);
+		text += src.slice(pos, m);
+		if (ch === 38) {
+			text += '&amp;';
+			esc_amp = esc_next('&', m + 1);
+		} else if (ch === 60) {
+			text += '&lt;';
+			esc_lt = esc_next('<', m + 1);
+		} else if (ch === 62) {
+			text += '&gt;';
+			esc_gt = esc_next('>', m + 1);
+		} else if (ch === 34) {
+			text += '&quot;';
+			esc_quot = esc_next('"', m + 1);
+		} else if (ch === 123) {
+			text += '&#123;';
+			esc_lbrace = esc_next('{', m + 1);
+		} else {
+			text += '&#125;';
+			esc_rbrace = esc_next('}', m + 1);
+		}
+		pos = m + 1;
+		m = esc_amp;
+		if (esc_lt < m) m = esc_lt;
+		if (esc_gt < m) m = esc_gt;
+		if (esc_quot < m) m = esc_quot;
+		if (esc_lbrace < m) m = esc_lbrace;
+		if (esc_rbrace < m) m = esc_rbrace;
+	}
+	// every pointer is now at or past ve
+	esc_lo = ve;
+	return text + src.slice(pos, ve);
+}
+
+/** escape_node_text of node i, or escape_code_text for code, the cursor may sit elsewhere */
+function escape_text_at(
+	c: Cursor,
+	i: number,
+	vs: number,
+	ve: number,
+	code: boolean
+): string {
+	if (esc_prebuilt) {
+		const bits = esc_bits;
+		if (bits === null || (bits[i >>> 3] & (1 << (i & 7))) !== 0) {
+			const s = c.prebuilt_at(i);
+			if (s !== undefined) return stored_text(c, i, s, code);
+		}
+	}
+	// empty cases must match Cursor.text
+	if (vs === Slot.NONE || ve === Slot.NONE || ve <= vs) return '';
+	const src = c.source;
+	if (src !== esc_src) esc_reset(src);
+	// one call, a statement more here and v8 no longer inlines this function
+	if (ve > esc_len) return escape_past(c, i, vs, ve, code);
+	if (vs < esc_lo) esc_reset(src);
+	if (esc_amp < vs) esc_amp = esc_next('&', vs);
+	if (esc_lt < vs) esc_lt = esc_next('<', vs);
+	if (esc_gt < vs) esc_gt = esc_next('>', vs);
+	if (esc_quot < vs) esc_quot = esc_next('"', vs);
+	esc_lo = vs;
+	let m = esc_amp;
+	if (esc_lt < m) m = esc_lt;
+	if (esc_gt < m) m = esc_gt;
+	if (esc_quot < m) m = esc_quot;
+	if (code) return escape_code_slice(src, vs, ve, m);
+	const first = src.charCodeAt(vs);
+	if ((first === 123 || first === 125) && brace_escaped(src, vs))
+		return brace_text(c, i, vs, ve, first);
+	if (m >= ve) return src.slice(vs, ve);
+	return escape_hits(src, vs, ve, m);
+}
+
+/** a stored string, apart so escape_text_at stays small enough for v8 to inline */
+function stored_text(c: Cursor, i: number, s: string, code: boolean): string {
+	// text a plugin wrote is all characters, a brace or a reference too
+	return code || (c.words[i * W.stride + W.pending] & 2) !== 0
+		? escape_code(s)
+		: escape_text_html(s);
+}
+
+/** the text of a value that opens at a brace a backslash escaped */
+function brace_text(
+	c: Cursor,
+	i: number,
+	vs: number,
+	ve: number,
+	first: number
+): string {
+	return (
+		(first === 123 ? '&#123;' : '&#125;') +
+		escape_text_at(c, i, vs + 1, ve, false)
+	);
+}
+
+/**
+ * the brace at pos follows an odd run of backslashes, an escape opens its
+ * text node at the escaped char, and svelte would read the brace as an expression
+ */
+function brace_escaped(src: string, pos: number): boolean {
+	let p = pos;
+	while (p > 0 && src.charCodeAt(p - 1) === 92) p--;
+	return ((pos - p) & 1) === 1;
+}
+
+/** a reference in text stays as written, unless a backslash escaped its & */
+function text_reference(
+	src: string,
+	vs: number,
+	ve: number,
+	m: number
+): boolean {
+	// an escape opens its text node at the escaped char
+	if (m === vs && m > 0 && src.charCodeAt(m - 1) === 92) return false;
+	return reference_end(src, m, ve) !== -1;
+}
+
+/** m is the first escapable char at or after vs */
+function escape_hits(src: string, vs: number, ve: number, m: number): string {
+	let text = '';
+	let pos = vs;
+	while (m < ve) {
+		const ch = src.charCodeAt(m);
+		text += src.slice(pos, m);
+		pos = m + 1;
+		if (ch === 38) {
+			esc_amp = esc_next('&', m + 1);
+			if (text_reference(src, vs, ve, m)) pos = m;
+			else text += '&amp;';
+		} else if (ch === 60) {
+			text += '&lt;';
+			esc_lt = esc_next('<', m + 1);
+		} else if (ch === 62) {
+			text += '&gt;';
+			esc_gt = esc_next('>', m + 1);
+		} else {
+			text += '&quot;';
+			esc_quot = esc_next('"', m + 1);
+		}
+		m = esc_amp;
+		if (esc_lt < m) m = esc_lt;
+		if (esc_gt < m) m = esc_gt;
+		if (esc_quot < m) m = esc_quot;
+	}
+	// every pointer is now at or past ve
+	esc_lo = ve;
+	return text + src.slice(pos, ve);
+}
+
+//  kind constants
+
+// the renderer is its own build entry, so exported consts stay module cells
+// turbofan reloads on every use and a switch over them is a compare chain,
+// local const enums build to literals that fold to immediates and a jump table
+const enum K {
+	ROOT = 0,
+	TEXT = 1,
+	HTML = 2,
+	HEADING = 3,
+	CODE_FENCE = 5,
+	LINE_BREAK = 6,
+	PARAGRAPH = 7,
+	CODE_SPAN = 8,
+	EMPHASIS = 9,
+	STRONG = 10,
+	THEMATIC_BREAK = 11,
+	LINK = 12,
+	IMAGE = 13,
+	BLOCK_QUOTE = 14,
+	LIST = 15,
+	LIST_ITEM = 16,
+	HARD_BREAK = 17,
+	SOFT_BREAK = 18,
+	STRIKETHROUGH = 19,
+	SUPERSCRIPT = 20,
+	SUBSCRIPT = 21,
+	TABLE = 22,
+	TABLE_HEADER = 23,
+	TABLE_ROW = 24,
+	TABLE_CELL = 25,
+	HTML_COMMENT = 26,
+	SVELTE_TAG = 27,
+	SVELTE_BLOCK = 28,
+	SVELTE_BRANCH = 29,
+	MUSTACHE = 4,
+	DIRECTIVE_INLINE = 30,
+	DIRECTIVE_LEAF = 31,
+	DIRECTIVE_CONTAINER = 32,
+	FRONTMATTER = 33,
+	IMPORT_STATEMENT = 34,
+	DIRECTIVE_LABEL = 35,
+	FOOTNOTE_REFERENCE = 36,
+	FOOTNOTE_DEFINITION = 37,
+	DEFINITION = 38,
+}
+
+export const K_ROOT = K.ROOT;
+export const K_TEXT = K.TEXT;
+export const K_HTML = K.HTML;
+export const K_HEADING = K.HEADING;
+export const K_CODE_FENCE = K.CODE_FENCE;
+export const K_LINE_BREAK = K.LINE_BREAK;
+export const K_PARAGRAPH = K.PARAGRAPH;
+export const K_CODE_SPAN = K.CODE_SPAN;
+export const K_EMPHASIS = K.EMPHASIS;
+export const K_STRONG = K.STRONG;
+export const K_THEMATIC_BREAK = K.THEMATIC_BREAK;
+export const K_LINK = K.LINK;
+export const K_IMAGE = K.IMAGE;
+export const K_BLOCK_QUOTE = K.BLOCK_QUOTE;
+export const K_LIST = K.LIST;
+export const K_LIST_ITEM = K.LIST_ITEM;
+export const K_HARD_BREAK = K.HARD_BREAK;
+export const K_SOFT_BREAK = K.SOFT_BREAK;
+export const K_STRIKETHROUGH = K.STRIKETHROUGH;
+export const K_SUPERSCRIPT = K.SUPERSCRIPT;
+export const K_SUBSCRIPT = K.SUBSCRIPT;
+export const K_TABLE = K.TABLE;
+export const K_TABLE_HEADER = K.TABLE_HEADER;
+export const K_TABLE_ROW = K.TABLE_ROW;
+export const K_TABLE_CELL = K.TABLE_CELL;
+export const K_HTML_COMMENT = K.HTML_COMMENT;
+export const K_SVELTE_TAG = K.SVELTE_TAG;
+export const K_SVELTE_BLOCK = K.SVELTE_BLOCK;
+export const K_SVELTE_BRANCH = K.SVELTE_BRANCH;
+export const K_MUSTACHE = K.MUSTACHE;
+export const K_DIRECTIVE_INLINE = K.DIRECTIVE_INLINE;
+export const K_DIRECTIVE_LEAF = K.DIRECTIVE_LEAF;
+export const K_DIRECTIVE_CONTAINER = K.DIRECTIVE_CONTAINER;
+export const K_FRONTMATTER = K.FRONTMATTER;
+export const K_IMPORT_STATEMENT = K.IMPORT_STATEMENT;
+export const K_DIRECTIVE_LABEL = K.DIRECTIVE_LABEL;
+
+export const NONE = Slot.NONE;
+
+//  pending mapping records
+
+// must match RECORD_SIZE and Preset in mappings, local for the same reason as K
+const enum Rec {
+	SIZE = 6,
+}
+
+// mirrors sourcemap.ts
+const enum Trace {
+	SIZE = 3,
+}
+
+const enum Preset {
+	TEXT = 0,
+	CODE = 1,
+	SVELTE = 2,
+	STRUCTURE = 3,
+}
+
+// record_code of preset and role, as literals
+const enum Code {
+	TEXT_CONTENT = 1,
+	CODE_CONTENT = 5,
+	SVELTE_NODE = 8,
+	SVELTE_CONTENT = 9,
+	STRUCTURE_OPEN = 14,
+	STRUCTURE_CLOSE = 15,
+}
+
+function emit_record(
+	sink: MapSink,
+	out_start: number,
+	out_end: number,
+	src_start: number,
+	src_end: number,
+	node_index: number,
+	code: number
+): void {
+	if (out_end > out_start && src_start !== Slot.NONE) {
+		let rec = sink.rec;
+		const p = sink.n;
+		if (p + Rec.SIZE > rec.length) rec = sink.grow();
+		rec[p] = out_start;
+		rec[p + 1] = out_end - out_start;
+		rec[p + 2] = src_start;
+		rec[p + 3] = src_end > src_start ? src_end - src_start : 0;
+		rec[p + 4] = node_index;
+		rec[p + 5] = code;
+		sink.n = p + Rec.SIZE;
+	}
+}
+
+/**
+ * offsets in html characters, every span the render records covers at least
+ * one chunk, so none is dropped for its width, a span with no end is a node
+ * a parse plugin added and gets no record
+ */
+function put_record(
+	sink: MapSink,
+	gen_start: number,
+	gen_end: number,
+	src_start: number,
+	src_end: number,
+	node_index: number,
+	code: number
+): void {
+	if (src_start !== Slot.NONE && src_end !== Slot.NONE) {
+		let rec = sink.rec;
+		const p = sink.n;
+		if (p + Rec.SIZE > rec.length) rec = sink.grow();
+		rec[p] = gen_start;
+		rec[p + 1] = gen_end - gen_start;
+		rec[p + 2] = src_start;
+		rec[p + 3] = src_end > src_start ? src_end - src_start : 0;
+		rec[p + 4] = node_index;
+		rec[p + 5] = code;
+		sink.n = p + Rec.SIZE;
+	}
+}
+
+/** emit node span + open_syntax + close_syntax for a rendered node. */
+function _spans(
+	sink: MapSink,
+	pre: number,
+	after_open: number,
+	before_close: number,
+	post: number,
+	c: Cursor,
+	preset: number
+): void {
+	const s = c.start;
+	const vs = c.value_start,
+		ve = c.value_end;
+	// value range is meaningful when ve > vs (same check as Cursor.text()).
+	// Uint32Array defaults to 0 for unset slots, so ve !== NONE is not enough.
+	const has_value = ve > vs;
+	const e = c.end;
+	const close_start = has_value ? ve : e;
+	if (s === Slot.NONE || close_start === Slot.NONE || !sink.syntax) {
+		_spans_some(sink, pre, after_open, before_close, post, c, preset);
+		return;
+	}
+	const idx = c.index;
+	const open_end = has_value ? vs : s;
+	let rec = sink.rec;
+	const p = sink.n;
+	if (p + 3 * Rec.SIZE > rec.length) rec = sink.grow();
+	rec[p] = pre;
+	rec[p + 1] = post - pre;
+	rec[p + 2] = s;
+	rec[p + 3] = e > s ? e - s : 0;
+	rec[p + 4] = idx;
+	rec[p + 5] = preset << 2;
+	rec[p + 6] = pre;
+	rec[p + 7] = after_open - pre;
+	rec[p + 8] = s;
+	rec[p + 9] = open_end > s ? open_end - s : 0;
+	rec[p + 10] = idx;
+	rec[p + 11] = Code.STRUCTURE_OPEN;
+	rec[p + 12] = before_close;
+	rec[p + 13] = post - before_close;
+	rec[p + 14] = close_start;
+	rec[p + 15] = e > close_start ? e - close_start : 0;
+	rec[p + 16] = idx;
+	rec[p + 17] = Code.STRUCTURE_CLOSE;
+	sink.n = p + 3 * Rec.SIZE;
+}
+
+/** _spans when a record is dropped or syntax is off */
+function _spans_some(
+	sink: MapSink,
+	pre: number,
+	after_open: number,
+	before_close: number,
+	post: number,
+	c: Cursor,
+	preset: number
+): void {
+	const idx = c.index;
+	const s = c.start,
+		e = c.end;
+	// a node a parse plugin added has no end and no place in the source
+	if (e === Slot.NONE) return;
+	put_record(sink, pre, post, s, e, idx, preset << 2);
+	if (!sink.syntax) return;
+	const vs = c.value_start,
+		ve = c.value_end;
+	const has_value = ve > vs;
+	put_record(
+		sink,
+		pre,
+		after_open,
+		s,
+		has_value ? vs : s,
+		idx,
+		Code.STRUCTURE_OPEN
+	);
+	put_record(
+		sink,
+		before_close,
+		post,
+		has_value ? ve : e,
+		e,
+		idx,
+		Code.STRUCTURE_CLOSE
+	);
+}
+
+//  precomputed tag strings
+
+const H_TAG = ['', '<h1', '<h2', '<h3', '<h4', '<h5', '<h6'];
+const H_OPEN = ['', '<h1>', '<h2>', '<h3>', '<h4>', '<h5>', '<h6>'];
+const H_CLOSE = ['', '</h1>', '</h2>', '</h3>', '</h4>', '</h5>', '</h6>'];
+
+const HTML_VOID_ELEMENTS = new Set([
+	'area',
+	'base',
+	'br',
+	'col',
+	'embed',
+	'hr',
+	'img',
+	'input',
+	'link',
+	'meta',
+	'param',
+	'source',
+	'track',
+	'wbr',
+]);
+
+//  generic attribute emission
+
+/**
+ * metadata keys that are structural / internal and should never be
+ * emitted as html attributes. everything else is fair game.
+ */
+const INTERNAL_KEYS = new Set([
+	// list semantics
+	'ordered',
+	'tight',
+	'start',
+	// a task item, rendered as a checkbox or passed to a replacement as a prop
+	'checked',
+	// code fence info (transformed into class="language-X")
+	'info',
+	'info_start',
+	'info_end',
+	// raw html node internals
+	'tag',
+	'attributes',
+	'self_closing',
+	// table internals
+	'alignments',
+	'col_count',
+	'header_columns',
+	'spans',
+	// image src (handled specially with alt ordering)
+	'src',
+]);
+
+function meta_str(v: unknown): string {
+	return v == null ? '' : typeof v === 'string' ? v : `${v}`;
+}
+
+// a shorthand the parser keys by its braced text, which is a name when it starts as one
+const NAME_START = /^[A-Za-z_$]/;
+
+/** true for a typed attribute that is only braces, a spread or an attachment */
+function bare_expr(k: string, v: unknown): boolean {
+	return (
+		typeof v === 'object' &&
+		v !== null &&
+		(v as any).value === k &&
+		!NAME_START.test(k)
+	);
+}
+
+/** an expression attribute, a bare one keeps only its braces */
+function expr_attr(k: string, value: string): string {
+	return value === k && !NAME_START.test(k)
+		? ' {' + k + '}'
+		: ' ' + k + '={' + value + '}';
+}
+
+/** the later values of the names a tag writes again, written so that svelte reports them */
+function repeated_attrs(repeated: [string, unknown][], typed: boolean): string {
+	let s = '';
+	for (let i = 0; i < repeated.length; i++) {
+		const k = repeated[i][0];
+		const v = repeated[i][1];
+		if (v === true) s += ' ' + k;
+		else if (typeof v === 'object' && v !== null)
+			s += expr_attr(k, meta_str((v as any).value));
+		else s += ' ' + k + '="' + escape_attr(meta_str(v), typed) + '"';
+	}
+	return s;
+}
+
+function _attrs(c: Cursor, skip?: Set<string>): string {
+	const meta = c.meta();
+	if (!meta) return '';
+	let s = '';
+	for (const key in meta) {
+		if (INTERNAL_KEYS.has(key)) continue;
+		if (skip !== undefined && skip.has(key)) continue;
+		const val = meta[key];
+		if (val === true) {
+			s += ' ' + key;
+		} else if (val !== false && val != null) {
+			if (typeof val === 'object' && (val as any).type === 'expression') {
+				s += ' ' + key + '={' + meta_str((val as any).value) + '}';
+			} else {
+				s += ' ' + key + '="' + escape_html(String(val)) + '"';
+			}
+		}
+	}
+	return s;
+}
+
+//  mapped renderer
+
+// records of the mapped render take generated offsets from its length
+let mo = '';
+
+function _open(c: Cursor, head: string, folded: string, end: string): void {
+	const a = _attrs(c);
+	if (a.length !== 0) mo = mo + head + a + end;
+	else mo += folded;
+}
+
+// node word offsets, must follow NodeField in @mdsvex/parse
+const enum W {
+	start = 1,
+	end = 2,
+	value_start = 3,
+	value_end = 4,
+	parent = 5,
+	next = 6,
+	first_child = 8,
+	pending = 10,
+	meta = 11,
+	stride = 12,
+}
+
+//  element replacement state
+
+// which walk renders a replacement, set by comp_begin
+const enum CM {
+	FOLD = 0,
+	TRACE = 1,
+	MAPPED = 2,
+}
+
+/** false unless the document uses a replacement, every walk checks it once per node */
+let has_components = false;
+/** true when the document replaces a table part, which the table walks check */
+let comp_table = false;
+let comp_scope: ComponentScope | null = null;
+/** directive replacements, a namespace apart from the elements of comp_scope */
+let dir_scope: ComponentScope | null = null;
+/** a directive no scope replaces throws, otherwise it renders as its children */
+let dir_strict = false;
+/** the shells of static directives, null renders every directive live */
+let dir_shells: ShellTable | null = null;
+/** comp_scan met a directive written as its shell, which imports nothing */
+let dir_shelled = false;
+/** the import lines of the shells comp_scan met, after those of the replacements */
+let shell_lines = '';
+/** each import line once, the specifiers of the modules a shelled directive comes from */
+const shell_seen = new Set<string>();
+const shell_specs: string[] = [];
+let comp_mode: number = CM.FOLD;
+/** component_mode all, typed lowercase elements are replaced too */
+let comp_all = false;
+/** elements comp_scan kept for a directive, comp_begin hands them out */
+const comp_warnings: ReplaceWarning[] = [];
+const NO_WARNINGS: readonly ReplaceWarning[] = Object.freeze([]);
+/** what the last comp_begin handed out */
+let comp_last = NO_WARNINGS;
+/** import lines of the used replacements and the extra lines, they join the instance script */
+let comp_lines = '';
+/** a script of comp_lines when the document has no script and no import to start one */
+let comp_prefix = '';
+/** used replacements in first use order */
+const comp_used: ComponentImport[] = [];
+const comp_seen = new Set<ComponentImport>();
+
+//  top level scripts
+
+// set by hoist_begin before a document render, hoist_reset for a render of parts
+
+/** the instance script the import statements go into, -1 when there is none */
+let hoist_script = -1;
+/** the first import statement, it renders a script of every import when there is no instance script */
+let hoist_at = -1;
+/** import statement indices in document order */
+const hoist_nodes: number[] = [];
+/** code the module script starts with, '' for none */
+let module_code = '';
+/** the module script the module code goes into, -1 renders a new one in place of the frontmatter */
+let hoist_module = -1;
+/** the open tag of an instance script the render starts, ts for type imports or a ts module script */
+let hoist_open = '<script>\n';
+
+function hoist_reset(): void {
+	hoist_script = -1;
+	hoist_at = -1;
+	hoist_open = '<script>\n';
+	if (hoist_nodes.length !== 0) hoist_nodes.length = 0;
+}
+
+/**
+ * find the import statements and, when there are some or the render has
+ * replacements or extra lines to import, the instance script, extra is passed
+ * so a render with none reads no state for them
+ */
+function hoist_begin(c: Cursor, buf: NodeBuffer, extra: boolean): void {
+	const child = hoist_imports(buf);
+	// comp_lines is empty for a document whose only replacements are shells
+	if (hoist_nodes.length === 0 && comp_lines === '' && !extra) return;
+	if (extra) comp_lines += extra_lines;
+	hoist_script_from(c, buf, child);
+	// no script and no import to start one, the render starts with one
+	if (hoist_script === -1 && hoist_at === -1)
+		comp_prefix = hoist_open + comp_lines + '</script>';
+}
+
+/** the import statements, returns the root child after them */
+function hoist_imports(buf: NodeBuffer): number {
+	hoist_reset();
+	const n = buf._n;
+	let child = n[W.first_child];
+	// imports come first, after any frontmatter and blank lines
+	while (child !== Slot.NONE) {
+		const b = child * W.stride;
+		if (n[b + W.parent] !== 0) break;
+		const kind = n[b] & 0xff;
+		if (kind === K.IMPORT_STATEMENT) hoist_nodes.push(child);
+		else if (kind !== K.LINE_BREAK && kind !== K.FRONTMATTER) break;
+		child = n[b + W.next];
+	}
+	return child;
+}
+
+/** the instance script from child on, or the first import that starts one */
+function hoist_script_from(c: Cursor, buf: NodeBuffer, child: number): void {
+	const n = buf._n;
+	let ts = false;
+	while (child !== Slot.NONE) {
+		const b = child * W.stride;
+		if (n[b + W.parent] !== 0) break;
+		if ((n[b] & 0xff) === K.HTML) {
+			const slot = n[b + W.meta];
+			const meta = slot === 0 ? undefined : buf._meta[slot - 1];
+			if (meta !== undefined && meta.tag === 'script' && !meta.self_closing) {
+				const attrs = meta.attributes as Record<string, unknown> | undefined;
+				if (!is_other_script(attrs)) {
+					hoist_script = child;
+					return;
+				}
+				if (attrs!.src === undefined && attrs!.lang === 'ts') ts = true;
+			}
+		}
+		child = n[b + W.next];
+	}
+	if (hoist_nodes.length !== 0) hoist_at = hoist_nodes[0];
+	for (let i = 0; !ts && i < hoist_nodes.length; i++) {
+		const b = hoist_nodes[i] * W.stride;
+		ts = TYPE_IMPORT.test(c.slice(n[b + W.value_start], n[b + W.value_end]));
+	}
+	if (ts) hoist_open = '<script lang="ts">\n';
+}
+
+/** a type import or a type specifier, svelte only parses them in a ts component */
+const TYPE_IMPORT =
+	/^import\s+type(?:\s*[{*]|\s+(?!from\b)[\w$])|[{,]\s*type\s+(?!as\b)[\w$]/;
+
+/**
+ * hoist_begin for a wrapped render, the instance script starts with the
+ * replacement imports, the template import, the extra lines and the props it
+ * forwards
+ */
+function wrap_hoist_begin(c: Cursor, buf: NodeBuffer): void {
+	hoist_script_from(c, buf, hoist_imports(buf));
+	let props = WRAP_PROPS;
+	let declare = true;
+	if (hoist_script !== -1) {
+		const b = hoist_script * W.stride;
+		const n = c.words;
+		const body = c.slice(n[b + W.value_start], n[b + W.value_end]);
+		// $props() is allowed once, a document that calls it forwards a whole binding
+		if (body.indexOf('$props') !== -1 && PROPS_CALL.test(body)) {
+			declare = false;
+			const named = PROPS_NAME.exec(body);
+			props = named === null ? '' : named[1];
+		}
+	}
+	comp_lines =
+		component_imports(comp_used, {
+			specifier: wrap_spec,
+			local: WRAP_LOCAL,
+		}) +
+		shell_lines +
+		extra_lines;
+	if (declare) comp_lines += 'let ' + WRAP_PROPS + ' = $props();\n';
+	wrap_open =
+		'<' +
+		WRAP_LOCAL +
+		(wrap_metadata ? ' {...metadata}' : '') +
+		(wrap_data === '' ? '' : ' {' + wrap_data + '}') +
+		(props === '' ? '' : ' {...' + props + '}') +
+		'>';
+	// no script and no import to start one, the render starts with one
+	if (hoist_script === -1 && hoist_at === -1)
+		comp_prefix = hoist_open + comp_lines + '</script>';
+}
+
+/**
+ * find the top level module script the module code goes into, a render with
+ * module code ends with module_end so a render without any reads no state
+ */
+function module_begin(buf: NodeBuffer, code: string): void {
+	module_code = code;
+	const n = buf._n;
+	let child = n[W.first_child];
+	while (child !== Slot.NONE) {
+		const b = child * W.stride;
+		if (n[b + W.parent] !== 0) return;
+		if ((n[b] & 0xff) === K.HTML) {
+			const slot = n[b + W.meta];
+			const meta = slot === 0 ? undefined : buf._meta[slot - 1];
+			const script =
+				meta !== undefined && meta.tag === 'script' && !meta.self_closing;
+			const attrs = script
+				? (meta.attributes as Record<string, unknown> | undefined)
+				: undefined;
+			if (
+				script &&
+				attrs !== undefined &&
+				attrs.src === undefined &&
+				(attrs.module !== undefined || attrs.context === 'module')
+			) {
+				hoist_module = child;
+				return;
+			}
+		}
+		child = n[b + W.next];
+	}
+}
+
+/**
+ * module_begin for a fold render, which meets the module code at the
+ * frontmatter, a document with neither that nor a module script starts with it
+ */
+function module_begin_fold(buf: NodeBuffer, code: string): void {
+	module_begin(buf, code);
+	if (hoist_module !== -1) return;
+	const n = buf._n;
+	const first = n[W.first_child];
+	if (first === Slot.NONE || (n[first * W.stride] & 0xff) !== K.FRONTMATTER)
+		comp_prefix += module_script();
+}
+
+function module_end(): void {
+	module_code = '';
+	hoist_module = -1;
+	// module_begin_fold may have left the script there
+	comp_prefix = '';
+}
+
+/** the module script with the module code, for a document with none */
+function module_script(): string {
+	if (hoist_module !== -1) return '';
+	return '<script module>\n' + module_code + '\n</script>';
+}
+
+/** a module script or an external one, not the instance script */
+function is_other_script(attrs: Record<string, unknown> | undefined): boolean {
+	return (
+		attrs !== undefined &&
+		(attrs.src !== undefined ||
+			attrs.module !== undefined ||
+			attrs.context === 'module')
+	);
+}
+
+/**
+ * a top level script with a src and no body, svelte would read it as the
+ * component script, a browser ignores the body of an external script
+ */
+function is_embed_script(c: Cursor, tag: string): boolean {
+	if (tag !== 'script' || c.parent_kind !== K.ROOT) return false;
+	const attrs = c.meta()!.attributes as Record<string, unknown> | undefined;
+	return (
+		attrs !== undefined && attrs.src !== undefined && c.text().trim() === ''
+	);
+}
+
+/** an external script as a svelte:element, which svelte leaves in the markup */
+function embed_html(c: Cursor): string {
+	let s = '<svelte:element this={"script"}';
+	const attrs = c.meta()!.attributes as Record<string, string | boolean>;
+	const typed = !c.synthetic;
+	for (const k in attrs) {
+		const v = attrs[k];
+		if (v === true) s += ' ' + k;
+		else if (typeof v === 'object' && (v as any).type === 'expression') {
+			s += expr_attr(k, meta_str((v as any).value));
+		} else s += ' ' + k + '="' + escape_attr(v as string, typed) + '"';
+	}
+	return s + '></svelte:element>';
+}
+
+/** append each import statement as a line, mapped to its source when sink is given */
+function mo_imports(
+	c: Cursor,
+	sink: MapSink | undefined,
+	trace: boolean
+): void {
+	const n = c.words;
+	for (let i = 0; i < hoist_nodes.length; i++) {
+		const idx = hoist_nodes[i];
+		const b = idx * W.stride;
+		const vs = n[b + W.value_start];
+		const ve = n[b + W.value_end];
+		const text = c.prebuilt_at(idx) ?? c.slice(vs, ve);
+		if (sink !== undefined) {
+			const at = mo.length;
+			if (trace) tr_run(sink, at, at + text.length, vs, ve);
+			else if (vs !== Slot.NONE && ve > vs)
+				put_record(
+					sink,
+					at,
+					at + text.length,
+					vs,
+					ve,
+					idx,
+					Code.SVELTE_CONTENT
+				);
+		}
+		mo = mo + text + '\n';
+	}
+	mo += comp_lines;
+}
+
+/** the import statements as script lines */
+function import_lines(c: Cursor): string {
+	const n = c.words;
+	let s = '';
+	for (let i = 0; i < hoist_nodes.length; i++) {
+		const idx = hoist_nodes[i];
+		const b = idx * W.stride;
+		s =
+			s +
+			(c.prebuilt_at(idx) ??
+				c.slice(n[b + W.value_start], n[b + W.value_end])) +
+			'\n';
+	}
+	return s + comp_lines;
+}
+
+const LINK_HANDLED = new Set(['href', 'title']);
+const IMAGE_HANDLED = new Set(['title']);
+
+/** render children of the current cursor position, collecting escaped text and recursive node output. */
+//  task items
+
+const TASK_OFF = '<input type="checkbox" disabled /> ';
+const TASK_ON = '<input type="checkbox" checked disabled /> ';
+
+/** the replaced paragraph that takes a checkbox as its first child, -1 for none */
+let task_at = -1;
+let task_box = '';
+
+/** the first paragraph of a loose task item, which takes the checkbox as on github, else NONE */
+function task_para(c: Cursor): number {
+	const n = c.words;
+	const item = c.index;
+	const first = n[item * W.stride + W.first_child];
+	if (first === Slot.NONE) return Slot.NONE;
+	const b = first * W.stride;
+	// a pending wrapper renders as its children
+	if ((n[b] & 0xff) !== K.PARAGRAPH || n[b + W.pending] === 1) return Slot.NONE;
+	// the walks render text only through its parent, so a text sibling sends the checkbox to the item start
+	for (
+		let next = n[b + W.next];
+		next !== Slot.NONE && n[next * W.stride + W.parent] === item;
+		next = n[next * W.stride + W.next]
+	) {
+		if ((n[next * W.stride] & 0xff) === K.TEXT) return Slot.NONE;
+	}
+	return first;
+}
+
+/** the children of a task item with its checkbox, c stays on the item */
+function render_task(c: Cursor, sink: MapSink | undefined, on: boolean): void {
+	const box = on ? TASK_ON : TASK_OFF;
+	const para = task_para(c);
+	if (para === Slot.NONE) {
+		mo += box;
+		render_children(c, sink);
+		return;
+	}
+	const n = c.words;
+	const item = c.index;
+	c.move_to(para);
+	const pre = mo.length;
+	_open(c, '<p', '<p>', '>');
+	const ao = mo.length;
+	mo += box;
+	render_children(c, sink);
+	const bc = mo.length;
+	mo += '</p>';
+	if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.TEXT);
+	let next = n[para * W.stride + W.next];
+	while (next !== Slot.NONE && n[next * W.stride + W.parent] === item) {
+		const after = n[next * W.stride + W.next];
+		c.move_to(next);
+		render_node(c, sink);
+		next = after;
+	}
+	c.move_to(item);
+}
+
+function render_children(c: Cursor, sink?: MapSink): void {
+	const n = c.words;
+	let child = n[c.index * W.stride + W.first_child];
+	if (child === Slot.NONE) return;
+	// siblings share the parent word of the first child, as goto_next_sibling checks
+	const parent = n[child * W.stride + W.parent];
+	for (;;) {
+		const b = child * W.stride;
+		const k = n[b] & 0xff;
+		if (k === K.TEXT) {
+			const vs = n[b + W.value_start];
+			const ve = n[b + W.value_end];
+			const t = escape_text_at(c, child, vs, ve, false);
+			if (sink) {
+				if (vs !== Slot.NONE && ve > vs) {
+					const at = mo.length;
+					put_record(sink, at, at + t.length, vs, ve, child, Code.TEXT_CONTENT);
+				}
+			}
+			mo += t;
+		} else if (k !== K.LINE_BREAK) {
+			// line breaks render nothing, a fifth of visited nodes skip the call
+			c.move_to(child);
+			render_node(c, sink);
+		}
+		const next = n[b + W.next];
+		if (next === Slot.NONE || n[next * W.stride + W.parent] !== parent) break;
+		child = next;
+	}
+	c.move_to(parent !== Slot.NONE ? parent : child);
+}
+
+/** collect raw text from child text nodes (for image alt, link text fallback, etc.). */
+function _children_raw(c: Cursor): string {
+	if (!c.goto_first_child()) return '';
+	let text = '';
+	do {
+		if (c.kind === K.TEXT) {
+			const t = c.text();
+			const vs = c.value_start;
+			const first = t.charCodeAt(0);
+			// alt is an attribute, svelte reads a brace there as an expression too
+			if (
+				(first === 123 || first === 125) &&
+				vs !== Slot.NONE &&
+				c.source.charCodeAt(vs) === first &&
+				brace_escaped(c.source, vs)
+			)
+				text += (first === 123 ? '&#123;' : '&#125;') + t.slice(1);
+			else text += t;
+		} else {
+			text += _children_raw(c);
+		}
+	} while (c.goto_next_sibling());
+	c.goto_parent();
+	return text;
+}
+
+/** call before appending text to mo */
+function content_record(
+	sink: MapSink,
+	c: Cursor,
+	text: string,
+	code: number
+): void {
+	const at = mo.length;
+	put_record(
+		sink,
+		at,
+		at + text.length,
+		c.value_start,
+		c.value_end,
+		c.index,
+		code
+	);
+}
+
+/**
+ * a content record per line of fence code the parser built, false for other code
+ * each such line is the end of its source line once indent and quote markers go
+ */
+function fence_lines(
+	c: Cursor,
+	sink: MapSink,
+	at: number,
+	text: string,
+	trace: boolean
+): boolean {
+	const code = c.prebuilt;
+	if (code === undefined || (fs !== null && fs.has(c.index)) || holds(c))
+		return false;
+	const src = c.source;
+	const ve = c.value_end;
+	let line = c.value_start;
+	let g = 0;
+	let r = 0;
+	for (;;) {
+		// escaping keeps the linefeeds, so the text and the code have the same lines
+		let g_end = string_index_of.call(text, '\n', g);
+		let r_end = string_index_of.call(code, '\n', r);
+		let s_end = string_index_of.call(src, '\n', line);
+		if (s_end === -1 || s_end > ve) s_end = ve;
+		const last = g_end === -1;
+		if (last) {
+			g_end = text.length;
+			r_end = code.length;
+		} else {
+			g_end++;
+			r_end++;
+		}
+		const s_to = last ? s_end : s_end + 1;
+		let s_from = s_to - (r_end - r);
+		// a tab the indent cut leaves spaces the source line has no room for
+		if (s_from < line) s_from = line;
+		if (g_end > g) {
+			if (trace) tr_run(sink, at + g, at + g_end, s_from, s_to);
+			else
+				put_record(
+					sink,
+					at + g,
+					at + g_end,
+					s_from,
+					s_to,
+					c.index,
+					Code.CODE_CONTENT
+				);
+		}
+		if (last) return true;
+		g = g_end;
+		r = r_end;
+		line = s_end + 1;
+	}
+}
+
+/** the escaped code of a fence and its content records, after flushing the register */
+function fence_content(
+	c: Cursor,
+	sink: MapSink,
+	p: number,
+	text: string,
+	trace: boolean
+): number {
+	if (p !== 0) mo += FOLD_STR[p];
+	const at = mo.length;
+	if (!fence_lines(c, sink, at, text, trace)) {
+		if (trace) tr_run(sink, at, at + text.length, c.value_start, c.value_end);
+		else
+			put_record(
+				sink,
+				at,
+				at + text.length,
+				c.value_start,
+				c.value_end,
+				c.index,
+				Code.CODE_CONTENT
+			);
+	}
+	mo += text;
+	return 0;
+}
+
+/** render a single node at the current cursor position. */
+function render_node(c: Cursor, sink?: MapSink): void {
+	// as number, or the case labels narrow c.kind for the reads inside a case
+	switch (c.kind as number) {
+		case K.ROOT:
+			render_children(c, sink);
+			break;
+
+		case K.HEADING: {
+			const pre = mo.length;
+			// depths the parser never emits render as empty tags
+			const e = c.extra;
+			const d = e >= 1 && e <= 6 ? e : 0;
+			_open(c, H_TAG[d], H_OPEN[d], '>');
+			const ao = mo.length;
+			render_children(c, sink);
+			const bc = mo.length;
+			mo += H_CLOSE[d];
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.TEXT);
+			break;
+		}
+
+		case K.PARAGRAPH:
+			// pending paragraphs inside list_items are speculative tight-list
+			// wrappers, render their children transparently until the list
+			// closes (commit keeps the wrapper, revoke drops it).
+			if (c.pending && c.parent_kind === K.LIST_ITEM) {
+				render_children(c, sink);
+			} else {
+				const pre = mo.length;
+				_open(c, '<p', '<p>', '>');
+				const ao = mo.length;
+				render_children(c, sink);
+				const bc = mo.length;
+				mo += '</p>';
+				if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.TEXT);
+			}
+			break;
+
+		case K.EMPHASIS: {
+			const pre = mo.length;
+			_open(c, '<em', '<em>', '>');
+			const ao = mo.length;
+			render_children(c, sink);
+			const bc = mo.length;
+			mo += '</em>';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.TEXT);
+			break;
+		}
+
+		case K.STRONG: {
+			const pre = mo.length;
+			_open(c, '<strong', '<strong>', '>');
+			const ao = mo.length;
+			render_children(c, sink);
+			const bc = mo.length;
+			mo += '</strong>';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.TEXT);
+			break;
+		}
+
+		case K.CODE_SPAN: {
+			if (hl !== null) {
+				const h = hl_span(c);
+				if (h !== null) {
+					render_hl(c, sink, hl_span_head(c, h), h.body, hl_span_tail(h), null);
+					break;
+				}
+			}
+			const pre = mo.length;
+			_open(c, '<code', '<code>', '>');
+			const ao = mo.length;
+			let code = escape_span_text(c);
+			if (string_index_of.call(code, '\n') !== -1)
+				code = code.replace(/\n/g, ' ');
+			if (sink) content_record(sink, c, code, Code.CODE_CONTENT);
+			mo += code;
+			const bc = mo.length;
+			mo += '</code>';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.CODE);
+			break;
+		}
+
+		case K.CODE_FENCE: {
+			const info = fence_info(c, c.meta());
+			if (hl !== null) {
+				const b = hl_block(c, info);
+				if (b !== null) {
+					render_hl(c, sink, hl_head(c, b), b.body, hl_tail(b), b.live);
+					break;
+				}
+			}
+			const pre = mo.length;
+			if (info) {
+				mo += '<pre><code class="language-' + escape_info(info_lang(info));
+				_open(c, '"', '">', '>');
+			} else {
+				_open(c, '<pre><code', '<pre><code>', '>');
+			}
+			const ao = mo.length;
+			const text = escape_fence_text(c);
+			if (sink && !fence_lines(c, sink, mo.length, text, false))
+				content_record(sink, c, text, Code.CODE_CONTENT);
+			mo += text;
+			const bc = mo.length;
+			mo += '</code></pre>';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.CODE);
+			break;
+		}
+
+		case K.BLOCK_QUOTE: {
+			const pre = mo.length;
+			_open(c, '<blockquote', '<blockquote>\n', '>\n');
+			const ao = mo.length;
+			render_children(c, sink);
+			const bc = mo.length;
+			mo += '\n</blockquote>';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.TEXT);
+			break;
+		}
+
+		case K.LINK: {
+			const pre = mo.length;
+			const meta = c.meta();
+			let s = '<a';
+			if (meta?.href) s += url_attr(meta.href as string, false);
+			if (meta?.title)
+				s += ' title="' + escape_text_html(meta.title as string) + '"';
+			mo = mo + s + _attrs(c, LINK_HANDLED) + '>';
+			const ao = mo.length;
+			render_children(c, sink);
+			const bc = mo.length;
+			mo += '</a>';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.TEXT);
+			break;
+		}
+
+		case K.IMAGE: {
+			const pre = mo.length;
+			const meta = c.meta();
+			let s = img_head(meta?.src);
+			s += ' alt="' + escape_text_html(_children_raw(c)) + '"';
+			if (meta?.title)
+				s += ' title="' + escape_text_html(meta.title as string) + '"';
+			mo = mo + s + _attrs(c, IMAGE_HANDLED) + FOLD_STR[img_close];
+			// the syntax spans are empty, only the node is recorded
+			if (sink) put_record(sink, pre, mo.length, c.start, c.end, c.index, 0);
+			break;
+		}
+
+		case K.LIST: {
+			const pre = mo.length;
+			const meta = c.meta();
+			const ordered = !!meta?.ordered;
+			const start = meta?.start as number | undefined;
+			if (ordered && start != null && start !== 1) {
+				mo += '<ol start="' + String(start);
+				_open(c, '"', '">\n', '>\n');
+			} else if (ordered) {
+				_open(c, '<ol', '<ol>\n', '>\n');
+			} else {
+				_open(c, '<ul', '<ul>\n', '>\n');
+			}
+			const ao = mo.length;
+			render_children(c, sink);
+			const bc = mo.length;
+			mo += ordered ? '\n</ol>' : '\n</ul>';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.STRUCTURE);
+			break;
+		}
+
+		case K.LIST_ITEM: {
+			const pre = mo.length;
+			_open(c, '<li', '<li>', '>');
+			const ao = mo.length;
+			const checked = c.meta()?.checked;
+			if (typeof checked === 'boolean') render_task(c, sink, checked);
+			else render_children(c, sink);
+			const bc = mo.length;
+			mo += '</li>\n';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.TEXT);
+			break;
+		}
+
+		case K.THEMATIC_BREAK: {
+			const pre = mo.length;
+			mo += '<hr />';
+			// node and open syntax, the close syntax span is empty
+			if (sink && c.end !== Slot.NONE) {
+				const post = mo.length;
+				put_record(
+					sink,
+					pre,
+					post,
+					c.start,
+					c.end,
+					c.index,
+					Preset.STRUCTURE << 2
+				);
+				if (sink.syntax) {
+					const vs = c.value_start;
+					put_record(
+						sink,
+						pre,
+						post,
+						c.start,
+						c.value_end > vs ? vs : c.start,
+						c.index,
+						Code.STRUCTURE_OPEN
+					);
+				}
+			}
+			break;
+		}
+
+		case K.HARD_BREAK:
+			mo += '<br />\n';
+			break;
+
+		case K.SOFT_BREAK:
+			mo += '\n';
+			break;
+
+		case K.STRIKETHROUGH: {
+			const pre = mo.length;
+			_open(c, '<del', '<del>', '>');
+			const ao = mo.length;
+			render_children(c, sink);
+			const bc = mo.length;
+			mo += '</del>';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.TEXT);
+			break;
+		}
+
+		case K.SUPERSCRIPT: {
+			const pre = mo.length;
+			_open(c, '<sup', '<sup>', '>');
+			const ao = mo.length;
+			render_children(c, sink);
+			const bc = mo.length;
+			mo += '</sup>';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.TEXT);
+			break;
+		}
+
+		case K.SUBSCRIPT: {
+			const pre = mo.length;
+			_open(c, '<sub', '<sub>', '>');
+			const ao = mo.length;
+			render_children(c, sink);
+			const bc = mo.length;
+			mo += '</sub>';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.TEXT);
+			break;
+		}
+
+		case K.HTML: {
+			const pre = mo.length;
+			const meta = c.meta();
+			const tag = meta?.tag as string;
+			if (is_embed_script(c, tag)) {
+				mo += embed_html(c);
+				if (sink) {
+					put_record(
+						sink,
+						pre,
+						mo.length,
+						c.start,
+						c.end,
+						c.index,
+						Code.SVELTE_CONTENT
+					);
+				}
+				break;
+			}
+
+			// source passthrough: use exact source text to guarantee
+			// identity mapping. reconstruction can differ from the
+			// source (extra space before />, attribute escaping, quote
+			// style) which makes the mapping non-identity and breaks
+			// per-token precision in the PFM->Svelte->TS composition
+			// pipeline.
+			// falls back to reconstruction when source is unavailable
+			// (e.g. wire/streaming renderer with empty source).
+			const self_closing = !!meta?.self_closing;
+			const passthrough =
+				self_closing && !c.synthetic && c.end > c.start
+					? c.slice(c.start, c.end)
+					: '';
+			if (passthrough) {
+				mo += passthrough;
+			} else {
+				let s = '<' + meta_str(tag);
+				const html_attrs = meta?.attributes as
+					| Record<string, string | boolean>
+					| undefined;
+				if (html_attrs) {
+					const typed = !c.synthetic;
+					for (const k in html_attrs) {
+						const v = html_attrs[k];
+						if (v === true) {
+							s += ' ' + k;
+						} else if (
+							typeof v === 'object' &&
+							(v as any).type === 'expression'
+						) {
+							s += expr_attr(k, meta_str((v as any).value));
+						} else {
+							s += ' ' + k + '="' + escape_attr(v as string, typed) + '"';
+						}
+					}
+					if (meta!.repeated !== undefined)
+						s += repeated_attrs(meta!.repeated as [string, unknown][], typed);
+				}
+				mo += self_closing ? s + ' />' : s + '>';
+			}
+			if (self_closing) {
+				if (sink) {
+					put_record(
+						sink,
+						pre,
+						mo.length,
+						c.start,
+						c.end,
+						c.index,
+						Code.SVELTE_CONTENT
+					);
+				}
+			} else {
+				const ao = mo.length;
+				// raw text elements hold their content as the value range of the
+				// node, with no children, it is written as it is in the source
+				if (is_raw_text_tag(tag)) {
+					if (c.index === hoist_script) {
+						mo += '\n';
+						mo_imports(c, sink, false);
+					} else if (c.index === hoist_module) {
+						mo = mo + '\n' + module_code + '\n';
+					}
+					const text = c.text();
+					if (sink) content_record(sink, c, text, Code.SVELTE_CONTENT);
+					mo += text;
+				} else {
+					render_children(c, sink);
+				}
+				const bc = mo.length;
+				mo = mo + '</' + meta_str(tag) + '>';
+				if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.TEXT);
+			}
+			break;
+		}
+
+		case K.HTML_COMMENT: {
+			const pre = mo.length;
+			mo += '<!--';
+			const ao = mo.length;
+			const text = held_text(c);
+			if (sink) content_record(sink, c, text, Code.TEXT_CONTENT);
+			mo += text;
+			const bc = mo.length;
+			mo += '-->';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.TEXT);
+			break;
+		}
+
+		case K.MUSTACHE: {
+			const pre = mo.length;
+			mo += '{';
+			const ao = mo.length;
+			const text = c.text();
+			if (sink) content_record(sink, c, text, Code.SVELTE_CONTENT);
+			mo += text;
+			const bc = mo.length;
+			mo += '}';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.SVELTE);
+			break;
+		}
+
+		case K.SVELTE_TAG: {
+			const pre = mo.length;
+			const meta = c.meta();
+			const tag = meta?.tag as string;
+			const text = c.text();
+			mo = mo + '{@' + meta_str(tag);
+			if (text) mo += ' ';
+			const ao = mo.length;
+			if (text) {
+				if (sink) content_record(sink, c, text, Code.SVELTE_CONTENT);
+				mo += text;
+			}
+			const bc = mo.length;
+			mo += '}';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.SVELTE);
+			break;
+		}
+
+		case K.SVELTE_BLOCK: {
+			const pre = mo.length;
+			// render branches; each branch handles its own opening tag
+			const block_meta = c.meta();
+			const block_tag = meta_str(block_meta?.tag);
+			if (c.goto_first_child()) {
+				let is_first = true;
+				do {
+					if (c.kind === K.SVELTE_BRANCH) {
+						const branch_expr = c.text();
+						if (is_first) {
+							mo = mo + '{#' + block_tag;
+							is_first = false;
+						} else {
+							mo = mo + '{:' + meta_str(c.meta()?.tag);
+						}
+						if (branch_expr) {
+							mo += ' ';
+							if (sink)
+								content_record(sink, c, branch_expr, Code.SVELTE_CONTENT);
+							mo += branch_expr;
+						}
+						mo += '}\n';
+						render_children(c, sink);
+					} else if (c.kind !== K.LINE_BREAK) {
+						render_node(c, sink);
+					}
+				} while (c.goto_next_sibling());
+				c.goto_parent();
+			}
+			mo = mo + '{/' + block_tag + '}';
+			// node span for the whole block, use the block node (goto_parent already called)
+			if (sink) {
+				put_record(
+					sink,
+					pre,
+					mo.length,
+					c.start,
+					c.end,
+					c.index,
+					Code.SVELTE_NODE
+				);
+			}
+			break;
+		}
+
+		case K.TABLE: {
+			const pre = mo.length;
+			_open(c, '<table', '<table>\n', '>\n');
+			const ao = mo.length;
+			_table_content(c, sink);
+			const bc = mo.length;
+			mo += '\n</table>';
+			if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.STRUCTURE);
+			break;
+		}
+
+		case K.LINE_BREAK:
+			break;
+
+		case K.IMPORT_STATEMENT:
+			if (c.index === hoist_at) {
+				mo += hoist_open;
+				mo_imports(c, sink, false);
+				mo += '</script>';
+			}
+			break;
+
+		case K.FRONTMATTER:
+			if (module_code !== '') mo += module_script();
+			break;
+
+		default:
+			// a label renders only as the snippet of a replaced directive, a
+			// footnote definition in the section at the end and a link reference
+			// definition not at all
+			if (c.kind < K.DIRECTIVE_LABEL) render_children(c, sink);
+			else if (c.kind === K.FOOTNOTE_REFERENCE) {
+				const pre = mo.length;
+				mo += fn_reference(c);
+				if (sink) put_record(sink, pre, mo.length, c.start, c.end, c.index, 0);
+			}
+			break;
+	}
+}
+
+function _table_content(c: Cursor, sink?: MapSink): void {
+	const meta = c.meta();
+	const alignments = (meta?.alignments as string[]) ?? [];
+	const ext = ext_table(meta, alignments);
+	let in_body = false;
+
+	if (!c.goto_first_child()) return;
+	do {
+		if (c.kind === K.TABLE_HEADER) {
+			mo += '<thead>\n<tr>\n';
+			if (ext) _table_cells_ext(c, 'th', alignments, 0, ext_n, sink);
+			else _table_cells(c, 'th', alignments, sink);
+			mo += '</tr>\n</thead>\n';
+		} else if (c.kind === K.TABLE_ROW) {
+			if (!in_body) {
+				mo += '<tbody>\n';
+				in_body = true;
+			}
+			mo += '<tr>\n';
+			if (ext) _table_cells_ext(c, 'td', alignments, ext_l, ext_r, sink);
+			else _table_cells(c, 'td', alignments, sink);
+			mo += '</tr>\n';
+		}
+	} while (c.goto_next_sibling());
+	c.goto_parent();
+
+	if (in_body) mo += '</tbody>';
+}
+
+//  extended tables
+
+// plain tables never reach these walks so they keep the static opens
+
+// read by the cell walks of the table ext_table last saw, tables never nest
+/** body cells below this grid column are row headers */
+let ext_l = 0;
+/** body cells from this grid column on are row headers */
+let ext_r = 0;
+/** the grid width, header row cells are never row headers */
+let ext_n = 0;
+/** some cell carries a colspan or rowspan */
+let ext_spans = false;
+
+/** true when the table has header columns or spans, sets the ext_ registers */
+function ext_table(
+	meta: Record<string, unknown> | undefined,
+	alignments: string[]
+): boolean {
+	if (meta === undefined) return false;
+	const hc = meta.header_columns as number[] | undefined;
+	const spans = meta.spans === true;
+	if (hc === undefined && !spans) return false;
+	const n = (meta.col_count as number | undefined) ?? alignments.length;
+	ext_n = n;
+	ext_l = hc === undefined ? 0 : hc[0];
+	ext_r = hc === undefined ? n : n - hc[1];
+	ext_spans = spans;
+	return true;
+}
+
+/** align, colspan then rowspan of the cell at grid column col */
+function ext_attrs(c: Cursor, col: number, alignments: string[]): string {
+	const align = alignments[col];
+	let s = align && align !== 'none' ? ' align="' + align + '"' : '';
+	if (ext_spans) {
+		// only a merged cell carries metadata
+		const m = c.meta();
+		if (m !== undefined) {
+			if (m.colspan !== undefined) s += ' colspan="' + m.colspan + '"';
+			if (m.rowspan !== undefined) s += ' rowspan="' + m.rowspan + '"';
+		}
+	}
+	return s;
+}
+
+/** _table_cells for an extended table, l and r bound the row header columns */
+function _table_cells_ext(
+	c: Cursor,
+	tag: string,
+	alignments: string[],
+	l: number,
+	r: number,
+	sink?: MapSink
+): void {
+	if (!c.goto_first_child()) return;
+	do {
+		if (c.kind === K.TABLE_CELL) {
+			const col = c.extra;
+			const head = col < l || col >= r;
+			const a = ext_attrs(c, col, alignments);
+			mo += head ? '<th scope="row"' + a + '>' : '<' + tag + a + '>';
+			render_children(c, sink);
+			mo += head || tag === 'th' ? '</th>\n' : '</td>\n';
+		}
+	} while (c.goto_next_sibling());
+	c.goto_parent();
+}
+
+/** open tags for none, left, center and right */
+function _cell_opens(tag: string): string[] {
+	return [
+		`<${tag}>`,
+		`<${tag} align="left">`,
+		`<${tag} align="center">`,
+		`<${tag} align="right">`,
+	];
+}
+const TH_OPEN = _cell_opens('th');
+const TD_OPEN = _cell_opens('td');
+
+function _table_cells(
+	c: Cursor,
+	tag: string,
+	alignments: string[],
+	sink?: MapSink
+): void {
+	const opens = tag === 'th' ? TH_OPEN : TD_OPEN;
+	const close = tag === 'th' ? '</th>\n' : '</td>\n';
+	let col = 0;
+	if (!c.goto_first_child()) return;
+	do {
+		if (c.kind === K.TABLE_CELL) {
+			const align = alignments[col];
+			// the parser only emits these four values, others are built at runtime
+			if (align === 'left') mo += opens[1];
+			else if (align === 'center') mo += opens[2];
+			else if (align === 'right') mo += opens[3];
+			else if (align && align !== 'none') mo += `<${tag} align="${align}">`;
+			else mo += opens[0];
+			render_children(c, sink);
+			mo += close;
+			col++;
+		}
+	} while (c.goto_next_sibling());
+	c.goto_parent();
+}
+
+//  static chunk fold
+
+// the final join costs about the same per chunk whatever its length, and a
+// third of chunks are a static right after a static, so the unmapped render
+// holds the last static id in a one slot register and folds pairs through a
+// table of precomputed flat composites, allocating nothing once warm where a
+// runtime concat would build a cons string for join to walk
+// the mapped render records spans around almost every static so it does not fold
+
+/** base literals then composites, id 0 is the empty register */
+const FOLD_STR: string[] = [''];
+const FOLD_IDS = new Map<string, number>();
+/** length of each FOLD_STR entry, so the trace render reads a position without a string load */
+const FOLD_LEN = new Uint16Array(1024);
+
+function fold_base(s: string): number {
+	let id = FOLD_IDS.get(s);
+	if (id === undefined) {
+		id = FOLD_STR.length;
+		FOLD_STR.push(s);
+		FOLD_IDS.set(s, id);
+		FOLD_LEN[id] = s.length;
+	}
+	return id;
+}
+
+//  base literals
+
+const S_SPACE = fold_base(' ');
+const S_ATTR_EQ = fold_base('="');
+const S_QUOTE = fold_base('"');
+const S_EXPR_EQ = fold_base('={');
+const S_BRACE_CLOSE = fold_base('}');
+const S_GT = fold_base('>');
+const S_GT_LF = fold_base('>\n');
+const S_QUOTE_GT = fold_base('">');
+const S_QUOTE_GT_LF = fold_base('">\n');
+const S_LF = fold_base('\n');
+const S_LT = fold_base('<');
+const S_CODE = fold_base('<code');
+const S_CODE_OPEN = fold_base('<code>');
+const S_CODE_CLOSE = fold_base('</code>');
+const S_PRE_CODE_LANG = fold_base('<pre><code class="language-');
+const S_PRE_CODE = fold_base('<pre><code');
+const S_PRE_CODE_OPEN = fold_base('<pre><code>');
+const S_PRE_CODE_CLOSE = fold_base('</code></pre>');
+const S_A = fold_base('<a');
+const S_HREF = fold_base(' href="');
+const S_TITLE = fold_base(' title="');
+const S_A_CLOSE = fold_base('</a>');
+const S_IMG = fold_base('<img');
+const S_SRC = fold_base(' src="');
+const S_ALT = fold_base(' alt="');
+const S_SELF_CLOSE = fold_base(' />');
+const S_PICTURE_CLOSE = fold_base(' /></picture>');
+const S_OL_START = fold_base('<ol start="');
+const S_OL = fold_base('<ol');
+const S_OL_OPEN = fold_base('<ol>\n');
+const S_OL_CLOSE = fold_base('\n</ol>');
+const S_UL = fold_base('<ul');
+const S_UL_OPEN = fold_base('<ul>\n');
+const S_UL_CLOSE = fold_base('\n</ul>');
+const S_HR = fold_base('<hr />');
+const S_BR = fold_base('<br />\n');
+const S_END_TAG = fold_base('</');
+const S_COMMENT_OPEN = fold_base('<!--');
+const S_COMMENT_CLOSE = fold_base('-->');
+const S_BRACE_OPEN = fold_base('{');
+const S_AT_OPEN = fold_base('{@');
+const S_BLOCK_OPEN = fold_base('{#');
+const S_BRANCH_OPEN = fold_base('{:');
+const S_BLOCK_CLOSE = fold_base('{/');
+const S_BRACE_CLOSE_LF = fold_base('}\n');
+const S_TABLE = fold_base('<table');
+const S_TABLE_OPEN = fold_base('<table>\n');
+const S_TABLE_CLOSE = fold_base('\n</table>');
+const S_THEAD_OPEN = fold_base('<thead>\n<tr>\n');
+const S_THEAD_CLOSE = fold_base('</tr>\n</thead>\n');
+const S_TBODY_OPEN = fold_base('<tbody>\n');
+const S_TBODY_CLOSE = fold_base('</tbody>');
+const S_TR_OPEN = fold_base('<tr>\n');
+const S_TR_CLOSE = fold_base('</tr>\n');
+const S_TH_CLOSE = fold_base('</th>\n');
+const S_TD_CLOSE = fold_base('</td>\n');
+const S_P = fold_base('<p');
+const S_P_OPEN = fold_base('<p>');
+const S_P_CLOSE = fold_base('</p>');
+const S_LI = fold_base('<li');
+const S_LI_OPEN = fold_base('<li>');
+const S_LI_CLOSE = fold_base('</li>\n');
+const S_TASK_OFF = fold_base(TASK_OFF);
+const S_TASK_ON = fold_base(TASK_ON);
+
+/** indexed by alignment none, left, center, right */
+function fold_cell_opens(tag: string): Uint8Array {
+	return Uint8Array.of(
+		fold_base(`<${tag}>`),
+		fold_base(`<${tag} align="left">`),
+		fold_base(`<${tag} align="center">`),
+		fold_base(`<${tag} align="right">`)
+	);
+}
+const TH_OPEN_ID = fold_cell_opens('th');
+const TD_OPEN_ID = fold_cell_opens('td');
+
+// rows are node kinds, headings use ROW_HEADING plus depth, and ROW_HEADING
+// alone covers depths the parser never emits, which render as empty tags
+const WRAP_ROWS = 48;
+const ROW_HEADING = 40;
+const WRAP_HEAD = new Uint8Array(WRAP_ROWS);
+const WRAP_FOLDED = new Uint8Array(WRAP_ROWS);
+const WRAP_END = new Uint8Array(WRAP_ROWS);
+const WRAP_CLOSE = new Uint8Array(WRAP_ROWS);
+
+function wrap_row(
+	row: number,
+	head: string,
+	folded: string,
+	end: string,
+	close: string
+): void {
+	WRAP_HEAD[row] = fold_base(head);
+	WRAP_FOLDED[row] = fold_base(folded);
+	WRAP_END[row] = fold_base(end);
+	WRAP_CLOSE[row] = fold_base(close);
+}
+
+wrap_row(K.PARAGRAPH, '<p', '<p>', '>', '</p>');
+wrap_row(K.EMPHASIS, '<em', '<em>', '>', '</em>');
+wrap_row(K.STRONG, '<strong', '<strong>', '>', '</strong>');
+wrap_row(K.STRIKETHROUGH, '<del', '<del>', '>', '</del>');
+wrap_row(K.SUPERSCRIPT, '<sup', '<sup>', '>', '</sup>');
+wrap_row(K.SUBSCRIPT, '<sub', '<sub>', '>', '</sub>');
+wrap_row(
+	K.BLOCK_QUOTE,
+	'<blockquote',
+	'<blockquote>\n',
+	'>\n',
+	'\n</blockquote>'
+);
+wrap_row(ROW_HEADING, '', '', '>', '');
+for (let depth = 1; depth <= 6; depth++) {
+	wrap_row(
+		ROW_HEADING + depth,
+		`<h${depth}`,
+		`<h${depth}>`,
+		'>',
+		`</h${depth}>`
+	);
+}
+
+//  fold register
+
+// the register is passed and returned rather than kept in module state so
+// turbofan keeps it in a machine register, 0 is empty, else a pending static id
+
+// caps bound the composite table, past either the pending static is pushed as is
+const FOLD_BASE = FOLD_STR.length;
+const FOLD_MAX_IDS = 1024;
+const FOLD_MAX_LEN = 128;
+// pair keys shift the pending id by 7 bits, so base ids must stay below 128
+if (FOLD_BASE > 128) throw new Error('too many static literals');
+// FOLD_LEN is declared before the cap, it must cover every id
+if (FOLD_LEN.length < FOLD_MAX_IDS)
+	throw new Error('FOLD_LEN smaller than the fold table');
+
+/** composite id per pair key, 0 when not built yet */
+const FOLD_PAIR = new Uint16Array(FOLD_MAX_IDS << 7);
+
+// a cons append is cheaper than an array push and one flatten beats a join
+let fold_out = '';
+// a char load flattens a cons string in place, a store to a typed array is
+// observable so neither the minifier nor turbofan drops the load
+const flat_sink = new Uint16Array(1);
+
+/** fold a static into the register, returns the new register */
+function push_static(p: number, id: number): number {
+	if (p === 0) return id;
+	const v = FOLD_PAIR[(p << 7) | id];
+	return v !== 0 ? v : fold_miss(p, id);
+}
+
+/** flushes any pending static first, returns the empty register */
+function push_dyn(p: number, s: string): number {
+	if (p !== 0) fold_out += FOLD_STR[p];
+	fold_out += s;
+	return 0;
+}
+
+/** build the composite for a new pair, or push the pending static past the caps */
+function fold_miss(p: number, id: number): number {
+	const a = FOLD_STR[p];
+	const b = FOLD_STR[id];
+	// a full table would build, internalize and hash the composite on every later miss
+	if (a.length + b.length > FOLD_MAX_LEN || FOLD_STR.length >= FOLD_MAX_IDS) {
+		fold_out += a;
+		return id;
+	}
+	// flatten and internalize so join copies one sequential string
+	const s = Object.keys({ [a + b]: 0 })[0];
+	let v = FOLD_IDS.get(s);
+	if (v === undefined) {
+		v = FOLD_STR.length;
+		FOLD_STR.push(s);
+		FOLD_IDS.set(s, v);
+		FOLD_LEN[v] = s.length;
+	}
+	FOLD_PAIR[(p << 7) | id] = v;
+	return v;
+}
+
+//  folding renderer, the unmapped twin of _node and _children
+
+/** true when _attrs would emit anything */
+function has_attrs(meta: Record<string, unknown>): boolean {
+	for (const key in meta) {
+		if (INTERNAL_KEYS.has(key)) continue;
+		const val = meta[key];
+		if (val !== false && val != null) return true;
+	}
+	return false;
+}
+
+/** fold twin of _attrs */
+function fold_attrs(
+	meta: Record<string, unknown> | undefined,
+	p: number,
+	skip?: Set<string>
+): number {
+	if (!meta) return p;
+	for (const key in meta) {
+		if (INTERNAL_KEYS.has(key)) continue;
+		if (skip !== undefined && skip.has(key)) continue;
+		const val = meta[key];
+		if (val === true) {
+			p = push_static(p, S_SPACE);
+			p = push_dyn(p, key);
+		} else if (val !== false && val != null) {
+			p = push_static(p, S_SPACE);
+			p = push_dyn(p, key);
+			if (typeof val === 'object' && (val as any).type === 'expression') {
+				p = push_static(p, S_EXPR_EQ);
+				p = push_dyn(p, (val as any).value);
+				p = push_static(p, S_BRACE_CLOSE);
+			} else {
+				p = push_static(p, S_ATTR_EQ);
+				p = push_dyn(p, escape(String(val)));
+				p = push_static(p, S_QUOTE);
+			}
+		}
+	}
+	return p;
+}
+
+/** fold twin of _open, taking static ids */
+function fold_open(
+	c: Cursor,
+	p: number,
+	head: number,
+	folded: number,
+	end: number
+): number {
+	const meta = c.meta();
+	if (!meta || !has_attrs(meta)) return push_static(p, folded);
+	p = push_static(p, head);
+	p = fold_attrs(meta, p);
+	return push_static(p, end);
+}
+
+// text and line breaks, over half of all nodes, are read without moving the cursor
+function fold_children(c: Cursor, p: number): number {
+	const n = c.words;
+	let child = n[c.index * W.stride + W.first_child];
+	if (child === Slot.NONE) return p;
+	// siblings share the parent word of the first child, as goto_next_sibling checks
+	const parent = n[child * W.stride + W.parent];
+	for (;;) {
+		const b = child * W.stride;
+		const k = n[b] & 0xff;
+		let next = n[b + W.next];
+		if (k === K.TEXT) {
+			const first = child;
+			let ve = n[b + W.value_end];
+			// a text sibling or soft break that continues this value in the source
+			// renders as one slice with it, one rope piece instead of two or three
+			if (next !== Slot.NONE && !esc_prebuilt) {
+				const nk = n[next * W.stride] & 0xff;
+				if (nk === K.TEXT || nk === K.SOFT_BREAK) {
+					child = text_run_last(n, child, parent, c.source);
+					const lb = child * W.stride;
+					ve = n[lb + W.value_end];
+					next = n[lb + W.next];
+				}
+			}
+			p = push_dyn(
+				p,
+				escape_text_at(c, first, n[b + W.value_start], ve, false)
+			);
+		} else if (k !== K.LINE_BREAK) {
+			// line breaks render nothing, a fifth of visited nodes skip the call
+			c.move_to(child);
+			p = fold_node(c, p);
+		}
+		if (next === Slot.NONE || n[next * W.stride + W.parent] !== parent) break;
+		child = next;
+	}
+	c.move_to(parent !== Slot.NONE ? parent : child);
+	return p;
+}
+
+/**
+ * the last text of a run from first whose output is the source slice, each text
+ * continues the previous value and each soft break is the source newline
+ */
+function text_run_last(
+	n: Uint32Array,
+	first: number,
+	parent: number,
+	src: string
+): number {
+	let last = first;
+	let b = first * W.stride;
+	let ve = n[b + W.value_end];
+	if (ve === Slot.NONE || ve < n[b + W.value_start]) return first;
+	for (;;) {
+		let next = n[b + W.next];
+		if (next === Slot.NONE) return last;
+		let nb = next * W.stride;
+		if (n[nb + W.parent] !== parent) return last;
+		let k = n[nb] & 0xff;
+		if (k === K.SOFT_BREAK) {
+			const s = n[nb + W.start];
+			if (s !== ve || n[nb + W.end] !== s + 1 || src.charCodeAt(s) !== 10)
+				return last;
+			next = n[nb + W.next];
+			if (next === Slot.NONE) return last;
+			nb = next * W.stride;
+			if (n[nb + W.parent] !== parent) return last;
+			k = n[nb] & 0xff;
+			if (k !== K.TEXT || n[nb + W.value_start] !== s + 1) return last;
+		} else if (k !== K.TEXT || n[nb + W.value_start] !== ve) {
+			return last;
+		}
+		const e = n[nb + W.value_end];
+		if (e === Slot.NONE || e < n[nb + W.value_start]) return last;
+		last = next;
+		b = nb;
+		ve = e;
+	}
+}
+
+function fold_node(c: Cursor, p: number): number {
+	if (has_components) {
+		const ref = comp_ref(c);
+		if (ref !== null) return comp_node(c, undefined, p, ref);
+	}
+	let row = c.kind;
+	switch (row) {
+		case K.ROOT:
+			return fold_children(c, p);
+
+		case K.PARAGRAPH:
+			// pending paragraphs inside list_items are speculative tight-list
+			// wrappers, render their children transparently until the list
+			// closes (commit keeps the wrapper, revoke drops it).
+			if (c.pending && c.parent_kind === K.LIST_ITEM) {
+				return fold_children(c, p);
+			}
+		// falls through
+		case K.HEADING:
+		case K.EMPHASIS:
+		case K.STRONG:
+		case K.BLOCK_QUOTE:
+		case K.STRIKETHROUGH:
+		case K.SUPERSCRIPT:
+		case K.SUBSCRIPT: {
+			if (row === K.HEADING) {
+				const depth = c.extra;
+				row = depth >= 1 && depth <= 6 ? ROW_HEADING + depth : ROW_HEADING;
+			}
+			p = fold_open(c, p, WRAP_HEAD[row], WRAP_FOLDED[row], WRAP_END[row]);
+			p = fold_children(c, p);
+			return push_static(p, WRAP_CLOSE[row]);
+		}
+
+		case K.LIST_ITEM: {
+			const meta = c.meta();
+			if (meta === undefined) p = push_static(p, S_LI_OPEN);
+			else {
+				p = fold_open(c, p, S_LI, S_LI_OPEN, S_GT);
+				if (typeof meta.checked === 'boolean')
+					return fold_task(c, p, meta.checked);
+			}
+			p = fold_children(c, p);
+			return push_static(p, S_LI_CLOSE);
+		}
+
+		case K.CODE_SPAN: {
+			if (hl !== null) {
+				const h = hl_span(c);
+				if (h !== null)
+					return fold_hl(p, hl_span_head(c, h), h.body, hl_span_tail(h));
+			}
+			p = fold_open(c, p, S_CODE, S_CODE_OPEN, S_GT);
+			const code = escape_span_text(c);
+			p = push_dyn(
+				p,
+				code.indexOf('\n') === -1 ? code : code.replace(/\n/g, ' ')
+			);
+			return push_static(p, S_CODE_CLOSE);
+		}
+
+		case K.CODE_FENCE:
+			return fold_code_fence(c, p);
+
+		case K.LINK:
+			return fold_link(c, p);
+
+		case K.IMAGE:
+			return fold_image(c, p);
+
+		case K.LIST:
+			return fold_list(c, p);
+
+		case K.THEMATIC_BREAK:
+			return push_static(p, S_HR);
+
+		case K.HARD_BREAK:
+			return push_static(p, S_BR);
+
+		case K.SOFT_BREAK:
+			return push_static(p, S_LF);
+
+		case K.HTML:
+			return fold_html(c, p);
+
+		case K.HTML_COMMENT:
+			p = push_static(p, S_COMMENT_OPEN);
+			p = push_dyn(p, held_text(c));
+			return push_static(p, S_COMMENT_CLOSE);
+
+		case K.MUSTACHE:
+			p = push_static(p, S_BRACE_OPEN);
+			p = push_dyn(p, c.text());
+			return push_static(p, S_BRACE_CLOSE);
+
+		case K.SVELTE_TAG:
+			return fold_svelte_tag(c, p);
+
+		case K.SVELTE_BLOCK:
+			return fold_svelte_block(c, p);
+
+		case K.TABLE:
+			p = fold_open(c, p, S_TABLE, S_TABLE_OPEN, S_GT_LF);
+			p = fold_table_content(c, p);
+			return push_static(p, S_TABLE_CLOSE);
+
+		case K.LINE_BREAK:
+			return p;
+
+		// only a root child renders alone, its parent renders text in fold_children
+		case K.TEXT:
+			return push_dyn(
+				p,
+				escape_text_at(c, c.index, c.value_start, c.value_end, false)
+			);
+
+		case K.IMPORT_STATEMENT:
+			if (c.index !== hoist_at) return p;
+			return push_dyn(p, hoist_open + import_lines(c) + '</script>');
+
+		case K.FRONTMATTER:
+			if (module_code === '') return p;
+			return push_dyn(p, module_script());
+
+		default:
+			// a label renders only as the snippet of a replaced directive, a
+			// footnote definition in the section at the end and a link reference
+			// definition not at all
+			if (c.kind >= K.DIRECTIVE_LABEL)
+				return c.kind === K.FOOTNOTE_REFERENCE
+					? push_dyn(p, fn_reference(c))
+					: p;
+			// a replaced directive never gets here, see comp_ref
+			if (dir_strict) dir_check(c);
+			return fold_children(c, p);
+	}
+}
+
+/** render_task for the fold walk, after the open tag */
+function fold_task(c: Cursor, p: number, on: boolean): number {
+	const box = on ? S_TASK_ON : S_TASK_OFF;
+	const para = task_para(c);
+	if (para === Slot.NONE) {
+		p = push_static(p, box);
+		p = fold_children(c, p);
+		return push_static(p, S_LI_CLOSE);
+	}
+	const n = c.words;
+	const item = c.index;
+	c.move_to(para);
+	if (has_components && comp_ref(c) !== null) {
+		task_at = para;
+		task_box = FOLD_STR[box];
+		p = fold_node(c, p);
+		task_at = -1;
+	} else {
+		p = fold_open(c, p, S_P, S_P_OPEN, S_GT);
+		p = push_static(p, box);
+		p = fold_children(c, p);
+		p = push_static(p, S_P_CLOSE);
+	}
+	let next = n[para * W.stride + W.next];
+	while (next !== Slot.NONE && n[next * W.stride + W.parent] === item) {
+		const after = n[next * W.stride + W.next];
+		c.move_to(next);
+		p = fold_node(c, p);
+		next = after;
+	}
+	c.move_to(item);
+	return push_static(p, S_LI_CLOSE);
+}
+
+function fold_code_fence(c: Cursor, p: number): number {
+	const info = fence_info(c, c.meta());
+	if (hl !== null) {
+		const b = hl_block(c, info);
+		if (b !== null) return fold_hl(p, hl_head(c, b), b.body, hl_tail(b));
+	}
+	if (info) {
+		p = push_static(p, S_PRE_CODE_LANG);
+		p = push_dyn(p, escape_info(info_lang(info)));
+		p = fold_open(c, p, S_QUOTE, S_QUOTE_GT, S_GT);
+	} else {
+		p = fold_open(c, p, S_PRE_CODE, S_PRE_CODE_OPEN, S_GT);
+	}
+	p = push_dyn(p, escape_fence_text(c));
+	return push_static(p, S_PRE_CODE_CLOSE);
+}
+
+function fold_link(c: Cursor, p: number): number {
+	const meta = c.meta();
+	p = push_static(p, S_A);
+	if (meta?.href) p = fold_url(p, meta.href as string, false);
+	if (meta?.title) {
+		p = push_static(p, S_TITLE);
+		p = push_dyn(p, escape_text_html(meta.title as string));
+		p = push_static(p, S_QUOTE);
+	}
+	p = fold_attrs(meta, p, LINK_HANDLED);
+	p = push_static(p, S_GT);
+	p = fold_children(c, p);
+	return push_static(p, S_A_CLOSE);
+}
+
+function fold_image(c: Cursor, p: number): number {
+	const meta = c.meta();
+	let close = S_SELF_CLOSE;
+	if (ul === null) {
+		p = push_static(p, S_IMG);
+		if (meta?.src) p = fold_url(p, meta.src as string, true);
+	} else {
+		p = push_dyn(p, img_head(meta?.src));
+		close = img_close;
+	}
+	p = push_static(p, S_ALT);
+	p = push_dyn(p, escape_text_html(_children_raw(c)));
+	p = push_static(p, S_QUOTE);
+	if (meta?.title) {
+		p = push_static(p, S_TITLE);
+		p = push_dyn(p, escape_text_html(meta.title as string));
+		p = push_static(p, S_QUOTE);
+	}
+	p = fold_attrs(meta, p, IMAGE_HANDLED);
+	return push_static(p, close);
+}
+
+function fold_list(c: Cursor, p: number): number {
+	const meta = c.meta();
+	const ordered = !!meta?.ordered;
+	const start = meta?.start as number | undefined;
+	if (ordered && start != null && start !== 1) {
+		p = push_static(p, S_OL_START);
+		p = push_dyn(p, String(start));
+		p = fold_open(c, p, S_QUOTE, S_QUOTE_GT_LF, S_GT_LF);
+	} else if (ordered) {
+		p = fold_open(c, p, S_OL, S_OL_OPEN, S_GT_LF);
+	} else {
+		p = fold_open(c, p, S_UL, S_UL_OPEN, S_GT_LF);
+	}
+	p = fold_children(c, p);
+	return push_static(p, ordered ? S_OL_CLOSE : S_UL_CLOSE);
+}
+
+function fold_html_attrs(
+	html_attrs: Record<string, string | boolean>,
+	typed: boolean,
+	p: number
+): number {
+	for (const k in html_attrs) {
+		const v = html_attrs[k];
+		if (bare_expr(k, v)) {
+			p = push_dyn(p, ' {' + k + '}');
+			continue;
+		}
+		p = push_static(p, S_SPACE);
+		p = push_dyn(p, k);
+		if (v === true) continue;
+		if (typeof v === 'object' && (v as any).type === 'expression') {
+			p = push_static(p, S_EXPR_EQ);
+			p = push_dyn(p, (v as any).value);
+			p = push_static(p, S_BRACE_CLOSE);
+		} else {
+			p = push_static(p, S_ATTR_EQ);
+			p = push_dyn(p, escape_attr(v as string, typed));
+			p = push_static(p, S_QUOTE);
+		}
+	}
+	return p;
+}
+
+function fold_html(c: Cursor, p: number): number {
+	const meta = c.meta();
+	const tag = meta?.tag as string;
+	if (is_embed_script(c, tag)) return push_dyn(p, embed_html(c));
+	// an unread tag written as fold writes it is its own attribute text
+	const spans = c.synthetic ? undefined : unread_spans(meta);
+	const text =
+		spans !== undefined && spans.canonical ? spans_text(spans) : undefined;
+	const html_attrs =
+		text === undefined
+			? (meta?.attributes as Record<string, string | boolean> | undefined)
+			: undefined;
+
+	if (meta?.self_closing) {
+		// source passthrough as in _node, decided before any push because a
+		// pending register cannot be truncated back
+		const passthrough =
+			!c.synthetic && c.end > c.start ? c.slice(c.start, c.end) : '';
+		if (passthrough) return push_dyn(p, passthrough);
+		p = push_static(p, S_LT);
+		p = push_dyn(p, tag);
+		if (text !== undefined) p = push_dyn(p, text);
+		else if (html_attrs) p = fold_html_attrs(html_attrs, !c.synthetic, p);
+		return push_static(p, S_SELF_CLOSE);
+	}
+
+	p = push_static(p, S_LT);
+	p = push_dyn(p, tag);
+	if (text !== undefined) p = push_dyn(p, text);
+	else if (html_attrs) {
+		p = fold_html_attrs(html_attrs, !c.synthetic, p);
+		if (meta!.repeated !== undefined)
+			p = push_dyn(
+				p,
+				repeated_attrs(meta!.repeated as [string, unknown][], !c.synthetic)
+			);
+	}
+	p = push_static(p, S_GT);
+	// raw text elements keep their content as the node value range, see _node
+	if (is_raw_text_tag(tag)) {
+		if (c.index === hoist_script) p = push_dyn(p, '\n' + import_lines(c));
+		else if (c.index === hoist_module)
+			p = push_dyn(p, '\n' + module_code + '\n');
+		p = push_dyn(p, c.text());
+	} else {
+		p = fold_children(c, p);
+	}
+	p = push_static(p, S_END_TAG);
+	p = push_dyn(p, tag);
+	return push_static(p, S_GT);
+}
+
+function fold_svelte_tag(c: Cursor, p: number): number {
+	const meta = c.meta();
+	const tag = meta?.tag as string;
+	const text = c.text();
+	p = push_static(p, S_AT_OPEN);
+	p = push_dyn(p, tag);
+	if (text) {
+		p = push_static(p, S_SPACE);
+		p = push_dyn(p, text);
+	}
+	return push_static(p, S_BRACE_CLOSE);
+}
+
+function fold_svelte_block(c: Cursor, p: number): number {
+	// render branches; each branch handles its own opening tag
+	const block_meta = c.meta();
+	const block_tag = block_meta?.tag as string;
+	if (c.goto_first_child()) {
+		let is_first = true;
+		do {
+			if (c.kind === K.SVELTE_BRANCH) {
+				const branch_expr = c.text();
+				if (is_first) {
+					p = push_static(p, S_BLOCK_OPEN);
+					p = push_dyn(p, block_tag);
+					is_first = false;
+				} else {
+					const branch_meta = c.meta();
+					p = push_static(p, S_BRANCH_OPEN);
+					p = push_dyn(p, branch_meta?.tag as string);
+				}
+				if (branch_expr) {
+					p = push_static(p, S_SPACE);
+					p = push_dyn(p, branch_expr);
+				}
+				p = push_static(p, S_BRACE_CLOSE_LF);
+				p = fold_children(c, p);
+			} else if (c.kind !== K.LINE_BREAK) {
+				p = fold_node(c, p);
+			}
+		} while (c.goto_next_sibling());
+		c.goto_parent();
+	}
+	p = push_static(p, S_BLOCK_CLOSE);
+	p = push_dyn(p, block_tag);
+	return push_static(p, S_BRACE_CLOSE);
+}
+
+function fold_table_content(c: Cursor, p: number): number {
+	if (comp_table) return cm_table(c, undefined, p);
+	const meta = c.meta();
+	const alignments = (meta?.alignments as string[]) ?? [];
+	const ext = ext_table(meta, alignments);
+	let in_body = false;
+
+	if (!c.goto_first_child()) return p;
+	do {
+		if (c.kind === K.TABLE_HEADER) {
+			p = push_static(p, S_THEAD_OPEN);
+			p = ext
+				? fold_table_cells_ext(c, 'th', alignments, 0, ext_n, p)
+				: fold_table_cells(c, TH_OPEN_ID, S_TH_CLOSE, 'th', alignments, p);
+			p = push_static(p, S_THEAD_CLOSE);
+		} else if (c.kind === K.TABLE_ROW) {
+			if (!in_body) {
+				p = push_static(p, S_TBODY_OPEN);
+				in_body = true;
+			}
+			p = push_static(p, S_TR_OPEN);
+			p = ext
+				? fold_table_cells_ext(c, 'td', alignments, ext_l, ext_r, p)
+				: fold_table_cells(c, TD_OPEN_ID, S_TD_CLOSE, 'td', alignments, p);
+			p = push_static(p, S_TR_CLOSE);
+		}
+	} while (c.goto_next_sibling());
+	c.goto_parent();
+
+	if (in_body) p = push_static(p, S_TBODY_CLOSE);
+	return p;
+}
+
+function fold_table_cells(
+	c: Cursor,
+	opens: Uint8Array,
+	close: number,
+	tag: string,
+	alignments: string[],
+	p: number
+): number {
+	let col = 0;
+	if (!c.goto_first_child()) return p;
+	do {
+		if (c.kind === K.TABLE_CELL) {
+			const align = alignments[col];
+			// the parser only emits these four values, others are built at runtime
+			if (align === 'left') p = push_static(p, opens[1]);
+			else if (align === 'center') p = push_static(p, opens[2]);
+			else if (align === 'right') p = push_static(p, opens[3]);
+			else if (align && align !== 'none')
+				p = push_dyn(p, `<${tag} align="${align}">`);
+			else p = push_static(p, opens[0]);
+			p = fold_children(c, p);
+			p = push_static(p, close);
+			col++;
+		}
+	} while (c.goto_next_sibling());
+	c.goto_parent();
+	return p;
+}
+
+/** fold_table_cells for an extended table, as _table_cells_ext */
+function fold_table_cells_ext(
+	c: Cursor,
+	tag: string,
+	alignments: string[],
+	l: number,
+	r: number,
+	p: number
+): number {
+	if (!c.goto_first_child()) return p;
+	do {
+		if (c.kind === K.TABLE_CELL) {
+			const col = c.extra;
+			const head = col < l || col >= r;
+			const a = ext_attrs(c, col, alignments);
+			p = push_dyn(p, head ? '<th scope="row"' + a + '>' : '<' + tag + a + '>');
+			p = fold_children(c, p);
+			p = push_static(p, head || tag === 'th' ? S_TH_CLOSE : S_TD_CLOSE);
+		}
+	} while (c.goto_next_sibling());
+	c.goto_parent();
+	return p;
+}
+
+//  trace renderer, the mapped render without syntax records
+
+// update_trace and update_v3 drop syntax records, so a node records only its
+// whole span and text its content span, output must equal the mapped render
+// a position is mo.length + FOLD_LEN[p]
+
+// a trace record is generated offset, source offset and identity run length,
+// 1 for a point, all the v3 encoding reads of a span
+
+/** the start of a node span */
+function tr_point(sink: MapSink, gen: number, src: number): void {
+	if (src !== Slot.NONE) {
+		let rec = sink.rec;
+		const p = sink.n;
+		if (p + Trace.SIZE > rec.length) rec = sink.grow();
+		rec[p] = gen;
+		rec[p + 1] = src;
+		rec[p + 2] = 1;
+		sink.n = p + Trace.SIZE;
+	}
+}
+
+/** the point of a node, a node a parse plugin added has no end and no point */
+function tr_at(sink: MapSink, gen: number, c: Cursor): void {
+	if (c.end !== Slot.NONE) tr_point(sink, gen, c.start);
+}
+
+/** a content span, a run when it copies the source, empty spans map nothing */
+function tr_run(
+	sink: MapSink,
+	gen_start: number,
+	gen_end: number,
+	src_start: number,
+	src_end: number
+): void {
+	if (src_start !== Slot.NONE) {
+		const src_len = src_end > src_start ? src_end - src_start : 0;
+		let len = 1;
+		if (gen_end - gen_start === src_len) {
+			if (src_len === 0) return;
+			len = src_len;
+		}
+		let rec = sink.rec;
+		const p = sink.n;
+		if (p + Trace.SIZE > rec.length) rec = sink.grow();
+		rec[p] = gen_start;
+		rec[p + 1] = src_start;
+		rec[p + 2] = len;
+		sink.n = p + Trace.SIZE;
+	}
+}
+
+/** push_static appending to mo */
+function tr_push(p: number, id: number): number {
+	if (p === 0) return id;
+	const v = FOLD_PAIR[(p << 7) | id];
+	return v !== 0 ? v : tr_miss(p, id);
+}
+
+/** fold_miss appending to mo */
+function tr_miss(p: number, id: number): number {
+	const a = FOLD_STR[p];
+	const b = FOLD_STR[id];
+	if (a.length + b.length > FOLD_MAX_LEN || FOLD_STR.length >= FOLD_MAX_IDS) {
+		mo += a;
+		return id;
+	}
+	const s = Object.keys({ [a + b]: 0 })[0];
+	let v = FOLD_IDS.get(s);
+	if (v === undefined) {
+		v = FOLD_STR.length;
+		FOLD_STR.push(s);
+		FOLD_IDS.set(s, v);
+		FOLD_LEN[v] = s.length;
+	}
+	FOLD_PAIR[(p << 7) | id] = v;
+	return v;
+}
+
+/** _open as static ids, returns the new register */
+function tr_open(
+	c: Cursor,
+	p: number,
+	head: number,
+	folded: number,
+	end: number
+): number {
+	// most nodes have no meta, _attrs is too large to inline
+	const meta = c.meta();
+	if (meta === undefined || !has_attrs(meta)) return tr_push(p, folded);
+	if (p !== 0) mo += FOLD_STR[p];
+	mo = mo + FOLD_STR[head] + _attrs(c);
+	return end;
+}
+
+/** content_record after flushing the register */
+function tr_content(
+	c: Cursor,
+	sink: MapSink,
+	p: number,
+	text: string,
+	code: number
+): number {
+	if (p !== 0) mo += FOLD_STR[p];
+	const at = mo.length;
+	put_record(
+		sink,
+		at,
+		at + text.length,
+		c.value_start,
+		c.value_end,
+		c.index,
+		code
+	);
+	mo += text;
+	return 0;
+}
+
+/** tr_content writing a trace record */
+function tr_text(c: Cursor, sink: MapSink, p: number, text: string): number {
+	if (p !== 0) mo += FOLD_STR[p];
+	const at = mo.length;
+	tr_run(sink, at, at + text.length, c.value_start, c.value_end);
+	mo += text;
+	return 0;
+}
+
+function tr_children(c: Cursor, sink: MapSink, p: number): number {
+	const n = c.words;
+	let child = n[c.index * W.stride + W.first_child];
+	if (child === Slot.NONE) return p;
+	// siblings share the parent word of the first child, as goto_next_sibling checks
+	const parent = n[child * W.stride + W.parent];
+	for (;;) {
+		const b = child * W.stride;
+		const k = n[b] & 0xff;
+		if (k === K.TEXT) {
+			const vs = n[b + W.value_start];
+			const ve = n[b + W.value_end];
+			const t = escape_text_at(c, child, vs, ve, false);
+			if (p !== 0) {
+				mo += FOLD_STR[p];
+				p = 0;
+			}
+			if (vs !== Slot.NONE && ve > vs) {
+				const at = mo.length;
+				tr_run(sink, at, at + t.length, vs, ve);
+			}
+			mo += t;
+		} else if (k !== K.LINE_BREAK) {
+			// line breaks render nothing, a fifth of visited nodes skip the call
+			c.move_to(child);
+			p = tr_node(c, sink, p);
+		}
+		const next = n[b + W.next];
+		if (next === Slot.NONE || n[next * W.stride + W.parent] !== parent) break;
+		child = next;
+	}
+	c.move_to(parent !== Slot.NONE ? parent : child);
+	return p;
+}
+
+function tr_node(c: Cursor, sink: MapSink, p: number): number {
+	if (has_components) {
+		const ref = comp_ref(c);
+		if (ref !== null) return comp_node(c, sink, p, ref);
+	}
+	let row = c.kind;
+	switch (row) {
+		case K.ROOT:
+			return tr_children(c, sink, p);
+
+		case K.PARAGRAPH:
+			// pending paragraphs inside list_items are speculative tight-list
+			// wrappers, render their children transparently until the list
+			// closes (commit keeps the wrapper, revoke drops it).
+			if (c.pending && c.parent_kind === K.LIST_ITEM) {
+				return tr_children(c, sink, p);
+			}
+		// falls through
+		case K.HEADING:
+		case K.EMPHASIS:
+		case K.STRONG:
+		case K.BLOCK_QUOTE:
+		case K.STRIKETHROUGH:
+		case K.SUPERSCRIPT:
+		case K.SUBSCRIPT: {
+			if (row === K.HEADING) {
+				const depth = c.extra;
+				row = depth >= 1 && depth <= 6 ? ROW_HEADING + depth : ROW_HEADING;
+			}
+			const pre = mo.length + FOLD_LEN[p];
+			p = tr_open(c, p, WRAP_HEAD[row], WRAP_FOLDED[row], WRAP_END[row]);
+			p = tr_children(c, sink, p);
+			p = tr_push(p, WRAP_CLOSE[row]);
+			tr_at(sink, pre, c);
+			return p;
+		}
+
+		case K.LIST_ITEM: {
+			const pre = mo.length + FOLD_LEN[p];
+			const meta = c.meta();
+			if (meta === undefined) p = tr_push(p, S_LI_OPEN);
+			else p = tr_open(c, p, S_LI, S_LI_OPEN, S_GT);
+			if (meta !== undefined && typeof meta.checked === 'boolean')
+				p = tr_task(c, sink, p, meta.checked);
+			else p = tr_children(c, sink, p);
+			p = tr_push(p, S_LI_CLOSE);
+			tr_at(sink, pre, c);
+			return p;
+		}
+
+		case K.CODE_SPAN: {
+			if (hl !== null) {
+				const h = hl_span(c);
+				if (h !== null)
+					return tr_hl(
+						c,
+						sink,
+						p,
+						hl_span_head(c, h),
+						h.body,
+						hl_span_tail(h),
+						null
+					);
+			}
+			const pre = mo.length + FOLD_LEN[p];
+			p = tr_open(c, p, S_CODE, S_CODE_OPEN, S_GT);
+			let code = escape_span_text(c);
+			if (string_index_of.call(code, '\n') !== -1)
+				code = code.replace(/\n/g, ' ');
+			tr_text(c, sink, p, code);
+			tr_at(sink, pre, c);
+			return S_CODE_CLOSE;
+		}
+
+		case K.LIST: {
+			const pre = mo.length + FOLD_LEN[p];
+			const meta = c.meta();
+			const ordered = !!meta?.ordered;
+			const start = meta?.start as number | undefined;
+			if (ordered && start != null && start !== 1) {
+				if (p !== 0) mo += FOLD_STR[p];
+				mo += '<ol start="' + String(start);
+				p = tr_open(c, 0, S_QUOTE, S_QUOTE_GT_LF, S_GT_LF);
+			} else if (ordered) {
+				p = tr_open(c, p, S_OL, S_OL_OPEN, S_GT_LF);
+			} else {
+				p = tr_open(c, p, S_UL, S_UL_OPEN, S_GT_LF);
+			}
+			p = tr_children(c, sink, p);
+			p = tr_push(p, ordered ? S_OL_CLOSE : S_UL_CLOSE);
+			tr_at(sink, pre, c);
+			return p;
+		}
+
+		case K.THEMATIC_BREAK: {
+			const pre = mo.length + FOLD_LEN[p];
+			p = tr_push(p, S_HR);
+			tr_at(sink, pre, c);
+			return p;
+		}
+
+		case K.HARD_BREAK:
+			return tr_push(p, S_BR);
+
+		case K.SOFT_BREAK:
+			return tr_push(p, S_LF);
+
+		case K.TABLE: {
+			const pre = mo.length + FOLD_LEN[p];
+			p = tr_open(c, p, S_TABLE, S_TABLE_OPEN, S_GT_LF);
+			p = tr_table_content(c, sink, p);
+			p = tr_push(p, S_TABLE_CLOSE);
+			tr_at(sink, pre, c);
+			return p;
+		}
+
+		case K.LINE_BREAK:
+			return p;
+
+		case K.HTML:
+			return tr_html(c, sink, p);
+
+		case K.SVELTE_BLOCK:
+			return tr_svelte_block(c, sink, p);
+
+		case K.CODE_FENCE:
+			return tr_code_fence(c, sink, p);
+
+		case K.LINK: {
+			const pre = mo.length + FOLD_LEN[p];
+			if (p !== 0) mo += FOLD_STR[p];
+			const meta = c.meta();
+			let s = '<a';
+			if (meta?.href) s += url_attr(meta.href as string, false);
+			if (meta?.title)
+				s += ' title="' + escape_text_html(meta.title as string) + '"';
+			mo = mo + s + _attrs(c, LINK_HANDLED);
+			p = tr_children(c, sink, S_GT);
+			p = tr_push(p, S_A_CLOSE);
+			tr_at(sink, pre, c);
+			return p;
+		}
+
+		case K.IMAGE: {
+			const pre = mo.length + FOLD_LEN[p];
+			if (p !== 0) mo += FOLD_STR[p];
+			const meta = c.meta();
+			let s = img_head(meta?.src);
+			s += ' alt="' + escape_text_html(_children_raw(c)) + '"';
+			if (meta?.title)
+				s += ' title="' + escape_text_html(meta.title as string) + '"';
+			mo = mo + s + _attrs(c, IMAGE_HANDLED);
+			// the syntax spans are empty, only the node is recorded
+			tr_at(sink, pre, c);
+			return img_close;
+		}
+
+		case K.HTML_COMMENT: {
+			const pre = mo.length + FOLD_LEN[p];
+			p = tr_push(p, S_COMMENT_OPEN);
+			tr_text(c, sink, p, held_text(c));
+			tr_at(sink, pre, c);
+			return S_COMMENT_CLOSE;
+		}
+
+		case K.MUSTACHE: {
+			const pre = mo.length + FOLD_LEN[p];
+			p = tr_push(p, S_BRACE_OPEN);
+			tr_text(c, sink, p, c.text());
+			tr_at(sink, pre, c);
+			return S_BRACE_CLOSE;
+		}
+
+		case K.SVELTE_TAG: {
+			if (p !== 0) mo += FOLD_STR[p];
+			const pre = mo.length;
+			const meta = c.meta();
+			const tag = meta?.tag as string;
+			const text = c.text();
+			mo = mo + '{@' + meta_str(tag);
+			if (text) tr_text(c, sink, S_SPACE, text);
+			tr_at(sink, pre, c);
+			return S_BRACE_CLOSE;
+		}
+
+		case K.IMPORT_STATEMENT:
+			if (c.index !== hoist_at) return p;
+			if (p !== 0) mo += FOLD_STR[p];
+			mo += hoist_open;
+			mo_imports(c, sink, true);
+			mo += '</script>';
+			return 0;
+
+		default:
+			// a label renders only as the snippet of a replaced directive, a
+			// footnote definition in the section at the end and a link reference
+			// definition not at all
+			if (c.kind >= K.DIRECTIVE_LABEL)
+				return c.kind === K.FOOTNOTE_REFERENCE
+					? fn_reference_mapped(c, sink, p, true)
+					: p;
+			// a replaced directive never gets here, see comp_ref
+			if (dir_strict) dir_check(c);
+			return tr_children(c, sink, p);
+	}
+}
+
+/** render_task for the trace walk */
+function tr_task(c: Cursor, sink: MapSink, p: number, on: boolean): number {
+	const box = on ? S_TASK_ON : S_TASK_OFF;
+	const para = task_para(c);
+	if (para === Slot.NONE) return tr_children(c, sink, tr_push(p, box));
+	const n = c.words;
+	const item = c.index;
+	c.move_to(para);
+	if (has_components && comp_ref(c) !== null) {
+		task_at = para;
+		task_box = FOLD_STR[box];
+		p = tr_node(c, sink, p);
+		task_at = -1;
+	} else {
+		const pre = mo.length + FOLD_LEN[p];
+		p = tr_open(c, p, S_P, S_P_OPEN, S_GT);
+		p = tr_push(p, box);
+		p = tr_children(c, sink, p);
+		p = tr_push(p, S_P_CLOSE);
+		tr_at(sink, pre, c);
+	}
+	let next = n[para * W.stride + W.next];
+	while (next !== Slot.NONE && n[next * W.stride + W.parent] === item) {
+		const after = n[next * W.stride + W.next];
+		c.move_to(next);
+		p = tr_node(c, sink, p);
+		next = after;
+	}
+	c.move_to(item);
+	return p;
+}
+
+function tr_code_fence(c: Cursor, sink: MapSink, p: number): number {
+	const info = fence_info(c, c.meta());
+	if (hl !== null) {
+		const b = hl_block(c, info);
+		if (b !== null)
+			return tr_hl(c, sink, p, hl_head(c, b), b.body, hl_tail(b), b.live);
+	}
+	const pre = mo.length + FOLD_LEN[p];
+	if (info) {
+		if (p !== 0) mo += FOLD_STR[p];
+		mo += '<pre><code class="language-' + escape_info(info_lang(info));
+		p = tr_open(c, 0, S_QUOTE, S_QUOTE_GT, S_GT);
+	} else {
+		p = tr_open(c, p, S_PRE_CODE, S_PRE_CODE_OPEN, S_GT);
+	}
+	fence_content(c, sink, p, escape_fence_text(c), true);
+	tr_at(sink, pre, c);
+	return S_PRE_CODE_CLOSE;
+}
+
+/** the render_node html case with children folded */
+function tr_html(c: Cursor, sink: MapSink, p: number): number {
+	if (p !== 0) mo += FOLD_STR[p];
+	const pre = mo.length;
+	const meta = c.meta();
+	const tag = meta?.tag as string;
+	if (is_embed_script(c, tag)) {
+		mo += embed_html(c);
+		tr_run(sink, pre, mo.length, c.start, c.end);
+		return 0;
+	}
+	// source passthrough and reconstruction exactly as render_node
+	const self_closing = !!meta?.self_closing;
+	const passthrough =
+		self_closing && !c.synthetic && c.end > c.start
+			? c.slice(c.start, c.end)
+			: '';
+	if (passthrough) {
+		mo += passthrough;
+	} else {
+		let s = '<' + meta_str(tag);
+		const html_attrs = meta?.attributes as
+			| Record<string, string | boolean>
+			| undefined;
+		if (html_attrs) {
+			const typed = !c.synthetic;
+			for (const k in html_attrs) {
+				const v = html_attrs[k];
+				if (v === true) {
+					s += ' ' + k;
+				} else if (typeof v === 'object' && (v as any).type === 'expression') {
+					s += expr_attr(k, meta_str((v as any).value));
+				} else {
+					s += ' ' + k + '="' + escape_attr(v as string, typed) + '"';
+				}
+			}
+			if (meta!.repeated !== undefined)
+				s += repeated_attrs(meta!.repeated as [string, unknown][], typed);
+		}
+		if (self_closing) {
+			mo += s;
+			tr_run(sink, pre, mo.length + FOLD_LEN[S_SELF_CLOSE], c.start, c.end);
+			return S_SELF_CLOSE;
+		}
+		mo += s;
+	}
+	if (self_closing) {
+		tr_run(sink, pre, mo.length, c.start, c.end);
+		return 0;
+	}
+	if (is_raw_text_tag(tag)) {
+		if (c.index === hoist_script) {
+			mo = mo + FOLD_STR[S_GT] + '\n';
+			mo_imports(c, sink, true);
+			tr_text(c, sink, 0, c.text());
+		} else if (c.index === hoist_module) {
+			mo = mo + FOLD_STR[S_GT] + '\n' + module_code + '\n';
+			tr_text(c, sink, 0, c.text());
+		} else tr_text(c, sink, S_GT, c.text());
+	} else {
+		const q = tr_children(c, sink, S_GT);
+		if (q !== 0) mo += FOLD_STR[q];
+	}
+	mo = mo + '</' + meta_str(tag);
+	tr_at(sink, pre, c);
+	return S_GT;
+}
+
+/** the render_node svelte block case with branch children folded */
+function tr_svelte_block(c: Cursor, sink: MapSink, p: number): number {
+	if (p !== 0) mo += FOLD_STR[p];
+	p = 0;
+	const pre = mo.length;
+	// render branches; each branch handles its own opening tag
+	const block_meta = c.meta();
+	const block_tag = meta_str(block_meta?.tag);
+	if (c.goto_first_child()) {
+		let is_first = true;
+		do {
+			if (c.kind === K.SVELTE_BRANCH) {
+				const branch_expr = c.text();
+				if (p !== 0) mo += FOLD_STR[p];
+				if (is_first) {
+					mo = mo + '{#' + block_tag;
+					is_first = false;
+				} else {
+					mo = mo + '{:' + meta_str(c.meta()?.tag);
+				}
+				if (branch_expr) {
+					mo += ' ';
+					tr_run(
+						sink,
+						mo.length,
+						mo.length + branch_expr.length,
+						c.value_start,
+						c.value_end
+					);
+					mo += branch_expr;
+				}
+				p = tr_children(c, sink, S_BRACE_CLOSE_LF);
+			} else if (c.kind !== K.LINE_BREAK) {
+				p = tr_node(c, sink, p);
+			}
+		} while (c.goto_next_sibling());
+		c.goto_parent();
+	}
+	if (p !== 0) mo += FOLD_STR[p];
+	mo = mo + '{/' + block_tag;
+	// node span for the whole block, use the block node (goto_parent already called)
+	tr_at(sink, pre, c);
+	return S_BRACE_CLOSE;
+}
+
+function tr_table_content(c: Cursor, sink: MapSink, p: number): number {
+	if (comp_table) return cm_table(c, sink, p);
+	const meta = c.meta();
+	const alignments = (meta?.alignments as string[]) ?? [];
+	const ext = ext_table(meta, alignments);
+	let in_body = false;
+
+	if (!c.goto_first_child()) return p;
+	do {
+		if (c.kind === K.TABLE_HEADER) {
+			p = tr_push(p, S_THEAD_OPEN);
+			p = ext
+				? tr_table_cells_ext(c, sink, 'th', alignments, 0, ext_n, p)
+				: tr_table_cells(c, sink, TH_OPEN_ID, S_TH_CLOSE, 'th', alignments, p);
+			p = tr_push(p, S_THEAD_CLOSE);
+		} else if (c.kind === K.TABLE_ROW) {
+			if (!in_body) {
+				p = tr_push(p, S_TBODY_OPEN);
+				in_body = true;
+			}
+			p = tr_push(p, S_TR_OPEN);
+			p = ext
+				? tr_table_cells_ext(c, sink, 'td', alignments, ext_l, ext_r, p)
+				: tr_table_cells(c, sink, TD_OPEN_ID, S_TD_CLOSE, 'td', alignments, p);
+			p = tr_push(p, S_TR_CLOSE);
+		}
+	} while (c.goto_next_sibling());
+	c.goto_parent();
+
+	if (in_body) p = tr_push(p, S_TBODY_CLOSE);
+	return p;
+}
+
+function tr_table_cells(
+	c: Cursor,
+	sink: MapSink,
+	opens: Uint8Array,
+	close: number,
+	tag: string,
+	alignments: string[],
+	p: number
+): number {
+	let col = 0;
+	if (!c.goto_first_child()) return p;
+	do {
+		if (c.kind === K.TABLE_CELL) {
+			const align = alignments[col];
+			// the parser only emits these four values, others are built at runtime
+			if (align === 'left') p = tr_push(p, opens[1]);
+			else if (align === 'center') p = tr_push(p, opens[2]);
+			else if (align === 'right') p = tr_push(p, opens[3]);
+			else if (align && align !== 'none') {
+				if (p !== 0) mo += FOLD_STR[p];
+				mo += `<${tag} align="${align}">`;
+				p = 0;
+			} else p = tr_push(p, opens[0]);
+			p = tr_children(c, sink, p);
+			p = tr_push(p, close);
+			col++;
+		}
+	} while (c.goto_next_sibling());
+	c.goto_parent();
+	return p;
+}
+
+/** tr_table_cells for an extended table, as _table_cells_ext */
+function tr_table_cells_ext(
+	c: Cursor,
+	sink: MapSink,
+	tag: string,
+	alignments: string[],
+	l: number,
+	r: number,
+	p: number
+): number {
+	if (!c.goto_first_child()) return p;
+	do {
+		if (c.kind === K.TABLE_CELL) {
+			const col = c.extra;
+			const head = col < l || col >= r;
+			const a = ext_attrs(c, col, alignments);
+			if (p !== 0) mo += FOLD_STR[p];
+			mo += head ? '<th scope="row"' + a + '>' : '<' + tag + a + '>';
+			p = tr_children(c, sink, 0);
+			p = tr_push(p, head || tag === 'th' ? S_TH_CLOSE : S_TD_CLOSE);
+		}
+	} while (c.goto_next_sibling());
+	c.goto_parent();
+	return p;
+}
+
+//  folded mapped renderer, render_node with the fold register
+
+// output and records equal render_node with a sink, syntax records included,
+// a position is mo.length + FOLD_LEN[p] as in the trace render
+
+function mp_children(c: Cursor, sink: MapSink, p: number): number {
+	const n = c.words;
+	let child = n[c.index * W.stride + W.first_child];
+	if (child === Slot.NONE) return p;
+	// siblings share the parent word of the first child, as goto_next_sibling checks
+	const parent = n[child * W.stride + W.parent];
+	for (;;) {
+		const b = child * W.stride;
+		const k = n[b] & 0xff;
+		if (k === K.TEXT) {
+			const vs = n[b + W.value_start];
+			const ve = n[b + W.value_end];
+			const t = escape_text_at(c, child, vs, ve, false);
+			if (p !== 0) {
+				mo += FOLD_STR[p];
+				p = 0;
+			}
+			if (vs !== Slot.NONE && ve > vs) {
+				const at = mo.length;
+				put_record(sink, at, at + t.length, vs, ve, child, Code.TEXT_CONTENT);
+			}
+			mo += t;
+		} else if (k !== K.LINE_BREAK) {
+			// line breaks render nothing, a fifth of visited nodes skip the call
+			c.move_to(child);
+			p = mp_node(c, sink, p);
+		}
+		const next = n[b + W.next];
+		if (next === Slot.NONE || n[next * W.stride + W.parent] !== parent) break;
+		child = next;
+	}
+	c.move_to(parent !== Slot.NONE ? parent : child);
+	return p;
+}
+
+function mp_node(c: Cursor, sink: MapSink, p: number): number {
+	if (has_components) {
+		const ref = comp_ref(c);
+		if (ref !== null) return comp_node(c, sink, p, ref);
+	}
+	let row = c.kind;
+	switch (row) {
+		case K.ROOT:
+			return mp_children(c, sink, p);
+
+		case K.PARAGRAPH:
+			// pending paragraphs inside list_items are speculative tight-list
+			// wrappers, render their children transparently until the list
+			// closes (commit keeps the wrapper, revoke drops it).
+			if (c.pending && c.parent_kind === K.LIST_ITEM) {
+				return mp_children(c, sink, p);
+			}
+		// falls through
+		case K.HEADING:
+		case K.EMPHASIS:
+		case K.STRONG:
+		case K.BLOCK_QUOTE:
+		case K.STRIKETHROUGH:
+		case K.SUPERSCRIPT:
+		case K.SUBSCRIPT: {
+			if (row === K.HEADING) {
+				const depth = c.extra;
+				row = depth >= 1 && depth <= 6 ? ROW_HEADING + depth : ROW_HEADING;
+			}
+			const pre = mo.length + FOLD_LEN[p];
+			p = tr_open(c, p, WRAP_HEAD[row], WRAP_FOLDED[row], WRAP_END[row]);
+			const ao = mo.length + FOLD_LEN[p];
+			p = mp_children(c, sink, p);
+			const bc = mo.length + FOLD_LEN[p];
+			p = tr_push(p, WRAP_CLOSE[row]);
+			_spans(sink, pre, ao, bc, mo.length + FOLD_LEN[p], c, Preset.TEXT);
+			return p;
+		}
+
+		case K.LIST_ITEM: {
+			const pre = mo.length + FOLD_LEN[p];
+			const meta = c.meta();
+			if (meta === undefined) p = tr_push(p, S_LI_OPEN);
+			else p = tr_open(c, p, S_LI, S_LI_OPEN, S_GT);
+			const ao = mo.length + FOLD_LEN[p];
+			if (meta !== undefined && typeof meta.checked === 'boolean')
+				p = mp_task(c, sink, p, meta.checked);
+			else p = mp_children(c, sink, p);
+			const bc = mo.length + FOLD_LEN[p];
+			p = tr_push(p, S_LI_CLOSE);
+			_spans(sink, pre, ao, bc, mo.length + FOLD_LEN[p], c, Preset.TEXT);
+			return p;
+		}
+
+		case K.CODE_SPAN: {
+			if (hl !== null) {
+				const h = hl_span(c);
+				if (h !== null)
+					return mp_hl(
+						c,
+						sink,
+						p,
+						hl_span_head(c, h),
+						h.body,
+						hl_span_tail(h),
+						null
+					);
+			}
+			const pre = mo.length + FOLD_LEN[p];
+			p = tr_open(c, p, S_CODE, S_CODE_OPEN, S_GT);
+			const ao = mo.length + FOLD_LEN[p];
+			let code = escape_span_text(c);
+			if (string_index_of.call(code, '\n') !== -1)
+				code = code.replace(/\n/g, ' ');
+			tr_content(c, sink, p, code, Code.CODE_CONTENT);
+			const bc = mo.length;
+			_spans(sink, pre, ao, bc, bc + FOLD_LEN[S_CODE_CLOSE], c, Preset.CODE);
+			return S_CODE_CLOSE;
+		}
+
+		case K.LIST: {
+			const pre = mo.length + FOLD_LEN[p];
+			const meta = c.meta();
+			const ordered = !!meta?.ordered;
+			const start = meta?.start as number | undefined;
+			if (ordered && start != null && start !== 1) {
+				if (p !== 0) mo += FOLD_STR[p];
+				mo += '<ol start="' + String(start);
+				p = tr_open(c, 0, S_QUOTE, S_QUOTE_GT_LF, S_GT_LF);
+			} else if (ordered) {
+				p = tr_open(c, p, S_OL, S_OL_OPEN, S_GT_LF);
+			} else {
+				p = tr_open(c, p, S_UL, S_UL_OPEN, S_GT_LF);
+			}
+			const ao = mo.length + FOLD_LEN[p];
+			p = mp_children(c, sink, p);
+			const bc = mo.length + FOLD_LEN[p];
+			p = tr_push(p, ordered ? S_OL_CLOSE : S_UL_CLOSE);
+			_spans(sink, pre, ao, bc, mo.length + FOLD_LEN[p], c, Preset.STRUCTURE);
+			return p;
+		}
+
+		case K.THEMATIC_BREAK: {
+			const pre = mo.length + FOLD_LEN[p];
+			p = tr_push(p, S_HR);
+			const post = mo.length + FOLD_LEN[p];
+			// node and open syntax, the close syntax span is empty
+			put_record(
+				sink,
+				pre,
+				post,
+				c.start,
+				c.end,
+				c.index,
+				Preset.STRUCTURE << 2
+			);
+			if (sink.syntax && c.end !== Slot.NONE) {
+				const vs = c.value_start;
+				put_record(
+					sink,
+					pre,
+					post,
+					c.start,
+					c.value_end > vs ? vs : c.start,
+					c.index,
+					Code.STRUCTURE_OPEN
+				);
+			}
+			return p;
+		}
+
+		case K.HARD_BREAK:
+			return tr_push(p, S_BR);
+
+		case K.SOFT_BREAK:
+			return tr_push(p, S_LF);
+
+		case K.TABLE: {
+			const pre = mo.length + FOLD_LEN[p];
+			p = tr_open(c, p, S_TABLE, S_TABLE_OPEN, S_GT_LF);
+			const ao = mo.length + FOLD_LEN[p];
+			p = mp_table_content(c, sink, p);
+			const bc = mo.length + FOLD_LEN[p];
+			p = tr_push(p, S_TABLE_CLOSE);
+			_spans(sink, pre, ao, bc, mo.length + FOLD_LEN[p], c, Preset.STRUCTURE);
+			return p;
+		}
+
+		case K.LINE_BREAK:
+			return p;
+
+		case K.HTML:
+			return mp_html(c, sink, p);
+
+		case K.SVELTE_BLOCK:
+			return mp_svelte_block(c, sink, p);
+
+		case K.CODE_FENCE:
+			return mp_code_fence(c, sink, p);
+
+		case K.LINK: {
+			const pre = mo.length + FOLD_LEN[p];
+			if (p !== 0) mo += FOLD_STR[p];
+			const meta = c.meta();
+			let s = '<a';
+			if (meta?.href) s += url_attr(meta.href as string, false);
+			if (meta?.title)
+				s += ' title="' + escape_text_html(meta.title as string) + '"';
+			mo = mo + s + _attrs(c, LINK_HANDLED);
+			const ao = mo.length + FOLD_LEN[S_GT];
+			p = mp_children(c, sink, S_GT);
+			const bc = mo.length + FOLD_LEN[p];
+			p = tr_push(p, S_A_CLOSE);
+			_spans(sink, pre, ao, bc, mo.length + FOLD_LEN[p], c, Preset.TEXT);
+			return p;
+		}
+
+		case K.IMAGE: {
+			const pre = mo.length + FOLD_LEN[p];
+			if (p !== 0) mo += FOLD_STR[p];
+			const meta = c.meta();
+			let s = img_head(meta?.src);
+			s += ' alt="' + escape_text_html(_children_raw(c)) + '"';
+			if (meta?.title)
+				s += ' title="' + escape_text_html(meta.title as string) + '"';
+			mo = mo + s + _attrs(c, IMAGE_HANDLED);
+			const close = img_close;
+			// the syntax spans are empty, only the node is recorded
+			put_record(
+				sink,
+				pre,
+				mo.length + FOLD_LEN[close],
+				c.start,
+				c.end,
+				c.index,
+				0
+			);
+			return close;
+		}
+
+		case K.HTML_COMMENT: {
+			const pre = mo.length + FOLD_LEN[p];
+			p = tr_push(p, S_COMMENT_OPEN);
+			const ao = mo.length + FOLD_LEN[p];
+			tr_content(c, sink, p, held_text(c), Code.TEXT_CONTENT);
+			const bc = mo.length;
+			_spans(sink, pre, ao, bc, bc + FOLD_LEN[S_COMMENT_CLOSE], c, Preset.TEXT);
+			return S_COMMENT_CLOSE;
+		}
+
+		case K.MUSTACHE: {
+			const pre = mo.length + FOLD_LEN[p];
+			p = tr_push(p, S_BRACE_OPEN);
+			const ao = mo.length + FOLD_LEN[p];
+			tr_content(c, sink, p, c.text(), Code.SVELTE_CONTENT);
+			const bc = mo.length;
+			_spans(sink, pre, ao, bc, bc + FOLD_LEN[S_BRACE_CLOSE], c, Preset.SVELTE);
+			return S_BRACE_CLOSE;
+		}
+
+		case K.SVELTE_TAG: {
+			if (p !== 0) mo += FOLD_STR[p];
+			const pre = mo.length;
+			const meta = c.meta();
+			const tag = meta?.tag as string;
+			const text = c.text();
+			mo = mo + '{@' + meta_str(tag);
+			let ao = mo.length;
+			if (text) {
+				ao += 1;
+				tr_content(c, sink, S_SPACE, text, Code.SVELTE_CONTENT);
+			}
+			const bc = mo.length;
+			_spans(sink, pre, ao, bc, bc + FOLD_LEN[S_BRACE_CLOSE], c, Preset.SVELTE);
+			return S_BRACE_CLOSE;
+		}
+
+		case K.IMPORT_STATEMENT:
+			if (c.index !== hoist_at) return p;
+			if (p !== 0) mo += FOLD_STR[p];
+			mo += hoist_open;
+			mo_imports(c, sink, false);
+			mo += '</script>';
+			return 0;
+
+		default:
+			// a label renders only as the snippet of a replaced directive, a
+			// footnote definition in the section at the end and a link reference
+			// definition not at all
+			if (c.kind >= K.DIRECTIVE_LABEL)
+				return c.kind === K.FOOTNOTE_REFERENCE
+					? fn_reference_mapped(c, sink, p, false)
+					: p;
+			// a replaced directive never gets here, see comp_ref
+			if (dir_strict) dir_check(c);
+			return mp_children(c, sink, p);
+	}
+}
+
+/** render_task for the mapped walk */
+function mp_task(c: Cursor, sink: MapSink, p: number, on: boolean): number {
+	const box = on ? S_TASK_ON : S_TASK_OFF;
+	const para = task_para(c);
+	if (para === Slot.NONE) return mp_children(c, sink, tr_push(p, box));
+	const n = c.words;
+	const item = c.index;
+	c.move_to(para);
+	if (has_components && comp_ref(c) !== null) {
+		task_at = para;
+		task_box = FOLD_STR[box];
+		p = mp_node(c, sink, p);
+		task_at = -1;
+	} else {
+		const pre = mo.length + FOLD_LEN[p];
+		p = tr_open(c, p, S_P, S_P_OPEN, S_GT);
+		const ao = mo.length + FOLD_LEN[p];
+		p = tr_push(p, box);
+		p = mp_children(c, sink, p);
+		const bc = mo.length + FOLD_LEN[p];
+		p = tr_push(p, S_P_CLOSE);
+		_spans(sink, pre, ao, bc, mo.length + FOLD_LEN[p], c, Preset.TEXT);
+	}
+	let next = n[para * W.stride + W.next];
+	while (next !== Slot.NONE && n[next * W.stride + W.parent] === item) {
+		const after = n[next * W.stride + W.next];
+		c.move_to(next);
+		p = mp_node(c, sink, p);
+		next = after;
+	}
+	c.move_to(item);
+	return p;
+}
+
+function mp_code_fence(c: Cursor, sink: MapSink, p: number): number {
+	const info = fence_info(c, c.meta());
+	if (hl !== null) {
+		const b = hl_block(c, info);
+		if (b !== null)
+			return mp_hl(c, sink, p, hl_head(c, b), b.body, hl_tail(b), b.live);
+	}
+	const pre = mo.length + FOLD_LEN[p];
+	if (info) {
+		if (p !== 0) mo += FOLD_STR[p];
+		mo += '<pre><code class="language-' + escape_info(info_lang(info));
+		p = tr_open(c, 0, S_QUOTE, S_QUOTE_GT, S_GT);
+	} else {
+		p = tr_open(c, p, S_PRE_CODE, S_PRE_CODE_OPEN, S_GT);
+	}
+	const ao = mo.length + FOLD_LEN[p];
+	fence_content(c, sink, p, escape_fence_text(c), false);
+	const bc = mo.length;
+	_spans(sink, pre, ao, bc, bc + FOLD_LEN[S_PRE_CODE_CLOSE], c, Preset.CODE);
+	return S_PRE_CODE_CLOSE;
+}
+
+/** the render_node html case with children folded */
+function mp_html(c: Cursor, sink: MapSink, p: number): number {
+	if (p !== 0) mo += FOLD_STR[p];
+	const pre = mo.length;
+	const meta = c.meta();
+	const tag = meta?.tag as string;
+	if (is_embed_script(c, tag)) {
+		mo += embed_html(c);
+		put_record(
+			sink,
+			pre,
+			mo.length,
+			c.start,
+			c.end,
+			c.index,
+			Code.SVELTE_CONTENT
+		);
+		return 0;
+	}
+	// source passthrough and reconstruction exactly as render_node
+	const self_closing = !!meta?.self_closing;
+	const passthrough =
+		self_closing && !c.synthetic && c.end > c.start
+			? c.slice(c.start, c.end)
+			: '';
+	if (passthrough) {
+		mo += passthrough;
+	} else {
+		let s = '<' + meta_str(tag);
+		const html_attrs = meta?.attributes as
+			| Record<string, string | boolean>
+			| undefined;
+		if (html_attrs) {
+			const typed = !c.synthetic;
+			for (const k in html_attrs) {
+				const v = html_attrs[k];
+				if (v === true) {
+					s += ' ' + k;
+				} else if (typeof v === 'object' && (v as any).type === 'expression') {
+					s += expr_attr(k, meta_str((v as any).value));
+				} else {
+					s += ' ' + k + '="' + escape_attr(v as string, typed) + '"';
+				}
+			}
+			if (meta!.repeated !== undefined)
+				s += repeated_attrs(meta!.repeated as [string, unknown][], typed);
+		}
+		mo += s;
+		if (self_closing) {
+			put_record(
+				sink,
+				pre,
+				mo.length + FOLD_LEN[S_SELF_CLOSE],
+				c.start,
+				c.end,
+				c.index,
+				Code.SVELTE_CONTENT
+			);
+			return S_SELF_CLOSE;
+		}
+	}
+	if (self_closing) {
+		put_record(
+			sink,
+			pre,
+			mo.length,
+			c.start,
+			c.end,
+			c.index,
+			Code.SVELTE_CONTENT
+		);
+		return 0;
+	}
+	const ao = mo.length + FOLD_LEN[S_GT];
+	if (is_raw_text_tag(tag)) {
+		if (c.index === hoist_script) {
+			mo = mo + FOLD_STR[S_GT] + '\n';
+			mo_imports(c, sink, false);
+			tr_content(c, sink, 0, c.text(), Code.SVELTE_CONTENT);
+		} else if (c.index === hoist_module) {
+			mo = mo + FOLD_STR[S_GT] + '\n' + module_code + '\n';
+			tr_content(c, sink, 0, c.text(), Code.SVELTE_CONTENT);
+		} else tr_content(c, sink, S_GT, c.text(), Code.SVELTE_CONTENT);
+	} else {
+		const q = mp_children(c, sink, S_GT);
+		if (q !== 0) mo += FOLD_STR[q];
+	}
+	const bc = mo.length;
+	mo = mo + '</' + meta_str(tag);
+	_spans(sink, pre, ao, bc, mo.length + FOLD_LEN[S_GT], c, Preset.TEXT);
+	return S_GT;
+}
+
+/** the render_node svelte block case with branch children folded */
+function mp_svelte_block(c: Cursor, sink: MapSink, p: number): number {
+	if (p !== 0) mo += FOLD_STR[p];
+	p = 0;
+	const pre = mo.length;
+	// render branches; each branch handles its own opening tag
+	const block_meta = c.meta();
+	const block_tag = meta_str(block_meta?.tag);
+	if (c.goto_first_child()) {
+		let is_first = true;
+		do {
+			if (c.kind === K.SVELTE_BRANCH) {
+				const branch_expr = c.text();
+				if (p !== 0) mo += FOLD_STR[p];
+				if (is_first) {
+					mo = mo + '{#' + block_tag;
+					is_first = false;
+				} else {
+					mo = mo + '{:' + meta_str(c.meta()?.tag);
+				}
+				if (branch_expr) {
+					mo += ' ';
+					put_record(
+						sink,
+						mo.length,
+						mo.length + branch_expr.length,
+						c.value_start,
+						c.value_end,
+						c.index,
+						Code.SVELTE_CONTENT
+					);
+					mo += branch_expr;
+				}
+				p = mp_children(c, sink, S_BRACE_CLOSE_LF);
+			} else if (c.kind !== K.LINE_BREAK) {
+				p = mp_node(c, sink, p);
+			}
+		} while (c.goto_next_sibling());
+		c.goto_parent();
+	}
+	if (p !== 0) mo += FOLD_STR[p];
+	mo = mo + '{/' + block_tag;
+	// node span for the whole block, use the block node (goto_parent already called)
+	put_record(
+		sink,
+		pre,
+		mo.length + FOLD_LEN[S_BRACE_CLOSE],
+		c.start,
+		c.end,
+		c.index,
+		Code.SVELTE_NODE
+	);
+	return S_BRACE_CLOSE;
+}
+
+function mp_table_content(c: Cursor, sink: MapSink, p: number): number {
+	if (comp_table) return cm_table(c, sink, p);
+	const meta = c.meta();
+	const alignments = (meta?.alignments as string[]) ?? [];
+	const ext = ext_table(meta, alignments);
+	let in_body = false;
+
+	if (!c.goto_first_child()) return p;
+	do {
+		if (c.kind === K.TABLE_HEADER) {
+			p = tr_push(p, S_THEAD_OPEN);
+			p = ext
+				? mp_table_cells_ext(c, sink, 'th', alignments, 0, ext_n, p)
+				: mp_table_cells(c, sink, TH_OPEN_ID, S_TH_CLOSE, 'th', alignments, p);
+			p = tr_push(p, S_THEAD_CLOSE);
+		} else if (c.kind === K.TABLE_ROW) {
+			if (!in_body) {
+				p = tr_push(p, S_TBODY_OPEN);
+				in_body = true;
+			}
+			p = tr_push(p, S_TR_OPEN);
+			p = ext
+				? mp_table_cells_ext(c, sink, 'td', alignments, ext_l, ext_r, p)
+				: mp_table_cells(c, sink, TD_OPEN_ID, S_TD_CLOSE, 'td', alignments, p);
+			p = tr_push(p, S_TR_CLOSE);
+		}
+	} while (c.goto_next_sibling());
+	c.goto_parent();
+
+	if (in_body) p = tr_push(p, S_TBODY_CLOSE);
+	return p;
+}
+
+function mp_table_cells(
+	c: Cursor,
+	sink: MapSink,
+	opens: Uint8Array,
+	close: number,
+	tag: string,
+	alignments: string[],
+	p: number
+): number {
+	let col = 0;
+	if (!c.goto_first_child()) return p;
+	do {
+		if (c.kind === K.TABLE_CELL) {
+			const align = alignments[col];
+			// the parser only emits these four values, others are built at runtime
+			if (align === 'left') p = tr_push(p, opens[1]);
+			else if (align === 'center') p = tr_push(p, opens[2]);
+			else if (align === 'right') p = tr_push(p, opens[3]);
+			else if (align && align !== 'none') {
+				if (p !== 0) mo += FOLD_STR[p];
+				mo += `<${tag} align="${align}">`;
+				p = 0;
+			} else p = tr_push(p, opens[0]);
+			p = mp_children(c, sink, p);
+			p = tr_push(p, close);
+			col++;
+		}
+	} while (c.goto_next_sibling());
+	c.goto_parent();
+	return p;
+}
+
+/** mp_table_cells for an extended table, as _table_cells_ext */
+function mp_table_cells_ext(
+	c: Cursor,
+	sink: MapSink,
+	tag: string,
+	alignments: string[],
+	l: number,
+	r: number,
+	p: number
+): number {
+	if (!c.goto_first_child()) return p;
+	do {
+		if (c.kind === K.TABLE_CELL) {
+			const col = c.extra;
+			const head = col < l || col >= r;
+			const a = ext_attrs(c, col, alignments);
+			if (p !== 0) mo += FOLD_STR[p];
+			mo += head ? '<th scope="row"' + a + '>' : '<' + tag + a + '>';
+			p = mp_children(c, sink, 0);
+			p = tr_push(p, head || tag === 'th' ? S_TH_CLOSE : S_TD_CLOSE);
+		}
+	} while (c.goto_next_sibling());
+	c.goto_parent();
+	return p;
+}
+
+/** flat so the caller never pays for a rope */
+function render_folded(c: Cursor): string {
+	fold_out = comp_prefix;
+	const p = ws_on ? ws_pass(c, undefined, 0, CM.FOLD, false) : fold_node(c, 0);
+	let html = fold_out;
+	fold_out = '';
+	if (p !== 0) html += FOLD_STR[p];
+	if (html.length !== 0) flat_sink[0] = html.charCodeAt(0);
+	return html;
+}
+
+//  element replacement
+
+// a document that uses no replacement renders with has_components false,
+// one walker below serves the fold, trace and mapped renders
+
+const H_NAME = ['', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+const TABLE_PARTS = ['thead', 'tbody', 'tr', 'th', 'td'];
+
+/** the element a markdown node renders as, empty when it is not replaceable */
+function comp_name(c: Cursor): string {
+	switch (c.kind as number) {
+		case K.PARAGRAPH:
+			// see the paragraph case of fold_node
+			return c.pending && c.parent_kind === K.LIST_ITEM ? '' : 'p';
+		case K.HEADING: {
+			const d = c.extra;
+			return d >= 1 && d <= 6 ? H_NAME[d] : '';
+		}
+		case K.EMPHASIS:
+			return 'em';
+		case K.STRONG:
+			return 'strong';
+		case K.STRIKETHROUGH:
+			return 'del';
+		case K.SUPERSCRIPT:
+			return 'sup';
+		case K.SUBSCRIPT:
+			return 'sub';
+		case K.BLOCK_QUOTE:
+			return 'blockquote';
+		case K.LIST:
+			return c.meta()?.ordered ? 'ol' : 'ul';
+		case K.LIST_ITEM:
+			return 'li';
+		case K.CODE_SPAN:
+			return c.extra === 1 && hl !== null && hl.math === true ? 'math' : 'code';
+		case K.CODE_FENCE:
+			return hl !== null && hl.math === true && is_math(c) ? 'math' : 'pre';
+		case K.LINK:
+			return 'a';
+		case K.IMAGE:
+			return 'img';
+		case K.THEMATIC_BREAK:
+			return 'hr';
+		case K.HARD_BREAK:
+			return 'br';
+		case K.FOOTNOTE_REFERENCE:
+			return 'footnote';
+		case K.TABLE:
+			return 'table';
+		case K.HTML:
+			return comp_all ? html_tag(c) : plugin_tag(c);
+		default:
+			return '';
+	}
+}
+
+/** lowercase elements only, never svelte tags or components */
+const ELEMENT_NAME = /^[a-z][a-z0-9-]*$/;
+
+/** the tag of an element a parse plugin created, empty for typed html */
+function plugin_tag(c: Cursor): string {
+	return c.synthetic ? html_tag(c) : '';
+}
+
+/** the tag of an element, typed or from a plugin */
+function html_tag(c: Cursor): string {
+	const tag = c.meta()?.tag;
+	if (typeof tag !== 'string' || tag === 'script' || tag === 'style') return '';
+	return ELEMENT_NAME.test(tag) ? tag : '';
+}
+
+const ELEMENT_DIRECTIVES = [
+	'bind:',
+	'on:',
+	'use:',
+	'class:',
+	'style:',
+	'transition:',
+	'in:',
+	'out:',
+	'animate:',
+	'let:',
+];
+
+/** the first svelte directive of an element, which a component can not take, empty for none */
+function element_directive(c: Cursor): string {
+	const attrs = c.meta()?.attributes as Record<string, unknown> | undefined;
+	if (attrs === undefined) return '';
+	for (const k in attrs) {
+		const colon = string_index_of.call(k, ':');
+		if (colon === -1) continue;
+		for (let i = 0; i < ELEMENT_DIRECTIVES.length; i++) {
+			const d = ELEMENT_DIRECTIVES[i];
+			if (d.length === colon + 1 && k.startsWith(d)) return k;
+		}
+	}
+	return '';
+}
+
+function comp_ref(c: Cursor): ComponentImport | null {
+	const k = c.kind as number;
+	if (k >= K.DIRECTIVE_INLINE && k <= K.DIRECTIVE_CONTAINER)
+		return dir_scope!.get(dir_name(c)) ?? null;
+	const name = comp_name(c);
+	if (name === '') return null;
+	const ref = comp_scope!.get(name);
+	if (ref === undefined) return null;
+	// comp_scan warned about it
+	if (comp_all && c.kind === K.HTML && element_directive(c) !== '') return null;
+	return ref;
+}
+
+function dir_name(c: Cursor): string {
+	const name = c.meta()?.name;
+	return typeof name === 'string' ? name : '';
+}
+
+function note_use(ref: ComponentImport): void {
+	if (!comp_seen.has(ref)) {
+		comp_seen.add(ref);
+		comp_used.push(ref);
+	}
+}
+
+function comp_use(name: string): ComponentImport | undefined {
+	const ref = comp_scope!.get(name);
+	if (ref !== undefined) note_use(ref);
+	return ref;
+}
+
+/** comp_use for an element, one with a directive stays an element and is warned about */
+function comp_use_html(c: Cursor, name: string): void {
+	if (comp_scope!.get(name) === undefined) return;
+	const directive = element_directive(c);
+	if (directive === '') comp_use(name);
+	else comp_warnings.push({ tag: name, directive, start: c.start });
+}
+
+/** a shelled directive imports what its shell names and runs its module for its styles */
+function note_shell(ref: ComponentImport, shell: Shell): void {
+	dir_shelled = true;
+	if (!shell_seen.has(ref.specifier)) {
+		shell_seen.add(ref.specifier);
+		shell_specs.push(ref.specifier);
+	}
+	const imports = shell.imports;
+	if (imports === undefined) return;
+	for (let i = 0; i < imports.length; i++) {
+		const line = imports[i];
+		if (shell_seen.has(line)) continue;
+		shell_seen.add(line);
+		shell_lines += line;
+	}
+}
+
+/** walk what the render walks below c and note each replacement it will use */
+function comp_scan(c: Cursor): void {
+	if (!c.goto_first_child()) return;
+	do {
+		const k = c.kind as number;
+		if (k === K.TEXT || k === K.LINE_BREAK) continue;
+		if (k >= K.DIRECTIVE_INLINE && k <= K.DIRECTIVE_CONTAINER) {
+			const ref = dir_scope!.get(dir_name(c));
+			// a directive written as its shell imports no component
+			if (ref !== undefined) {
+				const shell = ref.static === true ? dir_shell_of(c, ref) : undefined;
+				if (shell === undefined) note_use(ref);
+				else note_shell(ref, shell);
+			}
+		} else if (k === K.FOOTNOTE_DEFINITION) {
+			// a definition is in the tree where it was written, the section holds it
+			comp_use('footnotes');
+		} else {
+			const name = comp_name(c);
+			if (name !== '') {
+				if (comp_all && k === K.HTML) comp_use_html(c, name);
+				else comp_use(name);
+			}
+		}
+		if (k === K.TABLE) comp_scan_table(c);
+		// image children are its alt text, code has none
+		else if (k !== K.IMAGE && k !== K.CODE_SPAN && k !== K.CODE_FENCE)
+			comp_scan(c);
+	} while (c.goto_next_sibling());
+	c.goto_parent();
+}
+
+function comp_scan_table(c: Cursor): void {
+	const meta = c.meta();
+	// a row header column renders body cells as th
+	let l = 0;
+	let r = 0x7fffffff;
+	if (ext_table(meta, (meta?.alignments as string[]) ?? [])) {
+		l = ext_l;
+		r = ext_r;
+	}
+	if (!c.goto_first_child()) return;
+	let body = false;
+	do {
+		const k = c.kind as number;
+		if (k === K.TABLE_HEADER) {
+			comp_use('thead');
+			comp_use('tr');
+			comp_scan_cells(c, 'th', 0, 0x7fffffff);
+		} else if (k === K.TABLE_ROW) {
+			if (!body) {
+				comp_use('tbody');
+				body = true;
+			}
+			comp_use('tr');
+			comp_scan_cells(c, 'td', l, r);
+		}
+	} while (c.goto_next_sibling());
+	c.goto_parent();
+}
+
+function comp_scan_cells(c: Cursor, tag: string, l: number, r: number): void {
+	if (!c.goto_first_child()) return;
+	do {
+		if (c.kind === K.TABLE_CELL) {
+			const col = c.extra;
+			comp_use(col < l || col >= r ? 'th' : tag);
+			comp_scan(c);
+		}
+	} while (c.goto_next_sibling());
+	c.goto_parent();
+}
+
+/** neither scope is ever null while a walk renders replacements */
+const NO_SCOPE = new ComponentScope([], '');
+
+/**
+ * c is at the root, the walk that follows renders in mode, all also replaces
+ * typed elements, returns the warnings about elements that stay
+ */
+function comp_begin(
+	c: Cursor,
+	scope: ComponentScope | null,
+	directives: ComponentScope | null,
+	mode: number,
+	all: boolean,
+	shells: ShellTable | undefined
+): readonly ReplaceWarning[] {
+	comp_scope = scope ?? NO_SCOPE;
+	dir_scope = directives ?? NO_SCOPE;
+	if (shells !== undefined && dir_scope.has_static) dir_shells = shells;
+	comp_mode = mode;
+	comp_all = all;
+	comp_scan(c);
+	const warnings =
+		comp_warnings.length === 0 ? NO_WARNINGS : comp_warnings.splice(0);
+	// the walks route a shell through the replacement code too
+	if (comp_used.length === 0 && !dir_shelled) return warnings;
+	has_components = true;
+	for (let i = 0; i < TABLE_PARTS.length; i++) {
+		const ref = comp_scope.get(TABLE_PARTS[i]);
+		if (ref !== undefined && comp_seen.has(ref)) comp_table = true;
+	}
+	if (dir_shelled) shell_lines = shell_module_lines() + shell_lines;
+	comp_lines = component_imports(comp_used) + shell_lines;
+	return warnings;
+}
+
+/**
+ * the modules of the shelled directives that no replacement already
+ * imports from, run for their side effects, the styles a barrel imports
+ */
+function shell_module_lines(): string {
+	let s = '';
+	for (let i = 0; i < shell_specs.length; i++) {
+		const spec = shell_specs[i];
+		let imported = false;
+		for (let j = 0; j < comp_used.length; j++)
+			if (comp_used[j].specifier === spec) {
+				imported = true;
+				break;
+			}
+		if (!imported) s += side_effect_import(spec);
+	}
+	return s;
+}
+
+function comp_end(): void {
+	has_components = false;
+	comp_table = false;
+	comp_scope = null;
+	dir_scope = null;
+	dir_shells = null;
+	dir_shelled = false;
+	if (shell_specs.length !== 0) {
+		shell_specs.length = 0;
+		shell_seen.clear();
+		shell_lines = '';
+	}
+	comp_mode = CM.FOLD;
+	comp_all = false;
+	comp_lines = '';
+	comp_prefix = '';
+	// a scan that threw leaves its warnings
+	if (comp_warnings.length !== 0) comp_warnings.length = 0;
+	if (comp_used.length !== 0) {
+		comp_used.length = 0;
+		comp_seen.clear();
+	}
+}
+
+/** append s, returns the register, in the mapped walks mo then holds everything */
+function cm_put(p: number, s: string): number {
+	if (comp_mode === CM.FOLD) return push_dyn(p, s);
+	if (p !== 0) mo += FOLD_STR[p];
+	mo += s;
+	return 0;
+}
+
+function cm_children(c: Cursor, sink: MapSink | undefined, p: number): number {
+	if (comp_mode === CM.FOLD) return fold_children(c, p);
+	const q =
+		comp_mode === CM.TRACE
+			? tr_children(c, sink!, p)
+			: mp_children(c, sink!, p);
+	if (q !== 0) mo += FOLD_STR[q];
+	return 0;
+}
+
+/** content text of c, mapped as the code cases of the walks map it */
+function cm_text(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	text: string,
+	code: number = Code.CODE_CONTENT
+): number {
+	if (comp_mode === CM.FOLD) return push_dyn(p, text);
+	if (p !== 0) mo += FOLD_STR[p];
+	const at = mo.length;
+	if (comp_mode === CM.TRACE)
+		tr_run(sink!, at, at + text.length, c.value_start, c.value_end);
+	else
+		put_record(
+			sink!,
+			at,
+			at + text.length,
+			c.value_start,
+			c.value_end,
+			c.index,
+			code
+		);
+	mo += text;
+	return 0;
+}
+
+function cm_spans(
+	c: Cursor,
+	sink: MapSink | undefined,
+	pre: number,
+	ao: number,
+	bc: number,
+	post: number,
+	preset: number
+): void {
+	if (comp_mode === CM.TRACE) tr_at(sink!, pre, c);
+	else if (comp_mode === CM.MAPPED) _spans(sink!, pre, ao, bc, post, c, preset);
+}
+
+/** a void replacement records the node, hr also its open syntax, as the walks do */
+function cm_void(
+	c: Cursor,
+	sink: MapSink | undefined,
+	pre: number,
+	preset: number
+): void {
+	if (comp_mode === CM.TRACE) tr_at(sink!, pre, c);
+	else if (comp_mode === CM.MAPPED) {
+		const post = mo.length;
+		put_record(sink!, pre, post, c.start, c.end, c.index, preset << 2);
+		if (preset === Preset.STRUCTURE && sink!.syntax && c.end !== Slot.NONE) {
+			const vs = c.value_start;
+			put_record(
+				sink!,
+				pre,
+				post,
+				c.start,
+				c.value_end > vs ? vs : c.start,
+				c.index,
+				Code.STRUCTURE_OPEN
+			);
+		}
+	}
+}
+
+// end of the attributes open_tag_end found, before the space ahead of > or />
+let tag_attrs_end = 0;
+
+function skip_space(src: string, p: number): number {
+	for (;;) {
+		const ch = src.charCodeAt(p);
+		if (ch !== 32 && ch !== 9 && ch !== 10) return p;
+		p++;
+	}
+}
+
+/**
+ * past the > of the typed open tag at c, -1 when its attributes do not spell
+ * it, as when a plugin changed them, sets tag_attrs_end
+ */
+function open_tag_end(
+	c: Cursor,
+	tag: string,
+	attrs: Record<string, unknown> | undefined
+): number {
+	const src = c.source;
+	let p = c.start + 1;
+	if (!src.startsWith(tag, p)) return -1;
+	p += tag.length;
+	// each attribute in the order the parser met them, values are source slices
+	if (attrs !== undefined)
+		for (const k in attrs) {
+			const v = attrs[k];
+			const q = skip_space(src, p);
+			if (q === p) return -1;
+			p = q;
+			if (src.charCodeAt(p) === 123) {
+				// {name}, {...spread} or {@attach f}, keyed by the text in braces
+				if (typeof v !== 'object' || v === null || (v as any).value !== k)
+					return -1;
+				if (
+					!src.startsWith(k, p + 1) ||
+					src.charCodeAt(p + 1 + k.length) !== 125
+				)
+					return -1;
+				p += k.length + 2;
+				continue;
+			}
+			if (!src.startsWith(k, p)) return -1;
+			p += k.length;
+			if (v === true) continue;
+			p = skip_space(src, p);
+			if (src.charCodeAt(p) !== 61) return -1;
+			p = skip_space(src, p + 1);
+			let value: string;
+			let open = -1;
+			let shut = -1;
+			if (typeof v === 'string') {
+				value = v;
+				const ch = src.charCodeAt(p);
+				if (ch === 34 || ch === 39) open = shut = ch;
+			} else if (typeof v === 'object' && v !== null) {
+				value = meta_str((v as any).value);
+				open = 123;
+				shut = 125;
+			} else return -1;
+			if (open !== -1) {
+				if (src.charCodeAt(p) !== open) return -1;
+				p++;
+			}
+			if (!src.startsWith(value, p)) return -1;
+			p += value.length;
+			if (shut !== -1) {
+				if (src.charCodeAt(p) !== shut) return -1;
+				p++;
+			}
+		}
+	tag_attrs_end = p;
+	p = skip_space(src, p);
+	const ch = src.charCodeAt(p);
+	if (ch === 62) return p + 1;
+	if (ch === 47 && src.charCodeAt(p + 1) === 62) return p + 2;
+	return -1;
+}
+
+/** the per kind extras of a typed element, those the author wrote are kept */
+function typed_extras(
+	tag: string,
+	attrs: Record<string, unknown> | undefined,
+	spans: AttrSpans | undefined
+): string {
+	if (tag.length === 2 && tag.charCodeAt(0) === 104) {
+		const d = tag.charCodeAt(1) - 48;
+		if (d >= 1 && d <= 6 && !writes(attrs, spans, 'level'))
+			return ' level={' + d + '}';
+	} else if (tag === 'ol' && !writes(attrs, spans, 'start'))
+		return ' start={1}';
+	return '';
+}
+
+function writes(
+	attrs: Record<string, unknown> | undefined,
+	spans: AttrSpans | undefined,
+	name: string
+): boolean {
+	if (spans !== undefined) return spans_have(spans, name);
+	return attrs !== undefined && name in attrs;
+}
+
+/**
+ * the attributes of a typed tag, copied from source, and what follows them up
+ * to > or />, which maps as identity only when it is as long
+ */
+function cm_tag(
+	c: Cursor,
+	sink: MapSink | undefined,
+	at: number,
+	from: number,
+	to: number,
+	tail: number,
+	end: number
+): void {
+	if (comp_mode === CM.FOLD) return;
+	const mid = at + (to - from);
+	if (comp_mode === CM.TRACE) {
+		tr_run(sink!, at, mid, from, to);
+		tr_run(sink!, mid, tail, to, end);
+	} else {
+		if (to > from)
+			put_record(sink!, at, mid, from, to, c.index, Code.SVELTE_CONTENT);
+		put_record(sink!, mid, tail, to, end, c.index, Code.SVELTE_CONTENT);
+	}
+}
+
+/** a js string expression, attribute text would read braces as expressions */
+function js_prop(key: string, value: string): string {
+	return ' ' + key + '={' + JSON.stringify(value) + '}';
+}
+
+/**
+ * the info string of a fence or the #! hint of a code span, the wire path
+ * resolves it, the tree builder path keeps byte offsets
+ */
+function fence_info(c: Cursor, meta: Record<string, unknown> | undefined) {
+	if (fs !== null) return fence_info_from(c, meta);
+	let info = meta?.info as string | undefined;
+	if (!info) {
+		const info_start = meta?.info_start as number | undefined;
+		const info_end = meta?.info_end as number | undefined;
+		if (info_start != null && info_end != null)
+			info = c.slice(info_start, info_end);
+	}
+	return info;
+}
+
+/**
+ * render the node at c as the replacement ref, with the attributes as props,
+ * children unless void and the extras of its kind
+ */
+function comp_node(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	ref: ComponentImport
+): number {
+	if (comp_mode !== CM.FOLD && p !== 0) {
+		mo += FOLD_STR[p];
+		p = 0;
+	}
+	const kind = c.kind as number;
+	if (kind >= K.DIRECTIVE_INLINE && kind <= K.DIRECTIVE_CONTAINER)
+		return dir_node(c, sink, p, ref);
+	const pre = mo.length;
+	const local = ref.local;
+	let open = '<' + local;
+	// newlines inside the tags, kept as the element renders them
+	let lead = '';
+	let close = '</' + local + '>';
+	let preset: number = Preset.TEXT;
+	let raw = false;
+
+	switch (kind) {
+		case K.HEADING:
+			open += _attrs(c) + ' level={' + c.extra + '}';
+			break;
+
+		case K.LINK: {
+			const meta = c.meta();
+			if (meta?.href) open += url_attr(meta.href as string, false);
+			if (meta?.title)
+				open += ' title="' + escape_text_html(meta.title as string) + '"';
+			open += _attrs(c, LINK_HANDLED);
+			break;
+		}
+
+		case K.IMAGE: {
+			const meta = c.meta();
+			if (meta?.src) open += url_attr(meta.src as string, true);
+			open += ' alt="' + escape_text_html(_children_raw(c)) + '"';
+			if (meta?.title)
+				open += ' title="' + escape_text_html(meta.title as string) + '"';
+			p = cm_put(p, open + _attrs(c, IMAGE_HANDLED) + ' />');
+			cm_void(c, sink, pre, Preset.TEXT);
+			return p;
+		}
+
+		case K.THEMATIC_BREAK:
+			p = cm_put(p, open + _attrs(c) + ' />');
+			cm_void(c, sink, pre, Preset.STRUCTURE);
+			return p;
+
+		case K.HARD_BREAK:
+			return cm_put(p, open + _attrs(c) + ' />\n');
+
+		case K.FOOTNOTE_REFERENCE:
+			return fn_component(c, sink, p, pre, open, close);
+
+		case K.PARAGRAPH:
+			open += _attrs(c);
+			// the first paragraph of a task item, see task_para
+			if (c.index === task_at) lead = task_box;
+			break;
+
+		case K.LIST: {
+			const meta = c.meta();
+			open += _attrs(c);
+			if (meta?.ordered) {
+				const start = meta.start;
+				open += ' start={' + (typeof start === 'number' ? start : 1) + '}';
+			}
+			lead = '\n';
+			close = '\n' + close;
+			preset = Preset.STRUCTURE;
+			break;
+		}
+
+		case K.LIST_ITEM: {
+			const checked = c.meta()?.checked;
+			open += _attrs(c);
+			// the replacement draws its own checkbox
+			if (typeof checked === 'boolean') open += ' checked={' + checked + '}';
+			close += '\n';
+			break;
+		}
+
+		case K.BLOCK_QUOTE:
+			open += _attrs(c);
+			lead = '\n';
+			close = '\n' + close;
+			break;
+
+		case K.TABLE:
+			open += _attrs(c);
+			lead = '\n';
+			close = '\n' + close;
+			preset = Preset.STRUCTURE;
+			break;
+
+		case K.CODE_SPAN: {
+			if (hl !== null) {
+				const h = hl_span(c);
+				if (h !== null)
+					// comp_name picked the replacement, math or code
+					return ref.name === 'math'
+						? comp_hl_span_math(c, sink, p, h, open, close)
+						: comp_hl_code(c, sink, p, h, open, close);
+			}
+			p = cm_put(p, open + _attrs(c) + '>');
+			const ao = mo.length;
+			let code = escape_span_text(c);
+			if (string_index_of.call(code, '\n') !== -1)
+				code = code.replace(/\n/g, ' ');
+			p = cm_text(c, sink, p, code);
+			const bc = mo.length;
+			p = cm_put(p, close);
+			cm_spans(c, sink, pre, ao, bc, mo.length, Preset.CODE);
+			return p;
+		}
+
+		case K.CODE_FENCE: {
+			const info = fence_info(c, c.meta());
+			if (hl !== null) {
+				const b = hl_block(c, info);
+				if (b !== null)
+					// comp_name picked the replacement, math or pre
+					return ref.name === 'math'
+						? comp_hl_math(c, sink, p, b, info!, open, close)
+						: comp_hl_pre(c, sink, p, b, info, open, close);
+			}
+			open += _attrs(c);
+			let inner = '<code>';
+			if (info) {
+				const lang = info_lang(info);
+				const rest = info_meta(info);
+				open += js_prop('lang', lang);
+				if (rest) {
+					open += js_prop('meta', rest);
+					if (pm !== null) open += pm.pre_props(rest, c.start);
+				}
+				inner = '<code class="language-' + escape_info(lang) + '">';
+			}
+			// children are the element, svelte keeps whitespace only inside a <pre>
+			// it can see, code is the raw text
+			if (fs !== null) open += fence_props(c);
+			p = cm_put(p, open + js_prop('code', fence_text(c)) + '><pre>' + inner);
+			const ao = mo.length;
+			const text = escape_fence_text(c);
+			p =
+				comp_mode === CM.FOLD
+					? push_dyn(p, text)
+					: fence_content(c, sink!, p, text, comp_mode === CM.TRACE);
+			const bc = mo.length;
+			p = cm_put(p, '</code></pre>' + close);
+			cm_spans(c, sink, pre, ao, bc, mo.length, Preset.CODE);
+			return p;
+		}
+
+		case K.HTML: {
+			const meta = c.meta()!;
+			const tag = meta.tag as string;
+			const typed = !c.synthetic;
+			// attributes nobody read spell the source, so they need no check
+			const spans = typed ? unread_spans(meta) : undefined;
+			const unread = spans !== undefined && spans.name_start === c.start + 1;
+			const attrs = unread
+				? undefined
+				: (meta.attributes as Record<string, unknown> | undefined);
+			let end = -1;
+			if (unread) {
+				end = spans!.open_end;
+				tag_attrs_end = spans!.attrs_end;
+			} else if (typed) end = open_tag_end(c, tag, attrs);
+			// a typed tag keeps its attributes as written, they map as identity
+			const from = c.start + 1 + tag.length;
+			const at = pre + open.length;
+			if (end !== -1) open += c.slice(from, tag_attrs_end);
+			else if (attrs) {
+				for (const k in attrs) {
+					const v = attrs[k];
+					if (v === true) open += ' ' + k;
+					else if (typeof v === 'object' && (v as any).type === 'expression')
+						open += expr_attr(k, meta_str((v as any).value));
+					else open += ' ' + k + '="' + escape_attr(meta_str(v), typed) + '"';
+				}
+				if (meta.repeated !== undefined)
+					open += repeated_attrs(meta.repeated as [string, unknown][], typed);
+			}
+			if (typed) open += typed_extras(tag, attrs, unread ? spans : undefined);
+			const shut = meta.self_closing ? ' />' : '>';
+			if (end !== -1)
+				cm_tag(
+					c,
+					sink,
+					at,
+					from,
+					tag_attrs_end,
+					pre + open.length + shut.length,
+					end
+				);
+			if (meta.self_closing) {
+				p = cm_put(p, open + shut);
+				cm_void(c, sink, pre, Preset.TEXT);
+				return p;
+			}
+			raw = is_raw_text_tag(tag);
+			break;
+		}
+
+		default:
+			open += _attrs(c);
+	}
+
+	p = cm_put(p, open + '>' + lead);
+	const ao = mo.length;
+	if (raw) p = cm_text(c, sink, p, c.text(), Code.SVELTE_CONTENT);
+	else p = kind === K.TABLE ? cm_table(c, sink, p) : cm_children(c, sink, p);
+	const bc = mo.length;
+	p = cm_put(p, close);
+	cm_spans(c, sink, pre, ao, bc, mo.length, preset);
+	return p;
+}
+
+//  directives
+
+/** a directive the compile cannot render, start indexes the source */
+export class DirectiveError extends Error {
+	readonly directive: string;
+	readonly start: number;
+	readonly line: number;
+	readonly column: number;
+
+	constructor(c: Cursor, message: string) {
+		const start = c.start;
+		const src = c.source;
+		let line = 1;
+		let from = 0;
+		for (
+			let i = src.indexOf('\n');
+			i !== -1 && i < start;
+			i = src.indexOf('\n', i + 1)
+		) {
+			line++;
+			from = i + 1;
+		}
+		const column = start - from + 1;
+		const directive = dir_syntax(c);
+		super(message.replace('%', directive + ' at ' + line + ':' + column));
+		this.name = 'DirectiveError';
+		this.directive = directive;
+		this.start = start;
+		this.line = line;
+		this.column = column;
+	}
+}
+
+/** the colons and name, as the directive is written */
+function dir_syntax(c: Cursor): string {
+	const k = c.kind as number;
+	const colons =
+		k === K.DIRECTIVE_INLINE ? ':' : k === K.DIRECTIVE_LEAF ? '::' : ':::';
+	return colons + dir_name(c);
+}
+
+/** throws for a directive, the walks reach it only from their default case */
+function dir_check(c: Cursor): void {
+	const k = c.kind as number;
+	if (k >= K.DIRECTIVE_INLINE && k <= K.DIRECTIVE_CONTAINER) dir_unknown(c);
+}
+
+function dir_unknown(c: Cursor): never {
+	const k = c.kind as number;
+	const kind =
+		k === K.DIRECTIVE_INLINE
+			? 'directive_inline'
+			: k === K.DIRECTIVE_LEAF
+				? 'directive_leaf'
+				: 'directive_container';
+	throw new DirectiveError(
+		c,
+		'no component renders the directive %. Export a component named ' +
+			JSON.stringify(dir_name(c)) +
+			" from a directives module (export * as directives from './directives.ts'), " +
+			'or replace the ' +
+			kind +
+			' node in a parse plugin'
+	);
+}
+
+/** args as string props, children and label are the snippets */
+function dir_props(c: Cursor, kind: number): string {
+	const args = c.meta()?.args as Record<string, string> | undefined;
+	if (args === undefined) return '';
+	let s = '';
+	for (const key in args) {
+		if (
+			key === 'children' ||
+			(key === 'label' && kind !== K.DIRECTIVE_INLINE)
+		) {
+			throw new DirectiveError(
+				c,
+				'the directive % has an argument named ' +
+					key +
+					', which its component receives as a snippet'
+			);
+		}
+		const v = args[key];
+		// braces in attribute text would read as an expression
+		s +=
+			v.indexOf('{') === -1 && v.indexOf('}') === -1
+				? ' ' + key + '="' + escape_html(v) + '"'
+				: js_prop(key, v);
+	}
+	return s;
+}
+
+/** true when a child other than the label renders, a container keeps its line breaks */
+function dir_has_body(c: Cursor): boolean {
+	const n = c.words;
+	let child = n[c.index * W.stride + W.first_child];
+	if (child === Slot.NONE) return false;
+	const parent = c.index;
+	do {
+		const b = child * W.stride;
+		if (n[b + W.parent] !== parent) return false;
+		const k = n[b] & 0xff;
+		if (k !== K.LINE_BREAK && k !== K.DIRECTIVE_LABEL) return true;
+		child = n[b + W.next];
+	} while (child !== Slot.NONE);
+	return false;
+}
+
+/** the directive_label of a leaf or container, its first child, or NONE */
+function dir_label_of(c: Cursor): number {
+	const n = c.words;
+	const child = n[c.index * W.stride + W.first_child];
+	if (child === Slot.NONE) return Slot.NONE;
+	const b = child * W.stride;
+	return n[b + W.parent] === c.index && (n[b] & 0xff) === K.DIRECTIVE_LABEL
+		? child
+		: Slot.NONE;
+}
+
+/** the label inline content as a snippet, mapped as the walks map it */
+function dir_label(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	label: number
+): number {
+	p = cm_put(p, '{#snippet label()}');
+	const at = c.index;
+	c.move_to(label);
+	p = cm_children(c, sink, p);
+	c.move_to(at);
+	return cm_put(p, '{/snippet}');
+}
+
+/**
+ * a directive as the component ref, args as props, the directive_label of a
+ * leaf or container as the label snippet, inline text and container body as
+ * children, the walks skip the label among them
+ */
+function dir_node(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	ref: ComponentImport
+): number {
+	if (ref.static === true && dir_shells !== null) {
+		const shell = dir_shell_of(c, ref);
+		if (shell !== undefined) return dir_shell(c, sink, p, shell);
+	}
+	const pre = mo.length;
+	const kind = c.kind as number;
+	const local = ref.local;
+	const open = '<' + local + dir_props(c, kind);
+	const label_at = kind === K.DIRECTIVE_INLINE ? Slot.NONE : dir_label_of(c);
+	const label = label_at !== Slot.NONE;
+	const body =
+		kind === K.DIRECTIVE_INLINE
+			? c.words[c.index * W.stride + W.first_child] !== Slot.NONE
+			: kind === K.DIRECTIVE_CONTAINER && dir_has_body(c);
+
+	if (!label && !body) {
+		p = cm_put(p, open + ' />');
+		cm_void(c, sink, pre, Preset.STRUCTURE);
+		return p;
+	}
+	p = cm_put(p, open + '>');
+	if (label) p = dir_label(c, sink, p, label_at);
+	const ao = mo.length;
+	if (body) {
+		// a container renders its blocks as a blockquote does
+		if (kind === K.DIRECTIVE_CONTAINER) p = cm_put(p, '\n');
+		p = cm_children(c, sink, p);
+		if (kind === K.DIRECTIVE_CONTAINER) p = cm_put(p, '\n');
+	}
+	const bc = mo.length;
+	p = cm_put(p, '</' + local + '>');
+	cm_spans(
+		c,
+		sink,
+		pre,
+		ao,
+		bc,
+		mo.length,
+		kind === K.DIRECTIVE_INLINE ? Preset.TEXT : Preset.STRUCTURE
+	);
+	return p;
+}
+
+/** which snippets the component of the directive at c is given */
+function dir_snippets(c: Cursor): { label: number; children: boolean } {
+	const kind = c.kind as number;
+	if (kind === K.DIRECTIVE_INLINE)
+		return {
+			label: Slot.NONE,
+			children: c.words[c.index * W.stride + W.first_child] !== Slot.NONE,
+		};
+	return {
+		label: dir_label_of(c),
+		children: kind === K.DIRECTIVE_CONTAINER && dir_has_body(c),
+	};
+}
+
+/** the key of the shell the static directive at c renders with */
+function dir_shell_key(c: Cursor, ref: ComponentImport): string {
+	const kind = c.kind as number;
+	// throws for an arg the component takes as a snippet, as a live render does
+	dir_props(c, kind);
+	const { label, children } = dir_snippets(c);
+	return shell_key(
+		ref.specifier,
+		ref.name,
+		c.meta()?.args as Record<string, string> | undefined,
+		label !== Slot.NONE,
+		children
+	);
+}
+
+function dir_shell_of(c: Cursor, ref: ComponentImport): Shell | undefined {
+	return dir_shells === null
+		? undefined
+		: dir_shells.get(dir_shell_key(c, ref));
+}
+
+/**
+ * a static directive as the html of its shell, the label and the body
+ * rendered into its holes as the walks render them
+ */
+function dir_shell(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	shell: Shell
+): number {
+	const pre = mo.length;
+	const kind = c.kind as number;
+	const { html, holes } = shell;
+	p = cm_put(p, html[0]);
+	if (holes.length === 0) {
+		cm_void(c, sink, pre, Preset.STRUCTURE);
+		return p;
+	}
+	const ao = mo.length;
+	for (let i = 0; i < holes.length; i++) {
+		if (holes[i] === 'label') {
+			const at = c.index;
+			c.move_to(dir_label_of(c));
+			p = cm_children(c, sink, p);
+			c.move_to(at);
+		} else {
+			// no line breaks around the body, outside a snippet svelte keeps them as a space
+			p = cm_children(c, sink, p);
+		}
+		if (i === holes.length - 1) {
+			const bc = mo.length;
+			p = cm_put(p, html[i + 1]);
+			cm_spans(
+				c,
+				sink,
+				pre,
+				ao,
+				bc,
+				mo.length,
+				kind === K.DIRECTIVE_INLINE ? Preset.TEXT : Preset.STRUCTURE
+			);
+		} else p = cm_put(p, html[i + 1]);
+	}
+	return p;
+}
+
+/** one use of a static directive with no shell yet */
+export interface ShellRequest {
+	key: string;
+	/** the module of the component, emitted verbatim as an import specifier */
+	specifier: string;
+	/** its export name, the directive name */
+	name: string;
+	args: Record<string, string>;
+	label: boolean;
+	children: boolean;
+	/** the offset of the directive in the source */
+	start: number;
+}
+
+/**
+ * every static directive of the document in directives that shells has no
+ * shell for, one request per key in document order, empty when every use
+ * has one
+ */
+export function shell_requests(
+	buf: NodeBuffer,
+	source: string,
+	directives: ComponentScope,
+	shells: ShellTable | undefined
+): ShellRequest[] {
+	const out: ShellRequest[] = [];
+	if (!directives.has_static) return out;
+	const c = new Cursor(buf, source);
+	const seen = new Set<string>();
+	const walk = (): void => {
+		if (!c.goto_first_child()) return;
+		do {
+			const k = c.kind as number;
+			if (k >= K.DIRECTIVE_INLINE && k <= K.DIRECTIVE_CONTAINER) {
+				const ref = directives.get(dir_name(c));
+				if (ref !== undefined && ref.static === true) {
+					const key = dir_shell_key(c, ref);
+					if (!seen.has(key) && shells?.get(key) === undefined) {
+						seen.add(key);
+						const { label, children } = dir_snippets(c);
+						const args = c.meta()?.args as Record<string, string> | undefined;
+						out.push({
+							key,
+							specifier: ref.specifier,
+							name: ref.name,
+							args: args === undefined ? {} : { ...args },
+							label: label !== Slot.NONE,
+							children,
+							start: c.start,
+						});
+					}
+				}
+			}
+			if (k !== K.CODE_SPAN && k !== K.CODE_FENCE) walk();
+		} while (c.goto_next_sibling());
+		c.goto_parent();
+	};
+	walk();
+	return out;
+}
+
+/** table content where a part may be replaced */
+function cm_table(c: Cursor, sink: MapSink | undefined, p: number): number {
+	const meta = c.meta();
+	const alignments = (meta?.alignments as string[]) ?? [];
+	const ext = ext_table(meta, alignments);
+	const head = comp_scope!.get('thead');
+	const body = comp_scope!.get('tbody');
+	const row = comp_scope!.get('tr');
+	const row_open = row ? '<' + row.local + '>\n' : '<tr>\n';
+	const row_close = row ? '</' + row.local + '>\n' : '</tr>\n';
+	let in_body = false;
+
+	if (!c.goto_first_child()) return p;
+	do {
+		if (c.kind === K.TABLE_HEADER) {
+			p = cm_put(p, (head ? '<' + head.local + '>\n' : '<thead>\n') + row_open);
+			p = ext
+				? cm_cells_ext(c, sink, p, 'th', alignments, 0, ext_n)
+				: cm_cells(c, sink, p, 'th', alignments);
+			p = cm_put(
+				p,
+				row_close + (head ? '</' + head.local + '>\n' : '</thead>\n')
+			);
+		} else if (c.kind === K.TABLE_ROW) {
+			let s = row_open;
+			if (!in_body) {
+				s = (body ? '<' + body.local + '>\n' : '<tbody>\n') + s;
+				in_body = true;
+			}
+			p = cm_put(p, s);
+			p = ext
+				? cm_cells_ext(c, sink, p, 'td', alignments, ext_l, ext_r)
+				: cm_cells(c, sink, p, 'td', alignments);
+			p = cm_put(p, row_close);
+		}
+	} while (c.goto_next_sibling());
+	c.goto_parent();
+
+	if (in_body) p = cm_put(p, body ? '</' + body.local + '>' : '</tbody>');
+	return p;
+}
+
+function cm_cells(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	tag: string,
+	alignments: string[]
+): number {
+	const ref = comp_scope!.get(tag);
+	const name = ref ? ref.local : tag;
+	let col = 0;
+	if (!c.goto_first_child()) return p;
+	do {
+		if (c.kind === K.TABLE_CELL) {
+			const align = alignments[col];
+			p = cm_put(
+				p,
+				align && align !== 'none'
+					? '<' + name + ' align="' + align + '">'
+					: '<' + name + '>'
+			);
+			p = cm_children(c, sink, p);
+			p = cm_put(p, '</' + name + '>\n');
+			col++;
+		}
+	} while (c.goto_next_sibling());
+	c.goto_parent();
+	return p;
+}
+
+/** cm_cells for an extended table, a row header is a th, so a replaced th gets scope */
+function cm_cells_ext(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	tag: string,
+	alignments: string[],
+	l: number,
+	r: number
+): number {
+	const ref = comp_scope!.get(tag);
+	const name = ref ? ref.local : tag;
+	const th = tag === 'th' ? undefined : comp_scope!.get('th');
+	const th_name = th ? th.local : 'th';
+	if (!c.goto_first_child()) return p;
+	do {
+		if (c.kind === K.TABLE_CELL) {
+			const col = c.extra;
+			const head = col < l || col >= r;
+			const a = ext_attrs(c, col, alignments);
+			const n = head ? th_name : name;
+			p = cm_put(
+				p,
+				head ? '<' + n + ' scope="row"' + a + '>' : '<' + n + a + '>'
+			);
+			p = cm_children(c, sink, p);
+			p = cm_put(p, '</' + n + '>\n');
+		}
+	} while (c.goto_next_sibling());
+	c.goto_parent();
+	return p;
+}
+
+//  mapping resolution
+
+// shared by every render, resolution is synchronous so one table is enough
+let offsets_scratch = new Uint32Array(0);
+
+/** generated offset of each out chunk, plus the end offset */
+function out_offsets(out: string[], scratch?: Uint32Array): Uint32Array {
+	const needed = out.length + 1;
+	let offsets: Uint32Array;
+	if (scratch !== undefined && scratch.length >= needed) {
+		offsets = scratch;
+	} else {
+		if (offsets_scratch.length < needed) {
+			let capacity = 16;
+			while (capacity < needed) capacity <<= 1;
+			offsets_scratch = new Uint32Array(capacity);
+		}
+		offsets = offsets_scratch;
+	}
+	offsets[0] = 0;
+	for (let i = 0; i < out.length; i++) {
+		// out mixes string representations so a plain length load is megamorphic,
+		// the concat lets turbofan read the length directly
+		offsets[i + 1] = offsets[i] + (out[i] + '').length;
+	}
+	return offsets;
+}
+
+/** a sink filled by out chunk index, as a sink of generated offsets */
+function by_offset(sink: MapSink, out: string[]): MapSink {
+	const copy = new MapSink();
+	copy.syntax = sink.syntax;
+	copy.rec = records_by_offset(sink.rec, sink.n, out_offsets(out));
+	copy.n = sink.n;
+	return copy;
+}
+
+/** a short record run is copied by hand since a subarray view costs more */
+function capture_trace(sink: MapSink, out: MapTrace): MapTrace {
+	const n = sink.n;
+	const trace = reserve_trace(n, 0, out);
+	const buf = trace.buf;
+	const start = trace.start;
+	const rec = sink.rec;
+	if (n > 64) buf.set(rec.subarray(0, n), start);
+	else for (let i = 0; i < n; i++) buf[start + i] = rec[i];
+	return trace;
+}
+
+function resolve_mappings(sink: MapSink): Mapping<MappingData>[] {
+	return record_mappings(sink.rec, sink.n);
+}
+
+/**
+ * the count of collapsed below offset, galloping from hint, records come in
+ * document order with parents after children so most end near the hint
+ */
+function rank_near(
+	collapsed: readonly number[],
+	offset: number,
+	hint: number
+): number {
+	const count = collapsed.length;
+	let lo: number;
+	let hi: number;
+	if (hint < count && collapsed[hint] < offset) {
+		// gallop forward, the rank is above hint and at most count
+		lo = hint + 1;
+		let step = 1;
+		for (;;) {
+			hi = hint + step;
+			if (hi >= count) {
+				hi = count;
+				break;
+			}
+			if (collapsed[hi] >= offset) break;
+			lo = hi + 1;
+			step += step;
+		}
+	} else if (hint > 0 && collapsed[hint - 1] >= offset) {
+		// gallop backward, the rank is below hint
+		hi = hint - 1;
+		let step = 1;
+		for (;;) {
+			lo = hint - 1 - step;
+			if (lo <= 0) {
+				lo = 0;
+				break;
+			}
+			if (collapsed[lo] < offset) {
+				lo++;
+				break;
+			}
+			hi = lo;
+			step += step;
+		}
+	} else {
+		return hint;
+	}
+	while (lo < hi) {
+		const mid = (lo + hi) >>> 1;
+		if (collapsed[mid] < offset) lo = mid + 1;
+		else hi = mid;
+	}
+	return lo;
+}
+
+/**
+ * resolve_mappings with source offsets moved onto raw, collapsed holds the
+ * normalized offset of each \n that was \r\n, an identity piece splits after
+ * each collapsed \n so it stays identity with that \n on its \r, any other
+ * piece widens its source length over the \r
+ */
+function resolve_raw_mappings(
+	sink: MapSink,
+	collapsed: readonly number[]
+): Mapping<MappingData>[] {
+	const rec = sink.rec;
+	const n = sink.n;
+	const count = collapsed.length;
+	const mappings: Mapping<MappingData>[] = new Array(n / Rec.SIZE);
+	let at = 0;
+	const data_of = record_data;
+	let k = 0;
+	for (let p = 0; p < n; p += Rec.SIZE) {
+		const source_length = rec[p + 3];
+		const gen_offset = rec[p];
+		const gen_length = rec[p + 1];
+		let start = rec[p + 2];
+		const end = start + source_length;
+		const identity = gen_length === source_length;
+		k = rank_near(collapsed, start, k);
+		const code = rec[p + 5];
+		const node_index = rec[p + 4] | 0;
+		const key = (node_index + 1) * 16 + code;
+		// one class for every mapping keeps readers monomorphic
+		if (identity) {
+			if (k < count && collapsed[k] + 1 < end) {
+				const src_offsets: number[] = [];
+				const gen_offsets: number[] = [];
+				const lengths: number[] = [];
+				let gen_start = gen_offset;
+				while (k < count && collapsed[k] + 1 < end) {
+					const cut = collapsed[k] + 1;
+					src_offsets.push(start + k);
+					gen_offsets.push(gen_start);
+					lengths.push(cut - start);
+					gen_start += cut - start;
+					start = cut;
+					k++;
+				}
+				src_offsets.push(start + k);
+				gen_offsets.push(gen_start);
+				lengths.push(end - start);
+				const m: Mapping<MappingData> = {
+					sourceOffsets: src_offsets,
+					generatedOffsets: gen_offsets,
+					lengths,
+					data: data_of(code, node_index),
+				};
+				mappings[at++] = new RecordMapping(0, 0, 0, 0, key, m);
+			} else {
+				mappings[at++] = new RecordMapping(
+					start + k,
+					gen_offset,
+					source_length,
+					source_length,
+					key,
+					null
+				);
+			}
+			continue;
+		}
+		let length = source_length;
+		if (k < count && collapsed[k] < end) {
+			length = end + rank_near(collapsed, end, k) - start - k;
+		}
+		if (length !== gen_length) {
+			mappings[at++] = new RecordMapping(
+				start + k,
+				gen_offset,
+				length,
+				gen_length,
+				key,
+				null
+			);
+		} else {
+			const m: Mapping<MappingData> = {
+				sourceOffsets: [start + k],
+				generatedOffsets: [gen_offset],
+				lengths: [length],
+				data: data_of(code, node_index),
+				generatedLengths: [gen_length],
+			};
+			mappings[at++] = new RecordMapping(0, 0, 0, 0, key, m);
+		}
+	}
+	return mappings;
+}
+
+// exported functions are module cells too, so the walk calls the locals
+export const escape = escape_html;
+export const escape_text = escape_node_text;
+export const _escape_code = escape_code;
+export const _escape_code_text = escape_code_text;
+export const _escape_text_html = escape_text_html;
+export const _emit = emit_record;
+export const _children = render_children;
+export const _node = render_node;
+export const _out_offsets = out_offsets;
+
+/** @internal the trace of a sink filled by out chunk index */
+export function _capture_trace(sink: MapSink, out: string[]): MapTrace {
+	const rec = by_offset(sink, out);
+	const trace = new MapSink();
+	trace.rec = trace_of_records(rec.rec, rec.n);
+	trace.n = trace.rec.length;
+	return capture_trace(trace, { buf: trace.rec, start: 0, split: 0, end: 0 });
+}
+
+/** @internal the mappings of a sink filled by out chunk index */
+export function _resolve_mappings(
+	out: string[],
+	sink: MapSink
+): Mapping<MappingData>[] {
+	return resolve_mappings(by_offset(sink, out));
+}
+
+// mapped renders resolve their records before they return, so every
+// renderer shares one sink
+const render_sink = new MapSink();
+// half a trace slab, see reserve_trace
+const TRACE_DIRECT_WORDS = 16384;
+
+//  template wrapper
+
+/** wraps a document, the template module and whether the metadata export spreads into it */
+export interface TemplateWrapper {
+	/** emitted verbatim as the import specifier */
+	specifier: string;
+	/** true spreads the module script metadata export as props */
+	metadata: boolean;
+	/** a module script export passed as the prop of its name, after the metadata */
+	data?: string;
+}
+
+const WRAP_LOCAL = 'Template_MDSVEX';
+const WRAP_PROPS = '__mdsvex_props';
+const PROPS_CALL = /\$props\s*\(\s*\)/;
+const PROPS_NAME =
+	/\b(?:let|const|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=;]*)?=\s*\$props\s*\(\s*\)/;
+/** top level elements svelte only allows outside markup, or that belong to the document */
+const WRAP_HOISTED = new Set([
+	'script',
+	'style',
+	'svelte:head',
+	'svelte:window',
+	'svelte:body',
+	'svelte:document',
+	'svelte:options',
+]);
+
+// set by wrap_begin, '' when the render wraps nothing
+let wrap_spec = '';
+let wrap_metadata = false;
+let wrap_data = '';
+let wrap_open = '';
+let wrap_mode: number = CM.FOLD;
+
+function wrap_begin(wrapper: TemplateWrapper, mode: number): void {
+	wrap_spec = wrapper.specifier;
+	wrap_metadata = wrapper.metadata;
+	const data = wrapper.data;
+	if (data !== undefined) wrap_data = data;
+	wrap_mode = mode;
+}
+
+function wrap_end(): void {
+	wrap_spec = '';
+	wrap_metadata = false;
+	wrap_data = '';
+	wrap_open = '';
+	wrap_mode = CM.FOLD;
+	comp_lines = '';
+	comp_prefix = '';
+}
+
+/** a root child that renders before the wrapper rather than inside it */
+function wrap_hoists(c: Cursor, kind: number): boolean {
+	if (kind === K.IMPORT_STATEMENT || kind === K.FRONTMATTER) return true;
+	if (kind !== K.HTML) return false;
+	const tag = c.meta()?.tag;
+	return (
+		typeof tag === 'string' &&
+		WRAP_HOISTED.has(tag) &&
+		// an external script renders as an element, it is markup
+		!is_embed_script(c, tag)
+	);
+}
+
+/** the root children that hoist, or the rest, in document order */
+function wrap_pass(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	hoisted: boolean
+): number {
+	const n = c.words;
+	let child = n[W.first_child];
+	while (child !== Slot.NONE) {
+		const b = child * W.stride;
+		if (n[b + W.parent] !== 0) break;
+		const k = n[b] & 0xff;
+		if (k !== K.LINE_BREAK) {
+			c.move_to(child);
+			if (wrap_hoists(c, k) === hoisted)
+				p = walk_child(c, sink, p, wrap_mode, child, k);
+		}
+		child = n[b + W.next];
+	}
+	c.move_to(0);
+	return p;
+}
+
+/** the child of kind k the cursor is at, through the walk of mode */
+function walk_child(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	mode: number,
+	child: number,
+	k: number
+): number {
+	if (mode === CM.FOLD) return fold_node(c, p);
+	if (k === K.TEXT) {
+		// the mapped walks render text in their children loops
+		const n = c.words;
+		const b = child * W.stride;
+		const vs = n[b + W.value_start];
+		const ve = n[b + W.value_end];
+		const t = escape_text_at(c, child, vs, ve, false);
+		if (p !== 0) mo += FOLD_STR[p];
+		if (vs !== Slot.NONE && ve > vs) {
+			const at = mo.length;
+			if (mode === CM.TRACE) tr_run(sink!, at, at + t.length, vs, ve);
+			else
+				put_record(sink!, at, at + t.length, vs, ve, child, Code.TEXT_CONTENT);
+		}
+		mo += t;
+		return 0;
+	}
+	return mode === CM.TRACE ? tr_node(c, sink!, p) : mp_node(c, sink!, p);
+}
+
+/** c is at the root, the hoisted children then the rest inside the wrapper */
+function wrap_root(c: Cursor, sink: MapSink | undefined, p: number): number {
+	p = wrap_pass(c, sink, p, true);
+	p = cm_wrap(p, wrap_open);
+	p = ws_on
+		? ws_pass(c, sink, p, wrap_mode, true)
+		: wrap_pass(c, sink, p, false);
+	if (fn !== null) p = fn_section(c, sink, p, wrap_mode);
+	return cm_wrap(p, '</' + WRAP_LOCAL + '>');
+}
+
+function cm_wrap(p: number, s: string): number {
+	if (wrap_mode === CM.FOLD) return push_dyn(p, s);
+	if (p !== 0) mo += FOLD_STR[p];
+	mo += s;
+	return 0;
+}
+
+//  internal helpers
+
+/** render the node at the current cursor position to html string. */
+function _render_block(cursor: Cursor): string {
+	return render_folded(cursor);
+}
+
+//  block entry
+
+/** the idx of the block that holds the footnotes section, which is no node */
+export const FOOTNOTES_BLOCK = -1;
+
+export interface CursorBlockEntry {
+	/** node buffer index, use as keyed each key, FOOTNOTES_BLOCK for the footnotes section */
+	idx: number;
+	/** rendered html string. */
+	html: string;
+}
+
+//  cursorhtmlrenderer (incremental)
+
+/**
+ * incremental html renderer using the cursor over node buffers
+ *
+ * same caching strategy as htmlrenderer: walks root's children,
+ * skips closed+cached blocks, re-renders only open blocks.
+ * but uses cursor traversal, zero per-node allocations per render.
+ *
+ * usage:
+ *
+ *   const tree = new treebuilder(128);
+ *   const parser = new pfmparser(tree);
+ *   const renderer = new cursorhtmlrenderer();
+ *
+ *   parser.init();
+ *   parser.feed(chunk);
+ *   renderer.update(tree.get_buffer(), accumulated_source);
+ *   // renderer.blocks has stable {idx, html} entries
+ */
+export class CursorHTMLRenderer {
+	blocks: CursorBlockEntry[] = [];
+	/** full document html (available after update, whether cached or not). */
+	html = '';
+	private closed: Set<number> | null = null;
+	private cursor: Cursor | null = null;
+	private cache: boolean;
+	/** unused, always empty */
+	private out: string[] = [];
+	/**
+	 * element replacements for the next renders, closest scope first, the
+	 * cached render of update ignores it as a replacement needs a document import
+	 */
+	scope: ComponentScope | null = null;
+	/** also replace the lowercase elements the author typed, component_mode all */
+	replace_typed = false;
+	/** elements the last render with a scope kept for a directive, a render without one stores nothing */
+	get warnings(): readonly ReplaceWarning[] {
+		return comp_last;
+	}
+	/** directive replacements, a namespace apart from scope */
+	directives: ComponentScope | null = null;
+	/** highlights fences and code spans with a #! hint, null renders them plain */
+	highlight: CodeHighlighter | null = null;
+	/** title, caption and meta props for a pre replacement rendered plain, null gives it none */
+	pre_meta: PreMeta | null = null;
+	/**
+	 * a directive no scope replaces throws a DirectiveError, otherwise it
+	 * renders as its children, which suits a preview
+	 */
+	strict_directives = false;
+	/**
+	 * the template the next render wraps the document in, hoisting its scripts,
+	 * styles and top level svelte elements, that render clears it, the cached
+	 * render of update ignores it
+	 */
+	// declared, so a renderer that never wraps builds and keeps no field
+	declare template?: TemplateWrapper;
+	/**
+	 * import statements the next renders add to the instance script, with or
+	 * without a replacement, the cached render of update ignores them
+	 */
+	declare imports?: readonly string[];
+	/** replaces the src of images and the href of links in the next renders, unset keeps every url */
+	declare urls?: UrlLookup;
+	/**
+	 * the fences of the next renders that take their code, info string or pre
+	 * props from elsewhere, unset reads every fence from the source
+	 */
+	declare fences?: FenceSources;
+	/**
+	 * curly quotes, dashes and ellipses in the prose of the next renders, unset
+	 * leaves text as written, as does a text node that holds a stored string
+	 */
+	declare smart_punctuation?: SmartPunctuation;
+	/**
+	 * the footnotes of the next renders with their numbers, unset numbers the
+	 * references of a document as its labels are first met
+	 */
+	declare footnotes?: FootnoteRender;
+	/**
+	 * true wraps each run of two or more static root blocks in a display
+	 * contents div, the cached render of update ignores it
+	 */
+	declare wrap_static?: boolean;
+	/**
+	 * the shells of the static directives of the next renders, a static
+	 * directive with none renders live, the cached render of update ignores it
+	 */
+	declare shells?: ShellTable;
+	/** the cached render met a footnote, so each update numbers them again */
+	private noted = false;
+
+	constructor(opts?: { cache?: boolean }) {
+		this.cache = opts?.cache ?? true;
+		if (this.cache) this.closed = new Set();
+	}
+
+	/**
+	 * @param code code the module script starts with, it goes into the top
+	 * level module script or a new one in place of the frontmatter
+	 */
+	update(buf: NodeBuffer, source: string, code?: string): CursorBlockEntry[] {
+		// reuse or create cursor
+		if (!this.cursor) {
+			this.cursor = new Cursor(buf, source);
+		} else {
+			this.cursor.reinit(buf, source);
+		}
+		const c = this.cursor;
+		c.reset();
+		esc_reset(source);
+		// ahead of the rest, it throws for an option it can not read
+		const smart = this.smart_punctuation;
+		if (smart !== undefined) sp_begin(smart);
+		hl = this.highlight;
+		pm = this.pre_meta;
+		const urls = this.urls;
+		if (urls !== undefined) ul = urls;
+		const fences = this.fences;
+		if (fences !== undefined) fs = fences;
+		const notes = this.footnotes;
+		if (notes !== undefined) fn = notes;
+
+		// no caching, single-pass full render
+		if (!this.cache) {
+			const scope = this.scope;
+			const directives = this.directives;
+			if (this.template !== undefined) {
+				this.html = this.render_wrapped(c, buf, null, false, code);
+				return this.blocks;
+			}
+			const imports = this.imports;
+			const extra = imports !== undefined && imports.length !== 0;
+			try {
+				if (
+					(scope !== null && scope.size !== 0) ||
+					(directives !== null && directives.size !== 0)
+				)
+					comp_last = comp_begin(
+						c,
+						scope,
+						directives,
+						CM.FOLD,
+						this.replace_typed,
+						this.shells
+					);
+				if (extra) extra_begin(imports);
+				if (this.strict_directives) dir_strict = true;
+				if (this.wrap_static === true) ws_on = true;
+				hoist_begin(c, buf, extra);
+				if (code) module_begin_fold(buf, code);
+				prebuilt_begin(buf);
+				this.html = render_folded(c);
+				if (fn !== null) this.html += fn_section_folded(c);
+			} finally {
+				fn = null;
+				hl = null;
+				pm = null;
+				if (urls !== undefined) ul = null;
+				if (fences !== undefined) fs = null;
+				if (smart !== undefined) sp_end();
+				esc_prebuilt = true;
+				esc_bits = null;
+				if (dir_strict) dir_strict = false;
+				if (ws_on) ws_on = false;
+				if (comp_scope !== null) comp_end();
+				if (extra) extra_end();
+				if (code) module_end();
+			}
+			return this.blocks;
+		}
+
+		try {
+			hoist_begin(c, buf, false);
+			if (code) module_begin(buf, code);
+			if (this.noted && fn === null) fn = footnote_index(buf, true);
+			this.update_blocks(c);
+		} finally {
+			fn = null;
+			hl = null;
+			pm = null;
+			if (urls !== undefined) ul = null;
+			if (fences !== undefined) fs = null;
+			if (smart !== undefined) sp_end();
+			if (code) module_end();
+		}
+		return this.blocks;
+	}
+
+	/** the cached render, block by block */
+	private update_blocks(c: Cursor): void {
+		if (!c.goto_first_child()) return;
+
+		// the section of the last update is no child of the root
+		const blocks = this.blocks;
+		if (
+			blocks.length !== 0 &&
+			blocks[blocks.length - 1].idx === FOOTNOTES_BLOCK
+		)
+			blocks.pop();
+		let block_idx = 0;
+		do {
+			if (c.kind === K.LINE_BREAK) continue;
+
+			const idx = c.index;
+
+			// imports, frontmatter and top level scripts render from document state, never cached
+			const keep =
+				c.closed &&
+				c.kind !== K.IMPORT_STATEMENT &&
+				c.kind !== K.FRONTMATTER &&
+				idx !== hoist_script &&
+				idx !== hoist_module;
+			if (block_idx >= this.blocks.length) {
+				this.blocks.push({ idx, html: _render_block(c) });
+				if (keep) this.closed!.add(idx);
+			} else if (!this.closed!.has(idx)) {
+				this.blocks[block_idx].html = _render_block(c);
+				if (keep) this.closed!.add(idx);
+			}
+
+			block_idx++;
+		} while (c.goto_next_sibling());
+
+		c.goto_parent();
+		// a block may have met the first footnote of the document
+		if (fn !== null) {
+			this.noted = true;
+			const html = fn_section_folded(c);
+			if (html !== '') blocks.push({ idx: FOOTNOTES_BLOCK, html });
+		}
+		this.html = this.blocks.map((b) => b.html).join('');
+	}
+
+	/** trace renders with no syntax records, see tr_node */
+	private render_mapped(
+		buf: NodeBuffer,
+		source: string,
+		sink: MapSink,
+		trace: boolean,
+		code: string | undefined
+	): void {
+		if (!this.cursor) {
+			this.cursor = new Cursor(buf, source);
+		} else {
+			this.cursor.reinit(buf, source);
+		}
+		const c = this.cursor;
+		c.reset();
+		esc_reset(source);
+		// ahead of the rest, it throws for an option it can not read
+		const smart = this.smart_punctuation;
+		if (smart !== undefined) sp_begin(smart);
+		hl = this.highlight;
+		pm = this.pre_meta;
+		const urls = this.urls;
+		if (urls !== undefined) ul = urls;
+		const fences = this.fences;
+		if (fences !== undefined) fs = fences;
+		const notes = this.footnotes;
+		if (notes !== undefined) fn = notes;
+
+		if (this.template !== undefined) {
+			this.html = this.render_wrapped(c, buf, sink, trace, code);
+			return;
+		}
+		const scope = this.scope;
+		const directives = this.directives;
+		const imports = this.imports;
+		const extra = imports !== undefined && imports.length !== 0;
+		let p = 0;
+		try {
+			if (
+				(scope !== null && scope.size !== 0) ||
+				(directives !== null && directives.size !== 0)
+			)
+				comp_last = comp_begin(
+					c,
+					scope,
+					directives,
+					trace ? CM.TRACE : CM.MAPPED,
+					this.replace_typed,
+					this.shells
+				);
+			if (extra) extra_begin(imports);
+			if (this.strict_directives) dir_strict = true;
+			if (this.wrap_static === true) ws_on = true;
+			hoist_begin(c, buf, extra);
+			mo = comp_prefix;
+			if (code) {
+				module_begin(buf, code);
+				// the frontmatter is the first node, the mapped walk has no case for it
+				mo += module_script();
+			}
+			prebuilt_begin(buf);
+			if (ws_on) p = ws_pass(c, sink, 0, trace ? CM.TRACE : CM.MAPPED, false);
+			else if (trace) p = tr_node(c, sink, 0);
+			else p = mp_node(c, sink, 0);
+			if (fn !== null) p = fn_section(c, sink, p, trace ? CM.TRACE : CM.MAPPED);
+		} finally {
+			fn = null;
+			hl = null;
+			pm = null;
+			if (urls !== undefined) ul = null;
+			if (fences !== undefined) fs = null;
+			if (smart !== undefined) sp_end();
+			esc_prebuilt = true;
+			esc_bits = null;
+			if (dir_strict) dir_strict = false;
+			if (ws_on) ws_on = false;
+			if (comp_scope !== null) comp_end();
+			if (extra) extra_end();
+			if (code) module_end();
+		}
+		// the module string would keep the document alive
+		let html = mo;
+		mo = '';
+		if (p !== 0) html += FOLD_STR[p];
+		// flat, so every later read of the html pays no rope walk
+		if (html.length !== 0) flat_sink[0] = html.charCodeAt(0);
+		this.html = html;
+	}
+
+	/**
+	 * a render wrapped in the template, kept apart so a plain render pays one
+	 * check, sink null for the fold walk
+	 */
+	private render_wrapped(
+		c: Cursor,
+		buf: NodeBuffer,
+		sink: MapSink | null,
+		trace: boolean,
+		code: string | undefined
+	): string {
+		const scope = this.scope;
+		const directives = this.directives;
+		const imports = this.imports;
+		const extra = imports !== undefined && imports.length !== 0;
+		const mode = sink === null ? CM.FOLD : trace ? CM.TRACE : CM.MAPPED;
+		let html: string;
+		try {
+			if (
+				(scope !== null && scope.size !== 0) ||
+				(directives !== null && directives.size !== 0)
+			)
+				comp_last = comp_begin(
+					c,
+					scope,
+					directives,
+					mode,
+					this.replace_typed,
+					this.shells
+				);
+			if (extra) extra_begin(imports);
+			if (this.strict_directives) dir_strict = true;
+			if (this.wrap_static === true) ws_on = true;
+			wrap_begin(this.template!, mode);
+			wrap_hoist_begin(c, buf);
+			if (code) {
+				if (sink === null) module_begin_fold(buf, code);
+				else module_begin(buf, code);
+			}
+			prebuilt_begin(buf);
+			if (sink === null) {
+				fold_out = comp_prefix;
+				const p = wrap_root(c, undefined, 0);
+				html = fold_out;
+				fold_out = '';
+				if (p !== 0) html += FOLD_STR[p];
+			} else {
+				mo = comp_prefix;
+				// the frontmatter is the first node, the mapped walk has no case for it
+				if (code) mo += module_script();
+				const p = wrap_root(c, sink, 0);
+				html = mo;
+				mo = '';
+				if (p !== 0) html += FOLD_STR[p];
+			}
+		} finally {
+			fn = null;
+			hl = null;
+			pm = null;
+			ul = null;
+			fs = null;
+			if (sp_on) sp_end();
+			esc_prebuilt = true;
+			esc_bits = null;
+			if (dir_strict) dir_strict = false;
+			if (ws_on) ws_on = false;
+			if (comp_scope !== null) comp_end();
+			if (extra) extra_end();
+			wrap_end();
+			if (code) module_end();
+			this.template = undefined;
+		}
+		// flat, so every later read of the html pays no rope walk
+		if (html.length !== 0) flat_sink[0] = html.charCodeAt(0);
+		return html;
+	}
+
+	/**
+	 * render with source mapping. always full render (no caching).
+	 * collapsed moves the source offsets onto raw
+	 */
+	update_mapped(
+		buf: NodeBuffer,
+		source: string,
+		collapsed?: readonly number[] | null,
+		module_code?: string
+	): { blocks: CursorBlockEntry[]; mappings: Mapping<MappingData>[] } {
+		const sink = render_sink;
+		sink.begin(true);
+		this.render_mapped(buf, source, sink, false, module_code);
+		const mappings =
+			collapsed == null || collapsed.length === 0
+				? resolve_mappings(sink)
+				: resolve_raw_mappings(sink, collapsed);
+		sink.release();
+		return { blocks: this.blocks, mappings };
+	}
+
+	/**
+	 * equals mappings_to_v3 over update_mapped when raw normalizes to source
+	 * without collapsing any crlf, but builds no Mapping objects
+	 */
+	update_v3(
+		buf: NodeBuffer,
+		source: string,
+		raw: string,
+		file?: string,
+		module_code?: string
+	): SourceMapV3 {
+		const sink = render_sink;
+		sink.begin(false);
+		this.render_mapped(buf, source, sink, true, module_code);
+		const map = trace_records_to_v3(sink, raw, this.html, file);
+		sink.release();
+		return map;
+	}
+
+	/** trace_to_v3 over the trace with the same arguments equals update_v3 */
+	update_trace(
+		buf: NodeBuffer,
+		source: string,
+		module_code?: string
+	): MapTrace {
+		const trace: MapTrace = {
+			buf: render_sink.rec,
+			start: 0,
+			split: 0,
+			end: 0,
+		};
+		this.update_trace_into(buf, source, trace, module_code);
+		return trace;
+	}
+
+	/** update_trace filling out instead of a new trace */
+	update_trace_into(
+		buf: NodeBuffer,
+		source: string,
+		out: MapTrace,
+		module_code?: string
+	): void {
+		const sink = render_sink;
+		// a node writes at most two records, so a small render writes straight into the slab
+		const bound = buf.size * (2 * Trace.SIZE);
+		if (bound <= TRACE_DIRECT_WORDS) {
+			const own = sink.rec;
+			sink.rec = trace_room(bound);
+			const start = trace_free_at();
+			sink.n = start;
+			sink.syntax = false;
+			try {
+				this.render_mapped(buf, source, sink, true, module_code);
+				trace_take(sink.rec, start, sink.n, out);
+				return;
+			} finally {
+				// the slab holds live traces, the next sink write must not land there
+				sink.rec = own;
+				sink.n = 0;
+			}
+		}
+		sink.begin(false);
+		this.render_mapped(buf, source, sink, true, module_code);
+		capture_trace(sink, out);
+		sink.release();
+	}
+
+	/**
+	 * the nodes changed after their block was rendered, as the node of a
+	 * deferred task that applied does, apply_ready gives them, each block that
+	 * holds one renders again at the next update, a renderer without a cache
+	 * renders every block anyway
+	 */
+	invalidate(buf: NodeBuffer, nodes: readonly number[]): void {
+		const closed = this.closed;
+		if (closed === null) return;
+		for (let i = 0; i < nodes.length; i++) {
+			const block = top_block(buf, nodes[i]);
+			if (block !== Slot.NONE) closed.delete(block);
+		}
+	}
+
+	reset(): void {
+		this.blocks.length = 0;
+		this.closed?.clear();
+		this.html = '';
+		this.noted = false;
+	}
+
+	/** drop every reference to the last render so a kept renderer holds no document */
+	release(): void {
+		// length stores and clear are runtime calls even when empty
+		this.html = '';
+		if (this.blocks.length !== 0) this.blocks.length = 0;
+		const closed = this.closed;
+		if (closed !== null && closed.size !== 0) closed.clear();
+		this.cursor?.release();
+		this.scope = null;
+		this.directives = null;
+		this.highlight = null;
+		this.pre_meta = null;
+		this.replace_typed = false;
+		// a tag is a slice that would keep the source alive
+		comp_last = NO_WARNINGS;
+		if (this.template !== undefined) this.template = undefined;
+		if (this.imports !== undefined) this.imports = undefined;
+		if (this.urls !== undefined) this.urls = undefined;
+		if (this.fences !== undefined) this.fences = undefined;
+		if (this.smart_punctuation !== undefined)
+			this.smart_punctuation = undefined;
+		if (this.footnotes !== undefined) this.footnotes = undefined;
+		if (this.wrap_static !== undefined) this.wrap_static = undefined;
+		if (this.shells !== undefined) this.shells = undefined;
+		this.noted = false;
+		// the escape index is module state and would keep the source alive,
+		// every render resets it, a zero length clamps any text of '' to empty
+		esc_src = '';
+		esc_len = 0;
+	}
+}
+
+// declared last so no module binding the walk reads moves to a higher slot
+
+/** @internal starts a mapped render that _node appends to html, record offsets index the result */
+export function _mapped_begin(
+	buf: NodeBuffer,
+	source: string,
+	html: string,
+	urls: UrlLookup | null = null
+): void {
+	esc_reset(source);
+	prebuilt_begin(buf);
+	// callers render parts, they place imports and scripts themselves
+	hoist_reset();
+	ul = urls;
+	mo = html;
+}
+
+/** @internal ends the mapped render started by _mapped_begin and returns its html */
+export function _mapped_end(): string {
+	esc_prebuilt = true;
+	esc_bits = null;
+	ul = null;
+	const html = mo;
+	mo = '';
+	return html;
+}
+
+/** @internal the mappings of a sink whose records hold html offsets */
+export function _resolve_offset_mappings(
+	sink: MapSink
+): Mapping<MappingData>[] {
+	return resolve_mappings(sink);
+}
+
+// highlighting is cold beside the walks, so its bindings sit last
+
+/** the highlighter of the render in progress, null renders code plain */
+let hl: CodeHighlighter | null = null;
+/** the meta conventions of the render in progress for a plain pre replacement */
+let pm: PreMeta | null = null;
+
+/** the extra import lines of the render in progress, '' for none, hoist_begin adds them to comp_lines */
+let extra_lines = '';
+
+/** extra_end follows it, in a finally */
+function extra_begin(lines: readonly string[]): void {
+	let s = '';
+	for (let i = 0; i < lines.length; i++) s = s + lines[i] + '\n';
+	extra_lines = s;
+}
+
+function extra_end(): void {
+	extra_lines = '';
+	// a render with no replacement never reaches comp_end
+	comp_lines = '';
+	comp_prefix = '';
+}
+
+/** the url lookup of the render in progress, null keeps every url */
+let ul: UrlLookup | null = null;
+
+/** the src or href attribute of an image or link, every walk writes it here or in the fold twin */
+function url_attr(url: string, image: boolean): string {
+	if (ul === null)
+		return (image ? ' src="' : ' href="') + escape_text_html(url) + '"';
+	return url_swap(url, image);
+}
+
+/** fold twin of url_attr, without a lookup the statics stay in the register */
+function fold_url(p: number, url: string, image: boolean): number {
+	if (ul !== null) return push_dyn(p, url_swap(url, image));
+	p = push_static(p, image ? S_SRC : S_HREF);
+	p = push_dyn(p, escape_text_html(url));
+	return push_static(p, S_QUOTE);
+}
+
+/** url_attr of a render with a lookup */
+function url_swap(url: string, image: boolean): string {
+	return url_value(image ? ' src=' : ' href=', url, ul!(url, image));
+}
+
+/** the attribute for what the lookup gave, a picture is the src of a replacement */
+function url_value(
+	name: string,
+	url: string,
+	to: UrlSource | null | undefined
+): string {
+	if (to == null) to = url;
+	if (typeof to !== 'string') return name + '{' + to.value + '}';
+	// an empty url of the source has no attribute either
+	return to === '' ? '' : name + '"' + escape_text_html(to) + '"';
+}
+
+/** the static that closes what img_head opened last */
+let img_close = S_SELF_CLOSE;
+
+/**
+ * a markdown image up to its alt, the img and its src, or for a picture the
+ * markup enhanced-img gives an image it imports, one source per format and
+ * the img with the fallback and its size
+ */
+function img_head(src: unknown): string {
+	img_close = S_SELF_CLOSE;
+	if (!src) return '<img';
+	if (ul === null) return '<img src="' + escape_text_html(src as string) + '"';
+	const to = ul(src as string, true);
+	if (to == null || typeof to === 'string' || to.type !== 'picture')
+		return '<img' + url_value(' src=', src as string, to);
+	img_close = S_PICTURE_CLOSE;
+	const v = to.value;
+	return (
+		'<picture>{#each Object.entries(' +
+		v +
+		".sources) as [format, srcset]}<source {srcset} type={'image/' + format} />{/each}<img src={" +
+		v +
+		'.img.src} width={' +
+		v +
+		'.img.w} height={' +
+		v +
+		'.img.h}'
+	);
+}
+
+/** the fences of the render in progress that take their code from elsewhere, null reads every one from the source */
+let fs: FenceSources | null = null;
+
+/** fence_text of a render with fence sources */
+function fence_text_from(c: Cursor): string {
+	const from = fs!.get(c.index);
+	if (from !== undefined) return from.text;
+	return held_text(c);
+}
+
+/** fence_info of a render with fence sources */
+function fence_info_from(
+	c: Cursor,
+	meta: Record<string, unknown> | undefined
+): string | undefined {
+	const given = fs!.get(c.index)?.info;
+	if (given !== undefined) return given;
+	let info = meta?.info as string | undefined;
+	if (!info) {
+		const info_start = meta?.info_start as number | undefined;
+		const info_end = meta?.info_end as number | undefined;
+		if (info_start != null && info_end != null)
+			info = c.slice(info_start, info_end);
+	}
+	return info;
+}
+
+/** the extra props of the pre replacement of the fence at c */
+function fence_props(c: Cursor): string {
+	const props = fs!.get(c.index)?.props;
+	return props === undefined ? '' : props;
+}
+
+/** the first space or tab of an info string, -1 for none */
+function info_space(info: string): number {
+	for (let i = 0; i < info.length; i++) {
+		const ch = info.charCodeAt(i);
+		if (ch === 32 || ch === 9) return i;
+	}
+	return -1;
+}
+
+/** the language of an info string, its first word */
+function info_lang(info: string): string {
+	const space = info_space(info);
+	return space === -1 ? info : info.slice(0, space);
+}
+
+/** the info string after the language */
+function info_meta(info: string): string {
+	const space = info_space(info);
+	return space === -1 ? '' : info.slice(space).trim();
+}
+
+/** true for a fence whose language is math */
+function is_math(c: Cursor): boolean {
+	const info = fence_info(c, c.meta());
+	return info !== undefined && info_lang(info) === 'math';
+}
+
+/** the fence at c through the highlighter, null renders it plain */
+function hl_block(
+	c: Cursor,
+	info: string | undefined
+): HighlightedBlock | null {
+	return hl!.block(
+		fence_text(c),
+		info ? info_lang(info) : '',
+		info ? info_meta(info) : '',
+		c.start
+	);
+}
+
+/**
+ * the code span at c through the highlighter when it has a #! hint, or as
+ * inline math when it is one, without a math renderer that is plain code
+ */
+function hl_span(c: Cursor): HighlightedCode | null {
+	if (c.extra === 1)
+		return hl!.math === true ? hl!.inline_math!(held_text(c), c.start) : null;
+	const lang = fence_info(c, c.meta());
+	if (!lang) return null;
+	let code = held_text(c);
+	if (string_index_of.call(code, '\n') !== -1) code = code.replace(/\n/g, ' ');
+	return hl!.inline(code, lang, c.start);
+}
+
+/** a highlighted block up to its body, plugin attributes go on the <pre> */
+function hl_head(c: Cursor, b: HighlightedBlock): string {
+	if (b.attributes === null) return b.before;
+	return b.before + '<pre' + b.attributes + _attrs(c) + '>';
+}
+
+function hl_tail(b: HighlightedBlock): string {
+	return b.attributes === null ? b.after : '</pre>' + b.after;
+}
+
+function hl_span_head(c: Cursor, s: HighlightedCode): string {
+	return s.attributes === null ? '' : '<code' + s.attributes + _attrs(c) + '>';
+}
+
+function hl_span_tail(s: HighlightedCode): string {
+	return s.attributes === null ? '' : '</code>';
+}
+
+/**
+ * render_node for a highlighted fence or code span, the body is one content
+ * record, split around any live expressions
+ */
+function render_hl(
+	c: Cursor,
+	sink: MapSink | undefined,
+	head: string,
+	body: string,
+	tail: string,
+	live: number[] | null
+): void {
+	const pre = mo.length;
+	mo += head;
+	const ao = mo.length;
+	if (sink) {
+		if (live === null) content_record(sink, c, body, Code.CODE_CONTENT);
+		else hl_live_records(sink, c, ao, body, live);
+	}
+	mo += body;
+	const bc = mo.length;
+	mo += tail;
+	if (sink) _spans(sink, pre, ao, bc, mo.length, c, Preset.CODE);
+}
+
+/** fold_node for a highlighted fence or code span */
+function fold_hl(p: number, head: string, body: string, tail: string): number {
+	return push_dyn(p, head + body + tail);
+}
+
+/** tr_node for a highlighted fence or code span, a point as the body never copies the source */
+function tr_hl(
+	c: Cursor,
+	sink: MapSink,
+	p: number,
+	head: string,
+	body: string,
+	tail: string,
+	live: number[] | null
+): number {
+	if (p !== 0) mo += FOLD_STR[p];
+	const pre = mo.length;
+	mo += head;
+	if (live !== null) hl_live_trace(sink, c, mo.length, body, live);
+	else if (body.length !== 0) tr_point(sink, mo.length, c.value_start);
+	mo += body + tail;
+	tr_at(sink, pre, c);
+	return 0;
+}
+
+/** mp_node for a highlighted fence or code span */
+function mp_hl(
+	c: Cursor,
+	sink: MapSink,
+	p: number,
+	head: string,
+	body: string,
+	tail: string,
+	live: number[] | null
+): number {
+	if (p !== 0) mo += FOLD_STR[p];
+	render_hl(c, sink, head, body, tail, live);
+	return 0;
+}
+
+/** the content of a highlighted fence or span, mapped as the code cases of the walks map it */
+function cm_hl(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	pre: number,
+	head: string,
+	body: string,
+	tail: string,
+	live: number[] | null
+): number {
+	p = cm_put(p, head);
+	const ao = mo.length;
+	if (live === null || comp_mode === CM.FOLD) p = cm_text(c, sink, p, body);
+	else {
+		// cm_put left nothing folded outside the fold walk
+		if (comp_mode === CM.TRACE) hl_live_trace(sink!, c, ao, body, live);
+		else hl_live_records(sink!, c, ao, body, live);
+		mo += body;
+	}
+	const bc = mo.length;
+	p = cm_put(p, tail);
+	cm_spans(c, sink, pre, ao, bc, mo.length, Preset.CODE);
+	return p;
+}
+
+/**
+ * a highlighted fence as the pre replacement, the children are the <pre> as
+ * svelte keeps whitespace only inside a <pre> it can see, the replacement
+ * draws any figure
+ */
+function comp_hl_pre(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	b: HighlightedBlock,
+	info: string | undefined,
+	open: string,
+	close: string
+): number {
+	const pre = mo.length;
+	if (info) {
+		open += js_prop('lang', info_lang(info));
+		const meta = info_meta(info);
+		if (meta) open += js_prop('meta', meta);
+	}
+	const dropped = b.dropped;
+	if (dropped !== null)
+		for (let i = 0; i < dropped.length; i++)
+			hl!.warn('meta_prop_ignored', dropped[i], c.start);
+	if (fs !== null) open += fence_props(c);
+	open +=
+		b.props +
+		(b.code_template === null
+			? js_prop('code', b.code)
+			: ' code={' + b.code_template + '}') +
+		_attrs(c) +
+		'>';
+	if (b.attributes === null)
+		return cm_hl(c, sink, p, pre, open, b.body, close, b.live);
+	return cm_hl(
+		c,
+		sink,
+		p,
+		pre,
+		open + '<pre' + b.attributes + '>',
+		b.body,
+		'</pre>' + close,
+		b.live
+	);
+}
+
+/**
+ * display math as the math replacement, the children are what renders
+ * without one, the block gives the props that say which math it is
+ */
+function comp_hl_math(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	b: HighlightedBlock,
+	info: string,
+	open: string,
+	close: string
+): number {
+	const pre = mo.length;
+	const meta = info_meta(info);
+	open += b.props + js_prop('code', b.code);
+	if (meta) open += js_prop('meta', meta);
+	return cm_hl(c, sink, p, pre, open + _attrs(c) + '>', b.body, close, null);
+}
+
+/** inline math as the math replacement, which takes code and no display */
+function comp_hl_span_math(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	h: HighlightedCode,
+	open: string,
+	close: string
+): number {
+	const pre = mo.length;
+	open += js_prop('code', c.text()) + _attrs(c) + '>';
+	return cm_hl(c, sink, p, pre, open, h.body, close, null);
+}
+
+/** a highlighted code span as the code replacement, which also takes lang */
+function comp_hl_code(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	h: HighlightedCode,
+	open: string,
+	close: string
+): number {
+	const pre = mo.length;
+	if (h.attributes === null) {
+		hl!.warn(
+			'code_replacement_skipped',
+			'the highlighter output is not a single <code> element, so the code component does not replace it',
+			c.start
+		);
+		return cm_hl(c, sink, p, pre, '', h.body, '', null);
+	}
+	open +=
+		js_prop('lang', fence_info(c, c.meta())!) + h.attributes + _attrs(c) + '>';
+	return cm_hl(c, sink, p, pre, open, h.body, close, null);
+}
+
+/**
+ * the source offset of the live expression at offset at of the fence text,
+ * a fence line is the end of its source line once quote markers and indent
+ * go, -1 when the source there holds other text
+ */
+function hl_source(c: Cursor, text: string, at: number, len: number): number {
+	const vs = c.value_start;
+	if (c.prebuilt === undefined) return vs + at;
+	const src = c.source;
+	const ve = c.value_end;
+	let line_start = vs;
+	for (
+		let i = string_index_of.call(text, '\n');
+		i !== -1 && i < at;
+		i = string_index_of.call(text, '\n', i + 1)
+	) {
+		line_start = string_index_of.call(src, '\n', line_start) + 1;
+		if (line_start === 0 || line_start > ve) return -1;
+	}
+	let text_end = string_index_of.call(text, '\n', at);
+	if (text_end === -1) text_end = text.length;
+	let line_end = string_index_of.call(src, '\n', line_start);
+	if (line_end === -1 || line_end > ve) line_end = ve;
+	const s = line_end - (text_end - at);
+	if (s < line_start || src.slice(s, s + len) !== text.slice(at, at + len))
+		return -1;
+	return s;
+}
+
+/**
+ * the content records of a highlighted body with live expressions, each
+ * expression maps one to one as svelte content, the code between them as code
+ */
+function hl_live_records(
+	sink: MapSink,
+	c: Cursor,
+	at: number,
+	body: string,
+	live: number[]
+): void {
+	const idx = c.index;
+	// code from elsewhere has no source to map an expression to
+	if (fs !== null && fs.has(idx)) {
+		put_record(
+			sink,
+			at,
+			at + body.length,
+			c.value_start,
+			c.value_end,
+			idx,
+			Code.CODE_CONTENT
+		);
+		return;
+	}
+	const text = fence_text(c);
+	let gen = at;
+	let src = c.value_start;
+	for (let i = 0; i < live.length; i += 3) {
+		const len = live[i + 2];
+		const s = hl_source(c, text, live[i + 1], len);
+		if (s === -1 || s < src) continue;
+		const g = at + live[i];
+		if (g > gen) put_record(sink, gen, g, src, s, idx, Code.CODE_CONTENT);
+		put_record(sink, g, g + len, s, s + len, idx, Code.SVELTE_CONTENT);
+		gen = g + len;
+		src = s + len;
+	}
+	const end = at + body.length;
+	if (end > gen)
+		put_record(sink, gen, end, src, c.value_end, idx, Code.CODE_CONTENT);
+}
+
+/** hl_live_records for the trace walk, a record becomes what the v3 encoding keeps of it */
+function hl_live_trace(
+	sink: MapSink,
+	c: Cursor,
+	at: number,
+	body: string,
+	live: number[]
+): void {
+	if (fs !== null && fs.has(c.index)) {
+		if (body.length !== 0) tr_point(sink, at, c.value_start);
+		return;
+	}
+	const text = fence_text(c);
+	let gen = at;
+	let src = c.value_start;
+	for (let i = 0; i < live.length; i += 3) {
+		const len = live[i + 2];
+		const s = hl_source(c, text, live[i + 1], len);
+		if (s === -1 || s < src) continue;
+		const g = at + live[i];
+		if (g > gen) tr_run(sink, gen, g, src, s);
+		tr_run(sink, g, g + len, s, s + len);
+		gen = g + len;
+		src = s + len;
+	}
+	const end = at + body.length;
+	if (end > gen) tr_run(sink, gen, end, src, c.value_end);
+}
+
+// smart punctuation is off for most renders, so its bindings sit last too
+
+/** true while a render with smart punctuation runs, its text goes through smart_text */
+let sp_on = false;
+/** the option the fields below were read from */
+let sp_opt: SmartPunctuation | undefined;
+let sp_quotes = false;
+let sp_dashes = false;
+let sp_dots = false;
+let sp_open2 = '“';
+let sp_close2 = '”';
+let sp_open1 = '‘';
+let sp_close1 = '’';
+
+// an escape index of its own, as esc_src and its pointers, so a render
+// without the option reads and writes none of it
+let sp_src = '';
+let sp_len = 0;
+let sp_lo = 0;
+let sp_amp = -1;
+let sp_lt = -1;
+let sp_gt = -1;
+let sp_quot = -1;
+let sp_apos = -1;
+let sp_dash = -1;
+let sp_dot = -1;
+/** the least of the seven when they were last moved, a slice that ends by it has no hit */
+let sp_min = -1;
+
+/** the parent whose text sp_plain answered last, text nodes arrive in runs of one parent */
+let sp_parent = -1;
+let sp_parent_plain = false;
+
+// a child list has no back links, the walk moves forward, so the pair the
+// last search found is where the next one starts
+let sp_trail: number = Slot.NONE;
+let sp_trail_prev: number = Slot.NONE;
+
+/** how a neighbour of a quote reads */
+const enum Side {
+	/** renders nothing, the neighbour is further on */
+	NOTHING = -1,
+	/** whitespace, a break, or the edge of the block */
+	SPACE = 0,
+	/** an opening bracket or a dash, a quote after one opens */
+	OPENER = 1,
+	/** a letter or a digit, or an inline node that is not text */
+	WORD = 2,
+	OTHER = 3,
+}
+
+/** what a quote becomes */
+const enum Quote {
+	STRAIGHT = 0,
+	OPEN = 1,
+	CLOSE = 2,
+	/** a closing quote with a word on both sides */
+	APOSTROPHE = 3,
+}
+
+/** typed html that starts and ends a block, so no text reads on across its tags */
+const SP_BLOCK_TAGS = new Set([
+	'address',
+	'article',
+	'aside',
+	'blockquote',
+	'br',
+	'caption',
+	'dd',
+	'details',
+	'dialog',
+	'div',
+	'dl',
+	'dt',
+	'fieldset',
+	'figcaption',
+	'figure',
+	'footer',
+	'form',
+	'h1',
+	'h2',
+	'h3',
+	'h4',
+	'h5',
+	'h6',
+	'header',
+	'hr',
+	'li',
+	'main',
+	'nav',
+	'ol',
+	'p',
+	'pre',
+	'section',
+	'summary',
+	'table',
+	'tbody',
+	'td',
+	'tfoot',
+	'th',
+	'thead',
+	'tr',
+	'ul',
+]);
+
+/** typed html whose text is code, or is read as written */
+const SP_PLAIN_TAGS = new Set([
+	'code',
+	'kbd',
+	'pre',
+	'samp',
+	'var',
+	'tt',
+	'textarea',
+	'script',
+	'style',
+]);
+
+/**
+ * escape_text_at of a value that ends past esc_len, which is zero for a
+ * render with smart punctuation, so all of its text comes here and a render
+ * without the option runs no check for it
+ */
+function escape_past(
+	c: Cursor,
+	i: number,
+	vs: number,
+	ve: number,
+	code: boolean
+): string {
+	if (sp_on)
+		return code
+			? escape_code(c.source.slice(vs, ve))
+			: smart_text(c, i, vs, ve);
+	// a value cut short by the source, as a fed document has
+	return esc_len <= vs ? '' : escape_text_at(c, i, vs, esc_len, code);
+}
+
+/** after esc_reset, sp_end follows it, in a finally */
+function sp_begin(opt: SmartPunctuation): void {
+	if (opt !== sp_opt) sp_read(opt);
+	if (!(sp_quotes || sp_dashes || sp_dots)) return;
+	sp_on = true;
+	sp_parent = -1;
+	sp_trail = Slot.NONE;
+	// every value is then past the end and goes to escape_past
+	esc_len = 0;
+}
+
+function sp_end(): void {
+	sp_on = false;
+	// the indexes would keep the source alive, and the next text resets esc_len
+	sp_src = '';
+	sp_len = 0;
+	esc_src = '';
+}
+
+/** a quote string is text, a brace in it would start an expression */
+function sp_quote(s: unknown): string {
+	if (typeof s !== 'string')
+		throw new TypeError('smart_punctuation.quotes takes four strings');
+	const text = escape_text_html(s);
+	return BRACE_TEST.test(text) ? text.replace(BRACE_MATCH, code_replace) : text;
+}
+
+function sp_read(opt: SmartPunctuation): void {
+	// a throw below leaves no half read option behind
+	sp_opt = undefined;
+	sp_open2 = '“';
+	sp_close2 = '”';
+	sp_open1 = '‘';
+	sp_close1 = '’';
+	if (typeof opt === 'boolean') {
+		sp_quotes = sp_dashes = sp_dots = opt;
+	} else {
+		const quotes = opt.quotes;
+		sp_quotes = quotes !== false;
+		sp_dashes = opt.dashes !== false;
+		sp_dots = opt.ellipses !== false;
+		if (typeof quotes === 'object') {
+			if (!Array.isArray(quotes) || quotes.length !== 4)
+				throw new TypeError('smart_punctuation.quotes takes four strings');
+			sp_open2 = sp_quote(quotes[0]);
+			sp_close2 = sp_quote(quotes[1]);
+			sp_open1 = sp_quote(quotes[2]);
+			sp_close1 = sp_quote(quotes[3]);
+		}
+	}
+	sp_opt = opt;
+}
+
+function sp_reset(src: string): void {
+	sp_src = src;
+	const len = (sp_len = src.length);
+	sp_lo = 0;
+	sp_amp = -1;
+	sp_lt = -1;
+	sp_gt = -1;
+	sp_quot = -1;
+	// a kind that is off never hits
+	sp_apos = sp_quotes ? -1 : len;
+	sp_dash = sp_dashes ? -1 : len;
+	sp_dot = sp_dots ? -1 : len;
+	sp_min = -1;
+}
+
+function sp_next(needle: string, from: number): number {
+	const i = sp_src.indexOf(needle, from);
+	return i === -1 ? sp_len : i;
+}
+
+/**
+ * escape_text_at for the prose of a render with smart punctuation, the slice
+ * is node i or a run of text and soft breaks from it, as fold_children joins
+ * them, a quote at either end of the slice asks the tree
+ */
+function smart_text(c: Cursor, i: number, vs: number, ve: number): string {
+	const src = c.source;
+	if (src !== sp_src || vs < sp_lo) sp_reset(src);
+	if (ve > sp_len) {
+		ve = sp_len;
+		if (ve <= vs) return '';
+	}
+	let m = sp_min;
+	// with the least pointer past the slice none is behind it and none hits
+	if (m < ve) m = sp_seek(vs);
+	const first = src.charCodeAt(vs);
+	if ((first === 123 || first === 125) && brace_escaped(src, vs)) {
+		const brace = first === 123 ? '&#123;' : '&#125;';
+		if (m >= ve) return brace + src.slice(vs + 1, ve);
+		return brace + smart_hits(c, i, src, vs, ve, m, vs + 1);
+	}
+	if (m >= ve) return src.slice(vs, ve);
+	return smart_hits(c, i, src, vs, ve, m, vs);
+}
+
+/** moves every pointer to its first match at or after vs, returns the least */
+function sp_seek(vs: number): number {
+	if (sp_amp < vs) sp_amp = sp_next('&', vs);
+	if (sp_lt < vs) sp_lt = sp_next('<', vs);
+	if (sp_gt < vs) sp_gt = sp_next('>', vs);
+	if (sp_quot < vs) sp_quot = sp_next('"', vs);
+	if (sp_apos < vs) sp_apos = sp_next("'", vs);
+	if (sp_dash < vs) sp_dash = sp_next('--', vs);
+	if (sp_dot < vs) sp_dot = sp_next('...', vs);
+	sp_lo = vs;
+	let m = sp_amp;
+	if (sp_lt < m) m = sp_lt;
+	if (sp_gt < m) m = sp_gt;
+	if (sp_quot < m) m = sp_quot;
+	if (sp_apos < m) m = sp_apos;
+	if (sp_dash < m) m = sp_dash;
+	if (sp_dot < m) m = sp_dot;
+	return (sp_min = m);
+}
+
+/** m is the first hit at or after vs, the text is copied from pos */
+function smart_hits(
+	c: Cursor,
+	i: number,
+	src: string,
+	vs: number,
+	ve: number,
+	m: number,
+	pos: number
+): string {
+	// asked once a node has a hit, a node with none never walks up
+	const smart = !sp_plain(c, i);
+	// an escape opens its text node at the escaped char
+	const escaped = brace_escaped(src, vs);
+	let text = '';
+	while (m < ve) {
+		const ch = src.charCodeAt(m);
+		text += src.slice(pos, m);
+		pos = m + 1;
+		if (ch === 38) {
+			sp_amp = sp_next('&', m + 1);
+			if (text_reference(src, vs, ve, m)) pos = m;
+			else text += '&amp;';
+		} else if (ch === 60) {
+			text += '&lt;';
+			sp_lt = sp_next('<', m + 1);
+		} else if (ch === 62) {
+			text += '&gt;';
+			sp_gt = sp_next('>', m + 1);
+		} else if (ch === 34 || ch === 39) {
+			if (ch === 34) sp_quot = sp_next('"', m + 1);
+			else sp_apos = sp_next("'", m + 1);
+			const side =
+				smart && sp_quotes && !(escaped && m === vs)
+					? quote_side(c, i, src, vs, ve, m)
+					: Quote.STRAIGHT;
+			if (side === Quote.STRAIGHT) {
+				if (ch === 34) text += '&quot;';
+				else pos = m;
+			} else if (side === Quote.OPEN) text += ch === 34 ? sp_open2 : sp_open1;
+			else if (ch === 34) text += sp_close2;
+			else text += side === Quote.APOSTROPHE ? '’' : sp_close1;
+		} else {
+			// a run of hyphens or dots, only one of an exact length is replaced
+			let end = m + 1;
+			while (end < ve && src.charCodeAt(end) === ch) end++;
+			const dash = ch === 45;
+			if (dash) sp_dash = sp_next('--', end);
+			else sp_dot = sp_next('...', end);
+			const run = end - m;
+			if (
+				smart &&
+				(run === 3 || (run === 2 && dash)) &&
+				!(escaped && m === vs) &&
+				// the run goes on in the next text node, behind a backslash
+				!(
+					end === ve &&
+					src.charCodeAt(ve) === 92 &&
+					src.charCodeAt(ve + 1) === ch
+				) &&
+				!(run === 2 && is_flag(c, i, src, vs, ve, m))
+			)
+				text += dash ? (run === 2 ? '–' : '—') : '…';
+			else text += src.slice(m, end);
+			pos = end;
+		}
+		m = sp_amp;
+		if (sp_lt < m) m = sp_lt;
+		if (sp_gt < m) m = sp_gt;
+		if (sp_quot < m) m = sp_quot;
+		if (sp_apos < m) m = sp_apos;
+		if (sp_dash < m) m = sp_dash;
+		if (sp_dot < m) m = sp_dot;
+	}
+	// every pointer is now at or past ve
+	sp_lo = ve;
+	sp_min = m;
+	return text + src.slice(pos, ve);
+}
+
+/** two hyphens after a space and before a letter are a command line flag */
+function is_flag(
+	c: Cursor,
+	i: number,
+	src: string,
+	vs: number,
+	ve: number,
+	m: number
+): boolean {
+	if (m + 2 >= ve) return false;
+	const after = src.charCodeAt(m + 2) | 32;
+	if (after < 97 || after > 122) return false;
+	const before = m > vs ? sp_side(src.charCodeAt(m - 1)) : sp_left(c, i);
+	return before === Side.SPACE;
+}
+
+/**
+ * which way the quote at m faces, from the character before it and the one
+ * after, in an unbroken run of quotes each takes the side of the first
+ */
+function quote_side(
+	c: Cursor,
+	i: number,
+	src: string,
+	vs: number,
+	ve: number,
+	m: number
+): number {
+	let q = m;
+	while (q > vs) {
+		const ch = src.charCodeAt(q - 1);
+		if (ch !== 34 && ch !== 39) break;
+		q--;
+	}
+	let before: number;
+	if (q > vs) before = sp_side(src.charCodeAt(q - 1));
+	else if (q < m && brace_escaped(src, vs)) {
+		// the run starts at a quote a backslash escaped, which stays as written
+		before = Side.OTHER;
+		q = m;
+	} else before = sp_left(c, i);
+	const after =
+		m + 1 < ve
+			? sp_side(src.charCodeAt(m + 1))
+			: sp_right(c, sp_last(c, i, ve));
+	if (q < m)
+		return (before === Side.SPACE || before === Side.OPENER) &&
+			after !== Side.SPACE
+			? Quote.OPEN
+			: Quote.CLOSE;
+	if (before === Side.SPACE)
+		return after === Side.SPACE ? Quote.STRAIGHT : Quote.OPEN;
+	if (before === Side.OPENER && after !== Side.SPACE) return Quote.OPEN;
+	return before === Side.WORD && after === Side.WORD
+		? Quote.APOSTROPHE
+		: Quote.CLOSE;
+}
+
+/** how a character reads beside a quote, only the apostrophe asks for a word */
+function sp_side(ch: number): number {
+	if (ch <= 32 || ch === 0xa0) return Side.SPACE;
+	if (ch < 128) {
+		if (ch === 40 || ch === 91 || ch === 123 || ch === 45) return Side.OPENER;
+		if (ch >= 48 && ch <= 57) return Side.WORD;
+		const lower = ch | 32;
+		return lower >= 97 && lower <= 122 ? Side.WORD : Side.OTHER;
+	}
+	if (ch === 0x2013 || ch === 0x2014) return Side.OPENER;
+	if (ch < 0xc0) return Side.OTHER;
+	if (ch >= 0x2000 && ch <= 0x206f)
+		return ch <= 0x200a ||
+			ch === 0x2028 ||
+			ch === 0x2029 ||
+			ch === 0x202f ||
+			ch === 0x205f
+			? Side.SPACE
+			: Side.OTHER;
+	if (ch === 0x1680 || ch === 0x3000) return Side.SPACE;
+	if (ch > 0x3000 && ch <= 0x303f) return Side.OTHER;
+	// a letter of any script, no table says which of the rest are not
+	return Side.WORD;
+}
+
+/** an inline node whose children read on from what is beside it */
+function sp_inline(c: Cursor, node: number): boolean {
+	const kind = c.words[node * W.stride] & 0xff;
+	if (kind === K.HTML) {
+		const at = c.index;
+		c.move_to(node);
+		const tag = c.meta()?.tag;
+		c.move_to(at);
+		return typeof tag !== 'string' || !SP_BLOCK_TAGS.has(tag);
+	}
+	return (
+		kind === K.EMPHASIS ||
+		kind === K.STRONG ||
+		kind === K.STRIKETHROUGH ||
+		kind === K.SUPERSCRIPT ||
+		kind === K.SUBSCRIPT ||
+		kind === K.LINK ||
+		kind === K.DIRECTIVE_INLINE
+	);
+}
+
+/** the sibling before node i, or NONE */
+function sp_before(n: Uint32Array, i: number): number {
+	const parent = n[i * W.stride + W.parent];
+	if (parent === Slot.NONE) return Slot.NONE;
+	const first = n[parent * W.stride + W.first_child];
+	let at = sp_trail;
+	let prev = sp_trail_prev;
+	if (at === Slot.NONE || n[at * W.stride + W.parent] !== parent) {
+		at = first;
+		prev = Slot.NONE;
+	}
+	// the second pass is for a node before the trail
+	for (let pass = 0; pass < 2; pass++) {
+		while (at !== Slot.NONE && n[at * W.stride + W.parent] === parent) {
+			if (at === i) {
+				sp_trail = at;
+				sp_trail_prev = prev;
+				return prev;
+			}
+			prev = at;
+			at = n[at * W.stride + W.next];
+		}
+		at = first;
+		prev = Slot.NONE;
+	}
+	return Slot.NONE;
+}
+
+/** how the text before node i ends, in the sibling before it or before its inline parent */
+function sp_left(c: Cursor, i: number): number {
+	const n = c.words;
+	for (;;) {
+		let prev = sp_before(n, i);
+		while (prev !== Slot.NONE) {
+			const side = sp_edge(c, prev, true);
+			if (side !== Side.NOTHING) return side;
+			prev = sp_before(n, prev);
+		}
+		const parent = n[i * W.stride + W.parent];
+		if (parent === Slot.NONE || !sp_inline(c, parent)) return Side.SPACE;
+		i = parent;
+	}
+}
+
+/** the text node of a run from i whose value ends at ve */
+function sp_last(c: Cursor, i: number, ve: number): number {
+	const n = c.words;
+	const parent = n[i * W.stride + W.parent];
+	for (;;) {
+		const b = i * W.stride;
+		const kind = n[b] & 0xff;
+		if (kind === K.TEXT) {
+			if (n[b + W.value_end] >= ve) return i;
+		} else if (kind !== K.SOFT_BREAK) return i;
+		const next = n[b + W.next];
+		if (next === Slot.NONE || n[next * W.stride + W.parent] !== parent)
+			return i;
+		i = next;
+	}
+}
+
+/** how the text after node i starts, in the sibling after it or after its inline parent */
+function sp_right(c: Cursor, i: number): number {
+	const n = c.words;
+	for (;;) {
+		const parent = n[i * W.stride + W.parent];
+		let next = n[i * W.stride + W.next];
+		while (next !== Slot.NONE && n[next * W.stride + W.parent] === parent) {
+			const side = sp_edge(c, next, false);
+			if (side !== Side.NOTHING) return side;
+			next = n[next * W.stride + W.next];
+		}
+		if (parent === Slot.NONE || !sp_inline(c, parent)) return Side.SPACE;
+		i = parent;
+	}
+}
+
+/** how a node reads from outside, at its end when last is set, at its start otherwise */
+function sp_edge(c: Cursor, node: number, last: boolean): number {
+	const n = c.words;
+	const b = node * W.stride;
+	const kind = n[b] & 0xff;
+	if (kind === K.TEXT) {
+		const s = c.prebuilt_at(node);
+		if (s !== undefined) {
+			if (s.length === 0) return Side.NOTHING;
+			return sp_side(s.charCodeAt(last ? s.length - 1 : 0));
+		}
+		const vs = n[b + W.value_start];
+		let ve = n[b + W.value_end];
+		const src = c.source;
+		if (ve !== Slot.NONE && ve > src.length) ve = src.length;
+		if (vs === Slot.NONE || ve === Slot.NONE || ve <= vs) return Side.NOTHING;
+		if (!last) return sp_side(src.charCodeAt(vs));
+		const ch = src.charCodeAt(ve - 1);
+		// a quote that opened is an opener for the quote after it
+		if (
+			(ch === 34 || ch === 39) &&
+			sp_quotes &&
+			!(ve - 1 === vs && brace_escaped(src, vs)) &&
+			!sp_plain(c, node)
+		)
+			return quote_side(c, node, src, vs, ve, ve - 1) === Quote.OPEN
+				? Side.OPENER
+				: Side.OTHER;
+		return sp_side(ch);
+	}
+	if (kind === K.SOFT_BREAK || kind === K.HARD_BREAK || kind === K.LINE_BREAK)
+		return Side.SPACE;
+	if (kind === K.HTML_COMMENT) return Side.NOTHING;
+	if (
+		kind === K.CODE_SPAN ||
+		kind === K.MUSTACHE ||
+		kind === K.IMAGE ||
+		kind === K.SVELTE_TAG
+	)
+		return Side.WORD;
+	if (!sp_inline(c, node)) return Side.SPACE;
+	let child = n[b + W.first_child];
+	if (child === Slot.NONE) return Side.WORD;
+	if (last)
+		for (;;) {
+			const next = n[child * W.stride + W.next];
+			if (next === Slot.NONE || n[next * W.stride + W.parent] !== node) break;
+			child = next;
+		}
+	const side = sp_edge(c, child, last);
+	// an empty text or a comment at the edge, what is past it is not asked
+	return side === Side.NOTHING ? Side.WORD : side;
+}
+
+/**
+ * true when the text of node i is not prose, the url of an autolink or the
+ * text of typed html that holds code, at any depth
+ */
+function sp_plain(c: Cursor, i: number): boolean {
+	const n = c.words;
+	let p = n[i * W.stride + W.parent];
+	if (p === sp_parent) return sp_parent_plain;
+	sp_parent = p;
+	let plain = false;
+	if (
+		p !== Slot.NONE &&
+		(n[p * W.stride] & 0xff) === K.LINK &&
+		c.source.charCodeAt(n[p * W.stride + W.start]) === 60
+	)
+		plain = true;
+	const at = c.index;
+	while (!plain && p !== Slot.NONE) {
+		if ((n[p * W.stride] & 0xff) === K.HTML) {
+			c.move_to(p);
+			const tag = c.meta()?.tag;
+			if (typeof tag === 'string' && SP_PLAIN_TAGS.has(tag)) plain = true;
+		}
+		p = n[p * W.stride + W.parent];
+	}
+	c.move_to(at);
+	return (sp_parent_plain = plain);
+}
+
+// footnotes are cold beside the walks too, so their bindings follow
+
+/** how the footnotes of a render are numbered and what its section says */
+export interface FootnoteRender extends FootnoteIndex {
+	/** the accessible name of the section, Footnotes when unset */
+	label?: string;
+	/** the accessible name of a link back to a reference, {n} is its number, Back to reference {n} when unset */
+	back_label?: string;
+}
+
+/**
+ * the footnotes of the render in progress, null until a walk meets one, a
+ * render that was given none then numbers them itself, every reference as
+ * its label is first met, which suits a document that is still arriving
+ */
+let fn: FootnoteRender | null = null;
+
+function fn_get(c: Cursor): FootnoteRender {
+	if (fn !== null) return fn;
+	const made: FootnoteRender = footnote_index(c.buffer, true)!;
+	fn = made;
+	return made;
+}
+
+/** an id as the fragment of a url, a label with half a surrogate pair has no encoding and goes as it is */
+function fn_fragment(id: string): string {
+	try {
+		return encodeURIComponent(id);
+	} catch {
+		return id;
+	}
+}
+
+function fn_href(id: string): string {
+	return escape_code(fn_fragment(id));
+}
+
+/** the id a footnote id is given, another when a heading was given it first */
+function fn_id(notes: FootnoteRender, id: string): string {
+	const moved = notes.moved;
+	return moved === undefined || moved === null ? id : (moved.get(id) ?? id);
+}
+
+/** the link a reference renders as, '' for one in a definition that is not rendered */
+function fn_reference(c: Cursor): string {
+	const notes = fn_get(c);
+	const at = notes.references.get(c.index);
+	if (at === undefined) return '';
+	const number = Math.floor(at / 65536);
+	return (
+		'<sup><a href="#' +
+		fn_href(fn_id(notes, footnote_id(notes.labels[number - 1]))) +
+		'" id="' +
+		escape_code(fn_id(notes, footnote_ref_id(number, at % 65536))) +
+		'" role="doc-noteref">' +
+		number +
+		'</a></sup>'
+	);
+}
+
+/** fn_reference for the trace and the mapped walk, the node is one record */
+function fn_reference_mapped(
+	c: Cursor,
+	sink: MapSink,
+	p: number,
+	trace: boolean
+): number {
+	const s = fn_reference(c);
+	if (p !== 0) mo += FOLD_STR[p];
+	const pre = mo.length;
+	mo += s;
+	if (trace) tr_at(sink, pre, c);
+	else put_record(sink, pre, mo.length, c.start, c.end, c.index, 0);
+	return 0;
+}
+
+/** appends s in the walk of mode, returns the register */
+function fn_put(p: number, s: string, mode: number): number {
+	if (mode === CM.FOLD) return push_dyn(p, s);
+	if (p !== 0) mo += FOLD_STR[p];
+	mo += s;
+	return 0;
+}
+
+/** the links from footnote number back to each of its count references */
+function fn_back(notes: FootnoteRender, number: number, count: number): string {
+	const label = escape_code(notes.back_label ?? 'Back to reference {n}');
+	let s = '';
+	for (let nth = 1; nth <= count; nth++) {
+		const name = nth === 1 ? '' + number : number + '-' + nth;
+		s +=
+			' <a href="#' +
+			fn_href(fn_id(notes, footnote_ref_id(number, nth))) +
+			'" role="doc-backlink" aria-label="' +
+			label.replace('&#123;n&#125;', name) +
+			// the selector keeps the arrow from being drawn as an emoji
+			'">\u21a9\ufe0e' +
+			(nth === 1 ? '' : '<sup>' + nth + '</sup>') +
+			'</a>';
+	}
+	return s;
+}
+
+/**
+ * the paragraph the cursor is at with links before its close tag, what the
+ * paragraph case of each walk writes for one outside a tight list
+ */
+function fn_paragraph(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	mode: number,
+	links: string
+): number {
+	if (mode === CM.FOLD) {
+		p = fold_open(c, p, S_P, S_P_OPEN, S_GT);
+		p = fold_children(c, p);
+		return push_static(push_dyn(p, links), S_P_CLOSE);
+	}
+	const pre = mo.length + FOLD_LEN[p];
+	const start = c.start;
+	p = tr_open(c, p, S_P, S_P_OPEN, S_GT);
+	if (mode === CM.TRACE) {
+		p = tr_children(c, sink!, p);
+		if (p !== 0) mo += FOLD_STR[p];
+		mo += links;
+		tr_point(sink!, pre, start);
+		return S_P_CLOSE;
+	}
+	const ao = mo.length + FOLD_LEN[p];
+	p = mp_children(c, sink!, p);
+	if (p !== 0) mo += FOLD_STR[p];
+	mo += links;
+	const bc = mo.length;
+	_spans(sink!, pre, ao, bc, bc + FOLD_LEN[S_P_CLOSE], c, Preset.TEXT);
+	return S_P_CLOSE;
+}
+
+/**
+ * the blocks of the definition node with its back links, inside its last
+ * paragraph when the walk writes that one itself, after its last block otherwise
+ */
+function fn_definition(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	mode: number,
+	node: number,
+	links: string
+): number {
+	const n = c.words;
+	const first = n[node * W.stride + W.first_child];
+	let last: number = Slot.NONE;
+	for (
+		let child = first;
+		child !== Slot.NONE && n[child * W.stride + W.parent] === node;
+		child = n[child * W.stride + W.next]
+	) {
+		if ((n[child * W.stride] & 0xff) !== K.LINE_BREAK) last = child;
+	}
+	let placed = false;
+	for (
+		let child = first;
+		child !== Slot.NONE && n[child * W.stride + W.parent] === node;
+		child = n[child * W.stride + W.next]
+	) {
+		const k = n[child * W.stride] & 0xff;
+		if (k === K.LINE_BREAK) continue;
+		c.move_to(child);
+		if (
+			child === last &&
+			k === K.PARAGRAPH &&
+			!(has_components && comp_ref(c) !== null)
+		) {
+			p = fn_paragraph(c, sink, p, mode, links);
+			placed = true;
+		} else p = walk_child(c, sink, p, mode, child, k);
+	}
+	return placed ? p : fn_put(p, links, mode);
+}
+
+/**
+ * the section that holds every footnote a reference reached, in number
+ * order, after the content of the root, nothing when no definition renders
+ */
+function fn_section(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	mode: number
+): number {
+	const notes = fn!;
+	const definitions = notes.definitions;
+	// a footnotes replacement is the section, and gets the list
+	const ref = has_components ? comp_scope!.get('footnotes') : undefined;
+	let open =
+		ref !== undefined
+			? '<' + ref.local + '>\n<ol>\n'
+			: '<section class="footnotes" role="doc-endnotes" aria-label="' +
+				escape_code(notes.label ?? 'Footnotes') +
+				'">\n<ol>\n';
+	// the number an item gets with no value of its own
+	let next = 1;
+	for (let i = 0; i < definitions.length; i++) {
+		const node = definitions[i];
+		if (node === Slot.NONE) continue;
+		let item =
+			open +
+			'<li id="' +
+			escape_code(fn_id(notes, footnote_id(notes.labels[i]))) +
+			'"';
+		open = '';
+		// a reference with no definition took a number, so the list skips it
+		if (i + 1 !== next) item += ' value="' + (i + 1) + '"';
+		next = i + 2;
+		p = fn_put(p, item + '>', mode);
+		p = fn_definition(
+			c,
+			sink,
+			p,
+			mode,
+			node,
+			fn_back(notes, i + 1, notes.counts[i])
+		);
+		p = fn_put(p, '</li>\n', mode);
+	}
+	c.move_to(0);
+	if (open !== '') return p;
+	return fn_put(
+		p,
+		ref !== undefined ? '</ol>\n</' + ref.local + '>' : '</ol>\n</section>',
+		mode
+	);
+}
+
+const FOOTNOTE_HANDLED = new Set(['label']);
+
+/** true while a note snippet is written, a reference in it gets none of its own */
+let fn_in_note = false;
+
+/**
+ * a reference as the footnote replacement, the link it renders as without
+ * one is its children, and what its definition holds is the note snippet
+ */
+function fn_component(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	pre: number,
+	open: string,
+	close: string
+): number {
+	const notes = fn_get(c);
+	const at = notes.references.get(c.index);
+	// one in a definition that is not rendered
+	if (at === undefined) return p;
+	const number = Math.floor(at / 65536);
+	const label = notes.labels[number - 1];
+	const node = c.index;
+	p = cm_put(
+		p,
+		open +
+			js_prop('label', label) +
+			' number={' +
+			number +
+			'}' +
+			js_prop('href', '#' + fn_fragment(fn_id(notes, footnote_id(label)))) +
+			js_prop('id', fn_id(notes, footnote_ref_id(number, at % 65536))) +
+			_attrs(c, FOOTNOTE_HANDLED) +
+			'>'
+	);
+	const definition = notes.definitions[number - 1];
+	// a note that refers to itself would never end
+	if (definition !== Slot.NONE && !fn_in_note) {
+		fn_in_note = true;
+		try {
+			p = cm_put(p, '{#snippet note()}');
+			p = fn_definition(c, sink, p, comp_mode, definition, '');
+			p = cm_put(p, '{/snippet}');
+		} finally {
+			fn_in_note = false;
+		}
+		c.move_to(node);
+	}
+	p = cm_put(p, fn_reference(c) + close);
+	cm_void(c, sink, pre, Preset.TEXT);
+	return p;
+}
+
+/** fn_section as the html of the fold walk */
+function fn_section_folded(c: Cursor): string {
+	fold_out = '';
+	const p = fn_section(c, undefined, 0, CM.FOLD);
+	let html = fold_out;
+	fold_out = '';
+	if (p !== 0) html += FOLD_STR[p];
+	return html;
+}
+
+//  static runs
+
+// hydration steps over the siblings before each node svelte owns one at a
+// time, a run of blocks in one wrapper is one step
+
+/** set while a render wraps runs of static blocks, only the root walks read it */
+let ws_on = false;
+
+const WS_OPEN = '<div style="display: contents">';
+const WS_CLOSE = '</div>';
+
+/**
+ * the root children as wrap_pass walks them, each block renders into an
+ * output of its own and its records move when it joins its run and when the
+ * run joins the document, so the html is never cut and a record moves twice
+ * at most
+ */
+function ws_pass(
+	c: Cursor,
+	sink: MapSink | undefined,
+	p: number,
+	mode: number,
+	skip_hoisted: boolean
+): number {
+	const fold = mode === CM.FOLD;
+	const stride = mode === CM.TRACE ? Trace.SIZE : Rec.SIZE;
+	let doc = fold ? fold_out : mo;
+	if (p !== 0) doc += FOLD_STR[p];
+	// the static blocks not yet in doc, their records count from the start of run
+	let run = '';
+	let count = 0;
+	let run_rec = 0;
+	const n = c.words;
+	let child = n[W.first_child];
+	while (child !== Slot.NONE) {
+		const b = child * W.stride;
+		if (n[b + W.parent] !== 0) break;
+		const k = n[b] & 0xff;
+		if (k !== K.LINE_BREAK) {
+			c.move_to(child);
+			if (!skip_hoisted || !wrap_hoists(c, k)) {
+				const rec = sink === undefined ? 0 : sink.n;
+				if (fold) fold_out = '';
+				else mo = '';
+				p = walk_child(c, sink, 0, mode, child, k);
+				let out = fold ? fold_out : mo;
+				if (p !== 0) out += FOLD_STR[p];
+				if (out.length === 0 && count === 0) {
+					// renders nothing outside a run, an import or a definition
+					ws_shift(sink, rec, stride, doc.length);
+				} else if (out.length === 0 || ws_static(out)) {
+					// a block that renders nothing inside a run neither ends it nor counts
+					if (count === 0) run_rec = rec;
+					ws_shift(sink, rec, stride, run.length);
+					if (out.length !== 0) {
+						run += out;
+						count++;
+					}
+				} else {
+					doc = ws_join(doc, run, count, sink, run_rec, rec, stride);
+					run = '';
+					count = 0;
+					ws_shift(sink, rec, stride, doc.length);
+					doc += out;
+				}
+			}
+		}
+		child = n[b + W.next];
+	}
+	const end = sink === undefined ? 0 : sink.n;
+	doc = ws_join(doc, run, count, sink, run_rec, end, stride);
+	if (fold) fold_out = doc;
+	else mo = doc;
+	c.move_to(0);
+	return 0;
+}
+
+/** doc and the run after it, inside a wrapper when the run holds two blocks or more */
+function ws_join(
+	doc: string,
+	run: string,
+	count: number,
+	sink: MapSink | undefined,
+	from: number,
+	to: number,
+	stride: number
+): string {
+	if (count === 0) return doc;
+	if (count === 1) {
+		ws_move(sink, from, to, stride, doc.length);
+		return doc + run;
+	}
+	ws_move(sink, from, to, stride, doc.length + WS_OPEN.length);
+	return doc + WS_OPEN + run + WS_CLOSE;
+}
+
+function ws_shift(
+	sink: MapSink | undefined,
+	from: number,
+	stride: number,
+	by: number
+): void {
+	if (sink !== undefined) ws_move(sink, from, sink.n, stride, by);
+}
+
+function ws_move(
+	sink: MapSink | undefined,
+	from: number,
+	to: number,
+	stride: number,
+	by: number
+): void {
+	if (sink === undefined || by === 0) return;
+	// grow keeps every index, so the records sit where they were written
+	const rec = sink.rec;
+	for (let i = from; i < to; i += stride) rec[i] += by;
+}
+
+/**
+ * true when the markup holds nothing svelte finds while hydrating, a block
+ * it wrongly takes is still correct inside a wrapper
+ */
+function ws_static(s: string): boolean {
+	const len = s.length;
+	// the next brace from i, found again only once the scan passes it
+	let brace = s.indexOf('{');
+	let i = 0;
+	for (;;) {
+		const lt = s.indexOf('<', i);
+		// a brace in text is an expression or a block
+		if (brace !== -1 && (lt === -1 || brace < lt)) return false;
+		if (lt === -1) return true;
+		let ch = s.charCodeAt(lt + 1);
+		if (ch === 33) {
+			// a comment, svelte drops it, braces and all
+			const e = s.indexOf('-->', lt + 4);
+			if (e === -1) return false;
+			i = e + 3;
+			if (brace !== -1 && brace < i) brace = s.indexOf('{', i);
+			continue;
+		}
+		let j = lt + 1;
+		if (ch === 47) {
+			// an end tag, its name was read at the start tag
+			i = lt + 2;
+			continue;
+		}
+		// a capital, a dot or a colon in the name is a component or a svelte element
+		for (; j < len; j++) {
+			ch = s.charCodeAt(j);
+			if ((ch >= 65 && ch <= 90) || ch === 46 || ch === 58) return false;
+			if (!((ch >= 97 && ch <= 122) || (ch >= 48 && ch <= 57) || ch === 45))
+				break;
+		}
+		if (j === lt + 1) return false;
+		const name = s.slice(lt + 1, j);
+		if (name === 'script' || name === 'style' || name === 'slot') return false;
+		// the attributes, a colon outside a value is a directive, a brace anywhere an expression
+		let quote = 0;
+		for (; j < len; j++) {
+			ch = s.charCodeAt(j);
+			if (ch === 123) return false;
+			if (quote !== 0) {
+				if (ch === quote) quote = 0;
+			} else if (ch === 34 || ch === 39) quote = ch;
+			else if (ch === 58) return false;
+			else if (ch === 62) break;
+		}
+		i = j;
+	}
+}

@@ -1,0 +1,41 @@
+root
+  paragraph
+    text "Create a new "
+    code_span "function"
+    text "."
+  line_break
+  line_break
+  paragraph
+    text "Use the backtick in MySQL syntax "
+    code_span "SELECT `column` FROM whatever"
+    text "."
+  line_break
+  line_break
+  paragraph
+    text "A single backtick in a code span: "
+    code_span "`"
+  line_break
+  line_break
+  paragraph
+    text "A backtick-delimited string in a code span: "
+    code_span "`foo`"
+  line_break
+  line_break
+  paragraph
+    text "Please don't use any "
+    code_span "<blink>"
+    text " tags."
+  line_break
+  line_break
+  paragraph
+    code_span "&#8212;"
+    text " is the decimal-encoded equivalent of "
+    code_span "&mdash;"
+    text "."
+  line_break
+  line_break
+  paragraph
+    text "this "
+    code_span "inline **code** has ___magic___"
+    text " chars"
+  line_break

@@ -1,0 +1,1315 @@
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { describe, expect, test } from 'vitest';
+
+import { parse_markdown_svelte } from '../src/main';
+import type { NodeBuffer } from '../src/utils';
+import { print_ast } from './print';
+import { NodeKind } from '../src/utils';
+import { run_batch, run_wire } from './plugin_harness';
+import { container_mismatch } from './invariance';
+import {
+	checked_tree,
+	every_path,
+	fed_mismatch,
+	lines,
+	pick,
+	random,
+} from './stream_shape';
+
+const this_dir = dirname(fileURLToPath(import.meta.url));
+const fixtures_root = resolve(this_dir, 'fixtures/pfm/block_quotes');
+
+const load_fixture = (id: string): string =>
+	readFileSync(resolve(fixtures_root, `${id}.md`), 'utf8');
+
+function collect_children(nodes: NodeBuffer, parent: number = 0) {
+	const root = nodes.get_node(parent);
+	return root.children.map((i) => nodes.get_node(i));
+}
+
+function non_breaks(nodes: NodeBuffer, parent: number = 0) {
+	return collect_children(nodes, parent).filter((n) => n.kind !== 'line_break');
+}
+
+function get_value(nodes: NodeBuffer, index: number, source: string) {
+	const node = nodes.get_node(index);
+	return source.slice(node.value[0], node.value[1]);
+}
+
+describe('Block quotes', () => {
+	test('pfm example 228: basic block quote with heading and paragraph', () => {
+		const input = load_fixture('228');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('block_quote');
+
+		const bq_children = non_breaks(nodes, children[0].index);
+		expect(bq_children.length).toBe(2);
+		expect(bq_children[0].kind).toBe('heading');
+		expect(bq_children[0].metadata.depth).toBe(1);
+		expect(get_value(nodes, bq_children[0].index, input)).toBe('Foo');
+		expect(bq_children[1].kind).toBe('paragraph');
+	});
+
+	test('pfm example 229: block quote without space after >', () => {
+		const input = load_fixture('229');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('block_quote');
+
+		const bq_children = non_breaks(nodes, children[0].index);
+		expect(bq_children.length).toBe(2);
+		expect(bq_children[0].kind).toBe('heading');
+		expect(bq_children[1].kind).toBe('paragraph');
+	});
+
+	test('pfm example 230: leading spaces before >', () => {
+		const input = load_fixture('230');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('block_quote');
+
+		const bq_children = non_breaks(nodes, children[0].index);
+		expect(bq_children.length).toBe(2);
+		expect(bq_children[0].kind).toBe('heading');
+		expect(bq_children[1].kind).toBe('paragraph');
+	});
+
+	test('pfm example 231: four leading spaces before > (PFM: indentation insignificant)', () => {
+		const input = load_fixture('231');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		// PFM ignores indentation, so this is still a block quote
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('block_quote');
+	});
+
+	test('pfm example 232: no lazy continuation (baz is outside)', () => {
+		// > # Foo
+		// > bar
+		// baz
+		// PFM: line 3 has no `>` prefix, so it terminates the blockquote.
+		// `baz` becomes a separate paragraph at root level.
+		const input = load_fixture('232');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(2);
+		expect(children[0].kind).toBe('block_quote');
+		expect(children[1].kind).toBe('paragraph');
+
+		const bq_children = non_breaks(nodes, children[0].index);
+		expect(bq_children.length).toBe(2);
+		expect(bq_children[0].kind).toBe('heading');
+		expect(bq_children[1].kind).toBe('paragraph');
+	});
+
+	test('pfm example 233: unmarked line splits adjacent blockquotes', () => {
+		// > bar
+		// baz
+		// > foo
+		// PFM: line 2 has no `>`, terminating the first blockquote. Line 3
+		// starts a fresh blockquote. Result: [bq, paragraph, bq].
+		const input = load_fixture('233');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(3);
+		expect(children[0].kind).toBe('block_quote');
+		expect(children[1].kind).toBe('paragraph');
+		expect(children[2].kind).toBe('block_quote');
+
+		const bq1_children = non_breaks(nodes, children[0].index);
+		expect(bq1_children.length).toBe(1);
+		expect(bq1_children[0].kind).toBe('paragraph');
+
+		const bq2_children = non_breaks(nodes, children[2].index);
+		expect(bq2_children.length).toBe(1);
+		expect(bq2_children[0].kind).toBe('paragraph');
+	});
+
+	test('pfm example 234: thematic break ends block quote', () => {
+		// > foo
+		// ---
+		const input = load_fixture('234');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(2);
+		expect(children[0].kind).toBe('block_quote');
+		expect(children[1].kind).toBe('thematic_break');
+	});
+
+	test('pfm example 235: list item after block quote', () => {
+		// > - foo
+		// - bar
+		// PFM: line 2 `- bar` has no `>`, so the blockquote (and its list)
+		// close; `- bar` starts a new root-level list.
+		const input = load_fixture('235');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(2);
+		expect(children[0].kind).toBe('block_quote');
+		expect(children[1].kind).toBe('list');
+
+		const bq_children = non_breaks(nodes, children[0].index);
+		expect(bq_children.length).toBe(1);
+		expect(bq_children[0].kind).toBe('list');
+
+		const inner_items = non_breaks(nodes, bq_children[0].index);
+		expect(inner_items.length).toBe(1);
+		expect(inner_items[0].kind).toBe('list_item');
+
+		const outer_items = non_breaks(nodes, children[1].index);
+		expect(outer_items.length).toBe(1);
+		expect(outer_items[0].kind).toBe('list_item');
+	});
+
+	test('pfm example 236: lots of whitespace after > (no lazy continuation)', () => {
+		// >     foo
+		//     bar
+		// PFM: line 2 has no `>` (just indentation), so it terminates the
+		// blockquote. `    bar` becomes a sibling paragraph.
+		const input = load_fixture('236');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(2);
+		expect(children[0].kind).toBe('block_quote');
+		expect(children[1].kind).toBe('paragraph');
+	});
+
+	test('pfm example 240: empty block quote lines', () => {
+		// >
+		// >
+		// >
+		const input = load_fixture('240');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('block_quote');
+	});
+
+	test('pfm example 241: blank > lines around content', () => {
+		// >
+		// > foo
+		// >
+		const input = load_fixture('241');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('block_quote');
+
+		const bq_children = non_breaks(nodes, children[0].index);
+		expect(bq_children.length).toBe(1);
+		expect(bq_children[0].kind).toBe('paragraph');
+	});
+
+	test('pfm example 242: blank line separates block quotes', () => {
+		// > foo
+		//
+		// > bar
+		const input = load_fixture('242');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(2);
+		expect(children[0].kind).toBe('block_quote');
+		expect(children[1].kind).toBe('block_quote');
+	});
+
+	test('pfm example 243: simple continuation', () => {
+		// > foo
+		// > bar
+		const input = load_fixture('243');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('block_quote');
+
+		const bq_children = non_breaks(nodes, children[0].index);
+		expect(bq_children.length).toBe(1);
+		expect(bq_children[0].kind).toBe('paragraph');
+	});
+
+	test('pfm example 244: blank > line separates paragraphs inside quote', () => {
+		// > foo
+		// >
+		// > bar
+		const input = load_fixture('244');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('block_quote');
+
+		const bq_children = non_breaks(nodes, children[0].index);
+		expect(bq_children.length).toBe(2);
+		expect(bq_children[0].kind).toBe('paragraph');
+		expect(bq_children[1].kind).toBe('paragraph');
+	});
+
+	test('pfm example 245: block quote interrupts paragraph', () => {
+		// foo
+		// > bar
+		const input = load_fixture('245');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(2);
+		expect(children[0].kind).toBe('paragraph');
+		expect(children[1].kind).toBe('block_quote');
+	});
+
+	test('pfm example 246: thematic break between block quotes', () => {
+		// > aaa
+		// ***
+		// > bbb
+		const input = load_fixture('246');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(3);
+		expect(children[0].kind).toBe('block_quote');
+		expect(children[1].kind).toBe('thematic_break');
+		expect(children[2].kind).toBe('block_quote');
+	});
+
+	test('pfm example 247: unmarked line terminates blockquote', () => {
+		// > bar
+		// baz
+		// PFM: line 2 has no `>`, so blockquote closes; `baz` is a sibling
+		// paragraph.
+		const input = load_fixture('247');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(2);
+		expect(children[0].kind).toBe('block_quote');
+		expect(children[1].kind).toBe('paragraph');
+
+		const bq_children = non_breaks(nodes, children[0].index);
+		expect(bq_children.length).toBe(1);
+		expect(bq_children[0].kind).toBe('paragraph');
+	});
+
+	test('pfm example 248: blank line after block quote', () => {
+		// > bar
+		//
+		// baz
+		const input = load_fixture('248');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(2);
+		expect(children[0].kind).toBe('block_quote');
+		expect(children[1].kind).toBe('paragraph');
+	});
+
+	test('pfm example 249: > blank line then no > ends quote', () => {
+		// > bar
+		// >
+		// baz
+		const input = load_fixture('249');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(2);
+		expect(children[0].kind).toBe('block_quote');
+		expect(children[1].kind).toBe('paragraph');
+	});
+
+	test('pfm example 250: nested blockquotes (no lazy continuation)', () => {
+		// > > > foo
+		// bar
+		// PFM: line 2 has no `>`, so ALL three nested blockquotes cascade-
+		// close; `bar` becomes a root-level paragraph.
+		const input = load_fixture('250');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(2);
+		expect(children[0].kind).toBe('block_quote');
+		expect(children[1].kind).toBe('paragraph');
+
+		// Verify the cascade left the triple-nested blockquote intact with
+		// "foo" as the innermost paragraph.
+		const bq1_children = non_breaks(nodes, children[0].index);
+		expect(bq1_children.length).toBe(1);
+		expect(bq1_children[0].kind).toBe('block_quote');
+
+		const bq2_children = non_breaks(nodes, bq1_children[0].index);
+		expect(bq2_children.length).toBe(1);
+		expect(bq2_children[0].kind).toBe('block_quote');
+
+		const bq3_children = non_breaks(nodes, bq2_children[0].index);
+		expect(bq3_children.length).toBe(1);
+		expect(bq3_children[0].kind).toBe('paragraph');
+	});
+
+	test('pfm example 251: compact nested block quotes (>>>)', () => {
+		// >>> foo
+		// > bar
+		// >>baz
+		// no lazy continuation, bar closes the inner quotes and baz opens a new one
+		const input = load_fixture('251');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('block_quote');
+
+		const bq1_children = non_breaks(nodes, children[0].index);
+		expect(bq1_children.map((n) => n.kind)).toEqual([
+			'block_quote',
+			'paragraph',
+			'block_quote',
+		]);
+
+		const bq2_children = non_breaks(nodes, bq1_children[0].index);
+		expect(bq2_children.length).toBe(1);
+		expect(bq2_children[0].kind).toBe('block_quote');
+
+		const baz = non_breaks(nodes, bq1_children[2].index);
+		expect(baz.length).toBe(1);
+		expect(baz[0].kind).toBe('paragraph');
+	});
+
+	test('pfm: leaf block inside nested quote keeps following line at depth', () => {
+		const input = '> > # h\n> > x';
+		const { nodes } = parse_markdown_svelte(input);
+		const bq1 = non_breaks(nodes);
+		expect(bq1.map((n) => n.kind)).toEqual(['block_quote']);
+		const bq2 = non_breaks(nodes, bq1[0].index);
+		expect(bq2.map((n) => n.kind)).toEqual(['block_quote']);
+		const inner = non_breaks(nodes, bq2[0].index);
+		expect(inner.map((n) => n.kind)).toEqual(['heading', 'paragraph']);
+	});
+
+	test('pfm: blank quoted line inside compact nested quote keeps depth', () => {
+		const input = '>> b\n>>\n>> c';
+		const { nodes } = parse_markdown_svelte(input);
+		const bq1 = non_breaks(nodes);
+		const bq2 = non_breaks(nodes, bq1[0].index);
+		expect(bq2.map((n) => n.kind)).toEqual(['block_quote']);
+		const inner = non_breaks(nodes, bq2[0].index);
+		expect(inner.map((n) => n.kind)).toEqual(['paragraph', 'paragraph']);
+	});
+
+	test('pfm: fewer markers after a leaf block close the inner quote', () => {
+		const input = '> > # h\n> c';
+		const { nodes } = parse_markdown_svelte(input);
+		const bq1 = non_breaks(nodes);
+		const outer = non_breaks(nodes, bq1[0].index);
+		expect(outer.map((n) => n.kind)).toEqual(['block_quote', 'paragraph']);
+		const inner = non_breaks(nodes, outer[0].index);
+		expect(inner.map((n) => n.kind)).toEqual(['heading']);
+	});
+
+	test('pfm: extra marker interrupts a paragraph inside a quote', () => {
+		const input = '> bar\n>> baz';
+		const { nodes } = parse_markdown_svelte(input);
+		const bq1 = non_breaks(nodes);
+		const outer = non_breaks(nodes, bq1[0].index);
+		expect(outer.map((n) => n.kind)).toEqual(['paragraph', 'block_quote']);
+	});
+
+	test('pfm: a fence left open in a block quote ends with the quote', () => {
+		// > ```
+		// foo
+		// ```
+		// the line "foo" has no `>`, so it ends the quote and the fence in it
+		const input = '> ```\nfoo\n```\n';
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+		expect(children.map((n) => n.kind)).toEqual([
+			'block_quote',
+			'paragraph',
+			'code_fence',
+		]);
+		const bq_children = non_breaks(nodes, children[0].index);
+		expect(bq_children.map((n) => n.kind)).toEqual(['code_fence']);
+	});
+
+	test('pfm: code fence with proper > continuation inside blockquote', () => {
+		// > ```
+		// > foo
+		// > ```
+		// All lines have `>`, so the fence is valid and contains "foo".
+		const input = '> ```\n> foo\n> ```\n';
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('block_quote');
+
+		const bq_children = non_breaks(nodes, children[0].index);
+		expect(bq_children.length).toBe(1);
+		expect(bq_children[0].kind).toBe('code_fence');
+	});
+
+	test('pfm: code fence closes on a quoted closing line, its value keeps the markers', () => {
+		const input = '> ```\n> code\n> ```\n> after\n';
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+		expect(children.length).toBe(1);
+
+		const bq_children = non_breaks(nodes, children[0].index);
+		expect(bq_children.map((n) => n.kind)).toEqual(['code_fence', 'paragraph']);
+		expect(get_value(nodes, bq_children[0].index, input)).toBe('> code');
+		const text = nodes.get_node(bq_children[1].children[0]);
+		expect(get_value(nodes, text.index, input)).toBe('after');
+	});
+
+	test('pfm: code fence in a nested blockquote closes on its markers', () => {
+		const input = '> > ```\n> > a\n> > ```\n';
+		const { nodes } = parse_markdown_svelte(input);
+		const outer = non_breaks(nodes)[0];
+		const inner = non_breaks(nodes, outer.index)[0];
+		expect(inner.kind).toBe('block_quote');
+
+		const fence = non_breaks(nodes, inner.index);
+		expect(fence.map((n) => n.kind)).toEqual(['code_fence']);
+		expect(get_value(nodes, fence[0].index, input)).toBe('> > a');
+	});
+
+	test('pfm: cascade close through nested blockquotes then resume', () => {
+		// > > foo
+		// bar
+		// > baz
+		// Regression: an unmarked line must cascade-close BOTH nested
+		// blockquote frames, then a subsequent `>` line must open a fresh
+		// blockquote at root. Guards the multi-frame cascade path.
+		const input = '> > foo\nbar\n> baz\n';
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(3);
+		expect(children[0].kind).toBe('block_quote');
+		expect(children[1].kind).toBe('paragraph');
+		expect(children[2].kind).toBe('block_quote');
+
+		// First blockquote: one nested blockquote containing "foo".
+		const outer_children = non_breaks(nodes, children[0].index);
+		expect(outer_children.length).toBe(1);
+		expect(outer_children[0].kind).toBe('block_quote');
+
+		const inner_children = non_breaks(nodes, outer_children[0].index);
+		expect(inner_children.length).toBe(1);
+		expect(inner_children[0].kind).toBe('paragraph');
+
+		// Third child: fresh blockquote with "baz".
+		const resume_children = non_breaks(nodes, children[2].index);
+		expect(resume_children.length).toBe(1);
+		expect(resume_children[0].kind).toBe('paragraph');
+	});
+
+	// PFM: no indented code, so extra spaces are just text in paragraphs
+	test('pfm example 252: indented content in block quote (PFM: no indented code)', () => {
+		const input = load_fixture('252');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		// Two block quotes, each with a paragraph
+		const bqs = children.filter((n) => n.kind === 'block_quote');
+		expect(bqs.length).toBe(2);
+
+		const bq1_children = non_breaks(nodes, bqs[0].index);
+		expect(bq1_children[0].kind).toBe('paragraph');
+
+		const bq2_children = non_breaks(nodes, bqs[1].index);
+		expect(bq2_children[0].kind).toBe('paragraph');
+	});
+});
+
+function code_texts(nodes: NodeBuffer, source: string | null): string[] {
+	return nodes.get_kinds(NodeKind.code_span).map((index) => {
+		const stored = nodes._strings[index];
+		if (stored !== undefined || source === null) return String(stored);
+		const [start, end] = nodes.get_node(index).value;
+		return source.slice(start, end);
+	});
+}
+
+/** the code of each span, the same from a whole parse, a fed one and the wire */
+function code_of(source: string): string[] {
+	const whole = code_texts(parse_markdown_svelte(source).nodes, source);
+	for (const chunk of [1, 2, 3]) {
+		const fed = run_batch(source, undefined, chunk);
+		expect(code_texts(fed.nodes, source), `fed ${chunk}`).toEqual(whole);
+	}
+	for (const chunk of [0, 1, 2, 3]) {
+		const wire = run_wire(source, undefined, chunk);
+		expect(code_texts(wire.nodes, null), `wire ${chunk}`).toEqual(whole);
+	}
+	return whole;
+}
+
+describe('a line that ends a paragraph in a block quote, with something open', () => {
+	const openers: [string, string][] = [
+		['emphasis', '_'],
+		['strong emphasis', '*'],
+		['strikethrough', '~~'],
+		['subscript', '~'],
+		['superscript', '^'],
+		['link text', '['],
+		['image text', '!['],
+		['inline directive text', ':d['],
+		['an inline element', 'x <b>'],
+	];
+	const enders: [string, string][] = [
+		['a marked blank line', '> %sa\n>\n> b\n'],
+		['an unmarked line', '> %sa\nb\n'],
+		['a nested quote', '> %sa\n> > b\n'],
+		['a heading', '> %sa\n> # b\n'],
+		['a thematic break', '> %sa\n> ---\n'],
+		['a code fence', '> %sa\n> ```\n> b\n> ```\n'],
+		['the close of a container directive', '> :::box\n> %sa\n> :::\n> b\n'],
+		['a list item', '> %sa\n> - b\n'],
+		['an ordered list item', '> %sa\n> 1. b\n'],
+		['the next item of a quoted list', '> - %sa\n> - b\n'],
+		['a nested list in a quoted list', '> - %sa\n>   - b\n'],
+	];
+	const inline = /^ *(text|soft_break|hard_break)\b/;
+	/** the tree without its text, the open marker is text in one and absent in the other */
+	const blocks = (tree: string) =>
+		tree
+			.split('\n')
+			.filter((row) => !inline.test(row))
+			.join('\n');
+
+	for (const [what, opener] of openers) {
+		for (const [name, source] of enders) {
+			test(`${what} before ${name}`, () => {
+				const tree = checked_tree(source.replace('%s', opener));
+				const plain = opener.startsWith('x') ? 'x ' : '';
+				expect(blocks(tree)).toBe(
+					blocks(checked_tree(source.replace('%s', plain)))
+				);
+			});
+		}
+	}
+
+	const quote = (...rest: string[]) => lines('root', '  block_quote', ...rest);
+
+	test('a list item ends the paragraph as it does outside a quote', () => {
+		for (const marker of ['-', '+', '*', '1.']) {
+			expect(every_path(`> x\n> ${marker} a\n>\n> y\n`), marker).toBe(
+				quote(
+					'    paragraph',
+					'      text "x"',
+					`    list ordered=${marker === '1.'} start=${marker === '1.' ? 1 : 0} tight=true`,
+					'      list_item',
+					'        text "a"',
+					'    line_break',
+					'    paragraph',
+					'      text "y"',
+					'  line_break'
+				)
+			);
+		}
+		expect(every_path('> > x\n> > - a\n')).toBe(
+			quote(
+				'    block_quote',
+				'      paragraph',
+				'        text "x"',
+				'      list ordered=false start=0 tight=true',
+				'        list_item',
+				'          text "a"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('a marker that starts no list outside a quote starts none in one', () => {
+		for (const marker of ['2.', '-', '1.']) {
+			const row = marker === '2.' ? '2. a' : marker;
+			expect(every_path(`> x\n> ${row}\n`), row).toBe(
+				quote(
+					'    paragraph',
+					'      text "x"',
+					'      soft_break',
+					`      text "${row}"`,
+					'  line_break'
+				)
+			);
+		}
+	});
+
+	test('emphasis open at the list item is literal text', () => {
+		expect(every_path('> *x\n> - a*\n')).toBe(
+			quote(
+				'    paragraph',
+				'      text "*x"',
+				'    list ordered=false start=0 tight=true',
+				'      list_item',
+				'        text "a"',
+				'        text "*"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('emphasis does not reach into a nested quote', () => {
+		expect(checked_tree('> *a\n> > b*\n')).toBe(
+			quote(
+				'    paragraph',
+				'      text "*a"',
+				'    block_quote',
+				'      paragraph',
+				'        text "b"',
+				'        text "*"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('a fence line is not text of the emphasis', () => {
+		expect(checked_tree('> *a\n> ```\n> b*\n')).toBe(
+			quote('    paragraph', '      text "*a"', '    code_fence "b*\\n"')
+		);
+	});
+
+	test('a link does not reach into a nested quote', () => {
+		expect(checked_tree('> [a\n> > b](u)\n')).toBe(
+			quote(
+				'    paragraph',
+				'      text "[a"',
+				'    block_quote',
+				'      paragraph',
+				'        text "b"',
+				'        text "](u)"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('a backslash before the nested quote is text outside the emphasis', () => {
+		expect(checked_tree('> *a\\\n> > b*\n')).toBe(
+			checked_tree('> *a\n> > b*\n').replace('"*a"', '"*a\\\\"')
+		);
+	});
+
+	test('a continuation line stays in what is open', () => {
+		for (const [open, close] of [
+			['_', '_'],
+			['*', '*'],
+			['~~', '~~'],
+			['~', '~'],
+			['^', '^'],
+			['[', '](u)'],
+			['![', '](u)'],
+			[':d[', ']'],
+			['<b>', '</b>'],
+		]) {
+			const tree = checked_tree(`> x ${open}a\n> b${close}\n`).split('\n');
+			expect(tree.slice(0, 4), open).toEqual([
+				'root',
+				'  block_quote',
+				'    paragraph',
+				'      text "x "',
+			]);
+			expect(tree.slice(5), open).toEqual([
+				'        text "a"',
+				'        soft_break',
+				'        text "b"',
+				'  line_break',
+			]);
+		}
+	});
+
+	test('a bracket at the start of a marked line closes the link text', () => {
+		expect(checked_tree('> [a\n> ](u)\n')).toBe(
+			quote(
+				'    paragraph',
+				'      link href="u"',
+				'        text "a"',
+				'        soft_break',
+				'  line_break'
+			)
+		);
+		expect(checked_tree('> ![a\n> ](u)\n')).toContain('image src="u"');
+		expect(checked_tree('> :d[a\n> ]\n')).toBe(
+			quote(
+				'    paragraph',
+				'      directive_inline name="d"',
+				'        text "a"',
+				'        soft_break',
+				'  line_break'
+			)
+		);
+	});
+
+	test('an inline element spans a marked line as it does outside a quote', () => {
+		expect(checked_tree('> x <b>a\n> b</b> c\n')).toBe(
+			quote(
+				'    paragraph',
+				'      text "x "',
+				'      html tag="b"',
+				'        text "a"',
+				'        soft_break',
+				'        text "b"',
+				'      text " c"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('a code span over a marked line keeps no marker in its code', () => {
+		expect(every_path('> x `a\n> b` c\n')).toBe(
+			quote(
+				'    paragraph',
+				'      text "x "',
+				'      code_span "a\\nb"',
+				'      text " c"',
+				'  line_break'
+			)
+		);
+		expect(every_path('> ``a\n>b\n>  c`` d\n')).toBe(
+			quote(
+				'    paragraph',
+				'      code_span "a\\nb\\nc"',
+				'      text " d"',
+				'  line_break'
+			)
+		);
+		expect(every_path('> > ` a\n> > b `\n')).toBe(
+			quote(
+				'    block_quote',
+				'      paragraph',
+				'        code_span "a\\nb"',
+				'  line_break'
+			)
+		);
+		expect(every_path('- > `#!js a\n  > b`\n')).toBe(
+			lines(
+				'root',
+				'  list ordered=false start=0 tight=true',
+				'    list_item',
+				'      block_quote',
+				'        paragraph',
+				'          code_span info="js" "a\\nb"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('the value of such a span still covers the source as written', () => {
+		const source = '> x `a\n> b` c\n';
+		const { nodes } = parse_markdown_svelte(source);
+		const span = nodes.get_node(nodes.get_kinds(NodeKind.code_span)[0]);
+		expect(source.slice(span.value[0], span.value[1])).toBe('a\n> b');
+		expect(source.slice(span.start, span.end)).toBe('`a\n> b`');
+	});
+
+	test('the code is the same fed in chunks and over the wire', () => {
+		for (const [source, code] of [
+			['> x `a\n> b` c\n', ['a\nb']],
+			['> ``a\n>b\n>  c`` d `e`\n', ['a\nb\nc', 'e']],
+			['> > `a\n> > b`\n> > `c\n>  >   d`', ['a\nb', 'c\nd']],
+			['- > `#!js a\n  > b`\n', ['a\nb']],
+		] as [string, string[]][]) {
+			expect(code_of(source), JSON.stringify(source)).toEqual(code);
+		}
+	});
+
+	test('a code span on one line of a quote is not touched', () => {
+		const source = '> x `a > b` c\n> `d`\n';
+		const { nodes } = parse_markdown_svelte(source);
+		expect(nodes._strings.length).toBe(0);
+		expect(every_path(source)).toContain('code_span "a > b"');
+	});
+
+	test('a code span does not reach into a nested quote', () => {
+		expect(every_path('> `a\n> > b`\n')).toBe(
+			quote(
+				'    paragraph',
+				'      text "`"',
+				'      text "a"',
+				'    block_quote',
+				'      paragraph',
+				'        text "b"',
+				'        text "`"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('a code span does not reach past the quote', () => {
+		expect(every_path('> `a\nb`\n')).toBe(
+			lines(
+				'root',
+				'  block_quote',
+				'    paragraph',
+				'      text "`"',
+				'      text "a"',
+				'  line_break',
+				'  paragraph',
+				'    text "b"',
+				'    text "`"',
+				'  line_break'
+			)
+		);
+	});
+
+	for (const [name, source] of enders) {
+		for (const ticks of ['`', '``', '` ', '`#!js ']) {
+			test(`a code span opened with ${JSON.stringify(ticks)} ends before ${name}`, () => {
+				const close = ticks.trimEnd().replace('#!js', '');
+				const tree = every_path(
+					`${source.replace('%s', `x ${ticks}`)}> c${close}\n`
+				);
+				expect(tree).not.toContain('code_span');
+				expect(blocks(tree)).toBe(
+					blocks(checked_tree(`${source.replace('%s', 'x ')}> c\n`))
+				);
+			});
+		}
+	}
+
+	const PIECES = [
+		' ',
+		' ',
+		'`',
+		'`',
+		'``',
+		'a',
+		'*',
+		'**',
+		'_',
+		'~~',
+		'~',
+		'^',
+		'[',
+		'](u)',
+		'![',
+		':d[',
+		']',
+		'{x}',
+		'\\',
+		'<b>',
+		'</b>',
+		'<span>',
+		'</span>',
+		'<a href="u">',
+		'</a>',
+		'<Chart />',
+		'<br>',
+	];
+
+	test('random lines of one paragraph build the tree they build outside a quote', () => {
+		const rand = random(7);
+		const differ: string[] = [];
+		for (let i = 0; i < 2000; i++) {
+			const rows: string[] = [];
+			const count = 2 + Math.floor(rand() * 2);
+			for (let l = 0; l < count; l++) {
+				let row = pick(rand, ['a', 'b c', 'x ']);
+				const pieces = Math.floor(rand() * 5);
+				for (let k = 0; k < pieces; k++) row += pick(rand, PIECES);
+				rows.push(row + pick(rand, ['\n', '\n', ' \n', '\\\n']));
+			}
+			const plain = rows.join('');
+			const quoted = rows.map((row) => '> ' + row).join('');
+			const outside = print_ast(parse_markdown_svelte(plain).nodes, plain)
+				.split('\n')
+				.slice(1)
+				.map((row) => '  ' + row);
+			const inside = print_ast(parse_markdown_svelte(quoted).nodes, quoted)
+				.split('\n')
+				.slice(2);
+			// the linefeed after the block is a child of the root in both
+			outside[outside.length - 1] = inside[inside.length - 1];
+			if (inside.join('\n') !== outside.join('\n'))
+				differ.push(JSON.stringify(quoted));
+		}
+		expect(differ).toEqual([]);
+	});
+
+	test('random quoted code spans hold the code they hold outside a quote', () => {
+		const rand = random(969);
+		const pieces = ['`', '`', '``', 'a', 'b c', ' ', '>', '*', '\\', '#!js '];
+		for (let i = 0; i < 600; i++) {
+			const rows: string[] = [];
+			const count = 2 + Math.floor(rand() * 2);
+			for (let l = 0; l < count; l++) {
+				let row = pick(rand, ['a', 'b c', 'x ']);
+				const length = Math.floor(rand() * 5);
+				for (let k = 0; k < length; k++) row += pick(rand, pieces);
+				rows.push(row + '\n');
+			}
+			const plain = rows.join('');
+			const quoted = rows.map((row) => '> ' + row).join('');
+			expect(code_of(quoted), JSON.stringify(quoted)).toEqual(
+				code_texts(parse_markdown_svelte(plain).nodes, plain)
+			);
+		}
+	});
+
+	test('random lines with list markers build the blocks they build outside a quote', () => {
+		const rand = random(978);
+		const starts = ['a', 'b c', '- ', '- ', '1. ', '2. ', '+ ', '* ', '-'];
+		const pieces = [' ', 'a', '*', '_', '[', '](u)', '-', '1.', '`'];
+		const blocks = (source: string, drop: number) =>
+			print_ast(parse_markdown_svelte(source).nodes, source)
+				.split('\n')
+				.slice(drop)
+				.filter((row) => row.trim() !== 'line_break')
+				.map((row) => row.slice(drop * 2 - 2))
+				.join('\n');
+		const differ: string[] = [];
+		for (let i = 0; i < 2000; i++) {
+			const rows: string[] = [];
+			const count = 2 + Math.floor(rand() * 3);
+			for (let l = 0; l < count; l++) {
+				let row = pick(rand, starts);
+				const length = Math.floor(rand() * 4);
+				for (let k = 0; k < length; k++) row += pick(rand, pieces);
+				rows.push(row + '\n');
+			}
+			const plain = rows.join('');
+			// the value of a quoted fence covers its markers
+			if (plain.includes('```')) continue;
+			const quoted = rows.map((row) => '> ' + row).join('');
+			if (blocks(quoted, 2) !== blocks(plain, 1))
+				differ.push(JSON.stringify(quoted));
+		}
+		expect(differ).toEqual([]);
+	});
+
+	test('an inline element ends at the same line after a hard break and a linefeed', () => {
+		const hard = '> - ::toc[]<span>`a``\\\n> </div></b>|</span>\n';
+		const soft = hard.replace('\\\n', '\n');
+		// the block level close tag ends the paragraph, so the backslash is text
+		expect(checked_tree(hard)).toBe(
+			checked_tree(soft).replace(
+				'        text "``"',
+				'        text "``"\n        text "\\\\"'
+			)
+		);
+		expect(checked_tree('> x <b>a\\\n> > b</b>\n')).toBe(
+			checked_tree('> x <b>a\n> > b</b>\n').replace('"a"', '"a\\\\"')
+		);
+	});
+});
+
+describe('a thematic break in a quoted list item', () => {
+	/** the tree of the lines in a quote, its blocks are those of the lines alone one level down */
+	function quoted(...rows: string[]): string {
+		const plain = rows.map((row) => row + '\n').join('');
+		const source = rows.map((row) => '> ' + row + '\n').join('');
+		const blocks = (tree: string) =>
+			tree.split('\n').filter((row) => row.trim() !== 'line_break');
+		const outside = blocks(checked_tree(plain))
+			.slice(1)
+			.map((row) => '  ' + row);
+		const tree = every_path(source);
+		expect(blocks(tree).join('\n'), JSON.stringify(source)).toBe(
+			lines('root', '  block_quote', ...outside)
+		);
+		return tree;
+	}
+
+	test('the next marker starts no nested quote', () => {
+		expect(quoted('* ---', '- a')).toBe(
+			lines(
+				'root',
+				'  block_quote',
+				'    list ordered=false start=0 tight=true',
+				'      list_item',
+				'        thematic_break',
+				'    list ordered=false start=0 tight=true',
+				'      list_item',
+				'        text "a"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('text on the next line is outside the item unless it is indented to it', () => {
+		expect(quoted('+ ***', 'b c')).toBe(
+			lines(
+				'root',
+				'  block_quote',
+				'    list ordered=false start=0 tight=true',
+				'      list_item',
+				'        thematic_break',
+				'    paragraph',
+				'      text "b c"',
+				'  line_break'
+			)
+		);
+		expect(quoted('+ ***', '  b c')).toBe(
+			lines(
+				'root',
+				'  block_quote',
+				'    list ordered=false start=0 tight=true',
+				'      list_item',
+				'        thematic_break',
+				'        text "b c"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('with each break and marker', () => {
+		for (const rule of ['***', '---', '___', '* * *', '- - -']) {
+			for (const marker of ['+', '*', '-', '1.']) {
+				quoted(`${marker} ${rule}`, `${marker} a`);
+				quoted(`${marker} ${rule}`, 'b');
+				quoted(`${marker} ${rule}`, '  b', `${marker} c`);
+				quoted(`${marker} x`, `${marker} ${rule}`, '# h');
+			}
+		}
+	});
+
+	test('an unmarked line after it ends the quote', () => {
+		expect(every_path('> * ---\n- a\n')).toBe(
+			lines(
+				'root',
+				'  block_quote',
+				'    list ordered=false start=0 tight=true',
+				'      list_item',
+				'        thematic_break',
+				'  line_break',
+				'  list ordered=false start=0 tight=true',
+				'    list_item',
+				'      text "a"',
+				'  line_break'
+			)
+		);
+		expect(every_path('> * ---\n\nb\n')).toBe(
+			lines(
+				'root',
+				'  block_quote',
+				'    list ordered=false start=0 tight=true',
+				'      list_item',
+				'        thematic_break',
+				'  line_break',
+				'  line_break',
+				'  paragraph',
+				'    text "b"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('a marked blank line and a nested quote after it', () => {
+		quoted('* ---', '', 'b');
+		expect(every_path('> * ---\n> > b\n')).toBe(
+			lines(
+				'root',
+				'  block_quote',
+				'    list ordered=false start=0 tight=true',
+				'      list_item',
+				'        thematic_break',
+				'    block_quote',
+				'      paragraph',
+				'        text "b"',
+				'  line_break'
+			)
+		);
+		expect(every_path('> * ---\n>   > b\n')).toBe(
+			lines(
+				'root',
+				'  block_quote',
+				'    list ordered=false start=0 tight=true',
+				'      list_item',
+				'        thematic_break',
+				'        block_quote',
+				'          paragraph',
+				'            text "b"',
+				'  line_break'
+			)
+		);
+	});
+
+	test('in a nested quote and at the end of the input', () => {
+		expect(every_path('> > * ---\n> > - a\n')).toBe(
+			lines(
+				'root',
+				'  block_quote',
+				'    block_quote',
+				'      list ordered=false start=0 tight=true',
+				'        list_item',
+				'          thematic_break',
+				'      list ordered=false start=0 tight=true',
+				'        list_item',
+				'          text "a"',
+				'  line_break'
+			)
+		);
+		expect(every_path('> * ---')).toBe(
+			lines(
+				'root',
+				'  block_quote',
+				'    list ordered=false start=0 tight=true',
+				'      list_item',
+				'        thematic_break'
+			)
+		);
+	});
+});
+
+describe('a block quote inside a list item', () => {
+	const tree = (input: string): string =>
+		print_ast(parse_markdown_svelte(input).nodes, input);
+	const kinds = (input: string): string[] =>
+		tree(input)
+			.split('\n')
+			.map((line) => line.trim().split(' ')[0])
+			.filter((kind) => kind !== 'line_break' && kind !== '');
+
+	test.each([
+		[
+			'a marker at the left margin starts a new quote after the list',
+			'- > a\n> b\n',
+			[
+				'root',
+				'list',
+				'list_item',
+				'block_quote',
+				'paragraph',
+				'text',
+				'block_quote',
+				'paragraph',
+				'text',
+			],
+		],
+		[
+			'a marker indented to the item continues the quote',
+			'- > a\n  > b\n',
+			[
+				'root',
+				'list',
+				'list_item',
+				'block_quote',
+				'paragraph',
+				'text',
+				'soft_break',
+				'text',
+			],
+		],
+		[
+			'an outer marker alone does not continue the inner quote',
+			'> - > a\n> > b\n',
+			[
+				'root',
+				'block_quote',
+				'list',
+				'list_item',
+				'block_quote',
+				'paragraph',
+				'text',
+				'block_quote',
+				'paragraph',
+				'text',
+			],
+		],
+		[
+			'an outer marker and the indent continue the inner quote',
+			'> - > a\n>   > b\n',
+			[
+				'root',
+				'block_quote',
+				'list',
+				'list_item',
+				'block_quote',
+				'paragraph',
+				'text',
+				'soft_break',
+				'text',
+			],
+		],
+	])('%s: %j', (_, input, expected) => {
+		expect(kinds(input)).toEqual(expected);
+		expect(fed_mismatch(input)).toBe('');
+	});
+});
+
+describe('a block quote holds the blocks the document does', () => {
+	const quoted = (source: string): string =>
+		source
+			.split('\n')
+			.map((row) => (row === '' ? '>' : `> ${row}`))
+			.join('\n') + '\n';
+
+	test.each([
+		['a table', '| a |\n|---|\n| b |\n| c |'],
+		['a table before a paragraph', '| a |\n|---|\n| b |\n\nc'],
+		['a table that a heading ends', '| a |\n|---|\n| b |\n# c'],
+		['a svelte block', '{#if a}\nb\n{/if}'],
+		['a svelte block with a branch', '{#if a}\nb\n{:else}\n# c\n{/if}\nd'],
+		['a list in a svelte block', '{#each a as b}\n- c\n- d\n{/each}'],
+		['a definition', '[r]: /u\n\n[a][r]'],
+		['a definition with a title', '[r]: /u "t"\n\n[a][r]'],
+		['a leaf directive under a paragraph', 'a\n::leaf'],
+		['a container directive under a paragraph', 'a\n:::box\nb\n:::'],
+		['a block level tag under a paragraph', 'a\n<div>b</div>'],
+		['a svelte block under a paragraph', 'a\n{#if b}\nc\n{/if}'],
+		['a tag in a container directive', ':::box\n<Chart />\n:::'],
+		['a comment in a container directive', ':::box\n<!-- a -->\n:::'],
+	])('%s: %j', (_, source) => {
+		expect(
+			container_mismatch('block_quote', source.split('\n'), true, [])
+		).toBe('');
+		expect(fed_mismatch(quoted(source))).toBe('');
+	});
+
+	test('a block that leaves the quote ends at the unmarked line', () => {
+		const kinds = (input: string): string[] =>
+			print_ast(parse_markdown_svelte(input).nodes, input)
+				.split('\n')
+				.map((line) => line.trim().split(' ')[0])
+				.filter((kind) => kind !== 'line_break' && kind !== 'text');
+		expect(kinds('> | a |\n> |---|\n> | b |\n| c |\n')).toEqual([
+			'root',
+			'block_quote',
+			'table',
+			'table_header',
+			'table_cell',
+			'table_row',
+			'table_cell',
+			'paragraph',
+		]);
+		expect(kinds('> {#if a}\n> b\nc\n')).toEqual([
+			'root',
+			'block_quote',
+			'svelte_block',
+			'svelte_branch',
+			'paragraph',
+			'paragraph',
+		]);
+		expect(fed_mismatch('> | a |\n> |---|\n> | b |\n| c |\n')).toBe('');
+		expect(fed_mismatch('> {#if a}\n> b\nc\n')).toBe('');
+	});
+
+	test('a fence ends the paragraph of a list item', () => {
+		const input = '> - a\n>   ```\n>   b\n>   ```\n';
+		expect(print_ast(parse_markdown_svelte(input).nodes, input)).toContain(
+			'code_fence'
+		);
+		expect(fed_mismatch(input)).toBe('');
+	});
+
+	test('a definition in a block quote is one line', () => {
+		const input = '> [r]:\n> /u\n\n[a][r]\n';
+		expect(print_ast(parse_markdown_svelte(input).nodes, input)).not.toContain(
+			'link'
+		);
+	});
+});

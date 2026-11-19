@@ -1,0 +1,24 @@
+{
+	"name": "@mdsvex/typescript-plugin",
+	"version": "0.1.0-next.6",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pngwn/MDsveX.git",
+		"directory": "language-tools/typescript-plugin"
+	},
+	"description": "TypeScript plugin that teaches tsserver how to resolve .pfm imports",
+	"type": "module",
+	"main": "./lib/index.cjs",
+	"files": [
+		"lib"
+	],
+	"scripts": {
+		"build": "vite build --config vite.config.build.ts"
+	},
+	"dependencies": {
+		"@mdsvex/language-core": "workspace:*",
+		"@volar/typescript": "^2.4.28"
+	},
+	"author": "pngwn <hello@pngwn.io>",
+	"license": "MIT"
+}

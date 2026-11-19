@@ -1,0 +1,5 @@
+root
+  paragraph
+    html tag="a" self_closing=true
+    text "<b2\ndata=\"foo\" >"
+  line_break

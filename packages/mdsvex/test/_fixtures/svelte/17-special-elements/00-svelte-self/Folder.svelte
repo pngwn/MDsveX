@@ -1,13 +1,13 @@
 <script>
-	import File from './File.svelte';
+import File from "./File.svelte";
 
-	export let expanded = false;
-	export let name;
-	export let files;
+export let expanded = false;
+export let name;
+export let files;
 
-	function toggle() {
-		expanded = !expanded;
-	}
+function toggle() {
+	expanded = !expanded;
+}
 </script>
 
 <style>

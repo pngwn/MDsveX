@@ -1,0 +1,8 @@
+root
+  heading depth=1 "Hello"
+    text "Hello"
+  line_break
+  line_break
+  paragraph
+    text "import A from \"./A\""
+  line_break

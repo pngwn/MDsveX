@@ -1,0 +1,7 @@
+root
+  paragraph
+    text "::"
+    directive_inline name="box" args.a="1"
+      text "x"
+    text " trailing junk"
+  line_break

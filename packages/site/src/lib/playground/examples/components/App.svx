@@ -1,0 +1,40 @@
+<script>
+	import Boinger from './Boinger.svelte';
+	import Section from './Section.svx';
+	import Seriously from './Seriously.svelte';
+
+	let colour = $state('cadetblue');
+	let list = [1, 2, 3, 4, 'boo'];
+</script>
+
+# Components in markdown
+
+Sometimes you need a boinger:
+
+<Boinger color={colour} />
+
+Not many people have a boinger right in their markdown.
+
+## Markdown in markdown
+
+Other markdown files are components too, so you can import them:
+
+<Section />
+
+## Markdown in components
+
+<Seriously>
+
+### I wasn't joking
+
+Markdown inside a component is still *markdown*.
+
+</Seriously>
+
+## Svelte blocks
+
+<ul>
+{#each list as item}
+	<li>{item}</li>
+{/each}
+</ul>

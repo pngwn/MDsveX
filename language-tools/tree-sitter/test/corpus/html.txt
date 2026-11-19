@@ -1,0 +1,195 @@
+========================================
+A block level tag starts an html block
+========================================
+<div class="x">
+
+Para
+
+</div>
+
+----------------------------------------
+
+(document
+  (html_block
+    (start_tag
+      (tag_name)
+      (attribute
+        (attribute_name)
+        (quoted_attribute_value
+          (attribute_value)))))
+  (paragraph)
+  (html_block
+    (end_tag
+      (tag_name))))
+
+========================================
+A phrasing tag starts a paragraph
+========================================
+<b>bold</b> text
+
+----------------------------------------
+
+(document
+  (paragraph
+    (start_tag
+      (tag_name))
+    (end_tag
+      (tag_name))))
+
+========================================
+A block level tag ends a paragraph, a component does not
+========================================
+para
+<div>
+
+para
+<Foo>
+
+----------------------------------------
+
+(document
+  (paragraph)
+  (html_block
+    (start_tag
+      (tag_name)))
+  (paragraph
+    (start_tag
+      (tag_name))))
+
+========================================
+Components and attributes
+========================================
+<Chart data={points} {...rest} on:click={go} label="a {b} c" bare=x />
+
+----------------------------------------
+
+(document
+  (html_block
+    (self_closing_tag
+      (tag_name)
+      (attribute
+        (attribute_name)
+        (svelte_expression
+          (expression)))
+      (attribute
+        (svelte_expression
+          (expression)))
+      (attribute
+        (attribute_name)
+        (svelte_expression
+          (expression)))
+      (attribute
+        (attribute_name)
+        (quoted_attribute_value
+          (attribute_value)
+          (svelte_expression
+            (expression))
+          (attribute_value)))
+      (attribute
+        (attribute_name)
+        (attribute_value)))))
+
+========================================
+Tags over lines
+========================================
+From <a href="/projects"
+  >the projects page</a
+>. More.
+
+----------------------------------------
+
+(document
+  (paragraph
+    (start_tag
+      (tag_name)
+      (attribute
+        (attribute_name)
+        (quoted_attribute_value
+          (attribute_value))))
+    (end_tag
+      (tag_name))))
+
+========================================
+Script and style hold raw text
+========================================
+<script lang="ts">
+  let a: number = 1 < 2 ? 1 : 2;
+</script>
+
+<style>
+  p { color: red; }
+</style>
+
+----------------------------------------
+
+(document
+  (html_block
+    (raw_element
+      (start_tag
+        (tag_name)
+        (attribute
+          (attribute_name)
+          (quoted_attribute_value
+            (attribute_value))))
+      (raw_text)
+      (end_tag
+        (tag_name))))
+  (html_block
+    (raw_element
+      (start_tag
+        (tag_name))
+      (raw_text)
+      (end_tag
+        (tag_name)))))
+
+========================================
+An unclosed script runs to the end
+========================================
+<script>
+let a;
+
+----------------------------------------
+
+(document
+  (html_block
+    (raw_element
+      (start_tag
+        (tag_name))
+      (raw_text))))
+
+========================================
+Comments
+========================================
+<!-- a note -->
+
+text <!-- inline --> more
+
+----------------------------------------
+
+(document
+  (html_block
+    (html_comment))
+  (paragraph
+    (html_comment)))
+
+========================================
+Svelte special elements are tags
+========================================
+<svelte:head>
+<title>x</title>
+</svelte:head>
+
+----------------------------------------
+
+(document
+  (html_block
+    (start_tag
+      (tag_name)))
+  (html_block
+    (start_tag
+      (tag_name))
+    (end_tag
+      (tag_name)))
+  (html_block
+    (end_tag
+      (tag_name))))

@@ -1,0 +1,19 @@
+---
+title: Templates and custom components
+author: a penguin
+---
+
+Templates wrap a document and can swap markdown elements for components.
+They are configured in `mdsvex.config.json`, the same shape as the vite
+plugin options.
+
+## How it works
+
+- every frontmatter key reaches the template as a prop
+- the body is passed as `children`
+- the template's `<script module>` exports replace elements by name
+
+This `h2` and the paragraphs come from `Template.svelte`, and the image
+falls back to the root `components.js` module.
+
+![a penguin](https://mdsvex.com/penguin.gif)

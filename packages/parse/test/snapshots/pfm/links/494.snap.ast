@@ -1,0 +1,11 @@
+root
+  paragraph
+    text "[a"
+    text "]("
+    text "<b)c\n[a](<b)c>"
+    soft_break
+    text "[a"
+    text "]("
+    text "<b>"
+    text "c)"
+  line_break

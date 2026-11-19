@@ -1,0 +1,9 @@
+root
+  block_quote
+    directive_container name="q"
+      paragraph
+        text "body"
+  line_break
+  paragraph
+    text "out"
+  line_break

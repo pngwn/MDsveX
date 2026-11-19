@@ -1,0 +1,4 @@
+root
+  paragraph
+    text "hello: world"
+  line_break

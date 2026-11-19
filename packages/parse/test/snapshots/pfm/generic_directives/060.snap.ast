@@ -1,0 +1,7 @@
+root
+  paragraph
+    text ":"
+    directive_inline name="leaf"
+      text "x"
+    text "(positional)"
+  line_break

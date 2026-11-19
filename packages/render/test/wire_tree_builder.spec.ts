@@ -1,0 +1,239 @@
+import { describe, it, expect } from 'vitest';
+import { PFMParser, WireEmitter } from '@mdsvex/parse';
+import { TreeBuilder } from '@mdsvex/parse/tree-builder';
+import { WireTreeBuilder } from '@mdsvex/parse/wire-tree-builder';
+import { CursorHTMLRenderer } from '../src/html_cursor';
+
+//  Helpers
+
+/** Server path: PFMParser -> TreeBuilder -> CursorHTMLRenderer */
+function via_tree(source: string): string {
+	const tree = new TreeBuilder(source.length >> 3 || 128);
+	const parser = new PFMParser(tree);
+	parser.parse(source);
+	const renderer = new CursorHTMLRenderer({ cache: false });
+	renderer.update(tree.get_buffer(), source);
+	return renderer.html;
+}
+
+/** Client path: PFMParser -> WireEmitter -> WireTreeBuilder -> CursorHTMLRenderer */
+function via_wire(source: string): string {
+	const emitter = new WireEmitter();
+	emitter.set_source(source);
+	const parser = new PFMParser(emitter);
+	parser.parse(source);
+	const batch = emitter.flush();
+
+	const builder = new WireTreeBuilder();
+	builder.apply(batch);
+	const renderer = new CursorHTMLRenderer({ cache: false });
+	renderer.update(builder.get_buffer(), '');
+	return renderer.html;
+}
+
+/** Incremental wire path: byte-by-byte feeding like the viewer */
+function via_wire_incremental(source: string): string {
+	const emitter = new WireEmitter();
+	const parser = new PFMParser(emitter);
+	parser.init();
+
+	const batches: unknown[][][] = [];
+	let accumulated = '';
+	for (let i = 0; i < source.length; i++) {
+		const ch = source[i];
+		accumulated += ch;
+		emitter.set_source(accumulated);
+		parser.feed(ch);
+		batches.push(emitter.flush());
+	}
+	emitter.set_source(accumulated);
+	parser.finish();
+	batches.push(emitter.flush());
+
+	const builder = new WireTreeBuilder();
+	for (const batch of batches) {
+		if (batch.length > 0) builder.apply(batch);
+	}
+	const renderer = new CursorHTMLRenderer({ cache: false });
+	renderer.update(builder.get_buffer(), '');
+	return renderer.html;
+}
+
+function assert_same(source: string): void {
+	const from_tree = via_tree(source);
+	const from_wire = via_wire(source);
+	expect(from_wire).toBe(from_tree);
+}
+
+function assert_same_incremental(source: string): void {
+	const from_tree = via_tree(source);
+	const from_wire = via_wire_incremental(source);
+	expect(from_wire).toBe(from_tree);
+}
+
+//  Tests
+
+describe('WireTreeBuilder produces same HTML as TreeBuilder', () => {
+	it('simple paragraph', () => assert_same('hello world\n'));
+	it('multiple paragraphs', () => assert_same('first\n\nsecond\n'));
+
+	it('heading', () => assert_same('# Hello\n'));
+	it('h2', () => assert_same('## Title\n'));
+
+	it('emphasis', () => assert_same('_hello_\n'));
+	it('strong', () => assert_same('*bold*\n'));
+	it('nested emphasis', () => assert_same('_em *strong* em_\n'));
+
+	it('code span', () => assert_same('use `code` here\n'));
+	it('code fence with info', () => assert_same('```js\nconst x = 1;\n```\n'));
+	it('code fence no info', () => assert_same('```\nhello\n```\n'));
+
+	it('block quote', () => assert_same('> quoted\n'));
+
+	it('link', () => assert_same('[click](https://example.com)\n'));
+	it('link with title', () => assert_same('[text](url "title")\n'));
+	it('image', () => assert_same('![alt text](image.png)\n'));
+
+	it('unordered list', () => assert_same('- one\n- two\n'));
+	it('ordered list', () => assert_same('1. one\n2. two\n'));
+
+	it('task list', () => {
+		const source = '- [x] done\n- [ ] todo\n\n1. [X] loose\n\n   more\n';
+		assert_same(source);
+		assert_same_incremental(source);
+		expect(via_wire(source).match(/<input type="checkbox"/g)!.length).toBe(3);
+	});
+
+	it('thematic break', () => assert_same('---\n'));
+	it('strikethrough', () => assert_same('~~deleted~~\n'));
+	it('superscript', () => assert_same('^super^\n'));
+
+	it('table', () =>
+		assert_same('| foo | bar |\n| --- | --- |\n| baz | bim |\n'));
+	it('table alignment', () =>
+		assert_same(
+			'| left | center | right |\n| :--- | :---: | ---: |\n| a | b | c |\n'
+		));
+	describe('extended tables', () => {
+		const sources = [
+			'| h || a || r |\n|:--||---||--:|\n| 1 || 2 || 3 |\n',
+			'| a | b |> | c |\n|---|---|---|---|\n| 1 | 2 |> |> |\n',
+			'| a | b | c |\n|:-:|---|--:|\n| x |> | 1 |\n|^ |^ | 2 |\n|^ |^ | 3 |\n',
+			'| h || a | b |\n|---||---|---|\n| 1 || x |> |\n|^ || y | z |\n',
+		];
+		it.each(sources)('%j', (source) => {
+			assert_same(source);
+			assert_same_incremental(source);
+			expect(via_tree(source)).toMatch(/colspan|scope/);
+		});
+	});
+
+	it('html self-closing', () => assert_same('text <br /> more\n'));
+	it('html paired', () => assert_same('text <span>inside</span> end\n'));
+	it('html block', () =>
+		assert_same('<section>\n\n# Heading\n\nParagraph.\n\n</section>\n'));
+	it('html comment', () => assert_same('text <!-- hidden --> more\n'));
+	it('html attribute values as typed', () =>
+		assert_same(
+			`text <span title='"a" &amp; <b>'>x</span> <img alt="a &amp; b" />\n`
+		));
+
+	it('code span with leading space preserved', () => assert_same('` a`\n'));
+	it('code span with both spaces stripped', () =>
+		assert_same('`` foo ` bar ``\n'));
+
+	it('revoked emphasis', () => assert_same('_not closed\n'));
+
+	it('code span leading space preserved (incremental)', () =>
+		assert_same_incremental('` a`\n'));
+	it('code span both spaces stripped (incremental)', () =>
+		assert_same_incremental('`` foo ` bar ``\n'));
+
+	it('complex document', () =>
+		assert_same(
+			'# Title\n\n' +
+				'A paragraph with _emphasis_ and *bold*.\n\n' +
+				'> A block quote with `code`\n\n' +
+				'```js\nconst x = 1;\n```\n\n' +
+				'- item one\n- item two\n\n' +
+				'| a | b |\n| --- | --- |\n| 1 | 2 |\n\n' +
+				'[link](url) and ![img](src)\n\n' +
+				'---\n'
+		));
+});
+
+describe('a tag left open at the start of a line', () => {
+	/** fed a char at a time, a cached renderer has to follow each repair */
+	function via_wire_cached(source: string): string {
+		const emitter = new WireEmitter();
+		const parser = new PFMParser(emitter);
+		const builder = new WireTreeBuilder();
+		const cached = new CursorHTMLRenderer();
+		parser.init();
+		for (let i = 0; i <= source.length; i++) {
+			emitter.set_source(source.slice(0, i + 1));
+			if (i < source.length) parser.feed(source[i]);
+			else parser.finish();
+			builder.apply(emitter.flush());
+			const fresh = new CursorHTMLRenderer({ cache: false });
+			fresh.update(builder.get_buffer(), '');
+			cached.update(builder.get_buffer(), '');
+			expect(cached.html, JSON.stringify(source.slice(0, i + 1))).toBe(
+				fresh.html
+			);
+		}
+		return cached.html;
+	}
+
+	const cases: [string, string, string][] = [
+		[
+			'is text in the paragraph of its line',
+			'<span>a b\n',
+			'<p>&lt;span&gt;a b</p>',
+		],
+		[
+			'keeps the text after an unclosed delimiter once',
+			'<span>*a b\n',
+			'<p>&lt;span&gt;*a b</p>',
+		],
+		[
+			'keeps the text after two delimiters and a bracket once',
+			'<span>**[a\n',
+			'<p>&lt;span&gt;**[a</p>',
+		],
+		[
+			'gives a later line of text its paragraph',
+			'<span>a b\n\nc\n',
+			'<p>&lt;span&gt;a b</p><p>c</p>',
+		],
+		[
+			'joins the paragraph a block level tag already had',
+			'<div>a b\n',
+			'<p>&lt;div&gt;a b</p>',
+		],
+		[
+			'takes a second unclosed tag into the same paragraph',
+			'<span><b>a\n',
+			'<p>&lt;span&gt;&lt;b&gt;a</p>',
+		],
+		[
+			'reads the lines of a block quote as the document does',
+			'> <div>\n> [a] b\n\nc\n',
+			'<blockquote>\n<p>&lt;div&gt;</p><p>[a] b</p>\n</blockquote><p>c</p>',
+		],
+		[
+			'leaves the blocks after it as they were',
+			'<span>\n\n# h\n\n- a\n- b\n\ntail\n',
+			'<p>&lt;span&gt;</p><h1>h</h1><ul>\n<li>a</li>\n<li>b</li>\n\n</ul><p>tail</p>',
+		],
+	];
+
+	for (const [name, source, html] of cases) {
+		it(name, () => {
+			expect(via_tree(source)).toBe(html);
+			expect(via_wire(source)).toBe(html);
+			expect(via_wire_incremental(source)).toBe(html);
+			expect(via_wire_cached(source)).toBe(html);
+		});
+	}
+});

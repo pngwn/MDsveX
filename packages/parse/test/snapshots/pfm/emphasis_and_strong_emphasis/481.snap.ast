@@ -1,0 +1,7 @@
+root
+  paragraph
+    text "_"
+    text "a"
+    link href="https://foo.bar/?q=_"
+      text "https://foo.bar/?q=_"
+  line_break

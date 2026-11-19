@@ -1,0 +1,56 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="div" class="keypad"
+    line_break
+    html tag="button" on:click=[object Object]
+      text "1"
+    soft_break
+    text "	"
+    html tag="button" on:click=[object Object]
+      text "2"
+    soft_break
+    text "	"
+    html tag="button" on:click=[object Object]
+      text "3"
+    soft_break
+    text "	"
+    html tag="button" on:click=[object Object]
+      text "4"
+    soft_break
+    text "	"
+    html tag="button" on:click=[object Object]
+      text "5"
+    soft_break
+    text "	"
+    html tag="button" on:click=[object Object]
+      text "6"
+    soft_break
+    text "	"
+    html tag="button" on:click=[object Object]
+      text "7"
+    soft_break
+    text "	"
+    html tag="button" on:click=[object Object]
+      text "8"
+    soft_break
+    text "	"
+    html tag="button" on:click=[object Object]
+      text "9"
+    line_break
+    line_break
+    html tag="button" disabled=[object Object] on:click=[object Object]
+      text "clear"
+    soft_break
+    text "	"
+    html tag="button" on:click=[object Object]
+      text "0"
+    soft_break
+    text "	"
+    html tag="button" disabled=[object Object] on:click=[object Object]
+      text "submit"
+    line_break

@@ -1,0 +1,27 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="svelte:window" on:keydown=[object Object] self_closing=true
+  line_break
+  line_break
+  html tag="div" style="text-align: center"
+    line_break
+    svelte_block tag="if"
+      svelte_branch tag="if" "key"
+        line_break
+        html tag="kbd"
+          mustache "key === ' ' ? 'Space' : key"
+        line_break
+        html tag="p"
+          mustache "keyCode"
+        line_break
+      svelte_branch tag="else"
+        line_break
+        html tag="p"
+          text "Focus this window and press any key"
+        line_break
+    line_break

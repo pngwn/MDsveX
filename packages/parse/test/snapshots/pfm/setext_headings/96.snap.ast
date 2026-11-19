@@ -1,0 +1,9 @@
+root
+  frontmatter "Foo\n"
+  paragraph
+    text "Bar"
+  line_break
+  thematic_break
+  paragraph
+    text "Baz"
+  line_break

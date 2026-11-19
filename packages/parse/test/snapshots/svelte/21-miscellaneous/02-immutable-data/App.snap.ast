@@ -1,0 +1,26 @@
+root
+  html tag="svelte:options" immutable=true self_closing=true
+  line_break
+  line_break
+  html tag="script"
+  line_break
+  line_break
+  html tag="h2"
+    text "Immutable"
+  line_break
+  svelte_block tag="each"
+    svelte_branch tag="each" "todos as todo"
+      line_break
+      html tag="ImmutableTodo" todo=[object Object] on:click="{() => toggle(todo.id)}" self_closing=true
+      line_break
+  line_break
+  line_break
+  html tag="h2"
+    text "Mutable"
+  line_break
+  svelte_block tag="each"
+    svelte_branch tag="each" "todos as todo"
+      line_break
+      html tag="MutableTodo" todo=[object Object] on:click="{() => toggle(todo.id)}" self_closing=true
+      line_break
+  line_break

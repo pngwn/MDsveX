@@ -1,15 +1,29 @@
 {
-	"name": "parse",
-	"version": "0.1.1",
-	"description": "",
-	"main": "src/main.ts",
-	"module": "src/main.ts",
-	"private": true,
+	"name": "@mdsvex/parse",
+	"version": "1.0.0-next.4",
+	"description": "The parser for Penguin-Flavoured Markdown, the markdown mdsvex reads",
+	"main": "./dist/main.js",
+	"module": "./dist/main.js",
+	"types": "./dist/main.d.ts",
+	"files": [
+		"dist",
+		"PLUGINS.md",
+		"WIRE_FORMAT.md"
+	],
 	"type": "module",
-	"scripts": {},
+	"scripts": {
+		"test": "vitest --disableConsoleIntercept",
+		"test:run": "vitest run",
+		"tsc": "tsc --noEmit",
+		"build": "run-s build:tsc build:vite build:copy-dts",
+		"build:tsc": "tsc",
+		"build:vite": "vite build --config vite.config.build.ts",
+		"build:copy-dts": "shx cp tsc/*.d.ts dist/"
+	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/pngwn/MDsveX/tree/master/packages/pfm-parser"
+		"url": "git+https://github.com/pngwn/MDsveX.git",
+		"directory": "packages/parse"
 	},
 	"keywords": [
 		"markdown",
@@ -17,6 +31,41 @@
 		"mdsvex",
 		"ast"
 	],
+	"exports": {
+		".": {
+			"types": "./dist/main.d.ts",
+			"default": "./dist/main.js"
+		},
+		"./opcodes": {
+			"types": "./dist/opcodes.d.ts",
+			"default": "./dist/opcodes.js"
+		},
+		"./tree-builder": {
+			"types": "./dist/tree_builder.d.ts",
+			"default": "./dist/tree-builder.js"
+		},
+		"./utils": {
+			"types": "./dist/utils.d.ts",
+			"default": "./dist/utils.js"
+		},
+		"./cursor": {
+			"types": "./dist/cursor.d.ts",
+			"default": "./dist/cursor.js"
+		},
+		"./buf-utils": {
+			"types": "./dist/buf_utils.d.ts",
+			"default": "./dist/buf-utils.js"
+		},
+		"./wire-tree-builder": {
+			"types": "./dist/wire_tree_builder.d.ts",
+			"default": "./dist/wire-tree-builder.js"
+		},
+		"./package.json": "./package.json"
+	},
 	"author": "pngwn <hello@pngwn.io>",
-	"license": "MIT"
+	"license": "MIT",
+	"devDependencies": {
+		"npm-run-all2": "^7.0.2",
+		"shx": "^0.3.4"
+	}
 }

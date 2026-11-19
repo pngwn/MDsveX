@@ -1,0 +1,6 @@
+root
+  import_statement "import \"./styles.css\""
+  line_break
+  heading depth=1 "Styled"
+    text "Styled"
+  line_break

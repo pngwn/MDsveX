@@ -1,0 +1,16 @@
+root
+  directive_container name="note"
+    image src="/a.png"
+      text "a"
+    line_break
+    line_break
+    link href="/c"
+      image src="/b.png"
+        text "b"
+    line_break
+    line_break
+    paragraph
+      image src="/d.png"
+        text "d"
+      text " text"
+    line_break

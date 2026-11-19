@@ -1,0 +1,3 @@
+# Pictured
+
+![a dot](./dot.png?no-inline) and ![the same dot](dot.png)

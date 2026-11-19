@@ -7,3 +7,6 @@ pnpm-lock.yaml
 **/dist/**/*
 **/CHANGELOG.md
 **/mdsvex-demo/**/*
+packages/bench/perf/corpus/**/*
+language-tools/tree-sitter/src/**/*
+language-tools/zed/grammars/**/*

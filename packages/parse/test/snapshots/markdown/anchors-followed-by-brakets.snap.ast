@@ -1,0 +1,28 @@
+root
+  paragraph
+    text "This is a "
+    link href="https://en.wikipedia.org/wiki/Textile"
+      text "link"
+    text " (some other text)"
+  line_break
+  line_break
+  paragraph
+    text "This is a "
+    link href="https://en.wikipedia.org/wiki/Textile_(markup)"
+      text "link"
+    text " (some other text)"
+  line_break
+  line_break
+  paragraph
+    text "This is a "
+    link href="https://en.wikipedia.org/wiki/Textile_(markup_language)"
+      text "link"
+    text " (some other text)"
+  line_break
+  line_break
+  paragraph
+    text "This is a "
+    link href="https://en.wikipedia.org/wiki/Textile_(markup_language)/foo"
+      text "link"
+    text " (some other text)"
+  line_break

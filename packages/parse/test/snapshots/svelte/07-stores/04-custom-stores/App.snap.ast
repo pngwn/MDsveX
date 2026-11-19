@@ -1,0 +1,17 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="h1"
+    text "The count is "
+    mustache "$count"
+  line_break
+  line_break
+  html tag="button" on:click=[object Object]
+    text "+"
+  soft_break
+  html tag="button" on:click=[object Object]
+    text "-"
+  soft_break
+  html tag="button" on:click=[object Object]
+    text "reset"

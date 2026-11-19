@@ -1,0 +1,7 @@
+root
+  paragraph
+    strong_emphasis
+      text "foo "
+      link href="/url"
+        text "bar"
+  line_break

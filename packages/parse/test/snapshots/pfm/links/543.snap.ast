@@ -1,0 +1,12 @@
+root
+  definition label="bar" href="/url" title="title"
+  line_break
+  paragraph
+    text "[foo"
+    text "]"
+    text "["
+    text "]"
+    soft_break
+    link href="/url" title="title"
+      text "bar"
+  line_break

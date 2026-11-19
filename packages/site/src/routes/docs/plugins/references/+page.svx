@@ -1,0 +1,65 @@
+---
+title: References
+order: 13
+package: '@mdsvex/plugin-references'
+example:
+  source: |
+    Thanks @ada for #123, which also closes sveltejs/kit#45.
+  options:
+    repo: "sveltejs/svelte"
+---
+Turns the references people write in prose into links:
+
+```svx
+Thanks @ada for #123, which also closes sveltejs/kit#45. Landed in a1b2c3d.
+```
+
+```html
+<p>
+	Thanks <a href="https://github.com/ada">@ada</a> for
+	<a href="https://github.com/sveltejs/svelte/issues/123">#123</a>, which also
+	closes <a href="https://github.com/sveltejs/kit/issues/45">sveltejs/kit#45</a>.
+	Landed in
+	<a href="https://github.com/sveltejs/svelte/commit/a1b2c3d"><code>a1b2c3d</code></a>.
+</p>
+```
+
+| written | becomes a link to | needs |
+| --- | --- | --- |
+| `@user` | the user | |
+| `owner/repo#123` | that issue or pull request | |
+| `#123` | the issue or pull request in your repo | `repo` |
+| a commit hash of 7 to 40 characters | the commit in your repo | `repo` |
+| `https://example.com`, `www.example.com` | itself | `linkify: true` |
+
+A reference has to stand on its own, so an email address, a path such as `/@ada`, `page#12` and a word like `defaced` are left alone, and so is one you escaped, `\@ada`. Nothing is touched in code, math, an attribute, an `{expression}`, or the text of a link you already wrote.
+
+```ts
+references({
+	repo: string,
+	mention: string | false | ((parts: { user }) => string | undefined),
+	issue: string | false | ((parts: { repo, owner, name, number }) => string | undefined),
+	commit: string | false | ((parts: { repo, owner, name, sha }) => string | undefined),
+	linkify: boolean,
+	attrs: Record<string, string> | ((kind) => Record<string, string> | undefined)
+});
+```
+
+- **`repo`** is the repository a bare `#123` and a commit belong to, as `owner/name`. Without it neither is linked.
+- **`mention`**, **`issue`** and **`commit`** are the url of each kind. The defaults are GitHub's, such as `https://github.com/{repo}/issues/{number}`. A string takes placeholders, a function returns the url or nothing to leave the reference as text, and `false` turns the kind off. For another host:
+
+```js
+references({
+	repo: 'group/project',
+	mention: 'https://gitlab.com/{user}',
+	issue: 'https://gitlab.com/{repo}/-/issues/{number}',
+	commit: 'https://gitlab.com/{repo}/-/commit/{sha}'
+});
+```
+
+- **`linkify`** also makes a link of a bare `https://`, `http://` or `www.` url. The parser never does, on purpose: in mdsvex a url is a link when you mark it, `<https://example.com>`, and this option is where you opt in to the rest. Punctuation at the end of a url stays with the sentence, by the rules GitHub uses.
+- **`attrs`** are attributes for each link, or a function of the kind (`'mention'`, `'issue'`, `'commit'`, `'url'`) that returns them.
+
+It does not check that a user or an issue exists. With `linkify`, list it before the emoji plugin, so a shortcode inside a url is left alone. [External links](/docs/plugins/external-links) reads links while the document is parsed and does not see the ones made here, so give them `rel` through `attrs`.
+
+`compile()` takes every plugin the same way, through its `plugins` option.

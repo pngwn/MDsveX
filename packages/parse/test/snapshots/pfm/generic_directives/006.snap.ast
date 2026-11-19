@@ -1,0 +1,7 @@
+root
+  paragraph
+    text "hello "
+    directive_inline name="name"
+      text "content"
+    text " world"
+  line_break

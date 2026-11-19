@@ -1,0 +1,10 @@
+root
+  paragraph
+    text ":"
+    directive_inline name="x"
+      text "a "
+      strong_emphasis
+        text "b"
+        text "]"
+      text " c"
+  line_break

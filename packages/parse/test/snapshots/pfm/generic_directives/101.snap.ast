@@ -1,0 +1,7 @@
+root
+  paragraph
+    text "word"
+    directive_inline name="d" args.a="1"
+      text "mid"
+    text "word"
+  line_break

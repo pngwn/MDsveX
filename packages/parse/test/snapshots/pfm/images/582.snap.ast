@@ -1,0 +1,9 @@
+root
+  paragraph
+    text "![foo"
+    text "]"
+    text "[bar"
+    text "]"
+  line_break
+  line_break
+  definition label="bar" href="/url"

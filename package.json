@@ -5,14 +5,25 @@
 	"repository": "https://github.com/pngwn/MDsveX",
 	"type": "module",
 	"scripts": {
-		"lint": "prettier --check . --ignore-path .prettierignore",
-		"format": "prettier --write . --ignore-path .prettierignore",
 		"test": "pnpm -r --filter=!site test",
-		"test:run": "vitest run . ",
+		"test:run": "run-s test:run:build test:run:vitest",
+		"test:run:build": "pnpm --filter=!site --filter=!incremental-parse-test --filter=!mdsvex-demo -r build",
+		"test:run:vitest": "vitest run .",
 		"test:e2e": "pnpm --filter=mdsvex-demo test:e2e",
-		"release": "pnpm --filter=!mdsvex-demo --filter=!@mdsvex/site build && changeset publish",
+		"check:package-types": "node scripts/check-package-types.mjs",
+		"build:ls": "run-s build:ls:render build:ls:ts-plugin build:ls:vscode",
+		"build:ls:render": "pnpm --filter mdsvex... build",
+		"build:ls:ts-plugin": "pnpm --filter @mdsvex/typescript-plugin build",
+		"build:ls:vscode": "pnpm --filter vscode-pfm build",
+		"release": "run-s release:build release:publish",
+		"release:build": "pnpm --filter=!site --filter=!incremental-parse-test --filter=!mdsvex-demo -r build",
+		"release:publish": "changeset publish",
 		"changeset:add": "changeset add",
-		"changeset:version": "changeset version && pnpm i --lockfile-only",
+		"changeset:pre-enter": "changeset pre enter",
+		"changeset:pre-exit": "changeset pre exit",
+		"changeset:version": "run-s changeset:version:write changeset:version:install",
+		"changeset:version:write": "changeset version",
+		"changeset:version:install": "pnpm i --lockfile-only",
 		"site:dev": "pnpm --filter @mdsvex/site dev",
 		"site:build": "pnpm --filter @mdsvex/site build"
 	},
@@ -26,35 +37,32 @@
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"devDependencies": {
-		"@changesets/changelog-github": "^0.4.0",
-		"@changesets/cli": "^2.16.0",
-		"@rollup/plugin-typescript": "^11.1.6",
-		"@types/node": "^14.14.44",
-		"prettier": "^2.2.1",
-		"rollup": "^4.20.0",
-		"rollup-plugin-dts": "^6.1.1",
-		"typescript": "^5.8.3",
-		"vite": "^6.3.2",
-		"vitest": "^3.1.2",
-		"watchlist": "^0.2.3"
+		"@ampproject/remapping": "^2.3.0",
+		"@changesets/changelog-github": "^0.5.1",
+		"@changesets/cli": "^2.28.1",
+		"@jridgewell/sourcemap-codec": "^1.5.5",
+		"@jridgewell/trace-mapping": "^0.3.31",
+		"@types/node": "^22.15.2",
+		"npm-run-all2": "^7.0.2",
+		"typescript": "^6.0.2"
 	},
 	"dependencies": {
-		"@rollup/plugin-commonjs": "^26.0.1",
-		"@rollup/plugin-json": "^6.1.0",
-		"@rollup/plugin-node-resolve": "^15.2.3",
-		"@rollup/plugin-replace": "^5.0.7",
-		"@rollup/plugin-sucrase": "^5.0.2",
 		"playwright": "^1.52.0",
-		"rollup-plugin-node-globals": "^1.4.0",
-		"tslib": "^2.3.1"
+		"tslib": "^2.8.1",
+		"vite": "^6.3.3",
+		"vitest": "^3.1.2"
 	},
 	"engines": {
-		"pnpm": "^9.1.4"
+		"pnpm": "^10.33.0"
 	},
 	"pnpm": {
 		"onlyBuiltDependencies": [
-			"esbuild"
-		]
+			"esbuild",
+			"tree-sitter-cli"
+		],
+		"overrides": {
+			"@lezer/common": "^1.5.3"
+		}
 	},
-	"packageManager": "pnpm@9.1.4"
+	"packageManager": "pnpm@10.33.0"
 }

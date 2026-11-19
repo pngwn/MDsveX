@@ -1,0 +1,5 @@
+root
+  paragraph
+    directive_inline name="my-directive"
+      text "text here"
+  line_break

@@ -1,0 +1,10 @@
+root
+  html tag="del"
+    line_break
+    line_break
+    paragraph
+      strong_emphasis
+        text "foo"
+    line_break
+    line_break
+  line_break

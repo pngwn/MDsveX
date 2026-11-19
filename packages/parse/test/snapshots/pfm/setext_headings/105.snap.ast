@@ -1,0 +1,10 @@
+root
+  paragraph
+    text "Foo"
+    soft_break
+    text "bar"
+  line_break
+  thematic_break
+  paragraph
+    text "baz"
+  line_break

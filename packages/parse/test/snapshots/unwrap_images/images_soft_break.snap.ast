@@ -1,0 +1,10 @@
+root
+  image src="/1.png"
+    text "one"
+  soft_break
+  image src="/2.png"
+    text "two"
+  soft_break
+  image src="/3.png" title="title"
+    text "three"
+  line_break

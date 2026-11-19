@@ -1,0 +1,9 @@
+---
+template: false
+---
+
+<style>
+	h1 { color: red; }
+</style>
+
+# Styled

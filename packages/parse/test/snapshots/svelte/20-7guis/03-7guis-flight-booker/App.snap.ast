@@ -1,0 +1,27 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html_comment " https://github.com/eugenkiss/7guis/wiki#flight-booker "
+  line_break
+  html tag="select" bind:value=[object Object]
+    line_break
+    html tag="option" value=[object Object]
+      text "one-way flight"
+    line_break
+    html tag="option" value=[object Object]
+      text "return flight"
+    line_break
+  line_break
+  line_break
+  html tag="input" type="date" bind:value=[object Object] self_closing=true
+  soft_break
+  html tag="input" type="date" bind:value=[object Object] disabled=[object Object] self_closing=true
+  line_break
+  line_break
+  html tag="button" on:click=[object Object] disabled="{isReturn && (startDate >= endDate)}"
+    text "book"
+  line_break

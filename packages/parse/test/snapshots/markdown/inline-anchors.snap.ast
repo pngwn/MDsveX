@@ -1,0 +1,13 @@
+root
+  paragraph
+    text "This is "
+    link href="http://example.com/" title="Title"
+      text "an example"
+    text " inline link."
+  line_break
+  line_break
+  paragraph
+    link href="http://example.net/"
+      text "This link"
+    text " has no title attribute."
+  line_break

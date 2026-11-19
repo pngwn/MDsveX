@@ -1,0 +1,9 @@
+root
+  block_quote
+    definition label="foo" href="/url"
+  line_break
+  line_break
+  paragraph
+    link href="/url"
+      text "foo"
+  line_break

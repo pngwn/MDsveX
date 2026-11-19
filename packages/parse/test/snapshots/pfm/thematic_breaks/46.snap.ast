@@ -1,0 +1,10 @@
+root
+  paragraph
+    text "--"
+    soft_break
+    text "*"
+    text "*"
+    soft_break
+    text "_"
+    text "_"
+  line_break

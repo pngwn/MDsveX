@@ -1,0 +1,7 @@
+root
+  paragraph
+    text ":"
+    text ":name(k=v)"
+    text "[label"
+    text "]"
+  line_break

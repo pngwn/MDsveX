@@ -1,0 +1,6 @@
+root
+  html_comment " foo "
+  line_break
+  line_break
+  html_comment " foo "
+  line_break

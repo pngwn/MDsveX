@@ -1,0 +1,12 @@
+root
+  paragraph
+    text "!["
+    text "foo "
+    strong_emphasis
+      text "bar"
+    text "]"
+    text "["
+    text "]"
+  line_break
+  line_break
+  definition label="foo *bar*" href="train.jpg" title="train & tracks"

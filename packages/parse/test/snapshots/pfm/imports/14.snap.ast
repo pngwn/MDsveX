@@ -1,0 +1,6 @@
+root
+  import_statement "import type {\n  Snippet,\n  Component\n} from 'svelte';"
+  line_break
+  heading depth=1 "Typed"
+    text "Typed"
+  line_break

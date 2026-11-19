@@ -1,0 +1,12 @@
+root
+  paragraph
+    text "["
+    text "]: /uri"
+  line_break
+  line_break
+  paragraph
+    text "["
+    text "]"
+    text "["
+    text "]"
+  line_break

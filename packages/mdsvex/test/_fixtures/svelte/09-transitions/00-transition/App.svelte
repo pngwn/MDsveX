@@ -1,6 +1,6 @@
 <script>
-	import { fade } from 'svelte/transition';
-	let visible = true;
+import { fade } from "svelte/transition";
+let visible = true;
 </script>
 
 <label>

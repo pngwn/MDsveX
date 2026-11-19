@@ -1,0 +1,8 @@
+root
+  paragraph
+    text "Foo"
+    soft_break
+    text "<a href=\"bar\">"
+    soft_break
+    text "baz"
+  line_break

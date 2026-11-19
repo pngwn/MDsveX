@@ -1,8 +1,8 @@
 <script>
-	let user = {
-		firstname: 'Ada',
-		lastname: 'Lovelace'
-	};
+let user = {
+	firstname: "Ada",
+	lastname: "Lovelace",
+};
 </script>
 
 <input bind:value={user.firstname}>

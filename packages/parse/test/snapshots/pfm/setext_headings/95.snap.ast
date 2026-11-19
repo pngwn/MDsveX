@@ -1,0 +1,7 @@
+root
+  paragraph
+    text "Foo"
+    soft_break
+    text "Bar"
+  line_break
+  thematic_break

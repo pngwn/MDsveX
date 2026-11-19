@@ -1,0 +1,8 @@
+root
+  definition label="foo" href="/url1"
+  definition label="bar" href="/url2"
+  line_break
+  paragraph
+    link href="/url2"
+      text "foo"
+  line_break

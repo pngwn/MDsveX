@@ -1,0 +1,5 @@
+# Pictured
+
+![a red box](./red.png "Red") and ![a blue box](blue.jpg)
+
+![a mark](./mark.svg) and ![the red url](./red.png?url)

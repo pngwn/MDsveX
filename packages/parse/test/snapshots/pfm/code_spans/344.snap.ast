@@ -1,0 +1,5 @@
+root
+  paragraph
+    html tag="a" href="`" self_closing=true
+    text "`"
+  line_break

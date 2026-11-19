@@ -1,0 +1,50 @@
+root
+  paragraph
+    text "["
+    image src="/a.png"
+      text "a"
+  line_break
+  line_break
+  paragraph
+    text "["
+    image src="/a.png"
+      text "a"
+    text "] "
+    image src="/b.png"
+      text "b"
+  line_break
+  line_break
+  paragraph
+    link href="/b"
+      image src="/a.png"
+        text "a"
+      text " text"
+  line_break
+  line_break
+  paragraph
+    link href="/b"
+      image src="/a.png"
+        text "a"
+    text " "
+    link href="/c"
+      text "text"
+  line_break
+  line_break
+  paragraph
+    text "["
+    image src="/a.png"
+      text "a"
+    soft_break
+    image src="/b.png"
+      text "b"
+  line_break
+  line_break
+  paragraph
+    text "["
+    image src="/a.png"
+      text "a"
+    text " "
+    link href="/c"
+      image src="/b.png"
+        text "b"
+  line_break

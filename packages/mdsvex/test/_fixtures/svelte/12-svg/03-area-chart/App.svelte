@@ -1,30 +1,30 @@
 <script>
-	import { scaleLinear } from 'd3-scale';
-	import points from './data.js';
+import { scaleLinear } from "d3-scale";
+import points from "./data.js";
 
-	const yTicks = [0, 2, 4, 6, 8];
-	const xTicks = [1980, 1990, 2000, 2010];
-	const padding = { top: 20, right: 15, bottom: 20, left: 25 };
+const yTicks = [0, 2, 4, 6, 8];
+const xTicks = [1980, 1990, 2000, 2010];
+const padding = { top: 20, right: 15, bottom: 20, left: 25 };
 
-	let width = 500;
-	let height = 200;
+let width = 500;
+let height = 200;
 
-	$: xScale = scaleLinear()
-		.domain([minX, maxX])
-		.range([padding.left, width - padding.right]);
+$: xScale = scaleLinear()
+	.domain([minX, maxX])
+	.range([padding.left, width - padding.right]);
 
-	$: yScale = scaleLinear()
-		.domain([Math.min.apply(null, yTicks), Math.max.apply(null, yTicks)])
-		.range([height - padding.bottom, padding.top]);
+$: yScale = scaleLinear()
+	.domain([Math.min.apply(null, yTicks), Math.max.apply(null, yTicks)])
+	.range([height - padding.bottom, padding.top]);
 
-	$: minX = points[0].x;
-	$: maxX = points[points.length - 1].x;
-	$: path = `M${points.map(p => `${xScale(p.x)},${yScale(p.y)}`).join('L')}`;
-	$: area = `${path}L${xScale(maxX)},${yScale(0)}L${xScale(minX)},${yScale(0)}Z`;
+$: minX = points[0].x;
+$: maxX = points[points.length - 1].x;
+$: path = `M${points.map((p) => `${xScale(p.x)},${yScale(p.y)}`).join("L")}`;
+$: area = `${path}L${xScale(maxX)},${yScale(0)}L${xScale(minX)},${yScale(0)}Z`;
 
-	function formatMobile (tick) {
-		return "'" + tick % 100;
-	}
+function formatMobile(tick) {
+	return "'" + (tick % 100);
+}
 </script>
 
 <h2>Arctic sea ice minimum</h2>

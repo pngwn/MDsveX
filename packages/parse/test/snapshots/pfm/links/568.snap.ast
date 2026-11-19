@@ -1,0 +1,7 @@
+root
+  definition label="foo" href="/url1"
+  line_break
+  paragraph
+    text "[foo"
+    text "](not a link)"
+  line_break

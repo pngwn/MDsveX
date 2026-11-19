@@ -1,0 +1,234 @@
+{
+	"name": "vscode-pfm",
+	"displayName": "mdsvex",
+	"description": "Language support for mdsvex documents, .svx and .pfm files written in PFM (Penguin-Flavoured Markdown)",
+	"version": "0.1.0-next.6",
+	"publisher": "mdsvex",
+	"license": "MIT",
+	"icon": "images/icon.png",
+	"homepage": "https://github.com/pngwn/MDsveX/tree/next/language-tools/vscode-pfm",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/pngwn/MDsveX.git",
+		"directory": "language-tools/vscode-pfm"
+	},
+	"bugs": {
+		"url": "https://github.com/pngwn/MDsveX/issues"
+	},
+	"private": true,
+	"engines": {
+		"vscode": "^1.85.0"
+	},
+	"categories": [
+		"Programming Languages"
+	],
+	"keywords": [
+		"mdsvex",
+		"pfm",
+		"svx",
+		"markdown",
+		"svelte"
+	],
+	"activationEvents": [
+		"onLanguage:pfm"
+	],
+	"main": "./dist/extension.cjs",
+	"contributes": {
+		"typescriptServerPlugins": [
+			{
+				"name": "@mdsvex/typescript-plugin",
+				"enableForWorkspaceTypeScriptVersions": true
+			}
+		],
+		"languages": [
+			{
+				"id": "pfm",
+				"aliases": [
+					"PFM",
+					"Penguin-Flavoured Markdown"
+				],
+				"extensions": [
+					".pfm",
+					".svx"
+				],
+				"configuration": "./language-configuration.json"
+			}
+		],
+		"grammars": [
+			{
+				"language": "pfm",
+				"scopeName": "text.html.pfm",
+				"path": "./syntaxes/pfm.tmLanguage.json",
+				"embeddedLanguages": {
+					"source.js": "javascript",
+					"source.ts": "typescript",
+					"source.css": "css",
+					"meta.embedded.block.javascript": "javascript",
+					"meta.embedded.block.javascriptreact": "javascriptreact",
+					"meta.embedded.block.typescript": "typescript",
+					"meta.embedded.block.typescriptreact": "typescriptreact",
+					"meta.embedded.block.css": "css",
+					"meta.embedded.block.scss": "scss",
+					"meta.embedded.block.less": "less",
+					"meta.embedded.block.html": "html",
+					"meta.embedded.block.json": "json",
+					"meta.embedded.block.jsonc": "jsonc",
+					"meta.embedded.block.jsonl": "jsonl",
+					"meta.embedded.block.svelte": "svelte",
+					"meta.embedded.block.vue": "vue",
+					"meta.embedded.block.handlebars": "handlebars",
+					"meta.embedded.block.jade": "jade",
+					"meta.embedded.block.twig": "twig",
+					"meta.embedded.block.python": "python",
+					"meta.embedded.block.rust": "rust",
+					"meta.embedded.block.go": "go",
+					"meta.embedded.block.shellscript": "shellscript",
+					"meta.embedded.block.powershell": "powershell",
+					"meta.embedded.block.bat": "bat",
+					"meta.embedded.block.yaml": "yaml",
+					"meta.embedded.block.ini": "ini",
+					"meta.embedded.block.xml": "xml",
+					"meta.embedded.block.xsl": "xsl",
+					"meta.embedded.block.sql": "sql",
+					"meta.embedded.block.dockerfile": "dockerfile",
+					"meta.embedded.block.makefile": "makefile",
+					"meta.embedded.block.ignore": "ignore",
+					"meta.embedded.block.diff": "diff",
+					"meta.embedded.block.log": "log",
+					"meta.embedded.block.c": "c",
+					"meta.embedded.block.cpp": "cpp",
+					"meta.embedded.block.csharp": "csharp",
+					"meta.embedded.block.fsharp": "fsharp",
+					"meta.embedded.block.java": "java",
+					"meta.embedded.block.scala": "scala",
+					"meta.embedded.block.groovy": "groovy",
+					"meta.embedded.block.clojure": "clojure",
+					"meta.embedded.block.swift": "swift",
+					"meta.embedded.block.objective-c": "objective-c",
+					"meta.embedded.block.dart": "dart",
+					"meta.embedded.block.vb": "vb",
+					"meta.embedded.block.coffeescript": "coffeescript",
+					"meta.embedded.block.ruby": "ruby",
+					"meta.embedded.block.php": "php",
+					"meta.embedded.block.perl": "perl",
+					"meta.embedded.block.raku": "raku",
+					"meta.embedded.block.lua": "lua",
+					"meta.embedded.block.r": "r",
+					"meta.embedded.block.julia": "julia",
+					"meta.embedded.block.erlang": "erlang",
+					"meta.embedded.block.elixir": "elixir",
+					"meta.embedded.block.abap": "abap",
+					"meta.embedded.block.yang": "yang",
+					"meta.embedded.block.latex": "latex",
+					"meta.embedded.block.bibtex": "bibtex",
+					"meta.embedded.block.restructuredtext": "restructuredtext",
+					"meta.embedded.block.markdown": "markdown",
+					"meta.embedded.block.mdx": "mdx",
+					"meta.embedded.block.pfm": "pfm"
+				}
+			}
+		],
+		"commands": [
+			{
+				"command": "mdsvex.migrate",
+				"title": "Migrate File from mdsvex 0.x",
+				"category": "mdsvex"
+			}
+		],
+		"menus": {
+			"commandPalette": [
+				{
+					"command": "mdsvex.migrate",
+					"when": "editorIsOpen && resourceExtname =~ /^\\.(svx|pfm|md|markdown|svelte|[cm]?[jt]s)$/i"
+				}
+			]
+		},
+		"configuration": {
+			"title": "mdsvex",
+			"properties": {
+				"mdsvex.migrate.smartypants": {
+					"type": [
+						"boolean",
+						"object"
+					],
+					"default": false,
+					"scope": "resource",
+					"markdownDescription": "The `smartypants` option the documents were written for in mdsvex 0.x, which was `true` unless a config set it. `Migrate File from mdsvex 0.x` then rewrites dashes and backtick quotes so the page renders as it did. An object such as `{ \"dashes\": \"inverted\" }` is read as the 0.x object.",
+					"properties": {
+						"quotes": {
+							"type": "boolean"
+						},
+						"ellipses": {
+							"type": "boolean"
+						},
+						"backticks": {
+							"type": [
+								"boolean",
+								"string"
+							],
+							"enum": [
+								true,
+								false,
+								"all"
+							]
+						},
+						"dashes": {
+							"type": [
+								"boolean",
+								"string"
+							],
+							"enum": [
+								true,
+								false,
+								"oldschool",
+								"inverted"
+							]
+						}
+					},
+					"additionalProperties": false
+				},
+				"mdsvex.migrate.math": {
+					"type": "boolean",
+					"default": false,
+					"scope": "resource",
+					"markdownDescription": "The documents were written for `remark-math` in mdsvex 0.x. `Migrate File from mdsvex 0.x` then rewrites `$x$` and `$$x$$` as PFM math."
+				}
+			}
+		},
+		"configurationDefaults": {
+			"[pfm]": {
+				"editor.quickSuggestions": {
+					"other": "on",
+					"comments": "off",
+					"strings": "on"
+				}
+			}
+		}
+	},
+	"scripts": {
+		"build:server": "pnpm --filter @mdsvex/language-server build",
+		"build:ext": "vite build --config vite.config.build.ts",
+		"build": "run-s build:syntax build:server build:ext build:mkdir build:copy-server",
+		"build:mkdir": "shx mkdir -p server",
+		"build:copy-server": "shx cp ../language-server/dist/server.cjs server/server.cjs",
+		"build:syntax": "node --no-warnings scripts/generate-tml.ts",
+		"test": "vitest --disableConsoleIntercept",
+		"test:run": "vitest run --silent",
+		"package": "node --no-warnings scripts/package.ts"
+	},
+	"dependencies": {
+		"@mdsvex/migrate": "workspace:*",
+		"@mdsvex/typescript-plugin": "workspace:*",
+		"@volar/vscode": "^2.4.28",
+		"vscode-languageclient": "^9.0.1"
+	},
+	"devDependencies": {
+		"@types/vscode": "^1.85.0",
+		"@vscode/vsce": "^4.1.1",
+		"npm-run-all2": "^7.0.2",
+		"ovsx": "^1.4.0",
+		"shx": "^0.3.4",
+		"vscode-oniguruma": "^2.0.1",
+		"vscode-textmate": "^9.3.2"
+	}
+}

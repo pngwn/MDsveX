@@ -1,6 +1,6 @@
 <script>
-	export let name;
-	$: type = name.slice(name.lastIndexOf('.') + 1);
+export let name;
+$: type = name.slice(name.lastIndexOf(".") + 1);
 </script>
 
 <style>

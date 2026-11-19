@@ -1,12 +1,14 @@
 <script>
-	import { onMount } from 'svelte';
+import { onMount } from "svelte";
 
-	let photos = [];
+let photos = [];
 
-	onMount(async () => {
-		const res = await fetch(`https://jsonplaceholder.typicode.com/photos?_limit=20`);
-		photos = await res.json();
-	});
+onMount(async () => {
+	const res = await fetch(
+		`https://jsonplaceholder.typicode.com/photos?_limit=20`,
+	);
+	photos = await res.json();
+});
 </script>
 
 <style>

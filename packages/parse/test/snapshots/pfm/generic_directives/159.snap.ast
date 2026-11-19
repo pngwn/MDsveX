@@ -1,0 +1,8 @@
+root
+  paragraph
+    text ":name"
+  line_break
+  line_break
+  paragraph
+    text ":name(k=v)"
+  line_break

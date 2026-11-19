@@ -1,0 +1,6 @@
+root
+  html tag="div"
+    html tag="a" href="bar"
+      strong_emphasis
+        text "foo"
+  line_break

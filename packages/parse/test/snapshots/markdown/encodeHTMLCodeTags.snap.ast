@@ -1,0 +1,13 @@
+root
+  paragraph
+    text "this is code "
+    html tag="code"
+      text "some "
+      html tag="span"
+        text "text"
+    text " yeah"
+    text "!"
+  line_break
+  line_break
+  html tag="pre"
+  line_break

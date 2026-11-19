@@ -1,0 +1,5 @@
+root
+  paragraph
+    directive_inline name="d" args.a="1" args.b="2" args.c="three"
+      text "whitespace"
+  line_break

@@ -1,0 +1,5 @@
+root
+  paragraph
+    image src="train.jpg"
+      text "foo"
+  line_break

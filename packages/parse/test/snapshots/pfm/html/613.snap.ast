@@ -1,0 +1,6 @@
+root
+  paragraph
+    text "<a>"
+    text "<bab>"
+    text "<c2c>"
+  line_break

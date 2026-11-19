@@ -1,0 +1,43 @@
+---
+title: Packages
+order: 11
+---
+
+[plugins-md]: https://github.com/pngwn/MDsveX/blob/next/packages/parse/PLUGINS.md
+[wire-md]: https://github.com/pngwn/MDsveX/blob/next/packages/parse/WIRE_FORMAT.md
+[architecture]: https://github.com/pngwn/MDsveX/blob/next/language-tools/ARCHITECTURE.md
+
+# Packages
+
+A site installs `mdsvex`. Its entries are `mdsvex`, the Vite plugin, and [`mdsvex/compile`](/docs/reference/compile), [`mdsvex/highlight`](/docs/reference/highlighting#highlighting-with-compile), [`mdsvex/math`](/docs/reference/math#math-with-compile), [`mdsvex/host`](/docs/guides/without-vite) and the [`mdsvex/globals`](/docs/guides/frontmatter#typescript) types.
+
+The packages below sit under it and install on their own. The entries in these tables are the surface to build on. Anything else they export, a name with a leading underscore or one marked internal, is there for mdsvex and its tools and changes without notice.
+
+## Parser and renderer
+
+| package and entry | export | what for |
+| --- | --- | --- |
+| `@mdsvex/parse` | `parse_markdown_svelte(source, options)` | a batch parse, into a `NodeBuffer` |
+| `@mdsvex/parse` | `PFMParser` | an incremental parse, `init`, `feed` and `finish`, or `parse` for a whole string. It calls an `Emitter` with what it finds |
+| `@mdsvex/parse` | `ParseStallError` | a parse that stops moving |
+| `@mdsvex/parse/tree-builder` | `TreeBuilder` | the `Emitter` that builds a `NodeBuffer` |
+| `@mdsvex/parse/cursor` | `Cursor` | walks a `NodeBuffer` |
+| `@mdsvex/render` | `CursorHTMLRenderer` | the HTML string renderer `compile` uses |
+| `@mdsvex/render` and `@mdsvex/render/Node.svelte` | `ComponentRenderer` and the `Node` component | renders a buffer live in Svelte, as it grows |
+| `@mdsvex/render/stream` | `PluginStream`, `PLUGIN_DATA` | runs plugins over a stream, and gives components the plugin data as it changes |
+| `@mdsvex/render/sourcemap` | `mappings_to_v3` | a v3 source map from the `mappings` of a `compile` with `sourcemap: true` |
+
+- **Node kinds are types only.** `NodeKind`, `WireOp` and `StateKind` from `@mdsvex/parse`, and `NodeKind` and `NodeField` from `@mdsvex/parse/utils`, are `const enum`s, which have no value at runtime. A named import of one fails in JavaScript, and TypeScript with `isolatedModules` reports TS2748. At runtime, `string_to_kind('heading')` and `kind_to_string(kind)` from `@mdsvex/parse/utils` turn a kind into its number and back.
+- **Parse plugins** are written against the types `mdsvex` exports, see [parse plugins](/docs/plugins/writing/parse-plugins). [`PLUGINS.md`][plugins-md] in `@mdsvex/parse` has the whole API.
+- **Source offsets** are string indices, in UTF-16 code units, into the source with its line endings made `\n`.
+- **The wire format**, `WireEmitter` and `WireTreeBuilder`, sends a parse to another process as opcodes. It is not a stable surface yet. [`WIRE_FORMAT.md`][wire-md] describes it as it is now.
+
+## Editor tools
+
+| package | how it is used | what for |
+| --- | --- | --- |
+| `@mdsvex/language-server` | the `pfm-language-server` command, with `--stdio` | the language server for any editor that speaks LSP. The VS Code and Zed extensions run it |
+| `@mdsvex/typescript-plugin` | `"plugins": [{ "name": "@mdsvex/typescript-plugin" }]` in `compilerOptions` | lets the TypeScript server read `.svx` imports in `.ts` and `.svelte` files |
+| `@mdsvex/prettier-plugin` | a Prettier plugin | formats documents, see [Prettier](/docs/guides/prettier) |
+
+`@mdsvex/language-core` and `@mdsvex/source-map` are the pieces the language server and the TypeScript plugin are built from, and have no surface of their own to build on. [`ARCHITECTURE.md`][architecture] explains how they fit together.

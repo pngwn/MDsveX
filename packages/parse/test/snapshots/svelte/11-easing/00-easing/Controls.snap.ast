@@ -1,0 +1,108 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="div" class="easing-sidebar"
+    line_break
+    html tag="div" class="easing-types"
+      line_break
+      html tag="h3"
+        text "Ease"
+      line_break
+      svelte_block tag="if"
+        svelte_branch tag="if" "mobile"
+          line_break
+          html tag="select" bind:value=[object Object]
+            line_break
+            svelte_block tag="each"
+              svelte_branch tag="each" "[...eases] as [name]"
+                line_break
+                html tag="option" value=[object Object] class:selected=[object Object]
+                  line_break
+                  paragraph
+                    mustache "name"
+                  line_break
+                line_break
+            line_break
+          line_break
+        svelte_branch tag="else"
+          line_break
+          html tag="ul"
+            line_break
+            svelte_block tag="each"
+              svelte_branch tag="each" "[...eases] as [name]"
+                line_break
+                html tag="li" class:selected=[object Object] on:click=[object Object]
+                  line_break
+                  paragraph
+                    mustache "name"
+                  line_break
+                line_break
+            line_break
+          line_break
+      line_break
+      html tag="h3"
+        text "Type"
+      line_break
+      svelte_block tag="if"
+        svelte_branch tag="if" "mobile "
+          line_break
+          html tag="select" bind:value=[object Object]
+            line_break
+            svelte_block tag="each"
+              svelte_branch tag="each" "types as [name, type]"
+                line_break
+                html tag="option" value=[object Object]
+                  line_break
+                  paragraph
+                    mustache "name"
+                  line_break
+                line_break
+            line_break
+          line_break
+        svelte_branch tag="else"
+          line_break
+          html tag="ul"
+            line_break
+            svelte_block tag="each"
+              svelte_branch tag="each" "types as [name, type]"
+                line_break
+                html tag="li" class:selected=[object Object] on:click=[object Object]
+                  line_break
+                  paragraph
+                    mustache "name"
+                  line_break
+                line_break
+            line_break
+          line_break
+      line_break
+    line_break
+    html tag="h4"
+      line_break
+      text "Duration"
+      line_break
+    line_break
+    html tag="div" class="duration"
+      line_break
+      html tag="span"
+        line_break
+        html tag="input" type="number" bind:value=[object Object] min="0" step="100" self_closing=true
+        soft_break
+        text "				"
+        html tag="button" class="number" on:click=[object Object]
+          text "-"
+        soft_break
+        text "				"
+        html tag="button" class="number" on:click=[object Object]
+          text "+"
+        line_break
+      line_break
+      html tag="button" class="play" on:click=[object Object]
+        line_break
+        mustache "playing ? 'Restart' : 'Play'"
+        line_break
+      line_break
+    line_break

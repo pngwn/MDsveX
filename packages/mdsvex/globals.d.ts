@@ -1,15 +1,25 @@
-declare module '*.svx' {
-	import type { SvelteComponent } from 'svelte';
+// add mdsvex/globals to compilerOptions.types for the imports only the vite plugin resolves
 
-	export default class Comp extends SvelteComponent {}
-
-	export const metadata: Record<string, unknown>;
+declare module '*?metadata' {
+	/** the frontmatter of the document, undefined when it has none */
+	export const metadata: Record<string, unknown> | undefined;
+	export default metadata;
 }
 
-declare module '*.svelte.md' {
-	import type { SvelteComponent } from 'svelte';
+declare module '*?data' {
+	/** the frontmatter of the document, undefined when it has none */
+	export const metadata: Record<string, unknown> | undefined;
+	/** what plugins left for the document, by plugin name, undefined when they left nothing */
+	export const plugin_data: import('mdsvex').PluginData | undefined;
+	const exports: {
+		metadata: typeof metadata;
+		plugin_data: typeof plugin_data;
+	};
+	export default exports;
+}
 
-	export default class Comp extends SvelteComponent {}
-
-	export const metadata: Record<string, unknown>;
+declare module '*?text' {
+	/** the plain text a reader of the document sees, by section, with its plugins settled */
+	const text: import('mdsvex').DocumentText;
+	export default text;
 }

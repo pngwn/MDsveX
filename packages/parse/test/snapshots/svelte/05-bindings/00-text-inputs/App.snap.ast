@@ -1,0 +1,10 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="input" bind:value=[object Object] placeholder="enter your name" self_closing=true
+  line_break
+  html tag="p"
+    text "Hello "
+    mustache "name || 'stranger'"
+    text "!"

@@ -1,0 +1,5 @@
+root
+  paragraph
+    text ":"
+    text ":name(a=1, a=2)"
+  line_break

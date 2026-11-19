@@ -1,0 +1,16 @@
+---
+title: Written with a template
+author: mdsvex
+template: article
+---
+
+<svelte:head>
+	<title>{metadata.title}</title>
+</svelte:head>
+
+The `article` template wraps this page. It gets the frontmatter as props
+and renders this content as its children.
+
+## Replaced heading
+
+> This block quote renders as the template's callout.

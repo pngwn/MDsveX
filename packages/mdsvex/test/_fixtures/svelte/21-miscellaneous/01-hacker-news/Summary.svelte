@@ -1,12 +1,12 @@
 <script>
-	export let item;
-	export let i;
-	export let offset;
+export let item;
+export let i;
+export let offset;
 
-	function comment_text() {
-		const c = item.comments_count;
-		return `${c} ${c === 1 ? 'comment' : 'comments'}`;
-	}
+function comment_text() {
+	const c = item.comments_count;
+	return `${c} ${c === 1 ? "comment" : "comments"}`;
+}
 </script>
 
 <style>

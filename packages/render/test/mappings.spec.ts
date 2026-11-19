@@ -1,0 +1,728 @@
+import { describe, it, expect } from 'vitest';
+import { PFMParser } from '@mdsvex/parse';
+import { TreeBuilder } from '@mdsvex/parse/tree-builder';
+import {
+	CursorHTMLRenderer,
+	NONE,
+	_emit,
+	_out_offsets,
+	_resolve_mappings,
+} from '../src/html_cursor';
+import type { Mapping, MappingData, MappingRole } from '../src/mappings';
+import {
+	CI_TEXT,
+	CI_CODE,
+	CI_SVELTE,
+	CI_STRUCTURE,
+	MapSink,
+	P_CODE,
+	P_STRUCTURE,
+	P_SVELTE,
+	P_TEXT,
+	R_CLOSE_SYNTAX,
+	R_CONTENT,
+	R_NODE,
+	R_OPEN_SYNTAX,
+	data_text,
+	data_code,
+	data_svelte,
+	data_structure,
+	record_code,
+	record_data,
+} from '../src/mappings';
+import {
+	build_line_starts,
+	offset_to_position,
+	mappings_to_v3,
+	records_to_v3,
+} from '../src/sourcemap';
+
+// ── vlq decoder (for testing round-trips) ──
+
+const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+const B64_LOOKUP = new Uint8Array(128);
+for (let i = 0; i < B64.length; i++) B64_LOOKUP[B64.charCodeAt(i)] = i;
+
+function decodeVLQMappings(mappings: string): number[][][] {
+	const lines: number[][][] = [];
+	let line: number[][] = [];
+	let i = 0;
+	let gen_col = 0,
+		src_idx = 0,
+		src_line = 0,
+		src_col = 0;
+
+	while (i < mappings.length) {
+		const ch = mappings[i];
+		if (ch === ';') {
+			lines.push(line);
+			line = [];
+			gen_col = 0;
+			i++;
+		} else if (ch === ',') {
+			i++;
+		} else {
+			const seg: number[] = [];
+			for (
+				let f = 0;
+				f < 5 &&
+				i < mappings.length &&
+				mappings[i] !== ',' &&
+				mappings[i] !== ';';
+				f++
+			) {
+				let value = 0,
+					shift = 0,
+					digit: number;
+				do {
+					digit = B64_LOOKUP[mappings.charCodeAt(i++)];
+					value |= (digit & 0x1f) << shift;
+					shift += 5;
+				} while (digit & 0x20);
+				seg.push(value & 1 ? -(value >>> 1) : value >>> 1);
+			}
+			if (seg.length >= 1) seg[0] = gen_col += seg[0];
+			if (seg.length >= 2) seg[1] = src_idx += seg[1];
+			if (seg.length >= 3) seg[2] = src_line += seg[2];
+			if (seg.length >= 4) seg[3] = src_col += seg[3];
+			line.push(seg);
+		}
+	}
+	lines.push(line);
+	return lines;
+}
+
+// ── helpers ──
+
+function renderMapped(source: string) {
+	const tree = new TreeBuilder(source.length >> 3 || 128);
+	const parser = new PFMParser(tree);
+	parser.parse(source);
+	const renderer = new CursorHTMLRenderer({ cache: false });
+	const { mappings } = renderer.update_mapped(tree.get_buffer(), source);
+	return { html: renderer.html, mappings, source };
+}
+
+function byRole(mappings: Mapping<MappingData>[], role: MappingRole) {
+	return mappings.filter((m) => m.data.role === role);
+}
+
+function srcSlice(source: string, m: Mapping<MappingData>) {
+	return source.slice(m.sourceOffsets[0], m.sourceOffsets[0] + m.lengths[0]);
+}
+
+function genSlice(html: string, m: Mapping<MappingData>) {
+	const len = m.generatedLengths ? m.generatedLengths[0] : m.lengths[0];
+	return html.slice(m.generatedOffsets[0], m.generatedOffsets[0] + len);
+}
+
+/** verify every mapping has valid offsets. */
+function assertMappingsValid(
+	source: string,
+	html: string,
+	mappings: Mapping<MappingData>[]
+) {
+	for (const m of mappings) {
+		for (let i = 0; i < m.sourceOffsets.length; i++) {
+			const srcOff = m.sourceOffsets[i];
+			const srcLen = m.lengths[i];
+			const genOff = m.generatedOffsets[i];
+			const genLen = m.generatedLengths ? m.generatedLengths[i] : m.lengths[i];
+
+			expect(srcOff).toBeGreaterThanOrEqual(0);
+			expect(srcOff + srcLen).toBeLessThanOrEqual(source.length);
+			expect(genOff).toBeGreaterThanOrEqual(0);
+			expect(genOff + genLen).toBeLessThanOrEqual(html.length);
+		}
+	}
+}
+
+// ── mapping collection tests ──
+
+describe('Mapping collection', () => {
+	it('paragraph emits node + content mappings', () => {
+		const { html, mappings, source } = renderMapped('hello world\n');
+		assertMappingsValid(source, html, mappings);
+
+		const nodes = byRole(mappings, 'node');
+		const contents = byRole(mappings, 'content');
+		expect(nodes.length).toBeGreaterThanOrEqual(1);
+		expect(contents.length).toBe(1);
+
+		// content maps text accurately
+		expect(srcSlice(source, contents[0])).toBe('hello world');
+		expect(genSlice(html, contents[0])).toBe('hello world');
+
+		// node span covers full <p>...</p>
+		const pNode = nodes.find((m) => genSlice(html, m).startsWith('<p'));
+		expect(pNode).toBeDefined();
+	});
+
+	it('heading emits node + open_syntax + close_syntax + content', () => {
+		const { html, mappings, source } = renderMapped('### hello\n');
+		assertMappingsValid(source, html, mappings);
+
+		const nodes = byRole(mappings, 'node');
+		const opens = byRole(mappings, 'open_syntax');
+		const closes = byRole(mappings, 'close_syntax');
+		const contents = byRole(mappings, 'content');
+
+		expect(nodes.length).toBeGreaterThanOrEqual(1);
+		expect(opens.length).toBeGreaterThanOrEqual(1);
+		expect(contents.length).toBe(1);
+
+		// content: hello → hello
+		expect(srcSlice(source, contents[0])).toBe('hello');
+
+		// open_syntax: <h3> maps to ### (source marker)
+		const headingOpen = opens.find((m) => genSlice(html, m).startsWith('<h'));
+		expect(headingOpen).toBeDefined();
+		expect(srcSlice(source, headingOpen!)).toBe('### ');
+
+		// node span covers full <h3>hello</h3>
+		const headingNode = nodes.find((m) => genSlice(html, m).includes('<h3>'));
+		expect(headingNode).toBeDefined();
+	});
+
+	it('emphasis emits open/close syntax mapping to markers', () => {
+		const { html, mappings, source } = renderMapped('_hello_\n');
+		assertMappingsValid(source, html, mappings);
+
+		const opens = byRole(mappings, 'open_syntax');
+		const closes = byRole(mappings, 'close_syntax');
+
+		// find the emphasis open_syntax (maps <em> → _)
+		const emOpen = opens.find((m) => genSlice(html, m).includes('<em'));
+		expect(emOpen).toBeDefined();
+		expect(srcSlice(source, emOpen!)).toBe('_');
+
+		const emClose = closes.find((m) => genSlice(html, m).includes('</em>'));
+		expect(emClose).toBeDefined();
+		expect(srcSlice(source, emClose!)).toBe('_');
+	});
+
+	it('code span emits content with CODE capabilities', () => {
+		const { html, mappings, source } = renderMapped('use `code` here\n');
+		assertMappingsValid(source, html, mappings);
+
+		const contents = byRole(mappings, 'content');
+		const codeContent = contents.find((m) => srcSlice(source, m) === 'code');
+		expect(codeContent).toBeDefined();
+		expect(codeContent!.data.semantic).toBe(true);
+		expect(codeContent!.data.verification).toBeUndefined();
+	});
+
+	it('code fence emits content + node + syntax', () => {
+		const { html, mappings, source } = renderMapped(
+			'```js\nconst x = 1;\n```\n'
+		);
+		assertMappingsValid(source, html, mappings);
+
+		const contents = byRole(mappings, 'content');
+		const codeContent = contents.find((m) =>
+			srcSlice(source, m).includes('const x')
+		);
+		expect(codeContent).toBeDefined();
+
+		const opens = byRole(mappings, 'open_syntax');
+		expect(opens.length).toBeGreaterThanOrEqual(1);
+	});
+
+	it('uses generatedLengths when escape changes length', () => {
+		const { html, mappings, source } = renderMapped('a & b\n');
+		assertMappingsValid(source, html, mappings);
+
+		const contents = byRole(mappings, 'content');
+		const text_content = contents[0];
+		expect(text_content.generatedLengths).toBeDefined();
+		expect(text_content.generatedLengths![0]).toBeGreaterThan(
+			text_content.lengths[0]
+		);
+	});
+
+	it('no generatedLengths when escape does not change length', () => {
+		const { html, mappings, source } = renderMapped('hello\n');
+		assertMappingsValid(source, html, mappings);
+
+		const contents = byRole(mappings, 'content');
+		expect(contents[0].generatedLengths).toBeUndefined();
+	});
+
+	it('nodeIndex is stable and matches cursor index', () => {
+		const { mappings } = renderMapped('# Title\n\npara\n');
+
+		// all mappings for the same node should share nodeIndex
+		const byNode = new Map<number, MappingData[]>();
+		for (const m of mappings) {
+			const arr = byNode.get(m.data.nodeIndex) ?? [];
+			arr.push(m.data);
+			byNode.set(m.data.nodeIndex, arr);
+		}
+
+		// each node should have at most one of each role
+		for (const [, entries] of byNode) {
+			const roles = entries.map((e) => e.role);
+			const unique = new Set(roles);
+			expect(unique.size).toBe(roles.length);
+		}
+	});
+
+	it('close_syntax source range does not span entire document for container nodes', () => {
+		const { html, mappings, source } = renderMapped(
+			'# Title\n\nparagraph text\n'
+		);
+		assertMappingsValid(source, html, mappings);
+
+		const closes = byRole(mappings, 'close_syntax');
+		for (const m of closes) {
+			// no close_syntax source range should be more than half the document —
+			// a bogus range from offset 0 to the node end would be caught here
+			expect(m.lengths[0]).toBeLessThan(source.length / 2);
+		}
+	});
+
+	it('paragraph close_syntax is zero-width (no markdown close marker)', () => {
+		const { html, mappings, source } = renderMapped('hello world\n');
+		assertMappingsValid(source, html, mappings);
+
+		const closes = byRole(mappings, 'close_syntax');
+		const paraClose = closes.find((m) => genSlice(html, m).includes('</p>'));
+		expect(paraClose).toBeDefined();
+		// paragraphs have no closing syntax in markdown — source length should be 0
+		expect(paraClose!.lengths[0]).toBe(0);
+	});
+
+	it('paragraph open_syntax is zero-width (no markdown open marker)', () => {
+		const { html, mappings, source } = renderMapped('hello world\n');
+		assertMappingsValid(source, html, mappings);
+
+		const opens = byRole(mappings, 'open_syntax');
+		const paraOpen = opens.find((m) => genSlice(html, m).includes('<p'));
+		expect(paraOpen).toBeDefined();
+		expect(paraOpen!.lengths[0]).toBe(0);
+	});
+
+	it('heading open_syntax maps to marker, close_syntax is zero-width', () => {
+		const { html, mappings, source } = renderMapped('### hello\n');
+		assertMappingsValid(source, html, mappings);
+
+		const opens = byRole(mappings, 'open_syntax');
+		const headingOpen = opens.find((m) => genSlice(html, m).startsWith('<h'));
+		expect(headingOpen).toBeDefined();
+		expect(srcSlice(source, headingOpen!)).toBe('### ');
+
+		const closes = byRole(mappings, 'close_syntax');
+		const headingClose = closes.find((m) => genSlice(html, m).includes('</h'));
+		expect(headingClose).toBeDefined();
+		expect(headingClose!.lengths[0]).toBe(0);
+	});
+
+	it('code fence open_syntax maps to opening fence, close_syntax to closing fence', () => {
+		const src = '```js\ncode\n```\n';
+		const { html, mappings, source } = renderMapped(src);
+		assertMappingsValid(source, html, mappings);
+
+		const opens = byRole(mappings, 'open_syntax');
+		const fenceOpen = opens.find((m) => genSlice(html, m).includes('<pre>'));
+		expect(fenceOpen).toBeDefined();
+		expect(srcSlice(source, fenceOpen!)).toContain('```js');
+
+		const closes = byRole(mappings, 'close_syntax');
+		const fenceClose = closes.find((m) =>
+			genSlice(html, m).includes('</code></pre>')
+		);
+		expect(fenceClose).toBeDefined();
+		expect(srcSlice(source, fenceClose!)).toContain('```');
+	});
+
+	it('emphasis open/close syntax maps to single marker chars', () => {
+		const { html, mappings, source } = renderMapped('_hello_\n');
+		assertMappingsValid(source, html, mappings);
+
+		const opens = byRole(mappings, 'open_syntax');
+		const emOpen = opens.find((m) => genSlice(html, m).includes('<em'));
+		expect(emOpen).toBeDefined();
+		expect(srcSlice(source, emOpen!)).toBe('_');
+		expect(emOpen!.lengths[0]).toBe(1);
+
+		const closes = byRole(mappings, 'close_syntax');
+		const emClose = closes.find((m) => genSlice(html, m).includes('</em>'));
+		expect(emClose).toBeDefined();
+		expect(srcSlice(source, emClose!)).toBe('_');
+		expect(emClose!.lengths[0]).toBe(1);
+	});
+
+	it('mustache emits content + node + syntax', () => {
+		const { html, mappings, source } = renderMapped('{name}\n');
+		assertMappingsValid(source, html, mappings);
+
+		const contents = byRole(mappings, 'content');
+		const svelte = contents.filter((m) => m.data.completion === true);
+		expect(svelte.length).toBeGreaterThanOrEqual(1);
+	});
+
+	it('unmapped render path is unaffected', () => {
+		const tree = new TreeBuilder(128);
+		const parser = new PFMParser(tree);
+		parser.parse('hello world\n');
+		const renderer = new CursorHTMLRenderer({ cache: false });
+		renderer.update(tree.get_buffer(), 'hello world\n');
+		expect(renderer.html).toBe('<p>hello world</p>');
+	});
+});
+
+// ── line starts tests ──
+
+describe('task list mappings', () => {
+	it.each([
+		['tight', '- [x] done\n- [ ] *todo* now\n'],
+		['loose', '- [x] done\n\n- [ ] *todo* now\n'],
+	])('%s items map their text past the checkbox', (_name, input) => {
+		const { html, mappings, source } = renderMapped(input);
+		assertMappingsValid(source, html, mappings);
+		expect(html.match(/<input type="checkbox"/g)!.length).toBe(2);
+
+		const contents = byRole(mappings, 'content');
+		expect(contents.map((m) => srcSlice(source, m))).toEqual([
+			'done',
+			'todo',
+			' now',
+		]);
+		for (const m of contents) {
+			expect(genSlice(html, m)).toBe(srcSlice(source, m));
+		}
+		for (const m of [...contents, ...byRole(mappings, 'open_syntax')]) {
+			expect(genSlice(html, m)).not.toContain('<input');
+		}
+	});
+});
+
+describe('build_line_starts', () => {
+	it('single line', () => {
+		const ls = build_line_starts('hello');
+		expect(Array.from(ls)).toEqual([0]);
+	});
+
+	it('multiple lines', () => {
+		const ls = build_line_starts('a\nb\nc\n');
+		expect(Array.from(ls)).toEqual([0, 2, 4, 6]);
+	});
+
+	it('empty string', () => {
+		const ls = build_line_starts('');
+		expect(Array.from(ls)).toEqual([0]);
+	});
+
+	it('crlf and bare cr', () => {
+		const ls = build_line_starts('a\r\nb\rc\n\r');
+		expect(Array.from(ls)).toEqual([0, 3, 5, 7, 8]);
+	});
+
+	it('many lines', () => {
+		const ls = build_line_starts('x\n'.repeat(1000));
+		expect(ls.length).toBe(1001);
+		expect(ls[1000]).toBe(2000);
+	});
+});
+
+describe('offset_to_position', () => {
+	const ls = build_line_starts('ab\ncd\nef\n');
+
+	it('start of first line', () => {
+		expect(offset_to_position(ls, 0)).toEqual([0, 0]);
+	});
+
+	it('middle of first line', () => {
+		expect(offset_to_position(ls, 1)).toEqual([0, 1]);
+	});
+
+	it('start of second line', () => {
+		expect(offset_to_position(ls, 3)).toEqual([1, 0]);
+	});
+
+	it('middle of third line', () => {
+		expect(offset_to_position(ls, 7)).toEqual([2, 1]);
+	});
+});
+
+// ── v3 conversion tests ──
+
+describe('mappings_to_v3', () => {
+	it('produces valid v3 structure', () => {
+		const { html, mappings, source } = renderMapped('hello\n');
+		const v3 = mappings_to_v3(mappings, source, html, 'test.md');
+
+		expect(v3.version).toBe(3);
+		expect(v3.file).toBe('test.md');
+		expect(v3.sources).toEqual(['test.md']);
+		expect(v3.sourcesContent).toEqual([source]);
+		expect(v3.names).toEqual([]);
+		expect(typeof v3.mappings).toBe('string');
+		expect(v3.mappings.length).toBeGreaterThan(0);
+	});
+
+	it('uses basename for sources', () => {
+		const { html, mappings, source } = renderMapped('hello\n');
+		const v3 = mappings_to_v3(mappings, source, html, '/path/to/file.md');
+
+		expect(v3.file).toBe('file.md');
+		expect(v3.sources).toEqual(['file.md']);
+	});
+
+	it('v3 excludes syntax spans', () => {
+		const { html, mappings, source } = renderMapped('### hello\n');
+
+		// enriched mappings have syntax spans
+		const opens = byRole(mappings, 'open_syntax');
+		expect(opens.length).toBeGreaterThan(0);
+
+		// v3 should only have content + node anchors
+		const v3 = mappings_to_v3(mappings, source, html);
+		expect(v3.mappings).toMatch(/^[A-Za-z0-9+/,;]*$/);
+	});
+
+	it('vlq decodes correctly and maps to right positions', () => {
+		const { html, mappings, source } = renderMapped('hello world\n');
+		const v3 = mappings_to_v3(mappings, source, html);
+
+		const decoded = decodeVLQMappings(v3.mappings);
+		expect(decoded.length).toBeGreaterThan(0);
+		expect(decoded[0].length).toBeGreaterThan(0);
+
+		// find the segment that maps the text content
+		const textSeg = decoded[0].find(
+			(s) => s.length >= 1 && html.slice(s[0], s[0] + 5) === 'hello'
+		);
+		expect(textSeg).toBeDefined();
+		expect(textSeg!.length).toBe(4);
+
+		// source position should point to 'hello' in source
+		const src_line = textSeg![2];
+		const src_col = textSeg![3];
+		const src_lines = source.split('\n');
+		expect(src_lines[src_line].slice(src_col, src_col + 5)).toBe('hello');
+	});
+
+	it('maps every character of long and multi-line runs listed before their node', () => {
+		const line = 'abcdefghijklmnopqrstuvwxyz0123456789';
+		const source = `${line}\n${line}\n`;
+		const html = `<p>${line}\n${line}</p>`;
+		const content: Mapping<MappingData> = {
+			sourceOffsets: [0],
+			generatedOffsets: [3],
+			lengths: [source.length - 1],
+			data: { role: 'content' } as MappingData,
+		};
+		const node: Mapping<MappingData> = {
+			sourceOffsets: [0],
+			generatedOffsets: [0],
+			lengths: [source.length],
+			data: { role: 'node' } as MappingData,
+		};
+		const v3 = mappings_to_v3([content, node], source, html);
+		const decoded = decodeVLQMappings(v3.mappings);
+		const src_lines = source.split('\n');
+		const gen_lines = html.split('\n');
+		let chars = 0;
+		for (let l = 0; l < decoded.length; l++) {
+			for (const [gen_col, , src_line, src_col] of decoded[l]) {
+				if (l === 0 && gen_col === 0) continue;
+				expect(gen_lines[l][gen_col]).toBe(src_lines[src_line][src_col]);
+				chars++;
+			}
+		}
+		expect(decoded[0][0]).toEqual([0, 0, 0, 0]);
+		expect(chars).toBe(source.length - 1);
+	});
+
+	it('does not depend on the order of the mappings', () => {
+		const source = 'ab'.repeat(3000);
+		const sorted: Mapping<MappingData>[] = [];
+		for (let i = 0; i < 3000; i++) {
+			sorted.push({
+				sourceOffsets: [i * 2],
+				generatedOffsets: [i * 2],
+				lengths: [1],
+				data: { role: 'content' } as MappingData,
+			});
+		}
+		const reversed = sorted.slice().reverse();
+		expect(mappings_to_v3(reversed, source, source).mappings).toBe(
+			mappings_to_v3(sorted, source, source).mappings
+		);
+	});
+
+	it('survives svelte compiler remapping', () => {
+		const svelte = require('svelte/compiler');
+		// single-element output — Svelte generates per-element mappings for these
+		const src = 'hello world\n';
+		const { html, mappings, source } = renderMapped(src);
+		const v3 = mappings_to_v3(mappings, source, html, 'test.md');
+
+		const result = svelte.compile(html, {
+			filename: 'test.md',
+			generate: 'client',
+			sourcemap: v3,
+		});
+
+		expect(result.js.map).toBeDefined();
+		expect(result.js.map.mappings.length).toBeGreaterThan(0);
+		expect(result.js.map.sources).toContain('test.md');
+	});
+});
+
+describe('mapping data factories', () => {
+	it('match the CI presets, key order included', () => {
+		const pairs = [
+			[data_text, CI_TEXT],
+			[data_code, CI_CODE],
+			[data_svelte, CI_SVELTE],
+			[data_structure, CI_STRUCTURE],
+		] as const;
+		for (const [make, preset] of pairs) {
+			const data = make(7, 'content');
+			const spread = { ...preset, nodeIndex: 7, role: 'content' };
+			expect(data).toEqual(spread);
+			expect(Object.keys(data)).toEqual(Object.keys(spread));
+		}
+	});
+});
+
+const RECORD_DOCS = [
+	'hello\n',
+	'# Heading *em* **strong**\n\npara with `code` and <b>html</b>\n',
+	'- one\n- two\n\n1. a\n2. b\n\n> quote\n',
+	'```js\nlet x = 1 < 2;\n```\n\n| a | b |\n| :- | -: |\n| 1 | {x} |\n',
+	'<script>\nlet a = 1;\n</script>\n\n{#if a}\n_y_ {@html z}\n{:else}\nno\n{/if}\n\n<Foo bar={1} />\n',
+	'![alt *x*](src "t") [link](href) <!-- c --> a & b < c "q"\n\n---\n',
+	'- [x] done\n- [ ] *todo*\n\n1. [ ] loose\n\n   more\n\n2. [X] `code`\n   - [x] nested\n',
+	'',
+];
+
+describe('record_data', () => {
+	it('builds the data objects the presets build', () => {
+		const presets = [data_text, data_code, data_svelte, data_structure];
+		const roles: MappingRole[] = [
+			'node',
+			'content',
+			'open_syntax',
+			'close_syntax',
+		];
+		for (let p = 0; p < presets.length; p++) {
+			for (let r = 0; r < roles.length; r++) {
+				const data = record_data(record_code(p, r), 3);
+				const want = presets[p](3, roles[r]);
+				expect(data).toEqual(want);
+				expect(Object.keys(data)).toEqual(Object.keys(want));
+			}
+		}
+	});
+});
+
+describe('update_v3', () => {
+	it.each(RECORD_DOCS)(
+		'equals mappings_to_v3 over update_mapped: %j',
+		(source) => {
+			const tree = new TreeBuilder(source.length >> 3 || 128);
+			new PFMParser(tree).parse(source);
+			const renderer = new CursorHTMLRenderer({ cache: false });
+			const { mappings } = renderer.update_mapped(tree.get_buffer(), source);
+			const html = renderer.html;
+			const want = mappings_to_v3(mappings, source, html, '/a/doc.svx');
+
+			const fused = new CursorHTMLRenderer({ cache: false });
+			const got = fused.update_v3(
+				tree.get_buffer(),
+				source,
+				source,
+				'/a/doc.svx'
+			);
+			expect(fused.html).toBe(html);
+			expect(JSON.stringify(got)).toBe(JSON.stringify(want));
+		}
+	);
+
+	it('leaves update_mapped unchanged after a fused render', () => {
+		const source = RECORD_DOCS[1];
+		const tree = new TreeBuilder(128);
+		new PFMParser(tree).parse(source);
+		const renderer = new CursorHTMLRenderer({ cache: false });
+		const before = renderer.update_mapped(tree.get_buffer(), source).mappings;
+		renderer.update_v3(tree.get_buffer(), source, source);
+		const after = renderer.update_mapped(tree.get_buffer(), source).mappings;
+		expect(after).toEqual(before);
+		expect(byRole(after, 'open_syntax').length).toBeGreaterThan(0);
+	});
+});
+
+describe('records_to_v3', () => {
+	const source = 'abcdef\nghijkl\nmnopqr\n';
+
+	function both(out: string[], fill: (sink: MapSink) => void) {
+		const sink = new MapSink();
+		sink.begin(true);
+		fill(sink);
+		const generated = out.join('');
+		const want = mappings_to_v3(
+			_resolve_mappings(out, sink),
+			source,
+			generated,
+			'x.md'
+		);
+		const got = records_to_v3(
+			sink,
+			_out_offsets(out),
+			source,
+			generated,
+			'x.md'
+		);
+		expect(JSON.stringify(got)).toBe(JSON.stringify(want));
+		return got;
+	}
+
+	it('encodes identity runs, anchors and nodes like the object path', () => {
+		const out = ['<p>', 'abcdef', '</p>\n', 'gh&amp;', '<br />'];
+		const map = both(out, (sink) => {
+			_emit(sink, 0, 3, 0, 14, 0, record_code(P_TEXT, R_NODE));
+			_emit(sink, 1, 2, 0, 6, 1, record_code(P_TEXT, R_CONTENT));
+			_emit(sink, 3, 4, 7, 10, 2, record_code(P_TEXT, R_CONTENT));
+			_emit(sink, 0, 1, 0, 0, 0, record_code(P_STRUCTURE, R_OPEN_SYNTAX));
+			_emit(sink, 2, 3, 6, 7, 0, record_code(P_STRUCTURE, R_CLOSE_SYNTAX));
+		});
+		expect(map.mappings.length).toBeGreaterThan(0);
+	});
+
+	it('falls back to single characters when runs overlap', () => {
+		both(['abc', 'def', 'X'], (sink) => {
+			_emit(sink, 0, 2, 0, 6, 0, record_code(P_TEXT, R_CONTENT));
+			_emit(sink, 1, 2, 8, 9, 1, record_code(P_CODE, R_CONTENT));
+			_emit(sink, 2, 3, 14, 15, 2, record_code(P_SVELTE, R_NODE));
+		});
+	});
+
+	it('skips empty ranges, missing sources and empty identity runs', () => {
+		both(['', 'ab', '', 'c'], (sink) => {
+			_emit(sink, 0, 1, 0, 0, 0, record_code(P_TEXT, R_CONTENT));
+			_emit(sink, 1, 1, 0, 2, 0, record_code(P_TEXT, R_CONTENT));
+			_emit(sink, 1, 2, NONE, 2, 0, record_code(P_TEXT, R_CONTENT));
+			_emit(sink, 1, 2, 0, 2, 0, record_code(P_TEXT, R_CONTENT));
+			_emit(sink, 2, 3, 3, 3, -1, record_code(P_STRUCTURE, R_NODE));
+			_emit(sink, 3, 4, 7, 8, -1, record_code(P_SVELTE, R_CONTENT));
+		});
+	});
+
+	it('grows the sink past its first buffer', () => {
+		const out: string[] = [];
+		both(out, (sink) => {
+			for (let i = 0; i < 2000; i++) {
+				out.push(i % 3 === 0 ? '&amp;' : 'a');
+				const s = i % 20;
+				_emit(sink, i, i + 1, s, s + 1, i, record_code(P_TEXT, R_CONTENT));
+			}
+		});
+	});
+
+	it('gives the empty map for no records', () => {
+		expect(both(['<hr />'], () => {}).mappings).toBe('');
+	});
+});

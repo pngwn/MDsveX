@@ -1,0 +1,15 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="div" bind:this=[object Object]
+    line_break
+    svelte_block tag="if"
+      svelte_branch tag="if" "map"
+        line_break
+        html tag="slot"
+        line_break
+    line_break

@@ -1,0 +1,9 @@
+root
+  definition label="baz" href="/url"
+  line_break
+  paragraph
+    text "[foo"
+    text "]"
+    link href="/url"
+      text "bar"
+  line_break

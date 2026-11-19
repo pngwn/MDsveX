@@ -1,0 +1,47 @@
+<script>
+  let key = $state("C");
+</script>
+
+# Elements
+
+:::details[Why *two* builds?]
+
+One for the server, one for the browser.
+
+:::
+
+:::details[Open on load](open=true)
+
+This one starts open.
+
+:::
+
+:::accordion[Questions](name=faq)
+
+## Is it free?
+
+Yes.
+
+## Does it work without JavaScript?
+
+Every part of it.
+
+### A deeper heading
+
+Stays in its item.
+
+:::details[Written out]
+
+An item of its own.
+
+:::
+
+:::
+
+Press :kbd[Ctrl]+:kbd[{key}] to copy. :ruby[漢字](rt=かんじ) is read *kanji*.
+
+:badge[new] :badge[note](tone=note) :badge[tip](tone=tip) :badge[warning](tone=warning) :badge[danger](tone=danger)
+
+The build is :mark[twice as _fast_]. :ins[It needs Node 22.](datetime=2026-10-28, cite=https://example.com/changelog) :ins[A plain insertion.]
+
+:abbr[HTML](title="HyperText Markup Language") is the markup, :abbr[CSS](title="Cascading Style Sheets") the styles.

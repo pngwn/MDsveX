@@ -1,0 +1,11 @@
+# Emoji :tada:
+
+We shipped it :tada: and nobody was paged :+1:
+
+- a time, 10:30:00, and a ratio, 1:100:1, are not shortcodes
+- a name the table does not have, :not_an_emoji:, stays
+- an escaped one, \:rocket:, stays too
+- in code, `:rocket:`, nothing happens
+- a typed one, 🎉, gets a label as well
+
+[a link :rocket:](/steps) and <https://example.com/:rocket:>

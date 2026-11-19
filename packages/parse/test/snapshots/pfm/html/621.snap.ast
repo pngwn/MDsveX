@@ -1,0 +1,10 @@
+root
+  paragraph
+    text "< a>"
+    text "<"
+    soft_break
+    text "foo>"
+    text "<bar/ >"
+    soft_break
+    html tag="foo" bar="baz" bim!bop=true self_closing=true
+  line_break

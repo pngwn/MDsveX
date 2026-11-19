@@ -1,0 +1,2 @@
+root
+  code_fence info="ruby" "def foo(x)\n  return 3\nend"

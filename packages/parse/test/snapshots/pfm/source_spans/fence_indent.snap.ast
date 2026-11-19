@@ -1,0 +1,5 @@
+root [0,49] value=[0,49]
+  html [0,48] value=[5,42] tag="div"
+    line_break [5,6]
+    code_fence [8,41] value=[14,35] info="js" "let x = 1;\n  x++;"
+  line_break [48,49]

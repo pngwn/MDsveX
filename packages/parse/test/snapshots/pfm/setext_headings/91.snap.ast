@@ -1,0 +1,12 @@
+root
+  paragraph
+    text "`"
+    text "Foo"
+  line_break
+  thematic_break
+  paragraph
+    text "`"
+  line_break
+  line_break
+  html tag="a" title="a lot\n---\nof dashes" self_closing=true
+  line_break

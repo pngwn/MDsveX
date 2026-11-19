@@ -1,0 +1,51 @@
+---
+template: demo
+---
+
+# Blocks that run
+
+A svelte block is a component.
+
+```svelte run
+<script>
+	let count = $state(0);
+</script>
+
+<button class="counter" onclick={() => count++}>clicked {count}</button>
+```
+
+A script block is a module, its imports resolve from this document.
+
+```ts run
+import { answer } from '../../lib/answer';
+
+const doubled: number = answer * 2;
+
+export default () => `twice the answer is ${doubled}`;
+```
+
+Module scope runs once, however often the page renders.
+
+```js run
+globalThis.evaluations = (globalThis.evaluations ?? 0) + 1;
+const evaluations = globalThis.evaluations;
+
+export default () => `evaluated ${evaluations} time(s)`;
+```
+
+A block marked `run=client` is imported when it is asked for.
+
+```js run=client
+export default () => `the window is ${typeof window}`;
+```
+
+A block with `src=` runs the file it shows.
+
+```svelte src=../../lib/templates/demo/Greeting.svelte run
+```
+
+A block without the flag is only shown.
+
+```js
+export default () => 'never called';
+```

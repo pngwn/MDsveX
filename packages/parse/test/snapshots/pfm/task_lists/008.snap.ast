@@ -1,0 +1,18 @@
+root
+  list ordered=false start=0 tight=true
+    list_item checked=true
+      strong_emphasis
+        text "strong"
+      text " and "
+      link href="/a"
+        text "a link"
+    list_item checked=false
+      link href="/a"
+        text "a link"
+      text " first"
+    list_item checked=true
+      text "[x"
+      text "] only the first is a marker"
+    list_item checked=false
+      code_span "code"
+  line_break

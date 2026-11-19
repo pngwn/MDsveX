@@ -1,0 +1,71 @@
+/* every selector sits in :where() so any rule of a site wins */
+
+:where(.steps) {
+	--steps-marker-size: 1.75rem;
+	--steps-gap: 0.75rem;
+	--steps-marker-color: inherit;
+	--steps-marker-background: color-mix(in srgb, currentColor 12%, transparent);
+	--steps-line: color-mix(in srgb, currentColor 20%, transparent);
+
+	/* the number is drawn from this counter, so the list markers go */
+	counter-reset: step;
+	list-style: none;
+	margin-block: 1.5rem;
+	padding: 0;
+}
+
+:where(.steps > .step) {
+	counter-increment: step;
+}
+
+:where(.steps > .step > .step-title) {
+	display: flex;
+	align-items: center;
+	gap: var(--steps-gap);
+}
+
+:where(.steps > .step > .step-title)::before {
+	content: counter(step);
+	flex: none;
+	display: grid;
+	place-items: center;
+	inline-size: var(--steps-marker-size);
+	block-size: var(--steps-marker-size);
+	border-radius: 50%;
+	color: var(--steps-marker-color);
+	background: var(--steps-marker-background);
+	font-size: 0.875rem;
+	font-weight: 600;
+	line-height: 1;
+	font-variant-numeric: tabular-nums;
+}
+
+:where(.steps > .step > .step-title > *) {
+	margin: 0;
+}
+
+/* the line runs under the number, down the side of the body */
+:where(.steps > .step > .step-body) {
+	margin-inline-start: calc(var(--steps-marker-size) / 2);
+	padding-block: 0.5rem 1.5rem;
+	padding-inline-start: calc(var(--steps-marker-size) / 2 + var(--steps-gap));
+	border-inline-start: 1px solid var(--steps-line);
+}
+
+:where(.steps > .step:last-child > .step-body) {
+	padding-block-end: 0;
+	border-inline-start-color: transparent;
+}
+
+:where(.steps > .step > .step-body > :first-child) {
+	margin-block-start: 0;
+}
+
+:where(.steps > .step > .step-body > :last-child) {
+	margin-block-end: 0;
+}
+
+:where(.steps-label) {
+	margin-block: 1.5rem -0.75rem;
+	font-weight: 600;
+}

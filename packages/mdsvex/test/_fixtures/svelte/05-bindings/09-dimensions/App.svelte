@@ -1,8 +1,8 @@
 <script>
-	let w;
-	let h;
-	let size = 42;
-	let text = 'edit me';
+let w;
+let h;
+let size = 42;
+let text = "edit me";
 </script>
 
 <style>

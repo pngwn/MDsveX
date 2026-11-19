@@ -1,0 +1,8 @@
+root
+  paragraph
+    text ":"
+    text "[no name"
+    text "] and ::"
+    text "[also no name"
+    text "]"
+  line_break

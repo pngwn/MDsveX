@@ -1,0 +1,268 @@
+import { describe, test, expect } from 'vitest';
+import { parse_markdown_svelte } from '../src/main';
+import type { NodeBuffer } from '../src/utils';
+import { get_all_child_kinds, inline_shape } from './utils';
+import { NodeKind } from '../src/utils';
+import { shape } from './plugin_harness';
+import {
+	both,
+	every_path,
+	fed_mismatch,
+	lines,
+	pick,
+	random,
+} from './stream_shape';
+
+function non_breaks(nodes: NodeBuffer, parent: number = 0) {
+	return nodes
+		.get_node(parent)
+		.children.map((i) => nodes.get_node(i))
+		.filter((n) => n.kind !== 'line_break');
+}
+
+function get_value(nodes: NodeBuffer, index: number, source: string) {
+	const node = nodes.get_node(index);
+	return source.slice(node.value[0], node.value[1]);
+}
+
+describe('Subscript (~)', () => {
+	test('basic subscript', () => {
+		const input = '~sub~\n';
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('paragraph');
+
+		const para_children = nodes
+			.get_node(children[0].index)
+			.children.map((i) => nodes.get_node(i));
+		expect(para_children.length).toBe(1);
+		expect(para_children[0].kind).toBe('subscript');
+
+		const sub_children = nodes
+			.get_node(para_children[0].index)
+			.children.map((i) => nodes.get_node(i));
+		expect(sub_children.length).toBe(1);
+		expect(sub_children[0].kind).toBe('text');
+		expect(get_value(nodes, sub_children[0].index, input)).toBe('sub');
+	});
+
+	test('subscript in context: H~2~O', () => {
+		const input = 'H~2~O\n';
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		const para = children[0];
+		const kinds = get_all_child_kinds(nodes, para.index);
+		expect(kinds).toContain('text');
+		expect(kinds).toContain('subscript');
+	});
+
+	test('unclosed subscript becomes text', () => {
+		const input = '~unclosed\n';
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		const para = children[0];
+		const kinds = get_all_child_kinds(nodes, para.index);
+		expect(kinds).not.toContain('subscript');
+		expect(kinds).toContain('text');
+	});
+
+	test('subscript with number', () => {
+		const input = 'x~1~\n';
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		const para = children[0];
+		const kinds = get_all_child_kinds(nodes, para.index);
+		expect(kinds).toContain('subscript');
+
+		const sub = nodes
+			.get_node(para.index)
+			.children.map((i) => nodes.get_node(i))
+			.find((n) => n.kind === 'subscript')!;
+		const sub_children = nodes
+			.get_node(sub.index)
+			.children.map((i) => nodes.get_node(i));
+		expect(get_value(nodes, sub_children[0].index, input)).toBe('1');
+	});
+
+	test('double tilde is still strikethrough, not subscript', () => {
+		const input = '~~deleted~~\n';
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		const para = children[0];
+		const kinds = get_all_child_kinds(nodes, para.index);
+		expect(kinds).toContain('strikethrough');
+		expect(kinds).not.toContain('subscript');
+	});
+
+	test('multiple subscripts', () => {
+		const input = 'x~1~ + y~2~\n';
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		const para = children[0];
+		const sub_count = get_all_child_kinds(nodes, para.index).filter(
+			(k) => k === 'subscript'
+		).length;
+		expect(sub_count).toBe(2);
+	});
+
+	test('subscript inside emphasis', () => {
+		const input = '_H~2~O_\n';
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		const para = children[0];
+		const para_kinds = get_all_child_kinds(nodes, para.index);
+		expect(para_kinds).toContain('emphasis');
+
+		const emph = nodes
+			.get_node(para.index)
+			.children.map((i) => nodes.get_node(i))
+			.find((n) => n.kind === 'emphasis')!;
+		const emph_kinds = get_all_child_kinds(nodes, emph.index);
+		expect(emph_kinds).toContain('subscript');
+	});
+
+	test('subscript and superscript together', () => {
+		const input = 'x~i~^2^\n';
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		const para = children[0];
+		const kinds = get_all_child_kinds(nodes, para.index);
+		expect(kinds).toContain('subscript');
+		expect(kinds).toContain('superscript');
+	});
+});
+
+describe('subscript beside non-ascii characters', () => {
+	const B = (inner: string) => `subscript("${inner}")`;
+
+	// the tilde only looks for whitespace, so punctuation and word characters behave alike
+	test.each([
+		['“~quoted~”', `"“" ${B('quoted')} "”"`],
+		['word—~aside~ more', `"word—" ${B('aside')} " more"`],
+		['a ~aside~—more', `"a " ${B('aside')} "—more"`],
+		['«~cité~»', `"«" ${B('cité')} "»"`],
+		['a ~wait~…', `"a " ${B('wait')} "…"`],
+		['~重要~。', `${B('重要')} "。"`],
+		['「~重要~」', `"「" ${B('重要')} "」"`],
+		['（~重要~）', `"（" ${B('重要')} "）"`],
+		['~重要~！', `${B('重要')} "！"`],
+		['这是~重要~的', `"这是" ${B('重要')} "的"`],
+		['これは~「重要」~です', `"これは" subscript("「重要」") "です"`],
+		// the ideographic space is whitespace
+		['x~\u30002~', `"x" "~\u30002" "~"`],
+	])('%s', (input, shape) => {
+		expect(inline_shape(input)).toBe(shape);
+		expect(inline_shape(input, 1)).toBe(shape);
+	});
+});
+
+describe('a subscript before a doubled tilde', () => {
+	const sub = ['subscript', '  mustache "x"', '  text "~"'];
+
+	test('at the end of a line and of the input', () => {
+		for (const end of ['\n', '', ' \n']) {
+			const tree = every_path(`~{x}~~${end}`);
+			expect(tree, JSON.stringify(end)).toContain(
+				lines('  paragraph', ...sub.map((row) => `    ${row}`))
+			);
+		}
+	});
+
+	test('in a heading and a list item', () => {
+		for (const end of ['\n', '']) {
+			expect(every_path(`# ~{x}~~${end}`), JSON.stringify(end)).toContain(
+				lines('  heading depth=1 "~{x}~~"', ...sub.map((row) => `    ${row}`))
+			);
+			expect(every_path(`- ~{x}~~${end}`), JSON.stringify(end)).toContain(
+				lines('    list_item', ...sub.map((row) => `      ${row}`))
+			);
+		}
+	});
+
+	test('in a header cell and a body cell, padded or not', () => {
+		both('~{x}~~', sub);
+		both('~{x}~~ ', sub);
+		both(' ~{x}~~', sub);
+		both('~{x}~~|~{x}~~ ', sub, sub);
+	});
+
+	test('around a link and an element', () => {
+		const link = ['subscript', '  link href="u"', '    text "c"', '  text "~"'];
+		const element = [
+			'subscript',
+			'  html tag="b"',
+			'    text "y"',
+			'  text "~"',
+		];
+		both('~[c](u)~~', link);
+		both('~[c](u)~~ ', link);
+		both('~<b>y</b>~~', element);
+		both('~<b>y</b>~~ ', element);
+		expect(every_path('~[c](u)~~')).toBe(
+			lines('root', '  paragraph', ...link.map((row) => `    ${row}`))
+		);
+	});
+
+	test('text after the tildes still opens a strikethrough', () => {
+		both('~{x}~~b', ['text "~"', 'mustache "x"', 'text "~~b"']);
+		both('{x}~~b~~', ['mustache "x"', 'strikethrough', '  text "b"']);
+	});
+
+	test('a doubled tilde with nothing after it is two tildes', () => {
+		for (const end of ['\n', '']) {
+			expect(every_path(`a ~~${end}`), JSON.stringify(end)).toContain(
+				lines('  paragraph', '    text "a "', '    text "~"', '    text "~"')
+			);
+		}
+		both('a ~~', ['text "a "', 'text "~"', 'text "~"']);
+		both('a ~~ ', ['text "a "', 'text "~"', 'text "~"']);
+	});
+
+	test('random cells give what the paragraph gives', () => {
+		const rand = random(976);
+		const pieces = ['~', '~', '~~', '{x}', '[c](u)', '<b>y</b>', 'a', ' b'];
+		for (let i = 0; i < 400; i++) {
+			// a tag at the start of a line is a block
+			let cell = 'x ';
+			const length = 1 + Math.floor(rand() * 6);
+			for (let k = 0; k < length; k++) cell += pick(rand, pieces);
+			cell = cell.trim();
+			const want = inline_of(`${cell}\n`, 'paragraph');
+			for (const [where, source] of [
+				['header', `|${cell}|\n|-|\n`],
+				['padded header', `| ${cell} |\n|-|\n`],
+				['body', `|h|\n|-|\n|${cell}|\n`],
+				['padded body', `|h|\n|-|\n| ${cell} |\n`],
+				['body at the end', `|h|\n|-|\n|${cell}`],
+				['paragraph at the end', cell],
+			]) {
+				const kind = where.includes('paragraph') ? 'paragraph' : 'table_cell';
+				expect(
+					inline_of(source, kind),
+					`${JSON.stringify(cell)} ${where}`
+				).toBe(want);
+				expect(fed_mismatch(source), JSON.stringify(source)).toBe('');
+			}
+		}
+	}, 30_000);
+});
+
+/** the children of the last node of a kind, neighbouring text joined */
+function inline_of(source: string, kind: string): string {
+	const { nodes } = parse_markdown_svelte(source);
+	const found = nodes.get_kinds(NodeKind[kind as 'paragraph']);
+	if (found.length === 0) return `no ${kind}`;
+	const tree = shape(nodes, source, found[found.length - 1], {
+		merge_text: true,
+	});
+	return JSON.stringify(Array.isArray(tree) ? tree.slice(1) : []);
+}

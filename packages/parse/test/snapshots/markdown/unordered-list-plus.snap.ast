@@ -1,0 +1,9 @@
+root
+  list ordered=false start=0 tight=true
+    list_item
+      text "Red"
+    list_item
+      text "Green"
+    list_item
+      text "Blue"
+  line_break

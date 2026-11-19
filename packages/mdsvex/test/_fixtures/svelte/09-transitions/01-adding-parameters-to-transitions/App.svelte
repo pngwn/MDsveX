@@ -1,6 +1,6 @@
 <script>
-	import { fly } from 'svelte/transition';
-	let visible = true;
+import { fly } from "svelte/transition";
+let visible = true;
 </script>
 
 <label>

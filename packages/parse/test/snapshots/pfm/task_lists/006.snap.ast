@@ -1,0 +1,11 @@
+root
+  list ordered=false start=0 tight=true
+    list_item checked=false
+      text "- not a nested list"
+    list_item checked=true
+      text "# not a heading"
+    list_item checked=false
+      text "> not a quote"
+    list_item checked=true
+      text "1. not an ordered list"
+  line_break

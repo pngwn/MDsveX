@@ -1,0 +1,36 @@
+root
+  paragraph
+    text "!not an image"
+  line_break
+  line_break
+  paragraph
+    text "![unclosed"
+  line_break
+  line_break
+  paragraph
+    text "![a"
+    text "](/a.png"
+  line_break
+  line_break
+  paragraph
+    text "![a"
+    text "]"
+  line_break
+  line_break
+  paragraph
+    text "! "
+    link href="/a.png"
+      text "a"
+  line_break
+  line_break
+  image src="/a.png"
+    text "a "
+    strong_emphasis
+      text "b"
+    text " c"
+  line_break
+  line_break
+  image src="/o.png"
+    image src="/i.png"
+      text "inner"
+  line_break

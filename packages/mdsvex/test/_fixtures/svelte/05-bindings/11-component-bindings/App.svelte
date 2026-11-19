@@ -1,12 +1,12 @@
 <script>
-	import Keypad from './Keypad.svelte';
+import Keypad from "./Keypad.svelte";
 
-	let pin;
-	$: view = pin ? pin.replace(/\d(?!$)/g, '•') : 'enter your pin';
+let pin;
+$: view = pin ? pin.replace(/\d(?!$)/g, "•") : "enter your pin";
 
-	function handleSubmit() {
-		alert(`submitted ${pin}`);
-	}
+function handleSubmit() {
+	alert(`submitted ${pin}`);
+}
 </script>
 
 <h1 style="color: {pin ? '#333' : '#ccc'}">{view}</h1>

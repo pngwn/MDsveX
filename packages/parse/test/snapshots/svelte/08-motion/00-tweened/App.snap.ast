@@ -1,0 +1,38 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="progress" value=[object Object]
+  line_break
+  line_break
+  html tag="button" on:click="{() => progress.set(0)}"
+    line_break
+    text "0%"
+    line_break
+  line_break
+  line_break
+  html tag="button" on:click="{() => progress.set(0.25)}"
+    line_break
+    text "25%"
+    line_break
+  line_break
+  line_break
+  html tag="button" on:click="{() => progress.set(0.5)}"
+    line_break
+    text "50%"
+    line_break
+  line_break
+  line_break
+  html tag="button" on:click="{() => progress.set(0.75)}"
+    line_break
+    text "75%"
+    line_break
+  line_break
+  line_break
+  html tag="button" on:click="{() => progress.set(1)}"
+    line_break
+    text "100%"
+    line_break

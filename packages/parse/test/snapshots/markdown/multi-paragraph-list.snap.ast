@@ -1,0 +1,14 @@
+root
+  list ordered=true start=1 tight=true
+    list_item
+      text "This is a major bullet point."
+  line_break
+  line_break
+  paragraph
+    text "That contains multiple paragraphs."
+  line_break
+  line_break
+  list ordered=true start=2 tight=true
+    list_item
+      text "And another line"
+  line_break

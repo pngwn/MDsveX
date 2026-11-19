@@ -1,0 +1,6 @@
+root
+  paragraph
+    text "foo "
+    text "<"
+    text "!ELEMENT br EMPTY>"
+  line_break

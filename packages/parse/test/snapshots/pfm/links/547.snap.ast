@@ -1,0 +1,18 @@
+root
+  paragraph
+    text "["
+    text "ref"
+    text "[bar"
+    text "]"
+    text "]: /uri"
+  line_break
+  line_break
+  paragraph
+    text "[foo"
+    text "]"
+    text "["
+    text "ref"
+    text "[bar"
+    text "]"
+    text "]"
+  line_break

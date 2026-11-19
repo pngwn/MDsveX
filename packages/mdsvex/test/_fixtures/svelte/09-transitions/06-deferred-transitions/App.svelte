@@ -1,30 +1,30 @@
 <script>
-	import { crossfade, scale } from 'svelte/transition';
-	import images from './images.js';
+import { crossfade, scale } from "svelte/transition";
+import images from "./images.js";
 
-	const [send, receive] = crossfade({
-		duration: 200,
-		fallback: scale
-	});
+const [send, receive] = crossfade({
+	duration: 200,
+	fallback: scale,
+});
 
-	let selected = null;
-	let loading = null;
+let selected = null;
+let loading = null;
 
-	const ASSETS = `https://sveltejs.github.io/assets/crossfade`;
+const ASSETS = `https://sveltejs.github.io/assets/crossfade`;
 
-	const load = image => {
-		const timeout = setTimeout(() => loading = image, 100);
+const load = (image) => {
+	const timeout = setTimeout(() => (loading = image), 100);
 
-		const img = new Image();
+	const img = new Image();
 
-		img.onload = () => {
-			selected = image;
-			clearTimeout(timeout);
-			loading = null;
-		};
-
-		img.src = `${ASSETS}/${image.id}.jpg`;
+	img.onload = () => {
+		selected = image;
+		clearTimeout(timeout);
+		loading = null;
 	};
+
+	img.src = `${ASSETS}/${image.id}.jpg`;
+};
 </script>
 
 <div class="container">

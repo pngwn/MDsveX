@@ -1,0 +1,10 @@
+root
+  list ordered=false start=0 tight=true
+    list_item
+      text "a"
+      list ordered=false start=0 tight=false
+        list_item
+          paragraph
+            text "b"
+          code_fence info="js" "let x = 1;\n  x++;"
+  line_break

@@ -1,0 +1,7 @@
+root
+  paragraph
+    text "["
+    text "foo"
+    link href="https://example.com/?search=](uri)"
+      text "https://example.com/?search=](uri)"
+  line_break

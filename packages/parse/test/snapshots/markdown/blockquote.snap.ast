@@ -1,0 +1,9 @@
+root
+  line_break
+  block_quote
+    paragraph
+      text "This is a multi line blockquote test"
+    line_break
+    paragraph
+      text "With more than one line."
+  line_break

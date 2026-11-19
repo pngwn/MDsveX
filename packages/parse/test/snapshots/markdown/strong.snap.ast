@@ -1,0 +1,17 @@
+root
+  paragraph
+    strong_emphasis
+      text "important"
+  line_break
+  line_break
+  paragraph
+    strong_emphasis
+      text "important"
+  line_break
+  line_break
+  paragraph
+    text "really "
+    text "*"
+    text "freaking"
+    text "*strong"
+  line_break

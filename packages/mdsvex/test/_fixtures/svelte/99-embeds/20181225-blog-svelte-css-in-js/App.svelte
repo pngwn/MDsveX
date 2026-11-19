@@ -1,6 +1,6 @@
 <script>
-	import { comicSans, link } from './styles.js';
-	import Hero from './Hero.svelte';
+import { comicSans, link } from "./styles.js";
+import Hero from "./Hero.svelte";
 </script>
 
 <Hero/>

@@ -1,0 +1,10 @@
+root
+  line_break
+  list ordered=false start=0 tight=false
+    list_item
+      paragraph
+        text "Bird"
+    list_item
+      paragraph
+        text "Magic"
+  line_break

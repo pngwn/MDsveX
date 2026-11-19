@@ -1,0 +1,8 @@
+root
+  paragraph
+    text "hello"
+  line_break
+  directive_container name="note"
+    paragraph
+      text "Content."
+    line_break

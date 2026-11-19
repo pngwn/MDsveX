@@ -1,0 +1,13 @@
+root
+  block_quote
+    paragraph
+      text "Define a function in javascript:"
+    line_break
+    code_fence "function MyFunc(a) {\n    var s = '`';\n}"
+    line_break
+    block_quote
+      paragraph
+        text "And some nested quote"
+      line_break
+      code_fence info="html" "<div>HTML!</div>"
+  line_break

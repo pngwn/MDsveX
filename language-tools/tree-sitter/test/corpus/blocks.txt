@@ -1,0 +1,288 @@
+========================================
+Paragraphs and blank lines
+========================================
+one
+two
+
+three
+
+----------------------------------------
+
+(document
+  (paragraph)
+  (paragraph))
+
+========================================
+ATX headings, trailing hashes are text
+========================================
+# One
+###### Six ##
+#nope
+
+----------------------------------------
+
+(document
+  (atx_heading
+    (atx_h1_marker)
+    (heading_content))
+  (atx_heading
+    (atx_h6_marker)
+    (heading_content))
+  (paragraph))
+
+========================================
+Thematic breaks
+========================================
+---
+* * *
+___
+
+----------------------------------------
+
+(document
+  (thematic_break)
+  (thematic_break)
+  (thematic_break))
+
+========================================
+Fenced code with an info string
+========================================
+```js title="x"
+let a = 1;
+
+```
+
+----------------------------------------
+
+(document
+  (fenced_code_block
+    (fenced_code_block_delimiter)
+    (info_string
+      (language))
+    (code_fence_content)
+    (fenced_code_block_delimiter)))
+
+========================================
+A fence closes only at a line of backticks
+========================================
+````md
+```js
+let x;
+```
+````
+
+----------------------------------------
+
+(document
+  (fenced_code_block
+    (fenced_code_block_delimiter)
+    (info_string
+      (language))
+    (code_fence_content)
+    (fenced_code_block_delimiter)))
+
+========================================
+A fence left open ends at the end of input
+========================================
+```
+code
+
+----------------------------------------
+
+(document
+  (fenced_code_block
+    (fenced_code_block_delimiter)
+    (code_fence_content)))
+
+========================================
+Block quotes have no lazy continuation
+========================================
+> foo
+> bar
+baz
+
+----------------------------------------
+
+(document
+  (block_quote
+    (block_quote_marker)
+    (paragraph
+      (block_continuation)))
+  (paragraph))
+
+========================================
+Nested block quotes
+========================================
+> a
+> > b
+
+----------------------------------------
+
+(document
+  (block_quote
+    (block_quote_marker)
+    (paragraph)
+    (block_continuation)
+    (block_quote
+      (block_quote_marker)
+      (paragraph))))
+
+========================================
+Lists split by marker kind
+========================================
+- a
+- b
++ c
+1. d
+2) e
+
+----------------------------------------
+
+(document
+  (list
+    (list_item
+      (list_marker_minus)
+      (paragraph))
+    (list_item
+      (list_marker_minus)
+      (paragraph)))
+  (list
+    (list_item
+      (list_marker_plus)
+      (paragraph)))
+  (list
+    (list_item
+      (list_marker_dot)
+      (paragraph)))
+  (list
+    (list_item
+      (list_marker_parenthesis)
+      (paragraph))))
+
+========================================
+Non sequential ordered numbers
+========================================
+11. a
+27. b
+
+----------------------------------------
+
+(document
+  (list
+    (list_item
+      (list_marker_dot)
+      (paragraph))
+    (list_item
+      (list_marker_dot)
+      (paragraph))))
+
+========================================
+Nested lists and a loose item
+========================================
+- a
+  - b
+
+  c
+- d
+
+----------------------------------------
+
+(document
+  (list
+    (list_item
+      (list_marker_minus)
+      (paragraph)
+      (list
+        (list_item
+          (list_marker_minus)
+          (paragraph)))
+      (paragraph))
+    (list_item
+      (list_marker_minus)
+      (paragraph))))
+
+========================================
+A list item paragraph continues lazily
+========================================
+- a
+b
+
+----------------------------------------
+
+(document
+  (list
+    (list_item
+      (list_marker_minus)
+      (paragraph))))
+
+========================================
+Task list items
+========================================
+- [ ] todo
+- [x] done
+- [ ]
+
+----------------------------------------
+
+(document
+  (list
+    (list_item
+      (list_marker_minus)
+      (task_list_marker_unchecked)
+      (paragraph))
+    (list_item
+      (list_marker_minus)
+      (task_list_marker_checked)
+      (paragraph))
+    (list_item
+      (list_marker_minus)
+      (paragraph))))
+
+========================================
+The rest of a task line is paragraph text
+========================================
+- [ ] # title
+
+----------------------------------------
+
+(document
+  (list
+    (list_item
+      (list_marker_minus)
+      (task_list_marker_unchecked)
+      (paragraph))))
+
+========================================
+A bare list marker is text
+========================================
+-
+
+----------------------------------------
+
+(document
+  (paragraph))
+
+========================================
+An import after content is text
+========================================
+Hi
+
+import A from './A.svelte'
+
+----------------------------------------
+
+(document
+  (paragraph)
+  (paragraph))
+
+========================================
+Three dashes with no closing line are a thematic break
+========================================
+---
+text
+
+----------------------------------------
+
+(document
+  (thematic_break)
+  (paragraph))

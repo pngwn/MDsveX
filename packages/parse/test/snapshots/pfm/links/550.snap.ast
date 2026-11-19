@@ -1,0 +1,8 @@
+root
+  definition label="bar\\\\" href="/uri"
+  line_break
+  paragraph
+    link href="/uri"
+      text "bar"
+      text "\\"
+  line_break

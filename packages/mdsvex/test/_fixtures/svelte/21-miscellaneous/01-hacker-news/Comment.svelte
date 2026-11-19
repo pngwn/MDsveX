@@ -1,5 +1,5 @@
 <script>
-	export let comment;
+export let comment;
 </script>
 
 <style>

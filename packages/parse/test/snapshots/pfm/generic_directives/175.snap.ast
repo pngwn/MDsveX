@@ -1,0 +1,10 @@
+root
+  list ordered=false start=0 tight=false
+    list_item
+      paragraph
+        text "a"
+      directive_leaf name="toc"
+  line_break
+  paragraph
+    text "out"
+  line_break

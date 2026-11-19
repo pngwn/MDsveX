@@ -1,0 +1,5 @@
+root
+  paragraph
+    text "It happened in 1986"
+    text ". What a great season."
+  line_break

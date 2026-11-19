@@ -1,0 +1,19 @@
+# Link check
+
+Links that go somewhere say nothing:
+
+- [this heading](#link-check), and [the top of the page](#top)
+- [the install section of the toc page, by file](../toc/+page.svx#install), which renders as a route
+- [the same section, by route](/toc#set-up)
+- [the citations page](../citations/+page.svx)
+
+## Links that go nowhere
+
+Each of these is a warning in the terminal of the dev server, at the line of the link:
+
+- [an id this page does not have](#nowhere)
+- [an id the toc page does not have](../toc/+page.svx#uninstall)
+- [a route whose page has no such id](/toc#uninstall)
+- [a document that is not there](../gone/+page.svx)
+
+A link to a route that is no document, such as [the home page](/#anything), is not checked: it may be a Svelte page.

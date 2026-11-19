@@ -1,0 +1,4 @@
+root
+  paragraph
+    text "1234567890. not ok"
+  line_break

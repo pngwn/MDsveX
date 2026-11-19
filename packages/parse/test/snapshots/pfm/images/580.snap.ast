@@ -1,0 +1,5 @@
+root
+  paragraph
+    image src="url"
+      text "foo"
+  line_break

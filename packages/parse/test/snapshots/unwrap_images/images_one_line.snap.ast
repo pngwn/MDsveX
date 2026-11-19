@@ -1,0 +1,10 @@
+root
+  image src="/1.png"
+    text "one"
+  text " "
+  image src="/2.png"
+    text "two"
+  text "	"
+  image src="/3.png"
+    text "three"
+  line_break

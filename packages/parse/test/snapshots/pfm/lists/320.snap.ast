@@ -1,0 +1,11 @@
+root
+  list ordered=false start=0 tight=true
+    list_item
+      text "a"
+      block_quote
+        paragraph
+          text "b"
+        line_break
+    list_item
+      text "c"
+  line_break

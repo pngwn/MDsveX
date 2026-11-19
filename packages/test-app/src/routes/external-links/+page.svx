@@ -1,0 +1,16 @@
+<script>
+  let slug = $state("guide");
+  let url = $state("https://example.com/dynamic");
+</script>
+
+# External links
+
+Read [the spec](https://example.com/spec "The spec") or <https://example.org>.
+
+- [the docs](https://mdsvex.pngwn.io/docs) are on our own host
+- [steps](/steps) is a page of this app
+- [a section](#external-links) is on this page
+- [mail](mailto:hello@example.com) is another scheme
+- [a path from state](https://example.com/{slug}) has its host written out
+- [a url from state]({url}) does not
+- <a href="https://example.com/typed">typed as html</a> is not a markdown link

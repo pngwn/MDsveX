@@ -1,0 +1,15 @@
+root
+  paragraph
+    text "import "
+    text "{"
+    soft_break
+    text "a,"
+  line_break
+  line_break
+  heading depth=1 "Hello"
+    text "Hello"
+  line_break
+  line_break
+  paragraph
+    text "Paragraph."
+  line_break

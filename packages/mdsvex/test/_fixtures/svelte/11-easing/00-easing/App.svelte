@@ -1,40 +1,40 @@
 <script>
-	import { interpolateString as interpolate } from 'd3-interpolate';
-	import { tweened } from 'svelte/motion';
+import { interpolateString as interpolate } from "d3-interpolate";
+import { tweened } from "svelte/motion";
 
-	import Grid from './Grid.svelte';
-	import Controls from './Controls.svelte';
+import Grid from "./Grid.svelte";
+import Controls from "./Controls.svelte";
 
-	import { eases, types } from './eases.js';
+import { eases, types } from "./eases.js";
 
-	let current_type = 'In';
-	let current_ease = 'sine';
-	let duration = 2000;
-	let current = eases.get(current_ease)[current_type];
-	let playing = false;
-	let width;
+let current_type = "In";
+let current_ease = "sine";
+let duration = 2000;
+let current = eases.get(current_ease)[current_type];
+let playing = false;
+let width;
 
-	const ease_path = tweened(current.shape, { interpolate });
-	const time = tweened(0);
-	const value = tweened(1000);
+const ease_path = tweened(current.shape, { interpolate });
+const time = tweened(0);
+const value = tweened(1000);
 
-	async function runAnimations() {
-		playing = true;
+async function runAnimations() {
+	playing = true;
 
-		value.set(1000, {duration: 0});
-		time.set(0, {duration: 0});
+	value.set(1000, { duration: 0 });
+	time.set(0, { duration: 0 });
 
-		await ease_path.set(current.shape);
-		await Promise.all([
-			time.set(1000, {duration, easing: x => x}),
-			value.set(0, {duration, easing: current.fn})
-		]);
+	await ease_path.set(current.shape);
+	await Promise.all([
+		time.set(1000, { duration, easing: (x) => x }),
+		value.set(0, { duration, easing: current.fn }),
+	]);
 
-		playing = false;
-	}
+	playing = false;
+}
 
-	$: current = eases.get(current_ease)[current_type];
-	$: current && runAnimations();
+$: current = eases.get(current_ease)[current_type];
+$: current && runAnimations();
 </script>
 
 <style>

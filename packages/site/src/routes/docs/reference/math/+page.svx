@@ -1,0 +1,264 @@
+---
+title: Math
+order: 6
+---
+
+[temml]: https://temml.org
+[temml-options]: https://temml.org/docs/en/administration#options
+[temml-fonts]: https://temml.org/docs/en/administration#fonts
+[katex]: https://katex.org
+[katex-options]: https://katex.org/docs/options
+# Math
+
+::marks
+
+::::plate[Display math](mark="math", tone=code)
+A fenced code block with the language `math` is display math:
+
+```js config
+mdsvex({ math: {} });
+```
+
+````md result config
+```math
+\int_0^\infty e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}
+```
+````
+
+:::notes
+The Vite plugin renders the LaTeX when it compiles the document, with [Temml][temml], into MathML. Browsers draw MathML themselves, so the page loads no JavaScript for math.
+
+There is no `<pre>` or `<code>` around it, and the fence never reaches the highlighter, whatever [`highlight`](/docs/reference/options#highlight) is. Braces in the LaTeX need no escaping. mdsvex makes the output safe for Svelte, whichever renderer produced it. The `<div>` is there because MathML takes no `translate` attribute of its own, and it gives you something to style.
+
+Temml loads the first time a document has math, so a site without math never loads it. Anything after `math` on the fence line is kept, and is reserved for later use. Nothing reads it today, apart from a [`math` component](/docs/reference/math#math-components).
+
+On the atlas: [math](/atlas#math).
+:::
+::::
+
+::::plate[Inline math](mark="$`", tone=code)
+Inline math is a code span wrapped in dollars, on one line:
+
+```md result config
+Euler's identity, $`e^{i\pi} + 1 = 0`$, links five constants.
+```
+
+:::notes
+Both dollars have to touch the backticks. The LaTeX is raw, as in the fence, and there is no `<code>` around the result. It works wherever a code span does: in a heading, a list, a table cell or the text of a link. GitHub and GitLab render the same source as math.
+:::
+
+:::edges
+- In a table cell write the LaTeX double bar as `\Vert`, since `\|` there is an escaped cell bar.
+:::
+::::
+
+::::plate[Only these two forms are math](mark="$5", tone=text)
+Only these two forms are math. A `latex` or `tex` fence is a code block that shows its source. `$…$` and `$$…$$` are plain text, so a price such as `$5` needs no escaping, and a `$` beside a code span that the other `$` doesn't follow is a `$` (`` $`x` `` is a dollar and inline code). [Inline code](/docs/reference/highlighting#inline-code) with the hint, `` `#!math x^2` ``, is plain inline code.
+
+```md result config
+It costs $5, and $x$ and $$x$$ are text. $`x` is a dollar and inline code.
+```
+::::
+
+## Math styles
+
+::::plate[Temml's stylesheet](mark=".css", tone=other)
+mdsvex adds no CSS. Temml's stylesheet is in the `temml` package, so add it to your own dependencies and import the stylesheet once, usually in your root layout:
+
+```bash
+npm i --save-dev temml
+```
+
+```js
+import 'temml/dist/Temml-Local.css';
+```
+
+:::notes
+`Temml-Local.css` uses a math font the reader already has. It asks for Cambria Math, then STIX Two Math, then Noto Sans Math, then the browser's own math font. The only font it loads is a 9 KB one for script capitals. Without the stylesheet the math still renders, but spacing and a few constructs differ between browsers.
+
+The package also has `Temml-Latin-Modern.css`, `Temml-Asana.css`, `Temml-STIX2.css`, `Temml-Libertinus.css` and `Temml-NotoSans.css`, one for each web font. Each expects its font file beside it, and the package doesn't include those fonts. Copy the stylesheet and the font into your project, as [Temml's documentation describes][temml-fonts].
+:::
+::::
+
+::::plate[A wide equation](mark="auto", tone=other)
+A wide equation can be wider than the page. Let it scroll:
+
+```css
+.math-display {
+	overflow-x: auto;
+}
+```
+::::
+
+## KaTeX
+
+::::plate[KaTeX](mark="katex", tone=code)
+[KaTeX][katex] renders HTML that it lays out with its own fonts, with MathML beside it for screen readers. It looks the same in every browser, and it is several times more markup than MathML alone. Install it yourself and pick it:
+
+```bash
+npm i --save-dev katex
+```
+
+```js
+mdsvex({ math: { renderer: 'katex' } });
+```
+
+```js
+import 'katex/dist/katex.min.css';
+```
+
+:::notes
+KaTeX needs its stylesheet. Without it the reader sees every equation twice.
+:::
+
+:::edges
+- Picking `'katex'` without the package installed is an error that names the package.
+:::
+::::
+
+## Math options
+
+::::plate[`options`](mark="macros", tone=code)
+`options` is passed to the renderer, [Temml's options][temml-options] or [KaTeX's][katex-options]:
+
+```js
+mdsvex({
+	math: {
+		options: {
+			macros: { '\\RR': '\\mathbb{R}' }
+		}
+	}
+});
+```
+
+:::notes
+mdsvex sets `displayMode` itself. It also sets `throwOnError`, so that LaTeX the renderer can't read fails the build. Pass `throwOnError: false` to draw the error in the page instead.
+
+With Temml, `annotate: true` adds the LaTeX to the MathML as an annotation. KaTeX always adds it.
+:::
+
+:::edges
+- A definition made in a fence with `\gdef` ends with that fence. Documents compile in no fixed order, so a definition that leaked from one into the next would work on some builds and not on others. Put shared definitions in `macros`.
+:::
+::::
+
+## Math errors
+
+::::plate[A `MathError`](mark="\frac", tone=code)
+LaTeX the renderer can't read is a `MathError`. The message names the file and the line of the fence or of the inline math, and `line` and `column` point at the place in the LaTeX when the renderer says where it is, so Vite's error overlay opens on it:
+
+````md error config file="src/routes/post.svx"
+```math
+\frac{a}{
+```
+````
+
+```md error config file="src/routes/post.svx"
+A fraction, $`\frac{a}{`$.
+```
+
+:::notes
+`cause` is the renderer's own error.
+:::
+::::
+
+## Math components
+
+::::plate[A `math` component](mark="<math>", tone=comp)
+A `math` export in a [components module](/docs/guides/components) replaces math. It gets these props:
+
+| prop | value |
+| --- | --- |
+| `children` | the rendered math, the same `<div class="math math-display">` or `<span class="math math-inline">` it renders as without a replacement |
+| `code` | the LaTeX, as written |
+| `display` | `true` for a fence, not passed for inline math |
+| `meta` | the rest of the fence line, raw, when there is any |
+
+```js title="src/lib/markdown.js"
+export { default as math } from './markdown/Math.svelte';
+```
+
+:::notes
+The same component gets both kinds, so one that draws a block around the math does so only when `display` is set.
+
+With [`component_mode: 'all'`](/docs/guides/components#component_mode-all), a `<math>` element you type yourself goes to the same component, with its attributes as props and no `code`.
+:::
+
+:::edges
+- A `pre` or `code` replacement never gets math, and a `math` replacement never gets code. With [`math: false`](/docs/reference/options#math) a `math` fence is a code block again, so it goes to `pre`, and inline math is inline code that shows the LaTeX, so it goes to `code`.
+- The MathML a renderer made is never replaced, in either mode.
+:::
+::::
+
+::::plate[A button that copies the LaTeX](mark="copy", tone=comp)
+A button that copies the LaTeX of a fence:
+
+```svelte title="src/lib/markdown/Math.svelte"
+<script>
+	let { code, display = false, children } = $props();
+</script>
+
+{#if display}
+	<figure class="equation">
+		{@render children()}
+		<button onclick={() => navigator.clipboard.writeText(code)}>copy LaTeX</button>
+	</figure>
+{:else}
+	{@render children()}
+{/if}
+```
+::::
+
+See the [math playground example](/playground/math).
+
+## Custom math renderers
+
+::::plate[A renderer function](mark="=>", tone=expr)
+`math` can be a function instead of options. It gets the LaTeX and returns markup, such as MathML, HTML or SVG:
+
+```js
+mdsvex({
+	math: (latex, { display, meta, filename }) => render_somehow(latex, display)
+});
+```
+
+:::notes
+`display` is `true` for a fence and `false` for inline math, and `meta` is the rest of the fence line, empty for inline math. It doesn't escape anything for Svelte. mdsvex does that, and puts the result in the `<div>` or the `<span>`.
+:::
+
+:::edges
+- It must be synchronous, and it should throw when it can't render, which mdsvex reports as a [`MathError`](/docs/reference/math#math-errors).
+:::
+::::
+
+## Math with `compile`
+
+::::plate[`load_math`](mark="load", tone=expr)
+`compile` is synchronous and loads nothing, so a `math` fence is a code block and inline math is inline code unless you pass `math`. `load_math` from `mdsvex/math` imports the renderer and takes the same object as the plugin option:
+
+```js
+import { compile } from 'mdsvex/compile';
+import { load_math } from 'mdsvex/math';
+
+const math = await load_math({ options: { annotate: true } });
+
+const { code } = compile(source, { math, filename: 'post.svx' });
+```
+::::
+
+::::plate[`temml_math` and `katex_math`](mark="temml", tone=expr)
+Where you can't await, import the library yourself and pass it to `temml_math` or `katex_math`:
+
+```js
+import temml from 'temml';
+import { temml_math } from 'mdsvex/math';
+
+const math = temml_math(temml, { annotate: true });
+```
+
+:::notes
+`compile` also takes a [renderer function](/docs/reference/math#custom-math-renderers), or `false`.
+:::
+::::
+
+The editor reads the option from the manifest the plugin writes, or from `math` in an `mdsvex.config.json`, and reports LaTeX that Temml can't read as you type. With KaTeX or a function it doesn't check the LaTeX.

@@ -1,29 +1,26 @@
 <!-- https://eugenkiss.github.io/7guis/tasks#timer -->
 
 <script>
-	import { onDestroy } from 'svelte';
+import { onDestroy } from "svelte";
 
-	let elapsed = 0;
-	let duration = 5000;
+let elapsed = 0;
+let duration = 5000;
 
-	let last_time = window.performance.now();
-	let frame;
+let last_time = window.performance.now();
+let frame;
 
-	(function update() {
-		frame = requestAnimationFrame(update);
+(function update() {
+	frame = requestAnimationFrame(update);
 
-		const time = window.performance.now();
-		elapsed += Math.min(
-			time - last_time,
-			duration - elapsed
-		);
+	const time = window.performance.now();
+	elapsed += Math.min(time - last_time, duration - elapsed);
 
-		last_time = time;
-	}());
+	last_time = time;
+})();
 
-	onDestroy(() => {
-		cancelAnimationFrame(frame);
-	});
+onDestroy(() => {
+	cancelAnimationFrame(frame);
+});
 </script>
 
 <label>

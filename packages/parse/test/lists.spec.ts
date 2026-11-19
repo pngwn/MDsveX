@@ -1,0 +1,813 @@
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { describe, expect, test } from 'vitest';
+
+import { PFMParser, parse_markdown_svelte } from '../src/main';
+import { container_mismatch } from './invariance';
+import type { Rule } from './invariance';
+import { print_ast } from './print';
+import { fed_mismatch } from './stream_shape';
+import { TreeBuilder } from '../src/tree_builder';
+import type { NodeBuffer } from '../src/utils';
+
+const this_dir = dirname(fileURLToPath(import.meta.url));
+const fixtures_root = resolve(this_dir, 'fixtures/pfm/lists');
+
+const load_fixture = (id: string): string =>
+	readFileSync(resolve(fixtures_root, `${id}.md`), 'utf8');
+
+function collect_children(nodes: NodeBuffer, parent: number = 0) {
+	const root = nodes.get_node(parent);
+	return root.children.map((i) => nodes.get_node(i));
+}
+
+function non_breaks(nodes: NodeBuffer, parent: number = 0) {
+	return collect_children(nodes, parent).filter((n) => n.kind !== 'line_break');
+}
+
+function get_value(nodes: NodeBuffer, index: number, source: string) {
+	const node = nodes.get_node(index);
+	return source.slice(node.value[0], node.value[1]);
+}
+
+describe('Lists', () => {
+	test('pfm example 322: minimal list (single item)', () => {
+		const input = load_fixture('322');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('list');
+		expect(children[0].metadata.ordered).toBe(false);
+		expect(children[0].metadata.tight).toBe(true);
+
+		const items = non_breaks(nodes, children[0].index);
+		expect(items.length).toBe(1);
+		expect(items[0].kind).toBe('list_item');
+
+		// Tight list: no paragraph wrapper, text directly in list_item
+		const item_children = non_breaks(nodes, items[0].index);
+		expect(item_children.length).toBe(1);
+		expect(item_children[0].kind).toBe('text');
+	});
+
+	test('pfm example 301: different unordered markers create separate lists', () => {
+		const input = load_fixture('301');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(2);
+		expect(children[0].kind).toBe('list');
+		expect(children[0].metadata.tight).toBe(true);
+		expect(children[1].kind).toBe('list');
+		expect(children[1].metadata.tight).toBe(true);
+
+		// First list: - foo, - bar (tight: text directly in list_item)
+		const items1 = non_breaks(nodes, children[0].index);
+		expect(items1.length).toBe(2);
+		expect(items1[0].kind).toBe('list_item');
+		expect(items1[1].kind).toBe('list_item');
+
+		const item1_children = non_breaks(nodes, items1[0].index);
+		expect(item1_children[0].kind).toBe('text');
+
+		// Second list: + baz
+		const items2 = non_breaks(nodes, children[1].index);
+		expect(items2.length).toBe(1);
+		expect(items2[0].kind).toBe('list_item');
+	});
+
+	test('pfm example 302: different ordered markers create separate lists', () => {
+		const input = load_fixture('302');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(2);
+		expect(children[0].kind).toBe('list');
+		expect(children[0].metadata.ordered).toBe(true);
+		expect(children[0].metadata.start).toBe(1);
+
+		expect(children[1].kind).toBe('list');
+		expect(children[1].metadata.ordered).toBe(true);
+		expect(children[1].metadata.start).toBe(3);
+
+		const items1 = non_breaks(nodes, children[0].index);
+		expect(items1.length).toBe(2);
+
+		const items2 = non_breaks(nodes, children[1].index);
+		expect(items2.length).toBe(1);
+	});
+
+	test('pfm example 303: paragraph followed by unordered list', () => {
+		const input = load_fixture('303');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(2);
+		expect(children[0].kind).toBe('paragraph');
+		expect(children[1].kind).toBe('list');
+
+		const items = non_breaks(nodes, children[1].index);
+		expect(items.length).toBe(2);
+	});
+
+	test('pfm example 304: "14." does not interrupt paragraph', () => {
+		const input = load_fixture('304');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		// Should be a single paragraph (14. doesn't interrupt)
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('paragraph');
+	});
+
+	test('pfm example 305: "1." interrupts paragraph', () => {
+		const input = load_fixture('305');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(2);
+		expect(children[0].kind).toBe('paragraph');
+		expect(children[1].kind).toBe('list');
+		expect(children[1].metadata.ordered).toBe(true);
+	});
+
+	test('pfm example 306: blank lines make list loose', () => {
+		const input = load_fixture('306');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('list');
+		expect(children[0].metadata.tight).toBe(false);
+
+		const items = non_breaks(nodes, children[0].index);
+		expect(items.length).toBe(3);
+
+		// Loose list: items should have paragraph wrappers
+		const item0_children = non_breaks(nodes, items[0].index);
+		expect(item0_children[0].kind).toBe('paragraph');
+	});
+
+	test('pfm example 314: blank line between items makes list loose', () => {
+		const input = load_fixture('314');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('list');
+		expect(children[0].metadata.tight).toBe(false);
+
+		const items = non_breaks(nodes, children[0].index);
+		expect(items.length).toBe(3);
+
+		// Loose list: items should have paragraph wrappers
+		const item0_children = non_breaks(nodes, items[0].index);
+		expect(item0_children[0].kind).toBe('paragraph');
+	});
+
+	test('pfm example 315: empty list item', () => {
+		// pfm: a list marker requires non-blank content on its line, so a
+		// stray `*` between items is treated as a soft-break + text inside
+		// the previous item rather than starting a new (empty) item.
+		const input = load_fixture('315');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('list');
+
+		const items = non_breaks(nodes, children[0].index);
+		expect(items.length).toBe(2);
+	});
+
+	test('pfm example 307: nested sub-lists', () => {
+		const input = load_fixture('307');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		// Single outer list (tight)
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('list');
+		expect(children[0].metadata.tight).toBe(true);
+
+		const outer_items = non_breaks(nodes, children[0].index);
+		expect(outer_items.length).toBe(1);
+		expect(outer_items[0].kind).toBe('list_item');
+
+		// Outer item: text("foo") + nested list
+		const outer_item_children = non_breaks(nodes, outer_items[0].index);
+		expect(outer_item_children.length).toBe(2);
+		expect(outer_item_children[0].kind).toBe('text');
+		expect(get_value(nodes, outer_item_children[0].index, input)).toBe('foo');
+		expect(outer_item_children[1].kind).toBe('list');
+		expect(outer_item_children[1].metadata.tight).toBe(true);
+
+		// Middle list: one item with text("bar") + nested list
+		const mid_items = non_breaks(nodes, outer_item_children[1].index);
+		expect(mid_items.length).toBe(1);
+		const mid_item_children = non_breaks(nodes, mid_items[0].index);
+		expect(mid_item_children.length).toBe(2);
+		expect(mid_item_children[0].kind).toBe('text');
+		expect(get_value(nodes, mid_item_children[0].index, input)).toBe('bar');
+		expect(mid_item_children[1].kind).toBe('list');
+		expect(mid_item_children[1].metadata.tight).toBe(false);
+
+		// Inner list (loose): one item with paragraph("baz") + paragraph("bim")
+		const inner_items = non_breaks(nodes, mid_item_children[1].index);
+		expect(inner_items.length).toBe(1);
+		const inner_item_children = non_breaks(nodes, inner_items[0].index);
+		expect(inner_item_children.length).toBe(2);
+		expect(inner_item_children[0].kind).toBe('paragraph');
+		expect(inner_item_children[1].kind).toBe('paragraph');
+
+		const baz_text = non_breaks(nodes, inner_item_children[0].index);
+		expect(get_value(nodes, baz_text[0].index, input)).toBe('baz');
+		const bim_text = non_breaks(nodes, inner_item_children[1].index);
+		expect(get_value(nodes, bim_text[0].index, input)).toBe('bim');
+	});
+
+	test('pfm example 323: nested list (basic)', () => {
+		const input = load_fixture('323');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('list');
+		expect(children[0].metadata.tight).toBe(true);
+
+		const outer_items = non_breaks(nodes, children[0].index);
+		expect(outer_items.length).toBe(1);
+
+		// Item: text("a") + nested list
+		const item_children = non_breaks(nodes, outer_items[0].index);
+		expect(item_children.length).toBe(2);
+		expect(item_children[0].kind).toBe('text');
+		expect(get_value(nodes, item_children[0].index, input)).toBe('a');
+		expect(item_children[1].kind).toBe('list');
+		expect(item_children[1].metadata.tight).toBe(true);
+
+		const inner_items = non_breaks(nodes, item_children[1].index);
+		expect(inner_items.length).toBe(1);
+		const inner_item_children = non_breaks(nodes, inner_items[0].index);
+		expect(inner_item_children[0].kind).toBe('text');
+		expect(get_value(nodes, inner_item_children[0].index, input)).toBe('b');
+	});
+
+	test('pfm example 325: loose nested list', () => {
+		const input = load_fixture('325');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('list');
+		expect(children[0].metadata.tight).toBe(false);
+
+		const items = non_breaks(nodes, children[0].index);
+		expect(items.length).toBe(1);
+
+		// Item: paragraph("foo") + nested list + paragraph("baz")
+		const item_children = non_breaks(nodes, items[0].index);
+		expect(item_children.length).toBe(3);
+		expect(item_children[0].kind).toBe('paragraph');
+		expect(item_children[1].kind).toBe('list');
+		expect(item_children[1].metadata.tight).toBe(true);
+		expect(item_children[2].kind).toBe('paragraph');
+
+		// Nested list has one tight item: text("bar")
+		const inner_items = non_breaks(nodes, item_children[1].index);
+		expect(inner_items.length).toBe(1);
+		const inner_children = non_breaks(nodes, inner_items[0].index);
+		expect(inner_children[0].kind).toBe('text');
+		expect(get_value(nodes, inner_children[0].index, input)).toBe('bar');
+	});
+
+	test('pfm example 326: two nested lists', () => {
+		const input = load_fixture('326');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('list');
+		expect(children[0].metadata.tight).toBe(false);
+
+		const items = non_breaks(nodes, children[0].index);
+		expect(items.length).toBe(2);
+
+		// Item 1: paragraph("a") + nested list(b, c)
+		const item1_children = non_breaks(nodes, items[0].index);
+		expect(item1_children[0].kind).toBe('paragraph');
+		expect(item1_children[1].kind).toBe('list');
+		const nested1_items = non_breaks(nodes, item1_children[1].index);
+		expect(nested1_items.length).toBe(2);
+
+		// Item 2: paragraph("d") + nested list(e, f)
+		const item2_children = non_breaks(nodes, items[1].index);
+		expect(item2_children[0].kind).toBe('paragraph');
+		expect(item2_children[1].kind).toBe('list');
+		const nested2_items = non_breaks(nodes, item2_children[1].index);
+		expect(nested2_items.length).toBe(2);
+	});
+
+	test('pfm example 310: inconsistent indentation (flat list)', () => {
+		const input = load_fixture('310');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		// All markers at indent 0-3 should be siblings in a single flat list
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('list');
+		expect(children[0].metadata.tight).toBe(true);
+
+		const items = non_breaks(nodes, children[0].index);
+		expect(items.length).toBe(7);
+		expect(items.every((i) => i.kind === 'list_item')).toBe(true);
+
+		// Check values: a, b, c, d, e, f, g
+		const values = items.map((i) => {
+			const c = non_breaks(nodes, i.index);
+			return get_value(nodes, c[0].index, input);
+		});
+		expect(values).toEqual(['a', 'b', 'c', 'd', 'e', 'f', 'g']);
+	});
+
+	test('pfm example 311: ordered list with varying indentation', () => {
+		const input = load_fixture('311');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		// Single ordered list with 3 loose items
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('list');
+		expect(children[0].metadata.ordered).toBe(true);
+		expect(children[0].metadata.tight).toBe(false);
+
+		const items = non_breaks(nodes, children[0].index);
+		expect(items.length).toBe(3);
+
+		// Loose: items have paragraph wrappers
+		for (const item of items) {
+			const ic = non_breaks(nodes, item.index);
+			expect(ic[0].kind).toBe('paragraph');
+		}
+	});
+
+	test('pfm example 312: indentation limit for list continuation (PFM: no indented code)', () => {
+		const input = load_fixture('312');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		// PFM: no indented code blocks, so all items are in a flat list
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('list');
+		expect(children[0].metadata.tight).toBe(true);
+
+		const items = non_breaks(nodes, children[0].index);
+		expect(items.length).toBe(5);
+		expect(items.every((i) => i.kind === 'list_item')).toBe(true);
+	});
+	test('pfm example 319: nested list with paragraph continuation', () => {
+		const input = load_fixture('319');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		// Outer list (tight, only the nested list is loose)
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('list');
+		expect(children[0].metadata.tight).toBe(true);
+
+		const outer_items = non_breaks(nodes, children[0].index);
+		expect(outer_items.length).toBe(2);
+
+		// Item 1: text("a") + nested list
+		const item1_children = non_breaks(nodes, outer_items[0].index);
+		expect(item1_children[0].kind).toBe('text');
+		expect(get_value(nodes, item1_children[0].index, input)).toBe('a');
+		expect(item1_children[1].kind).toBe('list');
+		expect(item1_children[1].metadata.tight).toBe(false);
+
+		// Nested list: one loose item with paragraph("b") + paragraph("c")
+		const nested_items = non_breaks(nodes, item1_children[1].index);
+		expect(nested_items.length).toBe(1);
+		const nested_children = non_breaks(nodes, nested_items[0].index);
+		expect(nested_children.length).toBe(2);
+		expect(nested_children[0].kind).toBe('paragraph');
+		expect(nested_children[1].kind).toBe('paragraph');
+		const b_text = non_breaks(nodes, nested_children[0].index);
+		expect(get_value(nodes, b_text[0].index, input)).toBe('b');
+		const c_text = non_breaks(nodes, nested_children[1].index);
+		expect(get_value(nodes, c_text[0].index, input)).toBe('c');
+
+		// Item 2: text("d")
+		const item2_children = non_breaks(nodes, outer_items[1].index);
+		expect(item2_children[0].kind).toBe('text');
+		expect(get_value(nodes, item2_children[0].index, input)).toBe('d');
+	});
+
+	test('pfm example 316: indented content continuation', () => {
+		const input = load_fixture('316');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		// Single loose list
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('list');
+		expect(children[0].metadata.tight).toBe(false);
+
+		const items = non_breaks(nodes, children[0].index);
+		expect(items.length).toBe(3);
+
+		// Item 1: paragraph("a")
+		const item1_children = non_breaks(nodes, items[0].index);
+		expect(item1_children.length).toBe(1);
+		expect(item1_children[0].kind).toBe('paragraph');
+
+		// Item 2: paragraph("b") + paragraph("c")
+		const item2_children = non_breaks(nodes, items[1].index);
+		expect(item2_children.length).toBe(2);
+		expect(item2_children[0].kind).toBe('paragraph');
+		expect(item2_children[1].kind).toBe('paragraph');
+		const b_text = non_breaks(nodes, item2_children[0].index);
+		expect(get_value(nodes, b_text[0].index, input)).toBe('b');
+		const c_text = non_breaks(nodes, item2_children[1].index);
+		expect(get_value(nodes, c_text[0].index, input)).toBe('c');
+
+		// Item 3: paragraph("d")
+		const item3_children = non_breaks(nodes, items[2].index);
+		expect(item3_children.length).toBe(1);
+		expect(item3_children[0].kind).toBe('paragraph');
+	});
+	test('pfm example 317: reference link definition in list item', () => {
+		const input = load_fixture('317');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		// Loose list with 3 items (a, b, d), ref def is consumed
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('list');
+		expect(children[0].metadata.tight).toBe(false);
+
+		const items = non_breaks(nodes, children[0].index);
+		expect(items.length).toBe(3);
+	});
+
+	test('pfm example 309: continuation content and list structure', () => {
+		const input = load_fixture('309');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		// First child should be a single loose list
+		expect(children[0].kind).toBe('list');
+		expect(children[0].metadata.tight).toBe(false);
+
+		const items = non_breaks(nodes, children[0].index);
+		expect(items.length).toBe(2);
+		expect(items[0].kind).toBe('list_item');
+		expect(items[1].kind).toBe('list_item');
+
+		// Item 1: two paragraphs (foo, notcode), continuation content
+		const item1_children = non_breaks(nodes, items[0].index);
+		expect(item1_children.length).toBe(2);
+		expect(item1_children[0].kind).toBe('paragraph');
+		expect(item1_children[1].kind).toBe('paragraph');
+
+		const p1_text = non_breaks(nodes, item1_children[0].index);
+		expect(get_value(nodes, p1_text[0].index, input)).toBe('foo');
+		const p2_text = non_breaks(nodes, item1_children[1].index);
+		expect(get_value(nodes, p2_text[0].index, input)).toBe('notcode');
+
+		// Item 2: one paragraph (foo)
+		const item2_children = non_breaks(nodes, items[1].index);
+		expect(item2_children.length).toBe(1);
+		expect(item2_children[0].kind).toBe('paragraph');
+	});
+
+	// HTML comment interrupts list, creating two separate lists
+	test('pfm example 308: HTML comment interrupts list', () => {
+		const input = load_fixture('308');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		// Two separate lists with html_comment between them
+		const lists = children.filter((n) => n.kind === 'list');
+		expect(lists.length).toBe(2);
+
+		const comment = children.find((n) => n.kind === 'html_comment');
+		expect(comment).toBeDefined();
+
+		// First list: foo, bar
+		const items1 = non_breaks(nodes, lists[0].index);
+		expect(items1.length).toBe(2);
+
+		// Second list: baz, bim
+		const items2 = non_breaks(nodes, lists[1].index);
+		expect(items2.length).toBe(2);
+	});
+	test('pfm example 318: code fence in list item', () => {
+		const input = load_fixture('318');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		// Expected: 3-item tight list (a, code_fence, c)
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('list');
+
+		const items = non_breaks(nodes, children[0].index);
+		expect(items.length).toBe(3);
+		expect(items[0].kind).toBe('list_item');
+		expect(items[1].kind).toBe('list_item');
+		expect(items[2].kind).toBe('list_item');
+
+		// Item 2 has a code fence
+		const item2_children = non_breaks(nodes, items[1].index);
+		expect(item2_children[0].kind).toBe('code_fence');
+	});
+	test('pfm example 320: block quote in list item', () => {
+		const input = load_fixture('320');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		// Single list with 2 items
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('list');
+
+		const items = non_breaks(nodes, children[0].index);
+		expect(items.length).toBe(2);
+
+		// Item 1: text("a") + block_quote containing paragraph("b")
+		const item1_children = non_breaks(nodes, items[0].index);
+		expect(item1_children.length).toBe(2);
+		expect(item1_children[0].kind).toBe('text');
+		expect(item1_children[1].kind).toBe('block_quote');
+
+		const bq_children = non_breaks(nodes, item1_children[1].index);
+		expect(bq_children[0].kind).toBe('paragraph');
+
+		// Item 2: text("c")
+		const item2_children = non_breaks(nodes, items[1].index);
+		expect(item2_children[0].kind).toBe('text');
+		expect(get_value(nodes, item2_children[0].index, input)).toBe('c');
+	});
+
+	// TODO: block quote inside list item eats subsequent code fence, block quote/fence interaction bug
+	test.todo('pfm example 321: block quote and code fence in list item');
+	test('pfm example 324: ordered list with code fence', () => {
+		const input = load_fixture('324');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('list');
+		expect(children[0].metadata.ordered).toBe(true);
+		expect(children[0].metadata.tight).toBe(false);
+
+		const items = non_breaks(nodes, children[0].index);
+		expect(items.length).toBe(1);
+
+		// Item: code_fence + paragraph("bar")
+		const item_children = non_breaks(nodes, items[0].index);
+		expect(item_children.length).toBe(2);
+		expect(item_children[0].kind).toBe('code_fence');
+		expect(item_children[1].kind).toBe('paragraph');
+
+		const bar_text = non_breaks(nodes, item_children[1].index);
+		expect(get_value(nodes, bar_text[0].index, input)).toBe('bar');
+	});
+
+	test('pfm example 313: indentation limit (PFM: no indented code)', () => {
+		const input = load_fixture('313');
+		const { nodes } = parse_markdown_svelte(input);
+		const children = non_breaks(nodes);
+
+		// PFM: no indented code, so all 3 items in a single loose ordered list
+		expect(children.length).toBe(1);
+		expect(children[0].kind).toBe('list');
+		expect(children[0].metadata.ordered).toBe(true);
+		expect(children[0].metadata.tight).toBe(false);
+
+		const items = non_breaks(nodes, children[0].index);
+		expect(items.length).toBe(3);
+	});
+});
+
+type Shape = string | [string, ...Shape[]];
+
+function shape(nodes: NodeBuffer, source: string, id = 0): Shape {
+	const n = nodes.get_node(id);
+	if (n.kind === 'text') return `text:${source.slice(n.value[0], n.value[1])}`;
+	const children = n.children
+		.map((c: number) => shape(nodes, source, c))
+		.filter((c: Shape) => c !== 'line_break');
+	if (children.length === 0) return n.kind;
+	return [n.kind, ...children];
+}
+
+function root_shape(input: string): Shape[] {
+	const { nodes, source } = parse_markdown_svelte(input);
+	return (shape(nodes, source) as Shape[]).slice(1);
+}
+
+function incremental_shape(input: string, chunk_size: number): Shape[] {
+	const tree = new TreeBuilder(input.length);
+	const parser = new PFMParser(tree);
+	parser.init();
+	for (let i = 0; i < input.length; i += chunk_size) {
+		parser.feed(input.slice(i, i + chunk_size));
+	}
+	parser.finish();
+	return (shape(tree.get_buffer(), input) as Shape[]).slice(1);
+}
+
+describe('indented lists', () => {
+	const siblings: Shape[] = [
+		['list', ['list_item', 'text:a'], ['list_item', 'text:b']],
+	];
+
+	const cases: [string, string, Shape[]][] = [
+		['two spaces', '  - a\n  - b\n', siblings],
+		['four spaces', '    - a\n    - b\n', siblings],
+		['a tab', '\t- a\n\t- b\n', siblings],
+		['ordered', '   1. a\n   2. b\n', siblings],
+		['in a block quote', '>   - a\n>   - b\n', [['block_quote', ...siblings]]],
+		[
+			'in an html block',
+			'<div>\n\n    - a\n    - b\n\n</div>\n',
+			[['html', ...siblings]],
+		],
+		[
+			'in a component',
+			'<Item>\n    - a\n    - b\n</Item>\n',
+			[['html', ...siblings]],
+		],
+		[
+			'in a svelte block',
+			'{#if x}\n  - a\n  - b\n{/if}\n',
+			[['svelte_block', ['svelte_branch', ...siblings]]],
+		],
+		[
+			'nested relative to the first marker',
+			'  - a\n    - b\n  - c\n',
+			[
+				[
+					'list',
+					['list_item', 'text:a', ['list', ['list_item', 'text:b']]],
+					['list_item', 'text:c'],
+				],
+			],
+		],
+		[
+			'nested in a block quote',
+			'>   - a\n>     - b\n',
+			[
+				[
+					'block_quote',
+					['list', ['list_item', 'text:a', ['list', ['list_item', 'text:b']]]],
+				],
+			],
+		],
+		[
+			'later paragraph at the list indent leaves the list',
+			'<div>\n\n    - a\n    - b\n\n    after\n\n</div>\n',
+			[['html', ...siblings, ['paragraph', 'text:after']]],
+		],
+	];
+
+	for (const [name, input, expected] of cases) {
+		test(name, () => {
+			expect(root_shape(input)).toEqual(expected);
+		});
+
+		test(`${name}, fed in chunks`, () => {
+			for (const size of [1, 2, 3, 7]) {
+				expect(incremental_shape(input, size)).toEqual(expected);
+			}
+		});
+	}
+
+	test('indent survives a feed window trim', () => {
+		// enough text before the list for the window to trim
+		const input = 'word '.repeat(400) + '\n\n' + '    - a\n    - b\n';
+		const expected = root_shape(input);
+		expect(expected[1]).toEqual(siblings[0]);
+		for (const size of [1, 5, 64]) {
+			expect(incremental_shape(input, size)).toEqual(expected);
+		}
+	});
+});
+
+describe('a list item holds the blocks the document does', () => {
+	// a tight item holds the content of a paragraph with no paragraph around it
+	const TIGHT: Rule[] = [
+		{
+			what: 'tight',
+			expect: (kids) =>
+				kids.flatMap((kid) => (kid.kind === 'paragraph' ? kid.kids : [kid])),
+		},
+	];
+	const item = (source: string): string =>
+		source
+			.split('\n')
+			.map((row, i) => (i === 0 ? `- ${row}` : row === '' ? '' : `  ${row}`))
+			.join('\n') + '\n';
+
+	test.each([
+		['a list on the marker line', '- a'],
+		['an ordered list on the marker line', '1. a\n2. b'],
+		['a list two deep on the marker line', '- - a'],
+		['a svelte block', '{#if a}\nb\n{/if}'],
+		['a svelte block with a branch', '{#if a}\nb\n{:else}\n# c\n{/if}'],
+		['a comment on its line', '<!-- a -->'],
+		['a svelte tag on its line', '{@html a}'],
+		['a component on its line', '<Chart />'],
+		['a container directive', ':::box\na\n:::'],
+		['a container directive before a paragraph', ':::box\na\n:::\nb'],
+		['a thematic break under a paragraph', 'a\n---\nb'],
+		['a fence before a paragraph', '```\n```\nb'],
+		['a definition', '[r]: /u\n[a][r]'],
+		['a table', '| a |\n|---|\n| b |'],
+	])('%s: %j', (_, source) => {
+		expect(
+			container_mismatch('list_item', source.split('\n'), true, TIGHT)
+		).toBe('');
+		expect(fed_mismatch(item(source))).toBe('');
+	});
+
+	const kinds = (input: string): string[] =>
+		print_ast(parse_markdown_svelte(input).nodes, input)
+			.split('\n')
+			.map((line) => line.trim().split(' ')[0])
+			.filter((kind) => kind !== 'line_break' && kind !== 'text');
+
+	test.each([
+		[
+			'a container directive',
+			'- :::box\n  a\nb\n',
+			[
+				'root',
+				'list',
+				'list_item',
+				'directive_container',
+				'paragraph',
+				'paragraph',
+			],
+		],
+		[
+			'a svelte block',
+			'- {#if a}\n  b\nc\n',
+			[
+				'root',
+				'list',
+				'list_item',
+				'svelte_block',
+				'svelte_branch',
+				'paragraph',
+				'paragraph',
+			],
+		],
+		[
+			'a fence that closed',
+			'- ```\n  a\n  ```\nb\n',
+			['root', 'list', 'list_item', 'code_fence', 'paragraph'],
+		],
+		[
+			'a thematic break',
+			'- a\n  ---\nb\n',
+			['root', 'list', 'list_item', 'thematic_break', 'paragraph'],
+		],
+	])(
+		'a line that is not indented is outside %s in an item: %j',
+		(_, input, expected) => {
+			expect(kinds(input)).toEqual(expected);
+			expect(fed_mismatch(input)).toBe('');
+		}
+	);
+
+	test('a paragraph right under the item still takes a line that is not indented', () => {
+		expect(kinds('- a\nb\n')).toEqual([
+			'root',
+			'list',
+			'list_item',
+			'soft_break',
+		]);
+		expect(kinds('- - a\nb\n')).toEqual([
+			'root',
+			'list',
+			'list_item',
+			'list',
+			'list_item',
+			'soft_break',
+		]);
+	});
+
+	test('a marker under the content column is the next item', () => {
+		expect(kinds('- ```\n  a\n  ```\n- b\n')).toEqual([
+			'root',
+			'list',
+			'list_item',
+			'code_fence',
+			'list_item',
+		]);
+	});
+});

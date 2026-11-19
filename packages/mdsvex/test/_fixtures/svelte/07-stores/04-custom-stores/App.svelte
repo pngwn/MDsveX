@@ -1,5 +1,5 @@
 <script>
-	import { count } from './stores.js';
+import { count } from "./stores.js";
 </script>
 
 <h1>The count is {$count}</h1>

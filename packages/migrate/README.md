@@ -1,0 +1,371 @@
+# @mdsvex/migrate
+
+Migrate **CommonMark / GFM** markdown to **Penguin-Flavoured Markdown (PFM)**,
+and mdsvex 0.x layouts, highlight options, smart punctuation and plugin lists
+to mdsvex next.
+
+The source document is parsed with the [remark](https://github.com/remarkjs/remark)
+(unified) ecosystem into an `mdast` tree, then re-serialised under PFM's rules.
+
+## Command line
+
+```sh
+npx @mdsvex/migrate src/routes svelte.config.js
+```
+
+`mdsvex-migrate` rewrites files in place, so commit first. What it does with a
+path depends on what the path is:
+
+| Path                          | Migrated as                                                     |
+| ----------------------------- | --------------------------------------------------------------- |
+| a directory                   | every `.md` and `.svx` file in it, outside `node_modules` and dot folders |
+| `.js`, `.ts`, `.mjs`, `.cts`... | a config, with `migrate_config`                                 |
+| `.svelte`                     | a layout, with `check_template`, which only prints notes        |
+| any other file                | a document, with `migrate_document`                             |
+
+| Option                 |                                                                |
+| ---------------------- | -------------------------------------------------------------- |
+| `--smartypants`        | the documents were written for the 0.x default, `smartypants: true` |
+| `--smartypants=<json>` | a 0.x smartypants object, `'{"dashes":"inverted"}'`            |
+| `--math`               | the documents were written for remark-math                     |
+| `--check`              | write nothing, exit 1 when a file would change                 |
+
+Each note is printed as `path:line:column message`, at its line in the file
+before it was migrated. Migrate the config first: its notes say whether your
+documents need `--smartypants` or `--math`.
+
+A document with CRLF line endings is written with CRLF. `migrate_file(name,
+source, options)` does the same from code, choosing what to run by the file
+name.
+
+## Usage
+
+```ts
+import { migrate } from "@mdsvex/migrate";
+
+const pfm = migrate("Hello\n=====\n\nSome *emphasis* and **strength**.");
+// # Hello
+//
+// Some _emphasis_ and *strength*.
+```
+
+### Options
+
+```ts
+migrate(source, {
+	bullet: "-", // unordered list marker: "-" (default), "+" or "*"
+	smartypants: true, // the 0.x smartypants option the documents were written for
+	math: true, // the documents were written for remark-math
+});
+```
+
+`smartypants` is off unless you pass it. See [Smart punctuation](#smart-punctuation).
+
+`math` is off unless you pass it. See [Math](#math).
+
+### Notes
+
+`migrate_document` takes the same arguments and returns the new `code` with a
+list of `notes`, each with a `line`, a `column` and a `message`, for what a
+person should check: GitHub alerts that are now callouts, Obsidian callouts
+it left alone, and a frontmatter `template` key that blocks renaming
+`layout`. `migrate` returns the code alone.
+
+```ts
+const { code, notes } = migrate_document(source, { smartypants: true });
+```
+
+## What it changes
+
+| CommonMark / GFM                       | PFM output                                            |
+| -------------------------------------- | ----------------------------------------------------- |
+| Setext headings (`===` / `---`)        | ATX headings (`#`)                                    |
+| Indented code blocks                   | Fenced code blocks                                    |
+| `file=./a.js` on a fence with no code  | `src=./a.js` (remark-code-import)                     |
+| `*emph*` / `_emph_`                    | `_emph_` (emphasis is always `_`)                     |
+| `**strong**` / `__strong__`            | `*strong*` (strong is always `*`)                     |
+| Trailing-space hard breaks             | Backslash hard breaks (`\`)                           |
+| Lazy blockquote continuation           | Every line explicitly prefixed with `>`               |
+| Shortcut references (`[ref]`)          | Explicit collapsed references (`[ref][]`)             |
+| Reference definitions                  | Hoisted to the top so they precede every use          |
+| GFM tables, strikethrough, task lists  | Preserved                                             |
+| A bare url (`https://example.com`)     | An autolink (`<https://example.com>`)                 |
+| Inline code that holds backticks       | A span of one or two backticks, whichever it can hold |
+| GFM footnotes                          | PFM footnotes, each reference with its definition's label |
+| GitHub alerts (`> [!NOTE]`)            | Callouts (`:::note`), see [Alerts](#alerts)           |
+
+Superscript, subscript and the PFM table extensions have no CommonMark
+equivalent, so nothing maps onto them; raw HTML is passed through untouched.
+
+Text that only looked like markup stays text. An escaped or encoded `<`, `{`
+or `&` (`\<b>`, `&lt;b&gt;`, `&#123;`) is written with a backslash, so it does
+not become a tag, an expression or a character reference. Inline code that
+holds a run of one backtick and a run of two has no PFM span, and is written
+as a `<code>` element.
+
+## Svelte
+
+A 0.x document is markdown with Svelte in it, and CommonMark knows nothing of
+Svelte. `migrate` keeps all of it as written:
+
+- expressions, `{items[0].name}`, whose brackets, underscores and asterisks
+  are not markdown;
+- blocks and tags, `{#if a}`, `{:else}`, `{/each}`, `{@html b}`. One on a line
+  of its own stays a line of its own, with a blank line each side;
+- `<svelte:head>` and the other `svelte:` elements, which CommonMark reads as
+  links;
+- tags with attributes CommonMark does not read: `on:click|once={go}`,
+  `{...props}`, `--gap="1rem"`, an arrow function with a `>` in it, and
+  components such as `<Tabs.Panel>`;
+- `<script>` and `<style>`.
+
+A `{` that never closes is text, and is written `\{`.
+
+## Footnotes
+
+A footnote reference and its definition are written as PFM footnotes, which
+have the same form. Three things differ:
+
+- PFM matches labels exactly, where GFM ignores case, so every reference is
+  written with the label of its definition.
+- A PFM label has no whitespace, bracket or caret. One that does gets a `-`
+  in their place, in the reference and the definition alike.
+- The first block of a definition is written on the line of its label, and
+  every later line is indented by four spaces. A definition with no content
+  has no PFM form, so it stays literal text, as its references do.
+
+A `[^...]` that was no footnote in the source is escaped, since PFM reads
+every `[^label]` as a reference and fails the build for one with no
+definition. A second definition of a label, which PFM rejects, is escaped
+too.
+
+## Alerts
+
+A block quote that starts with `[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`,
+`[!WARNING]` or `[!CAUTION]`, in any case, is written as the container
+directive of that name, which `@mdsvex/plugin-callouts` renders. One level of
+`>` comes off its body, and text after the marker on its line is the title:
+
+```md
+> [!WARNING] Breaking change
+> The option is renamed.
+```
+
+```md
+:::warning[Breaking change]
+The option is renamed.
+:::
+```
+
+- An alert anywhere a block quote can be, in a list item or another block
+  quote, is rewritten in place. An alert inside an alert gets more colons, so
+  the inner one closes first.
+- A title with a link or an image stays as the first paragraph of the body,
+  since a directive label leaves those as text, and gets a note.
+- A marker with text right after it (`[!NOTE]text`) or that is not the first
+  line of the quote is not an alert, as on GitHub.
+- An Obsidian callout of another kind (`[!info]`, `[!todo]`), or one that
+  folds (`[!NOTE]-`, `[!NOTE]+`), stays a block quote with its marker as
+  written, and gets a note that says how to write it.
+
+The first alert of a document gets a note that says to install the plugin.
+
+## Math
+
+PFM writes inline math as a code span in dollars and display math as a `math`
+fence. Plain `$x$` and `$$x$$` are text there, so a dollar never needs
+escaping. Without the `math` option a dollar in your documents stays a dollar
+and the text between two of them is migrated as markdown.
+
+Pass `math: true` for a project that used `remark-math`. The document is then
+read with `remark-math`, so math is found exactly where your old build found
+it, and the LaTeX is copied as written, with no markdown escaping:
+
+| with remark-math                  | PFM output                               |
+| --------------------------------- | ---------------------------------------- |
+| `$e^{i\pi}$`                      | `` $`e^{i\pi}`$ ``                       |
+| `$$` on a line, LaTeX, `$$`       | a ```` ```math ```` fence                |
+| `$$x$$` alone in a paragraph      | a ```` ```math ```` fence                |
+| `$$x$$` in a sentence             | `` $`x`$ ``                              |
+| `\$5`                             | `$5`                                     |
+| `$a\|b$` in a table cell          | `` $`a\Vert b`$ `` (`\|` is a cell bar)  |
+
+`remark-math` reads `$5 and $10` as the math `5 and `. The migration leaves a
+pair like that as two prices: math whose first dollar has a digit after it,
+and whose closing dollar has a space before it or a digit after it, stays
+text, and what is between the two dollars is migrated as markdown. Math that
+starts with a digit and closes tightly, such as `$2x + 1$`, is still math.
+
+In either mode, a code span that already had a dollar on each side
+(`` \$`x`\$ ``) gets its first dollar escaped, so PFM does not read it as math.
+
+## Legacy layouts to templates
+
+mdsvex next replaces 0.x layouts with templates. Three helpers cover the move.
+
+### Config
+
+`migrate_config` rewrites the `layout` option in a JavaScript or TypeScript
+config file. It finds the options passed to anything imported from `mdsvex`,
+following top-level variables. A file that imports nothing from mdsvex has its
+default export treated as the options.
+
+```ts
+import { migrate_config } from "@mdsvex/migrate";
+
+const { code, notes } = migrate_config(source);
+```
+
+| mdsvex 0.x                              | mdsvex next                                     |
+| --------------------------------------- | ----------------------------------------------- |
+| `layout: './src/Layout.svelte'`         | `templates: { default: './src/Layout.svelte' }` |
+| `layout: { _: ..., blog: ... }`             | `templates: { default: ..., blog: ... }`            |
+| `layout: false`                         | removed                                         |
+| folder-name matching of named layouts   | `select_template(id, metadata)`, as a note      |
+| `layoutPropForwarding`                  | flagged, as templates always forward props      |
+| `extension: '.md'`                      | `extensions: ['.md']`                           |
+| `frontmatter: { marker, type }`         | flagged, the fences are always `---`            |
+
+0.x applied a named layout to any document inside a folder with the same name.
+Templates aren't matched by folder, so when there are named layouts the notes
+include a `select_template` to paste in:
+
+```ts
+select_template: (id) => (id.includes('/blog/') ? 'blog' : undefined),
+```
+
+### Highlight options
+
+`migrate_config` also rewrites the 0.x `highlight` option. mdsvex next
+highlights with twinkleplop instead of Prism, and escapes whatever a
+highlighter returns, so a few things go away.
+
+| mdsvex 0.x                              | mdsvex next                                     |
+| --------------------------------------- | ----------------------------------------------- |
+| `highlight: false`                      | kept                                            |
+| `highlight: { alias: { x: 'y' } }`      | `highlight: { languages: { x: 'y' } }`          |
+| `highlight: { optimise }`               | removed                                         |
+| `highlight: { highlighter }`            | a `// TODO(mdsvex-migrate)` comment and a note  |
+| `escapeSvelte` imported from `mdsvex`   | flagged                                         |
+
+A `highlighter` can't be rewritten safely. In next, `highlight` takes the
+function itself, `(code, { lang, meta, inline, filename }) => html`. It has to
+be synchronous and return plain HTML, with no `escapeSvelte` and no `{@html}`.
+The comment links to the
+[migration guide](https://mdsvex.com/docs#syntax-highlighting-in-0x).
+
+An alias to a Prism language that twinkleplop doesn't have, such as `markup`,
+gets a note too.
+
+### Smart punctuation
+
+mdsvex 0.x ran smartypants over every document unless `smartypants` was
+`false`. mdsvex next has `smart_punctuation`, which is off by default.
+`migrate_config` turns it on for a config that relied on the old default, and
+maps the old option onto the new one.
+
+| mdsvex 0.x                              | mdsvex next                                     |
+| --------------------------------------- | ----------------------------------------------- |
+| no `smartypants` option                 | `smart_punctuation: true` is added              |
+| `smartypants: true`                     | `smart_punctuation: true`                       |
+| `smartypants: false`                    | removed                                         |
+| `smartypants: { quotes, ellipses }`     | `smart_punctuation: { quotes, ellipses }`       |
+| `dashes: 'oldschool'`                   | `dashes: true`                                  |
+| `dashes: 'inverted'`                    | `dashes: true`, with a note                     |
+| `backticks`                             | removed, with a note unless it was `false`      |
+
+A config that already has `smart_punctuation` is left alone.
+
+Two things changed meaning, and both are in the documents rather than the
+config. With the 0.x default, `--` was an em dash and `---` was left alone.
+Now `--` is an en dash and `---` is the em dash. And 0.x curled backtick
+quotes, <code>&#96;&#96;like this''</code>, which next does not read as
+quotes. `migrate` rewrites both when it is given the old option, so the pages
+render what they did:
+
+```ts
+migrate(source, { smartypants: true }); // the 0.x default
+migrate(source, { smartypants: { dashes: "inverted", backticks: "all" } });
+```
+
+| 0.x `smartypants`             | in text                                                        |
+| ----------------------------- | -------------------------------------------------------------- |
+| `true`, or `dashes: true`     | `--` becomes `---`, and `---` becomes `\---` to stay literal   |
+| `dashes: 'inverted'`          | `--` and `---` swap                                            |
+| `dashes: 'oldschool'`, `false` | dashes are left as they are                                    |
+| `backticks: true`             | <code>&#96;&#96;a''</code> becomes `"a"`                       |
+| `backticks: 'all'`            | a lone backtick becomes `'` as well                            |
+| `quotes: false`               | backtick quotes are written as curly quotes, nothing else would curl them |
+
+Only text changes. Code, urls, titles, alt text and raw HTML are left as they
+are. The notes from `migrate_config` say which of these apply to a config.
+
+### Remark and rehype plugins
+
+mdsvex next has its own parser and runs no remark or rehype plugins.
+`migrate_config` leaves `remarkPlugins` and `rehypePlugins` where they are,
+under a `// TODO(mdsvex-migrate)` comment, and adds a note for each plugin
+that says what replaces it: core syntax, an option, a first-party plugin, a
+component, or nothing yet. It knows a plugin by the module it is imported or
+required from.
+
+| mdsvex 0.x                              | mdsvex next                                     |
+| --------------------------------------- | ----------------------------------------------- |
+| `rehype-slug`, `remark-slug`            | `heading_ids: true` is added, with a note       |
+| `remark-unwrap-images`                  | `unwrap_images: true` is added, with a note     |
+| a plugin with options, `[slug, { ... }]` | a note, the option is yours to set              |
+| any other plugin the docs list          | a note with its replacement                     |
+| a plugin the docs do not list           | a note that says so                             |
+
+The list is the one in the docs, under
+[coming from remark and rehype plugins](https://mdsvex.com/docs#coming-from-remark-and-rehype-plugins).
+
+mdsvex 0.x also put `rel="nofollow"` on every link to another site, with no
+option to turn it off. mdsvex next writes links as they are. A 0.x config gets
+a note that says how to keep it, with `@mdsvex/plugin-external-links`.
+
+### Documents
+
+`migrate_frontmatter` renames a document's frontmatter `layout` key to
+`template`. `layout: false` becomes `template: false`, and `layout: _` becomes
+`template: default`. `migrate` does the same while converting the markdown, and
+otherwise keeps frontmatter as it is.
+
+```ts
+import { migrate_frontmatter } from "@mdsvex/migrate";
+
+const { code, notes } = migrate_frontmatter(source);
+```
+
+If the frontmatter already has a `template` key, nothing is renamed and a note
+says so.
+
+### Template components
+
+`check_template` flags what a layout component needs changed before it works as
+a template. It rewrites nothing; `npx sv migrate svelte-5` migrates the
+component as a whole.
+
+```ts
+import { check_template } from "@mdsvex/migrate";
+
+const notes = check_template(source);
+```
+
+- `<slot />` becomes `{@render children()}`.
+- `$$props`, `$$restProps` and `{...$$props}` become `$props()`.
+
+### Notes
+
+Every note has a `kind`, a `message`, and the 1 based `line` and `column` it
+refers to. The kinds are `select_template`, `layout_prop_forwarding`, `slot`,
+`legacy_props`, `template_key`, `highlighter`, `highlight_language`,
+`escape_svelte`, `smart_punctuation`, `plugin`, `external_links`, and `manual`
+for anything that couldn't be rewritten safely.
+
+## Notes
+
+- Reference **definitions are hoisted** to the top of the document, because PFM
+  forbids forward references — a definition must appear before its first use.
+- Migrated output is round-trip validated against [`@mdsvex/parse`](../parse) in
+  the test suite to guarantee it is valid PFM.

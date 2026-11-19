@@ -1,0 +1,12 @@
+root
+  paragraph
+    strong_emphasis
+      text "Gomphocarpus ("
+      emphasis
+        text "Gomphocarpus physocarpus"
+      text ", syn."
+      soft_break
+      emphasis
+        text "Asclepias physocarpa"
+      text ")"
+  line_break

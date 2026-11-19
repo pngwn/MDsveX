@@ -1,0 +1,11 @@
+root
+  list ordered=true start=1 tight=true
+    list_item
+      text "foo"
+    list_item
+      text "bar"
+  line_break
+  list ordered=true start=3 tight=true
+    list_item
+      text "baz"
+  line_break

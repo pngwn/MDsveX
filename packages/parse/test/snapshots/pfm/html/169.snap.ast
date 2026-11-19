@@ -1,0 +1,6 @@
+root
+  html tag="pre" language="haskell"
+  line_break
+  paragraph
+    text "okay"
+  line_break

@@ -1,0 +1,2 @@
+root
+  code_fence info=" foo\\+bar" "foo"

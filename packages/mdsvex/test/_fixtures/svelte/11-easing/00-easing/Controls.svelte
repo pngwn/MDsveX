@@ -1,17 +1,17 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
+import { createEventDispatcher } from "svelte";
 
-	export let current_ease;
-	export let current_type;
-	export let eases;
-	export let types;
-	export let duration;
-	export let playing;
-	export let width;
+export let current_ease;
+export let current_type;
+export let eases;
+export let types;
+export let duration;
+export let playing;
+export let width;
 
-	const dispatch = createEventDispatcher();
+const dispatch = createEventDispatcher();
 
-	$: mobile = width && width < 600;
+$: mobile = width && width < 600;
 </script>
 
 <style>

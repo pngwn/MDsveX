@@ -1,37 +1,19 @@
 <script>
-	import { page } from '$app/stores';
+import { page } from "$app/state";
 </script>
 
-<style>
-	h1, p {
-		margin: 0 auto;
-	}
-
-	h1 {
-		font-size: 2.8em;
-		font-weight: 700;
-		margin: 0 0 0.5em 0;
-	}
-
-	p {
-		margin: 1em auto;
-	}
-
-	@media (min-width: 480px) {
-		h1 {
-			font-size: 4em;
-		}
-	}
-</style>
-
 <svelte:head>
-	<title>{$page.status}</title>
+	<title>{page.status} · mdsvex</title>
 </svelte:head>
 
-<h1>{status}</h1>
+<div class="prose">
+	<h1>{page.status === 404 ? "Page not found" : "Something went wrong"}</h1>
+	<p>Error {page.status}{page.status !== 404 && page.error?.message ? ` · ${page.error.message}` : ""}</p>
+	<p><a href="/docs">Documentation</a> or <a href="/">Home</a>.</p>
+</div>
 
-{#if $page.error.message}
-	<p class="error">{status}: {$page.error.message}</p>
-{:else}
-	<p class="error">Encountered a {$page.status} error</p>
-{/if}
+<style>
+	.prose {
+		padding-top: clamp(2rem, 6vw, 5rem);
+	}
+</style>

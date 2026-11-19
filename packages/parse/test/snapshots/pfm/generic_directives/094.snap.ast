@@ -1,0 +1,8 @@
+root
+  block_quote
+    paragraph
+      text "quoted "
+      directive_inline name="d" args.k="v"
+        text "directive"
+      text " inline"
+  line_break

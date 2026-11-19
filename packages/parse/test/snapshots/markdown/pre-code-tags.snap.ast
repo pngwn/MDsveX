@@ -1,0 +1,13 @@
+root
+  html tag="pre"
+  line_break
+  line_break
+  paragraph
+    text "blabla"
+  line_break
+  line_break
+  html tag="pre" nhaca="zulu"
+  line_break
+  line_break
+  html tag="pre"
+  line_break

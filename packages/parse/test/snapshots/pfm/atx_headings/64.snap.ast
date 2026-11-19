@@ -1,0 +1,8 @@
+root
+  paragraph
+    text "#5 bolt"
+  line_break
+  line_break
+  paragraph
+    text "#hashtag"
+  line_break

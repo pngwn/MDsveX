@@ -1,0 +1,4 @@
+root
+  paragraph
+    text "<https://foo.bar/baz bim>"
+  line_break

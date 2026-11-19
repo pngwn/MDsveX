@@ -1,0 +1,5 @@
+root
+  paragraph
+    image src="a=1"
+      text "alt"
+  line_break

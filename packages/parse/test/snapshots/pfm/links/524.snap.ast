@@ -1,0 +1,6 @@
+root
+  paragraph
+    text "["
+    text "foo "
+    text "<bar attr=\"](baz)\">"
+  line_break

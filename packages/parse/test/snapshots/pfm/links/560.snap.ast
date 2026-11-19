@@ -1,0 +1,10 @@
+root
+  definition label="foo" href="/url"
+  line_break
+  paragraph
+    text "["
+    text "["
+    text "bar "
+    link href="/url"
+      text "foo"
+  line_break

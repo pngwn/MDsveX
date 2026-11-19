@@ -1,0 +1,8 @@
+root [0,9] value=[0,9]
+  paragraph [0,3]
+    text [0,3] value=[0,3] "one"
+  line_break [3,4]
+  line_break [4,5]
+  paragraph [5,8]
+    text [5,8] value=[5,8] "two"
+  line_break [8,9]

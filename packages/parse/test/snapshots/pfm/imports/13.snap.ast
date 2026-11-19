@@ -1,0 +1,6 @@
+root
+  import_statement "import {\n  onMount,\n  onDestroy,\n} from \"svelte\";"
+  line_break
+  paragraph
+    text "Some content."
+  line_break

@@ -1,0 +1,53 @@
+root [0,335] value=[0,335]
+  definition [0,24] value=[1,4] label="ref" href="https://x.com" title="T"
+  line_break [27,28]
+  paragraph [28,62]
+    text [28,32] value=[28,32] "see "
+    link [32,40] value=[33,34] href="https://x.com" title="T"
+      text [33,34] value=[33,34] "a"
+    text [40,42] value=[40,42] ", "
+    link [42,49] value=[43,46] href="https://x.com" title="T"
+      text [43,46] value=[43,46] "ref"
+    text [49,54] value=[49,54] " and "
+    text [54,56] value=[54,56] "[b"
+    text [56,57] value=[56,57] "]"
+    text [57,61] value=[57,61] "[dup"
+    text [61,62] value=[61,62] "]"
+  line_break [62,63]
+  line_break [63,64]
+  definition [67,98] value=[68,69] label="b" href="url with spaces" title="single"
+  definition [99,112] value=[100,103] label="dup" href="/first"
+  definition [113,136] value=[114,117] label="DUP" href="/second" title="parens"
+  definition [137,181] value=[138,143] label="multi" href="/next-line" title="title on\ntwo lines"
+  definition [182,209] value=[183,192] label="esc\\]aped" href="/u)v" title="t \" u"
+  definition [210,227] value=[211,215] label="bare" href="/no-title"
+  line_break [231,232]
+  paragraph [232,273]
+    link [232,238] value=[233,234] href="url with spaces" title="single"
+      text [233,234] value=[233,234] "x"
+    text [238,239] value=[238,239] " "
+    link [239,247] value=[240,241] href="/first"
+      text [240,241] value=[240,241] "y"
+    text [247,248] value=[247,248] " "
+    link [248,258] value=[249,250] href="/next-line" title="title on\ntwo lines"
+      text [249,250] value=[249,250] "z"
+    text [258,259] value=[258,259] " "
+    link [259,273] value=[260,261] href="/u)v" title="t \" u"
+      text [260,261] value=[260,261] "w"
+  line_break [273,274]
+  line_break [274,275]
+  block_quote [275,297]
+    definition [277,289] value=[278,284] label="quoted" href="/q"
+    paragraph [292,297]
+      text [292,297] value=[292,297] "after"
+  line_break [297,298]
+  line_break [298,299]
+  list [299,334] ordered=false start=0 tight=false
+    list_item [299,334]
+      definition [301,313] value=[302,308] label="listed" href="/l"
+      paragraph [317,334]
+        text [317,321] value=[317,321] "item"
+        soft_break [321,322]
+        text [322,327] value=[322,327] "[last"
+        text [327,334] value=[327,334] "]: /end"
+  line_break [334,335]

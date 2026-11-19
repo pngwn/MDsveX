@@ -1,0 +1,27 @@
+name = "mdsvex"
+grammar = "mdsvex"
+path_suffixes = ["svx", "pfm"]
+block_comment = ["<!-- ", " -->"]
+completion_query_characters = ["-"]
+autoclose_before = ";:.,=}])>"
+brackets = [
+    { start = "{", end = "}", close = true, newline = true },
+    { start = "[", end = "]", close = true, newline = true },
+    { start = "(", end = ")", close = true, newline = true },
+    { start = "<", end = ">", close = false, newline = true, not_in = ["comment", "string"] },
+    { start = "\"", end = "\"", close = false, newline = false, not_in = ["string"] },
+    { start = "'", end = "'", close = false, newline = false, not_in = ["string"] },
+    { start = "`", end = "`", close = false, newline = false },
+    { start = "*", end = "*", close = false, newline = false, surround = true },
+    { start = "_", end = "_", close = false, newline = false, surround = true },
+    { start = "~", end = "~", close = false, newline = false, surround = true },
+]
+rewrap_prefixes = [
+    "[-*+]\\s+",
+    "\\d+[.)]\\s+",
+    ">\\s*",
+    "[-*+]\\s+\\[[\\sx]\\]\\s+",
+]
+unordered_list = ["- ", "* ", "+ "]
+ordered_list = [{ pattern = "(\\d+)\\. ", format = "{1}. " }]
+task_list = { prefixes = ["- [ ] ", "- [x] ", "- [X] "], continuation = "- [ ] " }

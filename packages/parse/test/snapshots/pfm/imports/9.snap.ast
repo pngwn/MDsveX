@@ -1,0 +1,2 @@
+root
+  import_statement "import Component from \"./Component.svelte\""

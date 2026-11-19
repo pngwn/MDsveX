@@ -1,0 +1,15 @@
+root
+  paragraph
+    text "Foo "
+    strong_emphasis
+      text "bar"
+    soft_break
+    text "========="
+  line_break
+  line_break
+  paragraph
+    text "Foo "
+    strong_emphasis
+      text "bar"
+  line_break
+  thematic_break

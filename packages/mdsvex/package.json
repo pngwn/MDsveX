@@ -1,12 +1,32 @@
 {
 	"name": "mdsvex",
-	"version": "0.12.8",
+	"version": "1.0.0-next.6",
 	"description": "Markdown preprocessor for Svelte",
 	"type": "module",
 	"exports": {
 		".": {
 			"types": "./dist/main.d.ts",
 			"default": "./dist/main.js"
+		},
+		"./compile": {
+			"types": "./dist/compile.d.ts",
+			"default": "./dist/compile.js"
+		},
+		"./highlight": {
+			"types": "./dist/highlight.d.ts",
+			"default": "./dist/highlight.js"
+		},
+		"./math": {
+			"types": "./dist/math.d.ts",
+			"default": "./dist/math.js"
+		},
+		"./host": {
+			"types": "./dist/host.d.ts",
+			"default": "./dist/host.js"
+		},
+		"./highlight/languages": {
+			"types": "./dist/highlight_languages.d.ts",
+			"default": "./dist/highlight_languages.js"
 		},
 		"./package.json": "./package.json",
 		"./globals": {
@@ -18,10 +38,14 @@
 	"types": "./dist/main.d.ts",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/pngwn/MDsveX.git"
+		"url": "git+https://github.com/pngwn/MDsveX.git",
+		"directory": "packages/mdsvex"
 	},
 	"scripts": {
-		"build": "rollup -c",
+		"build": "run-s build:tsc build:vite build:copy-dts",
+		"build:tsc": "tsc",
+		"build:vite": "vite build --config vite.config.build.ts",
+		"build:copy-dts": "shx cp tsc/*.d.ts dist/",
 		"test": "vitest . **/*.spec.ts"
 	},
 	"files": [
@@ -37,44 +61,72 @@
 	],
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
-	"devDependencies": {
-		"@starptech/prettyhtml-hast-to-html": "^0.10.0",
-		"@types/acorn": "^4.0.5",
-		"@types/escape-html": "^1.0.0",
-		"@types/estree": "^0.0.45",
-		"@types/hast": "^2.3.1",
-		"@types/js-yaml": "^3.12.5",
-		"escape-html": "^1.0.3",
-		"front-matter": "^4.0.0",
-		"js-yaml": "^3.13.1",
-		"node-fetch": "^2.6.0",
-		"rehype-slug": "^3.0.0",
-		"rehype-toc": "^3.0.1",
-		"remark-autolink-headings": "^6.0.0",
-		"remark-containers": "^1.1.1",
-		"remark-external-links": "^6.0.0",
-		"remark-frontmatter": "^2.0.0",
-		"remark-parse": "^8.0.2",
-		"remark-rehype": "^7.0.0",
-		"remark-slug": "^6.0.0",
-		"retext": "^7.0.1",
-		"retext-smartypants": "^4.0.0",
-		"rollup-plugin-svelte": "^5.1.1",
-		"shiki": "^0.9.3",
-		"svelte": "^5.0.0",
-		"toml": "^3.0.0",
-		"unified": "^9.1.0",
-		"vfile": "^4.2.0"
+	"dependencies": {
+		"@ampproject/remapping": "^2.3.0",
+		"@mdsvex/parse": "workspace:*",
+		"@mdsvex/render": "workspace:*",
+		"@twinkleplop/annotation": "^0.1.7",
+		"@twinkleplop/bash": "^0.1.7",
+		"@twinkleplop/c": "^0.2.1",
+		"@twinkleplop/core": "^0.3.1",
+		"@twinkleplop/cpp": "^0.2.1",
+		"@twinkleplop/css": "^0.1.7",
+		"@twinkleplop/diff": "^0.1.7",
+		"@twinkleplop/dockerfile": "^0.2.1",
+		"@twinkleplop/dotenv": "^0.1.7",
+		"@twinkleplop/go": "^0.1.7",
+		"@twinkleplop/graphql": "^0.2.1",
+		"@twinkleplop/html": "^0.1.7",
+		"@twinkleplop/http": "^0.1.7",
+		"@twinkleplop/ini": "^0.1.7",
+		"@twinkleplop/javascript": "^0.1.7",
+		"@twinkleplop/json": "^0.1.7",
+		"@twinkleplop/jsonc": "^0.1.4",
+		"@twinkleplop/markdown": "^0.2.1",
+		"@twinkleplop/markdown-core": "^0.2.1",
+		"@twinkleplop/powershell": "^0.2.1",
+		"@twinkleplop/python": "^0.1.7",
+		"@twinkleplop/rust": "^0.1.7",
+		"@twinkleplop/shellsession": "^0.1.7",
+		"@twinkleplop/sql": "^0.1.7",
+		"@twinkleplop/svelte": "^0.1.7",
+		"@twinkleplop/toml": "^0.1.7",
+		"@twinkleplop/tsx": "^0.1.7",
+		"@twinkleplop/typescript": "^0.1.7",
+		"@twinkleplop/yaml": "^0.1.7",
+		"es-module-lexer": "^1.6.0",
+		"temml": "^0.14.0"
 	},
 	"peerDependencies": {
-		"svelte": "^3.56.0 || ^4.0.0 || ^5.0.0-next.120"
+		"vite": ">=6.0.0",
+		"@twinkleplop/twoslash": "^0.3.1",
+		"@twinkleplop/twoslash-svelte": "^0.3.1",
+		"katex": ">=0.16.0"
 	},
-	"dependencies": {
-		"@types/mdast": "^4.0.4",
-		"@types/unist": "^2.0.3",
-		"prism-svelte": "^0.4.7",
-		"prismjs": "^1.17.1",
-		"unist-util-visit": "^2.0.1",
-		"vfile-message": "^2.0.4"
+	"peerDependenciesMeta": {
+		"vite": {
+			"optional": true
+		},
+		"@twinkleplop/twoslash": {
+			"optional": true
+		},
+		"@twinkleplop/twoslash-svelte": {
+			"optional": true
+		},
+		"katex": {
+			"optional": true
+		}
+	},
+	"devDependencies": {
+		"@sveltejs/vite-plugin-svelte": "^6.2.4",
+		"@twinkleplop/twoslash": "^0.3.1",
+		"@twinkleplop/twoslash-svelte": "^0.3.1",
+		"github-slugger": "^2.0.0",
+		"katex": "^0.19.0",
+		"npm-run-all2": "^7.0.2",
+		"shx": "^0.3.4",
+		"svelte": "^5.55.0",
+		"typescript": "^6.0.2",
+		"vite": "^7.3.1"
 	}
 }

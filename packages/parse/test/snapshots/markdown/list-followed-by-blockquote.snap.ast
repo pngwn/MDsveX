@@ -1,0 +1,23 @@
+root
+  heading depth=1 "some title"
+    text "some title"
+  line_break
+  line_break
+  list ordered=true start=1 tight=true
+    list_item
+      text "list item 1"
+    list_item
+      text "list item 2"
+  line_break
+  line_break
+  block_quote
+    paragraph
+      text "some text in a blockquote"
+  line_break
+  line_break
+  list ordered=false start=0 tight=true
+    list_item
+      text "another list item 1"
+    list_item
+      text "another list item 2"
+  line_break

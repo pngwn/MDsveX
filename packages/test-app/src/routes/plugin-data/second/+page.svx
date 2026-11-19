@@ -1,0 +1,10 @@
+---
+title: The second post
+template: post
+---
+
+A shorter post.
+
+## Only heading
+
+With one heading.

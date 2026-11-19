@@ -1,0 +1,7 @@
+root
+  paragraph
+    text "*"
+    text "foo bar"
+    soft_break
+    text "*"
+  line_break

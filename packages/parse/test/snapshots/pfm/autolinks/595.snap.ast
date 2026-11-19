@@ -1,0 +1,5 @@
+root
+  paragraph
+    link href="https://foo.bar.baz/test?q=hello&id=22&boolean"
+      text "https://foo.bar.baz/test?q=hello&id=22&boolean"
+  line_break

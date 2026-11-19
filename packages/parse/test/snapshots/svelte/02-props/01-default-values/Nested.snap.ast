@@ -1,0 +1,7 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="p"
+    text "The answer is "
+    mustache "answer"

@@ -1,0 +1,556 @@
+import type { Emitter, IdSource } from './opcodes.js';
+import {
+	NodeBuffer,
+	NodeField,
+	NodeKind,
+	make_meta,
+	merge_meta,
+} from './utils.js';
+import type { HeadingIds } from './heading_ids.js';
+import type { PluginDispatcher } from './plugin_dispatch.js';
+
+const NONE = 0xffffffff;
+
+/** open_wants of a builder without plugins, never written */
+const NO_WANTS = new Int32Array(64);
+
+/**
+ * consumes opcodes from PFMParser and builds a NodeBuffer.
+ * this is the backward-compatibility layer: the opcode stream is the
+ * primary output, but existing tests and consumers expect a NodeBuffer.
+ *
+ * ids are dense so each id is its own buffer index, when a plugin or a repair
+ * pushes a node the parser has no id for, the parser skips that slot and ids
+ * stay indices, with another source of opcodes the next id misses its slot
+ * and an id map takes over for the rest of the document
+ */
+export class TreeBuilder implements Emitter {
+	private nodes: NodeBuffer;
+	/** null while ids equal buffer indices */
+	private id_to_index: number[] | null = null;
+	/**
+	 * buffer index and kind at open of each node a revoke rewrote, read only
+	 * for a close or text that does not pass the kind
+	 */
+	private revoked: number[] | null = null;
+	/** kind at open by index, built from revoked on the first read */
+	private revoked_map: Map<number, number> | null = null;
+	/** entries of revoked already copied into revoked_map */
+	private revoked_mapped = 0;
+	/** optional plugin dispatcher. null when no plugins registered. */
+	private dispatcher: PluginDispatcher | null;
+	/** by kind, the lowest parent whose new child skips the dispatcher, see PluginDispatcher.open_wants */
+	private wants: Int32Array;
+	/** closes of nodes from this index on skip the dispatcher, 0 without one */
+	private plain_from = 0;
+	/** the parser emitting here, null for another source of opcodes */
+	private ids: IdSource | null = null;
+	/** makes the id of each heading as it closes, null for none */
+	private headings: HeadingIds | null = null;
+
+	constructor(capacity: number, dispatcher?: PluginDispatcher) {
+		this.nodes = new NodeBuffer(capacity);
+		this.dispatcher = dispatcher ?? null;
+		this.wants = dispatcher !== undefined ? dispatcher.open_wants : NO_WANTS;
+	}
+
+	/**
+	 * reset the builder for another complete document
+	 *
+	 * a plugin dispatcher is reset too, its text source still reads the last
+	 * document until a batch caller points it at the new one with set_source
+	 */
+	reset(): void {
+		this.nodes.reset();
+		this.nodes.push(NodeKind.root, 0);
+		this.id_to_index = null;
+		const dispatcher = this.dispatcher;
+		if (dispatcher !== null) {
+			dispatcher.reset();
+			// a link or a scope had raised the mask
+			this.refresh(dispatcher);
+			// filled from the kind log of the dispatcher, revoked stays null
+			this.revoked_map = null;
+			this.revoked_mapped = 0;
+		} else if (this.revoked !== null) {
+			this.revoked = null;
+			this.revoked_map = null;
+			this.revoked_mapped = 0;
+		}
+	}
+
+	/** a call into the dispatcher can change the opens it wants and the closes that need it */
+	private refresh(dispatcher: PluginDispatcher): void {
+		this.wants = dispatcher.open_wants;
+		this.plain_from = dispatcher.plain_from();
+	}
+
+	/**
+	 * each heading gets its id at its close, after the close callbacks of
+	 * plugins, null for none, the caller starts it for each document
+	 */
+	set_headings(headings: HeadingIds | null): void {
+		this.headings = headings;
+		if (this.dispatcher !== null) this.dispatcher.set_headings(headings);
+	}
+
+	/** what set_headings gave, null for none */
+	get_headings(): HeadingIds | null {
+		return this.headings;
+	}
+
+	follow(ids: IdSource): void {
+		this.ids = ids;
+	}
+
+	/**
+	 * nodes were pushed that the parser has no id for, it skips their slots so
+	 * the next id is the next slot, once the map is in use ids need not match
+	 */
+	private pushed(): void {
+		const ids = this.ids;
+		if (ids !== null && this.id_to_index === null) {
+			ids.skip_ids(this, this.nodes._size);
+		}
+	}
+
+	private index_of(id: number): number | undefined {
+		const map = this.id_to_index;
+		return map === null ? id : map[id];
+	}
+
+	private start_id_map(): number[] {
+		const size = this.nodes._size;
+		const map: number[] = [];
+		for (let i = 0; i < size; i++) map.push(i);
+		this.id_to_index = map;
+		return map;
+	}
+
+	/** for callers that do not pass the kind, a revoke may have rewritten it */
+	private opened_kind(idx: number): number {
+		// plugins rewrite kinds too, the dispatcher logs every rewrite
+		const revoked =
+			this.dispatcher !== null ? this.dispatcher.kind_log() : this.revoked;
+		if (revoked !== null) {
+			let map = this.revoked_map;
+			if (map === null) map = this.revoked_map = new Map();
+			// the first revoke of an index holds the kind at open
+			for (let i = this.revoked_mapped; i < revoked.length; i += 2) {
+				if (!map.has(revoked[i])) map.set(revoked[i], revoked[i + 1]);
+			}
+			this.revoked_mapped = revoked.length;
+			const kind = map.get(idx);
+			if (kind !== undefined) return kind;
+		}
+		return this.nodes._n[idx * NodeField.stride] & 0xff;
+	}
+
+	open(
+		id: number,
+		kind: NodeKind,
+		start: number,
+		parent: number,
+		extra: number,
+		pending: boolean
+	): void {
+		const nodes = this.nodes;
+		// parents are opened ids below this one so they are indices too, id 0
+		// never matches as the buffer makes the root, the rare rest stays out of line
+		if (
+			this.id_to_index === null &&
+			id === nodes._size &&
+			parent >= this.wants[kind]
+		) {
+			// >>> 0 turns the -1 of no parent into NONE
+			nodes.push_node(kind, start, parent >>> 0, extra, pending);
+			return;
+		}
+		if (id !== 0) this.open_slow(id, kind, start, parent, extra, pending);
+	}
+
+	private open_slow(
+		id: number,
+		kind: NodeKind,
+		start: number,
+		parent: number,
+		extra: number,
+		pending: boolean
+	): void {
+		const nodes = this.nodes;
+		const dispatcher = this.dispatcher;
+		if (
+			dispatcher !== null &&
+			this.id_to_index === null &&
+			id === nodes._size
+		) {
+			let parent_idx = parent === -1 ? NONE : parent;
+			// a handled node opens under its source parent, the dispatcher moves
+			// it into an open wrapper after its handlers ran
+			if (dispatcher.has_handlers(kind)) {
+				const idx = nodes.push_node(kind, start, parent_idx, extra, pending);
+				dispatcher.dispatch_open(idx, kind, nodes);
+				this.refresh(dispatcher);
+				if (nodes._size !== idx + 1) this.pushed();
+				return;
+			}
+			// any other child of a wrapped parent goes to its innermost open wrapper
+			if (parent_idx !== NONE) parent_idx = dispatcher.resolve(parent_idx);
+			nodes.push_node(kind, start, parent_idx, extra, pending);
+			return;
+		}
+		this.open_mapped(id, kind, start, parent, extra, pending);
+	}
+
+	/** an open once a plugin pushed nodes without ids or ids skipped a slot */
+	private open_mapped(
+		id: number,
+		kind: NodeKind,
+		start: number,
+		parent: number,
+		extra: number,
+		pending: boolean
+	): void {
+		const nodes = this.nodes;
+		const dispatcher = this.dispatcher;
+		const map = this.id_to_index ?? this.start_id_map();
+
+		let parent_idx = parent === -1 ? NONE : (map[parent] ?? NONE);
+
+		// see open_slow
+		if (dispatcher !== null) {
+			if (dispatcher.has_handlers(kind)) {
+				const idx = nodes.push_node(kind, start, parent_idx, extra, pending);
+				map[id] = idx;
+				dispatcher.dispatch_open(idx, kind, nodes);
+				this.refresh(dispatcher);
+				return;
+			}
+			if (parent_idx !== NONE) parent_idx = dispatcher.resolve(parent_idx);
+		}
+		map[id] = nodes.push_node(kind, start, parent_idx, extra, pending);
+	}
+
+	close(id: number, end: number, kind?: NodeKind): void {
+		const idx = this.index_of(id);
+		if (idx === undefined) return;
+		const b = idx * NodeField.stride;
+		const n = this.nodes._n;
+		n[b + NodeField.end] = end;
+		// the rare closes go to a call so close inlines cheaply at every emit site
+		if (
+			idx >= this.plain_from &&
+			kind !== undefined &&
+			kind !== NodeKind.list &&
+			kind !== NodeKind.heading &&
+			(kind !== NodeKind.paragraph || n[b + NodeField.pending] === 0)
+		) {
+			n[b + NodeField.pending] = 0;
+			return;
+		}
+		this.close_rest(idx, b, kind);
+	}
+
+	/** a delimiter the parser gave up on, closed but not final, its revoke follows */
+	close_pending(id: number, end: number, kind: NodeKind): void {
+		const idx = this.index_of(id);
+		if (idx === undefined) return;
+		const b = idx * NodeField.stride;
+		this.nodes._n[b + NodeField.end] = end;
+		this.close_rest(idx, b, kind, true);
+	}
+
+	private close_rest(
+		idx: number,
+		b: number,
+		kind: NodeKind | undefined,
+		gave_up = false
+	): void {
+		const nodes = this.nodes;
+		// fire close callbacks before committing, a quiet dispatcher has none,
+		// and a busy one may have nothing for this node
+		const dispatcher = this.dispatcher;
+		if (
+			idx < this.plain_from &&
+			dispatcher !== null &&
+			!dispatcher.plain_close(idx)
+		) {
+			if (kind === undefined) kind = this.opened_kind(idx);
+			const size = nodes._size;
+			// the parser settles a pending paragraph with a commit or a revoke,
+			// any other close it did not give up on is final
+			dispatcher.dispatch_close(
+				idx,
+				nodes,
+				gave_up || kind === NodeKind.paragraph
+			);
+			// a callback may have made the first link, the close dropped the last
+			this.refresh(dispatcher);
+			if (nodes._size !== size) this.pushed();
+		}
+
+		// pending paragraphs inside list_items are tight-list speculation
+		// wrappers, they stay pending after close until the list closes
+		// and the parser either revokes (tight) or commits (loose) them.
+		if (kind === undefined) kind = this.opened_kind(idx);
+		const n = nodes._n;
+		if (kind === NodeKind.heading) {
+			n[b + NodeField.pending] = 0;
+			if (this.headings !== null) this.headings.close(nodes, idx);
+			return;
+		}
+		if (
+			kind === NodeKind.paragraph &&
+			n[b + NodeField.pending] === 1 &&
+			(n[n[b + NodeField.parent] * NodeField.stride] & 0xff) ===
+				NodeKind.list_item
+		) {
+			return;
+		}
+		n[b + NodeField.pending] = 0;
+		if (kind === NodeKind.list) this.unwrap_tight_list(idx);
+	}
+
+	/** a no op when finalize_list_pending_paras already revoked the paragraphs */
+	private unwrap_tight_list(idx: number): void {
+		const nodes = this.nodes;
+		const meta = nodes.metadata_at(idx);
+		if (!meta || !meta.tight) return;
+		// next is read before the unwrap, so children it splices in are skipped
+		let item = nodes.first_child_at(idx);
+		let more_items = item !== NONE && nodes.parent_at(item) === idx;
+		while (more_items) {
+			const next_item = nodes.next_at(item);
+			more_items = next_item !== NONE && nodes.parent_at(next_item) === idx;
+			let child = nodes.first_child_at(item);
+			let more = child !== NONE && nodes.parent_at(child) === item;
+			while (more) {
+				const next = nodes.next_at(child);
+				more = next !== NONE && nodes.parent_at(next) === item;
+				if (nodes.kind_at(child) === NodeKind.paragraph) {
+					nodes.unwrap_node(child);
+				}
+				child = next;
+			}
+			item = next_item;
+		}
+	}
+
+	text(
+		parent: number,
+		start: number,
+		end: number,
+		parent_kind?: NodeKind
+	): void {
+		let parent_idx = this.index_of(parent);
+		if (parent_idx === undefined) return;
+
+		if (this.dispatcher !== null) {
+			if (parent_kind === undefined) parent_kind = this.opened_kind(parent_idx);
+			// text of a wrapped parent goes to its innermost open wrapper
+			parent_idx = this.dispatcher.resolve(parent_idx);
+		} else if (parent_kind === undefined) {
+			parent_kind = this.opened_kind(parent_idx);
+		}
+
+		// nodes that store content as a value range (no child text node)
+		if (
+			parent_kind === NodeKind.heading ||
+			parent_kind === NodeKind.code_fence ||
+			parent_kind === NodeKind.code_span ||
+			parent_kind === NodeKind.html_comment
+		) {
+			this.nodes.set_value(parent_idx, start, end);
+		} else {
+			// fills the slot of the id the parser reserved for this text node
+			this.nodes.push_text(start, end, parent_idx);
+		}
+	}
+
+	leaf(
+		id: number,
+		kind: NodeKind,
+		start: number,
+		parent: number,
+		value_start: number,
+		value_end: number,
+		end: number
+	): void {
+		const nodes = this.nodes;
+		// a leaf of a kind no handler takes has no callback, wrapper or undo
+		// log, so a busy dispatcher has nothing for it unless its parent has
+		// an open wrapper
+		if (
+			this.id_to_index === null &&
+			id === nodes._size &&
+			(this.dispatcher === null || parent >= this.wants[kind])
+		) {
+			nodes.push_leaf(kind, start, value_start, value_end, end, parent);
+			return;
+		}
+		this.leaf_rest(id, kind, start, parent, value_start, value_end, end);
+	}
+
+	private leaf_rest(
+		id: number,
+		kind: NodeKind,
+		start: number,
+		parent: number,
+		value_start: number,
+		value_end: number,
+		end: number
+	): void {
+		const nodes = this.nodes;
+		const dispatcher = this.dispatcher;
+		// its parent may have an open wrapper, the leaf goes into it
+		if (
+			dispatcher !== null &&
+			this.id_to_index === null &&
+			id === nodes._size &&
+			!dispatcher.has_handlers(kind)
+		) {
+			nodes.push_leaf(
+				kind,
+				start,
+				value_start,
+				value_end,
+				end,
+				dispatcher.resolve(parent)
+			);
+			return;
+		}
+		this.open(id, kind, start, parent, 0, false);
+		this.set_value_start(id, value_start);
+		this.set_value_end(id, value_end);
+		this.close(id, end, kind);
+	}
+
+	attr(id: number, key: string, value: any): void {
+		const idx = this.index_of(id);
+		if (idx === undefined) return;
+
+		switch (key) {
+			case 'value':
+				this.nodes.set_value(idx, value[0], value[1]);
+				break;
+			case 'text':
+				// the value range stays, it is where the text is in the source
+				this.nodes.own_strings()[idx] = value;
+				break;
+			case 'value_start':
+				this.nodes.set_value_start(idx, value);
+				break;
+			case 'value_end':
+				this.nodes.set_value_end(idx, value);
+				break;
+			default: {
+				// mutated in place, so no set_metadata call is needed
+				const nodes = this.nodes;
+				const existing = nodes.metadata_at(idx);
+				if (existing) {
+					merge_meta(existing, key, value);
+				} else {
+					nodes.set_metadata(idx, make_meta(key, value));
+				}
+				if (this.dispatcher !== null) {
+					if (key === 'name') this.named(idx, value);
+					// the info string of a fence is whole, its open handlers waited for it
+					else if (key === 'info_end' && this.dispatcher.holds(idx))
+						this.unheld(this.dispatcher);
+				}
+				break;
+			}
+		}
+	}
+
+	/** only a directive gets a name, its open handlers and the handlers bound to it start here */
+	private named(idx: number, name: unknown): void {
+		const dispatcher = this.dispatcher!;
+		if (!dispatcher.wants_name()) return;
+		const nodes = this.nodes;
+		const size = nodes._size;
+		dispatcher.dispatch_name(idx, name, nodes);
+		// a scope opened, or the parse handler of the directive made a link
+		this.refresh(dispatcher);
+		if (nodes._size !== size) this.pushed();
+	}
+
+	/** the open handlers of a held node ran, they may have pushed nodes and made links */
+	private unheld(dispatcher: PluginDispatcher): void {
+		const nodes = this.nodes;
+		const size = nodes._size;
+		dispatcher.unhold(nodes);
+		this.refresh(dispatcher);
+		if (nodes._size !== size) this.pushed();
+	}
+
+	set_value_start(id: number, pos: number): void {
+		const idx = this.index_of(id);
+		if (idx !== undefined) this.nodes.set_value_start(idx, pos);
+	}
+
+	set_value_end(id: number, pos: number): void {
+		const idx = this.index_of(id);
+		if (idx !== undefined) this.nodes.set_value_end(idx, pos);
+	}
+
+	revoke(id: number, source_text?: string, text_start?: number): void {
+		const idx = this.index_of(id);
+		if (idx === undefined) return;
+		const nodes = this.nodes;
+		const size = nodes._size;
+
+		// plugin revoke: undo mutations before handle_repair
+		if (this.dispatcher !== null) {
+			this.dispatcher.dispatch_revoke(idx, nodes);
+			// an undone close restores its link, an undone wrap may drop the last
+			this.refresh(this.dispatcher);
+			// a plugin took the node out of the tree, there is nothing to repair
+			if (nodes.parent_at(idx) === NONE) return;
+			const kind = nodes.kind_at(idx);
+			const lifted = this.dispatcher.lifted(idx, nodes);
+			nodes.handle_repair(idx, source_text, text_start);
+			if (nodes.kind_at(idx) !== kind) this.dispatcher.log_kind(idx, kind);
+			// a block repair pushes the text of the open tag
+			if (nodes._size !== size) this.pushed();
+			if (lifted !== null) {
+				this.dispatcher.dispatch_lifted(lifted, nodes);
+				this.refresh(this.dispatcher);
+			}
+			return;
+		}
+
+		const kind = nodes.kind_at(idx);
+		nodes.handle_repair(idx, source_text, text_start);
+		if (nodes._size !== size) this.pushed();
+		// close and text act on the kind at open, callers that omit it read it here
+		if (nodes.kind_at(idx) !== kind) {
+			const revoked = this.revoked;
+			if (revoked === null) this.revoked = [idx, kind];
+			else revoked.push(idx, kind);
+		}
+	}
+
+	commit(id: number): void {
+		const idx = this.index_of(id);
+		if (idx === undefined) return;
+		this.nodes.commit_node(idx);
+		if (this.dispatcher) {
+			this.dispatcher.dispatch_commit(idx);
+			// the last undo log may have gone
+			this.plain_from = this.dispatcher.plain_from();
+		}
+	}
+
+	cursor(_pos: number): void {}
+
+	/** an incremental document is complete, give its unused slab tail back */
+	end(): void {
+		this.nodes.trim();
+	}
+
+	/** extract the built NodeBuffer. */
+	get_buffer(): NodeBuffer {
+		return this.nodes;
+	}
+}

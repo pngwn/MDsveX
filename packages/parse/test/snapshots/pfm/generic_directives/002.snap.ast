@@ -1,0 +1,4 @@
+root
+  paragraph
+    directive_inline name="tag"
+  line_break

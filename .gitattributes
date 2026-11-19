@@ -1,0 +1,32 @@
+# enforce lf for all text files so fixtures and snapshots don't get
+# rewritten to crlf on windows checkouts (core.autocrlf). the parser
+# handles crlf at runtime regardless, but consistent checkout avoids
+# surprising diffs and keeps test-asserted positions stable.
+* text=auto eol=lf
+
+# markdown fixtures, snapshot files and source are always lf
+*.md    text eol=lf
+*.svx   text eol=lf
+*.pfm   text eol=lf
+*.snap  text eol=lf
+*.ast   text eol=lf
+*.ts    text eol=lf
+*.tsx   text eol=lf
+*.js    text eol=lf
+*.mjs   text eol=lf
+*.cjs   text eol=lf
+*.json  text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+*.svelte text eol=lf
+
+# binary: never touch
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+*.ico   binary

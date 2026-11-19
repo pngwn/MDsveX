@@ -1,0 +1,5 @@
+root
+  paragraph
+    link href="foo%20b&auml;"
+      text "link"
+  line_break

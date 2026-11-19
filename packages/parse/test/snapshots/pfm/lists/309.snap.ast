@@ -1,0 +1,18 @@
+root
+  list ordered=false start=0 tight=false
+    list_item
+      paragraph
+        text "foo"
+      paragraph
+        text "notcode"
+    list_item
+      paragraph
+        text "foo"
+  line_break
+  line_break
+  html_comment " "
+  line_break
+  line_break
+  paragraph
+    text "code"
+  line_break

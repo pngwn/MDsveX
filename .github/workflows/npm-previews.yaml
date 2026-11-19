@@ -4,23 +4,24 @@ on:
   pull_request:
     branches:
       - main
+      - next
     paths-ignore:
-      - 'site/**'
+      - 'packages/site/**'
 
 jobs:
   preview:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - run: npm i -g pnpm@9.1
+      - uses: actions/checkout@v4
+      - run: npm i -g pnpm@10.33.0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'pnpm'
           cache-dependency-path: '**/pnpm-lock.yaml'
       - run: pnpm i --frozen-lockfile
-      - run: pnpm --filter=!mdsvex-demo --filter=!@mdsvex/site build
+      - run: pnpm --filter=!site --filter=!incremental-parse-test --filter=!mdsvex-demo -r build
         env:
           CI: true
           name: mdsvex
-      - run: pnpx pkg-pr-new publish './packages/*' --template './packages/test-app/'
+      - run: pnpx pkg-pr-new publish './packages/*' './plugins/*' --template './packages/test-app/'

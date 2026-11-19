@@ -1,0 +1,226 @@
+/* code, design/SCORE.md: Berkeley Mono on the paper, never ligated, plain:
+   riso is for display sizes, and at a body size it reads as noise.
+   Highlighted code takes the score's colours, so a `#` in a fence is the
+   heading's aqua and a `{` the expression's orange, the same as a phrase over
+   it: syntax set apart by colour, never by an in-between weight, which Berkeley
+   Mono doesn't have. The class rules come from twinkleplop's ayu theme, the
+   colours from tokens.css, so dark follows the tokens */
+
+.design-frame pre {
+	margin: 1.5rem 0;
+	padding: 0.75rem 1rem;
+	border: 1px solid var(--staff);
+	border-radius: 0;
+	overflow-x: auto;
+	font: 400 0.875rem / 1.6 var(--face-mono);
+	font-variant-ligatures: none;
+	tab-size: 2;
+	color: var(--ink);
+	background: var(--well);
+}
+
+/* a titled fence, its figcaption drawn as a bar over the sheet */
+.design-frame .twinkleplop-block {
+	margin: 1.5rem 0;
+}
+
+.design-frame .twinkleplop-block > pre {
+	margin: 0;
+}
+
+.design-frame .twinkleplop-title {
+	display: block;
+	padding: 0.375rem 1rem;
+	border: 1px solid var(--staff);
+	border-bottom: 0;
+	background: var(--well-chrome);
+	color: var(--ink);
+	font: 400 0.75rem / 1.5 var(--face-mono);
+	font-variant-ligatures: none;
+	letter-spacing: 0.02em;
+	overflow-wrap: anywhere;
+}
+
+/* the tab list of a code group drawn as the title bar, the plugin rules sit in :where so these win */
+.design-frame .tabs-code {
+	margin: 1.5rem 0;
+}
+
+.design-frame .tabs-code > .tabs-list {
+	gap: 0.375rem;
+	padding: 0 1rem;
+	border: 1px solid var(--staff);
+	border-bottom: 0;
+	box-shadow: inset 0 -1px var(--staff);
+	background: var(--well-chrome);
+}
+
+.design-frame .tabs-code > .tabs-list > .tab {
+	padding: 0.625rem 0.5rem 0.375rem;
+	border-bottom: 1.5px solid transparent;
+	color: var(--quiet);
+	font: 400 0.75rem / 1.5 var(--face-mono);
+	font-variant-ligatures: none;
+	letter-spacing: 0.02em;
+}
+
+.design-frame .tabs-code > .tabs-list > .tab:hover {
+	color: var(--ink);
+}
+
+.design-frame .tabs-code > .tabs-list > .tab[aria-selected='true'] {
+	border-bottom-color: var(--ink);
+	color: var(--ink);
+}
+
+.design-frame .tabs-code > .tab-panel > :is(pre, .twinkleplop-block) {
+	margin: 0;
+}
+
+/* the tab already names the fence */
+.design-frame .tabs-code > .tab-panel > .twinkleplop-block > .twinkleplop-title {
+	display: none;
+}
+
+.design-frame .twinkleplop-caption {
+	margin-top: 0.5rem;
+	color: var(--quiet);
+	font-size: 0.875rem;
+}
+
+.design-frame pre > code {
+	display: block;
+	width: max-content;
+	min-width: 100%;
+	font: inherit;
+	font-variant-ligatures: none;
+}
+
+/* in a line of serif the mono runs large, a little smaller sits on its x-height */
+.design-frame :not(pre) > code {
+	font-size: 0.875em;
+	font-variant-ligatures: none;
+	overflow-wrap: anywhere;
+}
+
+.design-frame .twinkleplop {
+	/* markdown, by the construct the characters belong to */
+	--twp-heading: var(--name-heading);
+	--twp-heading_marker: var(--name-heading);
+	--twp-list_marker: var(--name-list);
+	--twp-task_marker: var(--name-item);
+	--twp-blockquote_marker: var(--name-quote);
+	--twp-blockquote_marker-font-style: normal;
+	--twp-bold: var(--ink);
+	--twp-bold_open: var(--name-strong);
+	--twp-bold_close: var(--name-strong);
+	--twp-bold-font-weight: 700;
+	--twp-italic: var(--ink);
+	--twp-italic_open: var(--name-emph);
+	--twp-italic_close: var(--name-emph);
+	--twp-code: var(--ink);
+	--twp-code_open: var(--name-code);
+	--twp-code_close: var(--name-code);
+	--twp-code_fence: var(--name-fence);
+	--twp-code_language: var(--name-fence);
+	--twp-code_block: var(--ink);
+	--twp-link_text: var(--ink);
+	--twp-link_text_open: var(--name-link);
+	--twp-link_text_close: var(--name-link);
+	--twp-url: var(--name-link);
+	--twp-url_link: var(--name-link);
+	--twp-url_title: var(--name-link);
+	--twp-autolink: var(--name-link);
+	--twp-autolink_open: var(--name-link);
+	--twp-autolink_close: var(--name-link);
+	--twp-strike: var(--ink);
+	--twp-strike_open: var(--name-emph);
+	--twp-strike_close: var(--name-emph);
+	--twp-hr: var(--ink);
+	--twp-escape: var(--quiet);
+	--twp-hard_break: var(--quiet);
+	--twp-front_matter_marker: var(--quiet);
+	--twp-raw_front_matter: var(--quiet);
+	--twp-label: var(--name-link);
+	--twp-hash: var(--name-heading);
+
+	/* svelte in markdown */
+	--twp-expression: var(--name-expr);
+	--twp-raw_svelte_expression: var(--ink);
+	--twp-svelte_block: var(--name-logic);
+	--twp-svelte_directive: var(--name-logic);
+	--twp-tag: var(--name-comp);
+	--twp-tag_name: var(--name-comp);
+	--twp-attr_name: var(--name-link);
+	--twp-attr_sigil: var(--quiet);
+	--twp-doctype: var(--quiet);
+	--twp-entity: var(--name-code);
+	--twp-directive: var(--name-directive);
+
+	/* script */
+	--twp-keyword: var(--name-logic);
+	--twp-string: var(--name-code);
+	--twp-template: var(--name-code);
+	--twp-string_escape: var(--name-code);
+	--twp-regex: var(--name-code);
+	--twp-comment: var(--quiet);
+	--twp-number: var(--name-strong);
+	--twp-boolean: var(--name-strong);
+	--twp-null: var(--name-strong);
+	--twp-unit: var(--name-strong);
+	--twp-function: var(--name-link);
+	--twp-decorator: var(--name-link);
+	--twp-builtin: var(--name-expr);
+	--twp-class_name: var(--name-comp);
+	--twp-type: var(--name-comp);
+	--twp-namespace: var(--name-comp);
+	--twp-variant: var(--name-comp);
+	--twp-lifetime: var(--name-comp);
+	--twp-property: var(--name-heading);
+	--twp-parameter: var(--ink);
+	--twp-identifier: var(--ink);
+	--twp-variable: var(--ink);
+	--twp-constant: var(--ink);
+	--twp-attribute: var(--ink);
+	--twp-css_variable: var(--ink);
+	--twp-operator: var(--quiet);
+	--twp-punctuation: var(--quiet);
+	--twp-format: var(--name-expr);
+
+	/* css */
+	--twp-selector: var(--name-comp);
+	--twp-selector_class: var(--name-link);
+	--twp-selector_id: var(--name-link);
+	--twp-selector_pseudo: var(--name-code);
+
+	/* data and diffs */
+	--twp-plain_scalar: var(--name-code);
+	--twp-datetime: var(--name-strong);
+	--twp-bit: var(--name-strong);
+	--twp-block_scalar_header: var(--name-logic);
+	--twp-doc_marker: var(--quiet);
+	--twp-array_table_header: var(--name-heading);
+	--twp-inserted: var(--name-code);
+	--twp-inserted_marker: var(--name-code);
+	--twp-deleted: var(--name-item);
+	--twp-deleted_marker: var(--name-item);
+	--twp-changed: var(--name-list);
+	--twp-changed_marker: var(--name-list);
+	--twp-prompt: var(--quiet);
+	--twp-prompt_prefix: var(--quiet);
+	--twp-output: var(--quiet);
+}
+
+.design-frame .prose :is(pre:not(.said), table) {
+	--scroll-paper: var(--well);
+	background-image:
+		linear-gradient(to right, var(--scroll-paper) 55%, transparent),
+		linear-gradient(to left, var(--scroll-paper) 55%, transparent),
+		linear-gradient(to right, var(--quiet-line), transparent),
+		linear-gradient(to left, var(--quiet-line), transparent);
+	background-position: left center, right center, left center, right center;
+	background-size: 2rem 100%, 2rem 100%, 0.65rem 100%, 0.65rem 100%;
+	background-repeat: no-repeat;
+	background-attachment: local, local, scroll, scroll;
+}
+.design-frame .prose table { --scroll-paper: var(--paper); }

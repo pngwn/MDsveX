@@ -1,0 +1,8 @@
+root
+  paragraph
+    text "a "
+    code_span "#!ts"
+    text " b "
+    code_span info="js" "c"
+    text " d."
+  line_break

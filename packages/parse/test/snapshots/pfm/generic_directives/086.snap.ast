@@ -1,0 +1,4 @@
+root
+  paragraph
+    text ":d[unclosed at eof"
+  line_break

@@ -1,13 +1,13 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
+import { createEventDispatcher } from "svelte";
 
-	export let value = '';
+export let value = "";
 
-	const dispatch = createEventDispatcher();
+const dispatch = createEventDispatcher();
 
-	const select = num => () => value += num;
-	const clear  = () => value = '';
-	const submit = () => dispatch('submit');
+const select = (num) => () => (value += num);
+const clear = () => (value = "");
+const submit = () => dispatch("submit");
 </script>
 
 <style>

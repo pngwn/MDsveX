@@ -1,0 +1,11 @@
+root
+  paragraph
+    directive_inline name="d"
+      text "no "
+      text "[ref"
+      text "]"
+      text "["
+      text "] links"
+  line_break
+  line_break
+  definition label="ref" href="https://example.com"

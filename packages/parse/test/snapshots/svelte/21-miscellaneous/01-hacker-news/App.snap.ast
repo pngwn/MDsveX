@@ -1,0 +1,22 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="svelte:window" on:hashchange=[object Object] self_closing=true
+  line_break
+  line_break
+  html tag="main"
+    line_break
+    svelte_block tag="if"
+      svelte_branch tag="if" "item"
+        line_break
+        html tag="Item" item=[object Object] returnTo="#/top/{page}" self_closing=true
+        line_break
+      svelte_branch tag="else if" "page"
+        line_break
+        html tag="List" page=[object Object] self_closing=true
+        line_break
+    line_break

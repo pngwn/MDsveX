@@ -1,0 +1,8 @@
+root
+  html tag="Warning"
+    line_break
+    paragraph
+      strong_emphasis
+        text "bar"
+    line_break
+  line_break

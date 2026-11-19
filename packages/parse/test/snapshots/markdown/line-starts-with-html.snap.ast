@@ -1,0 +1,11 @@
+root
+  paragraph
+    html tag="a" href="foo"
+      text "some text"
+    text " words"
+  line_break
+  line_break
+  paragraph
+    html tag="br" self_closing=true
+    text " words"
+  line_break

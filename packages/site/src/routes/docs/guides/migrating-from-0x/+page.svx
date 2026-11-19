@@ -1,0 +1,332 @@
+---
+title: Migrating from 0.x
+order: 7
+---
+
+[sv-migrate]: https://svelte.dev/docs/cli/sv-migrate
+# Migrating from mdsvex 0.x
+
+Layouts are now [templates](/docs/guides/templates). The idea is the same, a component that wraps documents and replaces their elements, with new names and Svelte 5 components.
+
+::marks
+
+## Run the migrator
+
+`@mdsvex/migrate` rewrites your config and documents, and flags what it can't rewrite:
+
+```bash
+npm i --save-dev @mdsvex/migrate@next
+```
+
+It is a library of functions. A short script runs them over a project. Commit your work first, then set `config` to the file that calls `mdsvex()`, `layouts` to your layout components, and `options` to what your documents were written for:
+
+```js title="migrate.js"
+import { readFileSync, writeFileSync, globSync } from 'node:fs';
+import { migrate_document, migrate_config, check_template } from '@mdsvex/migrate';
+
+const config = 'svelte.config.js';
+const layouts = ['src/lib/layouts/Blog.svelte'];
+// smartypants: your old smartypants option, true if you never set it
+// math: true if you used remark-math
+const options = { smartypants: true, math: false };
+
+function report(file, notes) {
+	for (const note of notes) console.log(`${file}:${note.line}: ${note.message}`);
+}
+
+const { code, notes } = migrate_config(readFileSync(config, 'utf8'));
+writeFileSync(config, code);
+report(config, notes);
+
+for (const file of globSync('src/**/*.{svx,md}')) {
+	const { code, notes } = migrate_document(readFileSync(file, 'utf8'), options);
+	writeFileSync(file, code);
+	report(file, notes);
+}
+
+for (const file of layouts) report(file, check_template(readFileSync(file, 'utf8')));
+```
+
+```bash
+node migrate.js
+```
+
+- `migrate_config` rewrites the options of a JavaScript or TypeScript config: `layout` into `templates`, `highlight`, `smartypants` and `extension`. It returns the new `code` and a list of `notes`, things to check by hand, each with a `line` and a `message`. Every entry of `remarkPlugins` and `rehypePlugins` gets a note that says [what replaces it](/docs/guides/remark-and-rehype).
+- `migrate_document` converts a document to mdsvex's [markdown](/docs/learn/markdown) and returns its `code` and `notes`, `migrate` the code alone. 0.x read CommonMark, where `*text*` is emphasis and a `===` underline makes a heading, so every document needs it. Svelte in the document is kept as written, the `layout:` key of the frontmatter becomes `template:`, and GitHub alerts become [callouts](/docs/plugins/callouts).
+- `check_template` lists what a layout component needs changed. It rewrites nothing.
+
+Read the diff before you commit it. `migrate` writes each document out again from what it parsed, so list markers, table padding and blank lines come out in one style.
+
+The options stay where they were. SvelteKit 3 has no `svelte.config.js`, so move the `mdsvex()` call from `preprocess` into the `plugins` of `vite.config.js`, as in [SvelteKit](/docs/learn/quick-start#sveltekit). mdsvex registers its extensions, so they don't need to move with it.
+
+For a document that is already mdsvex's markdown, `migrate_frontmatter` renames the `layout:` key and changes nothing else.
+
+## What changes
+
+::::added
+:::add[`layout: './src/Layout.svelte'`](mark="layout", tone=other)
+`templates: { default: './src/Layout.svelte' }`
+:::
+
+:::add[`layout: { _: …, blog: … }`](mark="_:", tone=other)
+`templates: { default: …, blog: … }`
+:::
+
+:::add[a named layout applied to documents in a folder of the same name](mark="/blog/", tone=other)
+`select_template`, which the migrator writes for you as a note
+:::
+
+:::add[frontmatter `layout: blog`, `layout: false`](mark="---", tone=text)
+`template: blog`, `template: false`
+:::
+
+:::add[frontmatter `layout: _`](mark="_", tone=text)
+`template: default`
+:::
+
+:::add[`layoutPropForwarding`](mark="...", tone=expr)
+always on, the migrator flags it
+:::
+
+:::add[`<slot />` in a layout](mark="<slot>", tone=comp)
+`{@render children()}`
+:::
+
+:::add[`export let title` in a layout](mark="export", tone=expr)
+`let { title } = $props()`
+:::
+
+:::add[`<script context="module">` exports](mark="module", tone=expr)
+`<script module>` exports
+:::
+
+:::add[`{title}` in a document](mark="{}", tone=expr)
+`{metadata.title}`
+:::
+
+:::add[`extension: '.md'`](mark=".md", tone=other)
+`extensions: ['.md']`
+:::
+
+:::add[`frontmatter: { marker, type }`](mark="marker", tone=text)
+gone, the fences are always `---` and [`frontmatter.parse`](/docs/guides/frontmatter#custom-frontmatter-parsers) reads what is between them
+:::
+
+:::add[`rel="nofollow"` on every link to another site](mark="rel=", tone=link)
+no `rel`. `external_links({ rel: ['nofollow'] })` from [`@mdsvex/plugin-external-links`](/docs/plugins/external-links) keeps it
+:::
+
+:::add[`smartypants`, on by default](mark="--", tone=text)
+[`smart_punctuation`](/docs/reference/options#smart_punctuation), off by default, the migrator turns it on
+:::
+
+:::add[`remarkPlugins`, `rehypePlugins`](mark="remark", tone=other)
+gone. Most of what they did is built in or a first-party plugin, see [coming from remark and rehype plugins](/docs/guides/remark-and-rehype)
+:::
+
+:::add[CommonMark documents](mark="*a*", tone=emph)
+mdsvex's own [markdown](/docs/learn/markdown), the migrator converts them
+:::
+
+:::add[```` ```js file=./a.js#L1-L5 ````, from `remark-code-import`](mark="file=", tone=fence)
+[`src=`](/docs/reference/highlighting#code-from-a-file), the migrator renames `file=` on a fence with no code
+:::
+
+:::add[`$x$` and `$$x$$`, from `remark-math`](mark="$x$", tone=code)
+[math](/docs/reference/math), the migrator rewrites them when you pass `math: true`
+:::
+
+:::add[`![alt](./a.png)` served from the page's url](mark="![]", tone=link)
+imported from beside the document, write `/a.png` for a file in `static`, or set [`import_images: false`](/docs/reference/images)
+:::
+::::
+
+The migrator handles the `layout`, `smartypants` and `extension` entries and converts the documents. It flags `<slot />`, `layoutPropForwarding`, the `frontmatter` options, the missing `nofollow` and every entry of `remarkPlugins` and `rehypePlugins`, each with what replaces it. The other entries are yours to change.
+
+::::plate[Named layouts](mark="=>", tone=expr)
+0.x matched named layouts to folders. Templates aren't matched by folder, so for named layouts the notes include a `select_template` to paste into your config:
+
+```js
+select_template: (id) => (id.includes('/blog/') ? 'blog' : undefined),
+```
+::::
+
+## `layout:` in frontmatter
+
+::::plate[`layout:` is ordinary metadata](mark="layout", tone=text)
+mdsvex doesn't read a `layout:` key any more, and there is no alias for it. The migrator renames it to `template:`. A document you haven't migrated keeps `layout:` as ordinary metadata, and gets the `default` template, or the one `select_template` picks:
+
+```svx result templates
+---
+title: Hello
+layout: blog
+---
+
+# Hello
+```
+::::
+
+## Layout components
+
+::::plate[A layout as a template](mark="<slot>", tone=comp)
+A layout needs two changes to work as a template:
+
+```svelte
+<!-- before -->
+<script>
+	export let title;
+</script>
+
+<h1>{title}</h1>
+<slot />
+```
+
+```svelte
+<!-- after -->
+<script>
+	let { title, children } = $props();
+</script>
+
+<h1>{title}</h1>
+{@render children()}
+```
+
+:::notes
+`check_template` finds `<slot />`, `$$props`, `$$restProps` and `{...$$props}`. [`npx sv migrate svelte-5`][sv-migrate] migrates the rest of the component.
+
+Element replacements stay in the module script, now `<script module>`, and keep working.
+:::
+::::
+
+## Syntax highlighting in 0.x
+
+0.x highlighted with Prism, through a `highlight.highlighter` that could be async and returned `{@html}`. Now twinkleplop highlights by default, and mdsvex escapes whatever a highlighter returns.
+
+::::added
+:::add[`highlight: false`](mark="false", tone=fence)
+`highlight: false`
+:::
+
+:::add[`highlight: { alias: { x: 'y' } }`](mark="alias", tone=fence)
+`highlight: { languages: { x: 'y' } }`
+:::
+
+:::add[`highlight: { highlighter(code, lang, meta, filename) }`, sync or async](mark="async", tone=fence)
+`highlight: (code, { lang, meta, inline, filename }) => html`, sync only
+:::
+
+:::add[a highlighter returns `` {@html `…`} ``](mark="{@html", tone=expr)
+a highlighter returns plain HTML
+:::
+
+:::add[`highlight.optimise`](mark="optim", tone=fence)
+gone, highlighted code is always markup
+:::
+
+:::add[`escapeSvelte`](mark="escape", tone=expr)
+gone, mdsvex escapes braces itself
+:::
+
+:::add[Prism and `prism-svelte`](mark="prism", tone=fence)
+twinkleplop
+:::
+
+:::add[a Prism theme you add by hand](mark=".css", tone=fence)
+a [twinkleplop theme](/docs/reference/highlighting#themes) you import
+:::
+
+:::add[a `pre` replacement doesn't apply to code blocks](mark="as pre", tone=comp)
+it does, see [code block components](/docs/reference/highlighting#code-block-components)
+:::
+::::
+
+`migrate_config` renames `alias` to `languages` and removes `optimise`. Alias targets are now twinkleplop's [languages](/docs/reference/highlighting#languages), so it flags Prism names twinkleplop doesn't have, such as `markup`. It can't rewrite a `highlighter`, so it leaves a `// TODO(mdsvex-migrate)` comment above it, and it flags every `escapeSvelte` import.
+
+::::plate[A highlighter](mark="=>", tone=fence)
+A highlighter changes in three ways. It takes an object as its second argument, it returns HTML without escaping it, and it can't be async. A Shiki highlighter goes from the first of these to the second:
+
+```js
+// before
+import { escapeSvelte } from 'mdsvex';
+
+const shiki = await createHighlighter({ themes: ['github-dark'], langs: ['ts'] });
+
+const config = {
+	highlight: {
+		highlighter: async (code, lang = 'text') => {
+			const html = escapeSvelte(shiki.codeToHtml(code, { lang, theme: 'github-dark' }));
+			return `{@html \`${html}\` }`;
+		}
+	}
+};
+```
+
+```js
+// after
+const shiki = await createHighlighter({ themes: ['github-dark'], langs: ['ts'] });
+
+mdsvex({
+	highlight: (code, { lang, inline }) =>
+		inline ? null : shiki.codeToHtml(code, { lang: lang || 'text', theme: 'github-dark' })
+});
+```
+
+:::notes
+Or drop the highlighter and use the default. Either way, import a theme: highlighted code has no colours without one.
+:::
+::::
+
+## Smart punctuation in 0.x
+
+0.x curled quotes and made dashes and ellipses in every document unless you set `smartypants: false`. Now [`smart_punctuation`](/docs/reference/options#smart_punctuation) does that, and it is off unless you turn it on. `migrate_config` turns it on for a config that relied on the old default, so your pages keep their typography:
+
+::::added
+:::add[no `smartypants` option](mark="{}", tone=text)
+`smart_punctuation: true` is added
+:::
+
+:::add[`smartypants: true`](mark="true", tone=text)
+`smart_punctuation: true`
+:::
+
+:::add[`smartypants: false`](mark="false", tone=text)
+removed, off is the default
+:::
+
+:::add[`smartypants: { quotes, ellipses }`](mark="quotes", tone=text)
+`smart_punctuation: { quotes, ellipses }`
+:::
+
+:::add[`dashes: true`, the default: `--` is an em dash, `---` is left alone](mark="--", tone=text)
+`--` is an en dash and `---` an em dash
+:::
+
+:::add[`dashes: 'oldschool'`](mark="---", tone=text)
+`dashes: true`, which now means the same
+:::
+
+:::add[`dashes: 'inverted'`](mark="-- ---", tone=text)
+`dashes: true`, and the documents are rewritten
+:::
+
+:::add[`backticks`, which curled <code>&#96;&#96;quoted''</code>](mark="``''", tone=text)
+gone, the documents are rewritten
+:::
+::::
+
+::::plate[Dashes](mark="--", tone=text)
+The dashes are the one change that shows. With the 0.x default, `--` was an em dash. It is an en dash now, as it is in pandoc, cmark and LaTeX. So that pages render what they did, pass your old `smartypants` value to `migrate` when it converts your documents, `true` if you never set it, as the script under [run the migrator](/docs/guides/migrating-from-0x#run-the-migrator) does:
+
+```js
+migrate(source, { smartypants: true });
+```
+
+:::notes
+It turns each `--` in text into `---`, keeps a `---` that 0.x left alone as `\---`, swaps the two for `'inverted'`, and turns <code>&#96;&#96;quoted''</code> into `"quoted"`. Code, urls and attributes are not touched. The notes from `migrate_config` say which of this applies to your config.
+:::
+
+:::edges
+- Three things 0.x changed are left alone now, because they are not prose: a string inside a Svelte expression, an attribute such as `--css-var="x"` on a component, and the text of an autolinked url.
+- And `--name` after a space is read as a command line flag, where 0.x gave it a dash.
+:::
+::::

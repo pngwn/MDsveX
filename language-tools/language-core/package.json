@@ -1,0 +1,44 @@
+{
+	"name": "@mdsvex/language-core",
+	"version": "0.1.0-next.6",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pngwn/MDsveX.git",
+		"directory": "language-tools/language-core"
+	},
+	"description": "PFM Volar LanguagePlugin — teaches Volar how to handle .pfm files",
+	"type": "module",
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"test": "vitest --disableConsoleIntercept",
+		"test:run": "vitest run --silent",
+		"build": "vite build --config vite.config.build.ts && tsc -p tsconfig.build.json"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"types": "./dist/index.d.ts",
+	"dependencies": {
+		"@mdsvex/render": "workspace:*",
+		"@mdsvex/source-map": "workspace:*",
+		"@volar/language-core": "^2.4.28",
+		"@volar/typescript": "^2.4.28",
+		"mdsvex": "workspace:*",
+		"svelte2tsx": "^0.7.53",
+		"temml": "^0.14.0"
+	},
+	"devDependencies": {
+		"svelte": "^5.0.0",
+		"typescript": "^5.0.0"
+	},
+	"peerDependencies": {
+		"typescript": "^5.0.0 || ^6.0.0"
+	},
+	"author": "pngwn <hello@pngwn.io>",
+	"license": "MIT"
+}

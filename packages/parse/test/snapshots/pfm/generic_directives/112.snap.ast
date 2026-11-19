@@ -1,0 +1,18 @@
+root
+  directive_leaf name="x"
+    directive_label
+      strikethrough
+        text "s"
+      text " "
+      superscript
+        text "up"
+      text " "
+      subscript
+        text "down"
+      text " "
+      text "*lit"
+      text "* "
+      mustache "expr"
+      text " "
+      html tag="b"
+        text "h"

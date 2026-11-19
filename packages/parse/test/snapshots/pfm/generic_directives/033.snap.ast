@@ -1,0 +1,3 @@
+root
+  directive_container name="section"
+    directive_leaf name="toc"

@@ -1,0 +1,8 @@
+root
+  paragraph
+    directive_inline name="d"
+      text "nested "
+      directive_inline name="inner" args.k="v"
+        text "ok"
+      text " directive"
+  line_break

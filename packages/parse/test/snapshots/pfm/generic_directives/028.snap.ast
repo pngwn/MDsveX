@@ -1,0 +1,3 @@
+root
+  directive_container name="example"
+    code_fence info="js" "console.log(\"hi\")"

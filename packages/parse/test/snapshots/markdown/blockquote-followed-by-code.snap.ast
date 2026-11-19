@@ -1,0 +1,19 @@
+root
+  block_quote
+    paragraph
+      text "a blockquote"
+  line_break
+  paragraph
+    text "with a 4 space indented line (not code)"
+  line_break
+  line_break
+  paragraph
+    text "sep"
+  line_break
+  line_break
+  block_quote
+    paragraph
+      text "a blockquote"
+  line_break
+  line_break
+  code_fence "with some code after"

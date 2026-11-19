@@ -1,0 +1,11 @@
+---
+title: Code blocks
+order: 6
+package: '@mdsvex/plugin-code-blocks'
+example:
+  source: |
+    ```js title="mdsvex.config.js"
+    export default { heading_ids: true };
+    ```
+---
+Replaces `pre` with a code block that has a copy button, the title of the fence above the code and its caption below. The button is named "Copy code of" and the title, a `status` region beside it announces "Copied" or "Copy failed", and `nocopy` in the fence meta leaves it out. It copies the `code` prop, so [live values](/docs/reference/live-code) are copied as the reader sees them. Without JavaScript the stylesheet hides the button. In a code group of [tabs](/docs/plugins/tabs) the tab shows the title, so the code block hides its own. A `pre` from a `components` module or a template replaces it, and the plugin's own is exported as `@mdsvex/plugin-code-blocks/Pre.svelte`.

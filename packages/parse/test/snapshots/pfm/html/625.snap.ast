@@ -1,0 +1,5 @@
+root
+  paragraph
+    text "foo "
+    html_comment " this is a --\ncomment - with hyphens "
+  line_break

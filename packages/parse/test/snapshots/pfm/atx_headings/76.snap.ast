@@ -1,0 +1,13 @@
+root
+  heading depth=3 "foo \\###"
+    text "foo "
+    text "###"
+  line_break
+  heading depth=2 "foo #\\##"
+    text "foo #"
+    text "##"
+  line_break
+  heading depth=1 "foo \\#"
+    text "foo "
+    text "#"
+  line_break

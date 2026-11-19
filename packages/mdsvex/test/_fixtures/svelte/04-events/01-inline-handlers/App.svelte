@@ -1,5 +1,5 @@
 <script>
-	let m = { x: 0, y: 0 };
+let m = { x: 0, y: 0 };
 </script>
 
 <style>

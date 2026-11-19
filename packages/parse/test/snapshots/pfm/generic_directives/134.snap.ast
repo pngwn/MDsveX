@@ -1,0 +1,9 @@
+root
+  directive_container name="outer"
+    directive_container name="inner"
+      paragraph
+        text "x"
+      line_break
+    paragraph
+      text "y"
+    line_break

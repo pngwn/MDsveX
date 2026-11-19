@@ -1,0 +1,7 @@
+root
+  paragraph
+    directive_inline name="a" args.a="1"
+      directive_inline name="b" args.b="2"
+        directive_inline name="c" args.c="3"
+          text "deep"
+  line_break

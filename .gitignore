@@ -9,6 +9,8 @@ node_modules
 
 # build
 dist
+language-tools/typescript-plugin/lib/
+language-tools/vscode-pfm/server/
 
 # logs
 logs
@@ -30,3 +32,23 @@ coverage
 
 #config
 config.js
+AGENTS.md
+CLAUDE.md
+PLAN.md
+.claude/
+tsc
+
+# perf harness reference builds and per machine outputs
+.perf/
+packages/bench/perf/calibration.json
+packages/bench/perf/reports/
+
+# components plugin test apps
+packages/mdsvex/test/.tmp-*/
+language-tools/*/test/.tmp-*/
+packages/test-app/test/.tmp-*/
+
+# plugin test apps and what svelte-package leaves behind
+plugins/*/test/.tmp-*/
+plugins/*/.svelte-kit/
+*.vsix

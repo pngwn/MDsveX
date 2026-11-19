@@ -1,0 +1,5 @@
+root
+  paragraph
+    directive_inline name="d" args.tag="🎉" args.label="party 🎉 time"
+      text "emoji 🎉 text"
+  line_break

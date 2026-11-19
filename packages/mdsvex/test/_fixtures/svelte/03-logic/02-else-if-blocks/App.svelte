@@ -1,5 +1,5 @@
 <script>
-	let x = 7;
+let x = 7;
 </script>
 
 {#if x > 10}

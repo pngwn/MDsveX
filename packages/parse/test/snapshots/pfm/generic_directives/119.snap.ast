@@ -1,0 +1,9 @@
+root
+  block_quote
+    list ordered=false start=0 tight=true
+      list_item
+        directive_container name="q"
+          paragraph
+            text "body"
+          line_break
+  line_break

@@ -1,0 +1,38 @@
+root
+  html tag="svelte:head"
+    line_break
+    html tag="title"
+      text "My Title"
+    line_break
+    html tag="link" rel="stylesheet" type="text/css" href="theme.css" self_closing=true
+    line_break
+    html tag="style"
+    line_break
+  line_break
+  line_break
+  html tag="Counter" prop=[object Object]
+    line_break
+    line_break
+    heading depth=1 "hello"
+      text "hello"
+    line_break
+    line_break
+    paragraph
+      text "this is some markdown"
+    line_break
+    line_break
+  line_break
+  line_break
+  block_quote
+    html tag="Counter"
+      line_break
+      line_break
+      heading depth=1 "hello"
+        text "hello"
+      line_break
+      line_break
+      paragraph
+        text "text"
+      line_break
+      line_break
+  line_break

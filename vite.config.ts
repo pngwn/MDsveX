@@ -6,6 +6,10 @@ export default defineConfig({
 		environment: 'node',
 		clearMocks: true,
 		include: ['**/*.spec.ts'],
-		exclude: ['src/lib/server/**', '**/node_modules/**'],
+		exclude: [
+			'src/lib/server/**',
+			'**/node_modules/**',
+			'language-tools/zed/grammars/**',
+		],
 	},
 });

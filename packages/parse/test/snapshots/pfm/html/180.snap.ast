@@ -1,0 +1,14 @@
+root
+  paragraph
+    text "<?php"
+  line_break
+  line_break
+  paragraph
+    text "echo '>';"
+  line_break
+  line_break
+  paragraph
+    text "?>"
+    soft_break
+    text "okay"
+  line_break

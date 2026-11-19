@@ -1,0 +1,9 @@
+root
+  directive_container name="Callout" args.kind="warn"
+    directive_label
+      text "Heads "
+      strong_emphasis
+        text "up"
+    paragraph
+      text "body"
+    line_break

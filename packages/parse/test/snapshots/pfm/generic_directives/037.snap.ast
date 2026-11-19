@@ -1,0 +1,10 @@
+root
+  paragraph
+    text "Paragraph with "
+    directive_inline name="a"
+      text "first"
+    text " then "
+    directive_inline name="b"
+      text "second"
+    text " directives."
+  line_break

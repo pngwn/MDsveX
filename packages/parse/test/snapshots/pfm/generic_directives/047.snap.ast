@@ -1,0 +1,6 @@
+root
+  directive_container name="outer" args.depth="1"
+    directive_container name="inner" args.depth="2"
+      paragraph
+        text "Nested content."
+      line_break

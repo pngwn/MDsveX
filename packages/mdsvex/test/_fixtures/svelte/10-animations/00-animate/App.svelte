@@ -1,49 +1,49 @@
 <script>
-	import { quintOut } from 'svelte/easing';
-	import { crossfade } from 'svelte/transition';
-	import { flip } from 'svelte/animate';
+import { quintOut } from "svelte/easing";
+import { crossfade } from "svelte/transition";
+import { flip } from "svelte/animate";
 
-	const [send, receive] = crossfade({
-		fallback(node, params) {
-			const style = getComputedStyle(node);
-			const transform = style.transform === 'none' ? '' : style.transform;
+const [send, receive] = crossfade({
+	fallback(node, params) {
+		const style = getComputedStyle(node);
+		const transform = style.transform === "none" ? "" : style.transform;
 
-			return {
-				duration: 600,
-				easing: quintOut,
-				css: t => `
+		return {
+			duration: 600,
+			easing: quintOut,
+			css: (t) => `
 					transform: ${transform} scale(${t});
 					opacity: ${t}
-				`
-			};
-		}
-	});
-
-	let todos = [
-		{ id: 1, done: false, description: 'write some docs' },
-		{ id: 2, done: false, description: 'start writing JSConf talk' },
-		{ id: 3, done: true, description: 'buy some milk' },
-		{ id: 4, done: false, description: 'mow the lawn' },
-		{ id: 5, done: false, description: 'feed the turtle' },
-		{ id: 6, done: false, description: 'fix some bugs' },
-	];
-
-	let uid = todos.length + 1;
-
-	function add(input) {
-		const todo = {
-			id: uid++,
-			done: false,
-			description: input.value
+				`,
 		};
+	},
+});
 
-		todos = [todo, ...todos];
-		input.value = '';
-	}
+let todos = [
+	{ id: 1, done: false, description: "write some docs" },
+	{ id: 2, done: false, description: "start writing JSConf talk" },
+	{ id: 3, done: true, description: "buy some milk" },
+	{ id: 4, done: false, description: "mow the lawn" },
+	{ id: 5, done: false, description: "feed the turtle" },
+	{ id: 6, done: false, description: "fix some bugs" },
+];
 
-	function remove(todo) {
-		todos = todos.filter(t => t !== todo);
-	}
+let uid = todos.length + 1;
+
+function add(input) {
+	const todo = {
+		id: uid++,
+		done: false,
+		description: input.value,
+	};
+
+	todos = [todo, ...todos];
+	input.value = "";
+}
+
+function remove(todo) {
+	todos = todos.filter((t) => t !== todo);
+}
 </script>
 
 <style>

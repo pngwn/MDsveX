@@ -1,0 +1,68 @@
+/* every selector sits in :where() so any rule of a site wins */
+
+:where(.diagram) {
+	margin-block: 1.5rem;
+	margin-inline: 0;
+}
+
+:where(.diagram-title) {
+	margin-block-end: 0.5rem;
+	font-weight: 600;
+}
+
+:where(.diagram-svg) {
+	overflow-x: auto;
+}
+
+:where(.diagram-svg > svg) {
+	display: block;
+	max-width: 100%;
+	height: auto;
+	margin-inline: auto;
+}
+
+:where(.diagram-source) {
+	margin-block-start: 0.5rem;
+	font-size: 0.9em;
+}
+
+:where(.diagram-source > summary) {
+	cursor: pointer;
+}
+
+:where(.diagram-error) {
+	margin-block: 0 0.5rem;
+	font-style: italic;
+}
+
+:where(.diagram-caption) {
+	margin-block-start: 0.5rem;
+	color: color-mix(in srgb, currentColor 70%, transparent);
+	font-size: 0.9em;
+}
+
+/* the figure shows the title and caption of the fence, the code under it does not repeat them */
+:where(.diagram)
+	:where(
+		.twinkleplop-title,
+		.twinkleplop-caption,
+		.code-block-title,
+		.code-block-caption
+	) {
+	display: none;
+}
+
+/* pele draws with these variables, so a dark page needs no second render, a site sets its own on .diagram */
+@media (prefers-color-scheme: dark) {
+	:where(.diagram-pele) {
+		--pele-bg: #1c1c1f;
+		--pele-fg: #e8e8ea;
+		--pele-muted: #a3a3ab;
+		--pele-line: #d4d4d8;
+		--pele-surface: #2a2a2f;
+		--pele-surface-alt: #34343a;
+		--pele-border: #6f6f78;
+		--pele-accent: #8aa6f0;
+		--pele-critical: #f07a78;
+	}
+}

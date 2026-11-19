@@ -1,0 +1,8 @@
+root
+  html tag="style"
+  line_break
+  line_break
+  html tag="div" class="box"
+    line_break
+    html tag="slot"
+    line_break

@@ -1,0 +1,25 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="label"
+    line_break
+    html tag="input" type="checkbox" bind:checked=[object Object] self_closing=true
+    soft_break
+    text "	visible"
+    line_break
+  line_break
+  line_break
+  svelte_block tag="if"
+    svelte_branch tag="if" "visible"
+      line_break
+      html tag="div" class="centered" in:spin="{{duration: 8000}}" out:fade=true
+        line_break
+        html tag="span"
+          text "transitions"
+          text "!"
+        line_break
+      line_break

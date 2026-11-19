@@ -1,0 +1,12 @@
+root
+  paragraph
+    text "indented code"
+  line_break
+  line_break
+  paragraph
+    text "paragraph"
+  line_break
+  line_break
+  paragraph
+    text "more code"
+  line_break

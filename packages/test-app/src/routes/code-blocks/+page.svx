@@ -1,0 +1,13 @@
+<script>
+  let key = $state("C");
+</script>
+
+# Code blocks
+
+```sh title="Install" caption="Then restart the dev server."
+pnpm add @mdsvex/plugin-{key} # [!eval]
+```
+
+```sh nocopy
+ls
+```

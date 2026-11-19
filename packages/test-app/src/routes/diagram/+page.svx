@@ -1,0 +1,21 @@
+# Diagram
+
+```mermaid title="How a page is built" caption="Each step runs once per file."
+graph LR
+  accTitle: How a page is built
+  A[Markdown] --> B{Parse}
+  B --> C[Svelte]
+  C --> D["HTML"]
+```
+
+```mermaid
+sequenceDiagram
+  accTitle: A request
+  Browser->>Server: GET /page
+  Server-->>Browser: HTML with the diagram
+```
+
+```mermaid
+graph TD
+  A --> B -->
+```

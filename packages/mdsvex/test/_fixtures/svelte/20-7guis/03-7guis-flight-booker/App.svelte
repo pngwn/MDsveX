@@ -1,39 +1,39 @@
 <script>
-	const tomorrow = new Date(Date.now() + 86400000);
+const tomorrow = new Date(Date.now() + 86400000);
 
-	let start = [
-		tomorrow.getFullYear(),
-		pad(tomorrow.getMonth() + 1, 2),
-		pad(tomorrow.getDate(), 2)
-	].join('-');
+let start = [
+	tomorrow.getFullYear(),
+	pad(tomorrow.getMonth() + 1, 2),
+	pad(tomorrow.getDate(), 2),
+].join("-");
 
-	let end = start;
-	let isReturn = false;
+let end = start;
+let isReturn = false;
 
-	$: startDate = convertToDate(start);
-	$: endDate = convertToDate(end);
+$: startDate = convertToDate(start);
+$: endDate = convertToDate(end);
 
-	function bookFlight() {
-		const type = isReturn ? 'return' : 'one-way';
+function bookFlight() {
+	const type = isReturn ? "return" : "one-way";
 
-		let message = `You have booked a ${type} flight, leaving ${startDate.toDateString()}`;
-		if (type === 'return') {
-			message += ` and returning ${endDate.toDateString()}`;
-		}
-
-		alert(message);
+	let message = `You have booked a ${type} flight, leaving ${startDate.toDateString()}`;
+	if (type === "return") {
+		message += ` and returning ${endDate.toDateString()}`;
 	}
 
-	function convertToDate(str) {
-		const split = str.split('-');
-		return new Date(+split[0], +split[1] - 1, +split[2]);
-	}
+	alert(message);
+}
 
-	function pad(x, len) {
-		x = String(x);
-		while (x.length < len) x = `0${x}`;
-		return x;
-	}
+function convertToDate(str) {
+	const split = str.split("-");
+	return new Date(+split[0], +split[1] - 1, +split[2]);
+}
+
+function pad(x, len) {
+	x = String(x);
+	while (x.length < len) x = `0${x}`;
+	return x;
+}
 </script>
 
 <style>

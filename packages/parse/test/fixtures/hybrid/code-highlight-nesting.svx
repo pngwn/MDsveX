@@ -1,0 +1,6 @@
+````md
+```js
+function my_function(string)
+    return string.toUpperCase();
+```
+````

@@ -1,0 +1,14 @@
+---
+title: A note
+pinned: yes
+template: note
+---
+
+Without a vite manifest the editor reads mdsvex.config.json beside this file.
+
+## Hover the heading marks
+
+They show the h2 the note template exports. :badge[new](tone=info) hovers its
+component too, and `pinned: yes` above is flagged, since the template wants a boolean.
+
+{metadata.title}

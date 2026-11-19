@@ -1,13 +1,13 @@
 <script>
-	let hovering;
+let hovering;
 
-	function enter() {
-		hovering = true;
-	}
+function enter() {
+	hovering = true;
+}
 
-	function leave() {
-		hovering = false;
-	}
+function leave() {
+	hovering = false;
+}
 </script>
 
 <div on:mouseenter={enter} on:mouseleave={leave}>

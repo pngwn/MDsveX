@@ -1,0 +1,137 @@
+/* the score's colours, design/SCORE.md "Colour". Every token is light-dark(),
+   so an element follows the colour-scheme it sits in: the frame sets it from
+   its theme, and anywhere else it is the page's, light unless asked.
+
+   The light values are SCORE.md's. The dark values are a proposal from phase 0,
+   made by SCORE.md's own rule: the ink itself where it holds 3:1 (a line) or
+   4.5:1 (a name) on the dark paper, lightened in OKLCH only as far as it needs.
+   The names are --line-<kind> and --name-<kind>, the kinds as SCORE.md groups
+   them; lib/design/score/kinds.ts maps every parser kind onto one */
+
+:root {
+	--paper: light-dark(#fbfbf8, #15161b);
+	--ink: light-dark(#121318, #e8e6de);
+	--quiet: light-dark(#5d606b, #9b9eaa);
+	/* rules that are not phrases: the frame's, a table's */
+	--staff: light-dark(#b9bac2, #3d3f48);
+	/* a text phrase's 1px line, v12's, 3:1 on either paper */
+	--quiet-line: light-dark(#8b8e99, #6e717c);
+	/* source the parser has not been fed yet, while streaming */
+	--faint: light-dark(#c9cad1, #3d3f48);
+	/* off the paper away from the ink, a tint toward it drops the item and link names below 4.5 to 1 */
+	--well: light-dark(#ffffff, #0d0e11);
+	/* the bar over a code block that holds its file name */
+	--well-chrome: light-dark(#efeee8, #22232a);
+
+	/* by voice, for a Title or a small mark that colours by family, not construct */
+	--voice-blue: light-dark(#2a2fd4, #5573fe);
+	--voice-rose: light-dark(#d4145a, #eb356c);
+	--voice-orange: light-dark(#c93300, #e14b24);
+	--voice-green: light-dark(#0b8457, #229062);
+
+	/* riso, pngwn's pick: the RISO drum inks at the riso-colors list's screen values */
+	--line-list: light-dark(#0078bf, #0078bf);
+	--name-list: light-dark(#0077be, #1d85cd);
+	--line-item: light-dark(#f15060, #f15060);
+	--name-item: light-dark(#d5334a, #f15060);
+	--line-para: light-dark(#9d7ad2, #9d7ad2);
+	--name-para: light-dark(#8461b6, #9d7ad2);
+	--line-quote: light-dark(#397e58, #397e58);
+	--name-quote: light-dark(#397e58, #488d66);
+	--line-heading: light-dark(#289bb7, #289bb7);
+	--name-heading: light-dark(#007d96, #289bb7);
+	--line-fence: light-dark(#bd6439, #bd6439);
+	--name-fence: light-dark(#b25a2f, #c0673c);
+	--line-emph: light-dark(#fb43ac, #fb43ac);
+	--name-emph: light-dark(#d7108d, #fb43ac);
+	--line-strong: light-dark(#a48f0a, #a48f0a);
+	--name-strong: light-dark(#847200, #a48f0a);
+	--line-code: light-dark(#55a031, #55a031);
+	--name-code: light-dark(#388202, #55a031);
+	--line-link: light-dark(#914e72, #914e72);
+	--name-link: light-dark(#914e72, #af698e);
+	--line-expr: light-dark(#f2601f, #f2601f);
+	--name-expr: light-dark(#c84700, #f2601f);
+	--line-comp: light-dark(#235ba8, #2b63b0);
+	--name-comp: light-dark(#235ba8, #4780d0);
+	--line-logic: light-dark(#484d7a, #5a608e);
+	--name-logic: light-dark(#484d7a, #757cac);
+	--line-directive: light-dark(#00a18b, #00a18b);
+	--name-directive: light-dark(#00816f, #00a18b);
+	/* the kinds SCORE.md leaves out: a rule, a definition, a comment */
+	--line-other: var(--ink);
+	--name-other: var(--ink);
+	/* text and frontmatter */
+	--line-text: var(--quiet-line);
+	--name-text: var(--quiet);
+}
+
+/* Okabe and Ito's colours, the colour blind safe alternative. No nested pair
+   falls under 11 (OKLab ΔE × 100) for normal, protan or deutan vision in light;
+   the dark values are lifted the same way as riso's and are not yet checked
+   under simulation */
+[data-palette='cvd'] {
+	--line-list: light-dark(#0072b2, #0072b2);
+	--name-list: light-dark(#0072b2, #2585c6);
+	--line-item: light-dark(#bf8300, #bf8300);
+	--name-item: light-dark(#9a6900, #bf8300);
+	--line-para: light-dark(#3798cc, #3798cc);
+	--name-para: light-dark(#037aac, #3798cc);
+	--line-quote: light-dark(#8a3a00, #9e4c1c);
+	--name-quote: light-dark(#8a3a00, #be693b);
+	--line-heading: light-dark(#c875a3, #c875a3);
+	--name-heading: light-dark(#a75885, #c875a3);
+	--line-fence: light-dark(#009e73, #009e73);
+	--name-fence: light-dark(#00825e, #009e73);
+	--line-emph: light-dark(#d55e00, #d55e00);
+	--name-emph: light-dark(#bd5200, #d55e00);
+	--line-strong: light-dark(#914370, #974875);
+	--name-strong: light-dark(#914370, #b76593);
+	--line-code: light-dark(#655f00, #6b650c);
+	--name-code: light-dark(#655f00, #878232);
+	--line-link: light-dark(#004169, #316893);
+	--name-link: light-dark(#004169, #4d84b0);
+	--line-expr: light-dark(#006548, #187153);
+	--name-expr: light-dark(#006548, #3c8e6f);
+	--line-comp: light-dark(#9b9200, #9b9200);
+	--name-comp: light-dark(#7c7500, #9b9200);
+	--line-logic: light-dark(#00648f, #0e6a95);
+	--name-logic: light-dark(#00648f, #3687b4);
+	--line-directive: light-dark(#7f5600, #855c0c);
+	--name-directive: light-dark(#7f5600, #a37832);
+}
+
+/* by voice, for a Title or a small mark, design/SCORE.md "Colour": every
+   construct takes its family's colour, line and name alike, since the voices
+   hold 4.5:1 already. Blocks are blue, inlines rose, Svelte orange, directives
+   green; the kinds SCORE.md leaves out keep the ink */
+[data-palette='voice'] {
+	--line-list: var(--voice-blue);
+	--name-list: var(--voice-blue);
+	--line-item: var(--voice-blue);
+	--name-item: var(--voice-blue);
+	--line-para: var(--voice-blue);
+	--name-para: var(--voice-blue);
+	--line-quote: var(--voice-blue);
+	--name-quote: var(--voice-blue);
+	--line-heading: var(--voice-blue);
+	--name-heading: var(--voice-blue);
+	--line-fence: var(--voice-blue);
+	--name-fence: var(--voice-blue);
+	--line-emph: var(--voice-rose);
+	--name-emph: var(--voice-rose);
+	--line-strong: var(--voice-rose);
+	--name-strong: var(--voice-rose);
+	--line-code: var(--voice-rose);
+	--name-code: var(--voice-rose);
+	--line-link: var(--voice-rose);
+	--name-link: var(--voice-rose);
+	--line-expr: var(--voice-orange);
+	--name-expr: var(--voice-orange);
+	--line-comp: var(--voice-orange);
+	--name-comp: var(--voice-orange);
+	--line-logic: var(--voice-orange);
+	--name-logic: var(--voice-orange);
+	--line-directive: var(--voice-green);
+	--name-directive: var(--voice-green);
+}

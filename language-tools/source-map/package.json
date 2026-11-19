@@ -1,0 +1,52 @@
+{
+	"name": "@mdsvex/source-map",
+	"version": "0.1.0-next.6",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/pngwn/MDsveX.git",
+		"directory": "language-tools/source-map"
+	},
+	"description": "PFM to Svelte source map pipeline for language tooling",
+	"type": "module",
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"test": "vitest --disableConsoleIntercept",
+		"test:run": "vitest run --silent",
+		"build": "vite build --config vite.config.build.ts && tsc -p tsconfig.build.json"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		},
+		"./pfm-to-svelte": {
+			"types": "./dist/pfm_to_svelte.d.ts",
+			"import": "./dist/pfm_to_svelte.js"
+		},
+		"./v3-to-volar": {
+			"types": "./dist/v3_to_volar.d.ts",
+			"import": "./dist/v3_to_volar.js"
+		},
+		"./compose-mappings": {
+			"types": "./dist/compose_mappings.d.ts",
+			"import": "./dist/compose_mappings.js"
+		}
+	},
+	"types": "./dist/index.d.ts",
+	"dependencies": {
+		"@jridgewell/trace-mapping": "^0.3.31",
+		"@mdsvex/parse": "workspace:*",
+		"@mdsvex/render": "workspace:*",
+		"mdsvex": "workspace:*"
+	},
+	"devDependencies": {
+		"svelte": "^5.0.0",
+		"svelte2tsx": "^0.7.53",
+		"temml": "^0.14.0",
+		"typescript": "^5.0.0"
+	},
+	"author": "pngwn <hello@pngwn.io>",
+	"license": "MIT"
+}

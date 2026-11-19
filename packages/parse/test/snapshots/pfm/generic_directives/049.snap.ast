@@ -1,0 +1,5 @@
+root
+  paragraph
+    directive_inline name="d" args.a="hello world" args.b="single quoted" args.c="with, comma" args.d="(parens)" args.e="[brackets]"
+      text "quoted values"
+  line_break

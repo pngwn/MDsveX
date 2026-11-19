@@ -1,0 +1,14 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="h1"
+    text "The count is "
+    mustache "$count"
+  line_break
+  line_break
+  html tag="Incrementer" self_closing=true
+  soft_break
+  html tag="Decrementer" self_closing=true
+  soft_break
+  html tag="Resetter" self_closing=true

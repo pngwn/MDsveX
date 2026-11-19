@@ -1,0 +1,10 @@
+# References
+
+Thanks @ada for #123, which also closes sveltejs/kit#45. Landed in a1b2c3d.
+
+Docs are at www.example.com/docs (or https://example.com/guide_one).
+
+- an address, me@example.com, is not a mention
+- an escaped one, \@bob, stays text
+- in code, `@ada #123`, nothing happens
+- [a link with @ada in it](/steps) keeps its text

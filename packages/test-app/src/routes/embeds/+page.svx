@@ -1,0 +1,5 @@
+# Embeds
+
+::youtube[A conference talk](id=dQw4w9WgXcQ, start=30)
+
+::vimeo[A short film](id=76979871)

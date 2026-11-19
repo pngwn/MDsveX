@@ -1,0 +1,13 @@
+root
+  svelte_block tag="if"
+    svelte_branch tag="if" "show"
+      line_break
+      directive_leaf name="toc"
+      directive_container name="note" args.kind="warn"
+        paragraph
+          text "body"
+        line_break
+    svelte_branch tag="else"
+      line_break
+      directive_leaf name="toc" args.depth="1"
+  line_break

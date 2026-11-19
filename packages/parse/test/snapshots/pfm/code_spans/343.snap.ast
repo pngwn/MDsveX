@@ -1,0 +1,6 @@
+root
+  paragraph
+    code_span "<a href=\""
+    text "\">"
+    text "`"
+  line_break

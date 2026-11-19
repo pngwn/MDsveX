@@ -1,0 +1,9 @@
+root
+  block_quote
+    directive_container name="note" args.kind="warn"
+      paragraph
+        text "Content."
+      line_break
+    paragraph
+      text "after"
+  line_break

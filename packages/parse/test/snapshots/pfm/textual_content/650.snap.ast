@@ -1,0 +1,4 @@
+root
+  paragraph
+    text "hello $.;'there"
+  line_break

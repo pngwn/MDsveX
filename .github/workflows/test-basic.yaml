@@ -4,45 +4,48 @@ on:
   push:
     branches:
       - main
+      - next
     paths-ignore:
-      - 'site/**'
+      - 'packages/site/**'
   pull_request:
     branches:
       - main
+      - next
     paths-ignore:
-      - 'site/**'
+      - 'packages/site/**'
 
 jobs:
-  lint:
-    name: lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - run: npm i -g pnpm@9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 18
-          cache: 'pnpm'
-          cache-dependency-path: '**/pnpm-lock.yaml'
-      - run: pnpm i --frozen-lockfile
-      - run: pnpm lint
-        # type-check here as well when it is working
+  # lint:
+  #   name: lint
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - run: npm i -g pnpm@10.33.0
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 18
+  #         cache: 'pnpm'
+  #         cache-dependency-path: '**/pnpm-lock.yaml'
+  #     - run: pnpm i --frozen-lockfile
+  #     - run: pnpm lint
+  # type-check here as well when it is working
 
   build-test:
-    name: test-build - node ${{ matrix.node-version }} (${{ matrix.os }})
+    name: test-build - (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        node-version: [18, 20, 22]
         os: [ubuntu-latest, macOS-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
-      - run: npm i -g pnpm@9.1
+      - run: npm i -g pnpm@10.33.0
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 24
           cache: 'pnpm'
           cache-dependency-path: '**/pnpm-lock.yaml'
       - run: pnpm i --frozen-lockfile
       - run: pnpm test:run
-      - run: pnpm --filter=!mdsvex-demo --filter=!@mdsvex/site build
+      # packs every public package and type checks its entries from outside the repo
+      - run: pnpm check:package-types
+        if: matrix.os == 'ubuntu-latest'

@@ -1,0 +1,16 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="p"
+    line_break
+    html tag="span" style="background-color: {initial}"
+      text "initial"
+    soft_break
+    text "	"
+    html tag="span" style="background-color: {current}"
+      text "current"
+    line_break
+  line_break
+  line_break
+  html tag="style"

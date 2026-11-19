@@ -1,0 +1,10 @@
+root
+  paragraph
+    text "Hello.this"
+    text "_is"
+    text "_a"
+    text "_variable"
+    soft_break
+    text "and.this.is.another"
+    text "_one"
+  line_break

@@ -1,0 +1,5 @@
+---
+price: '$10'
+---
+<script context="module">
+</script>

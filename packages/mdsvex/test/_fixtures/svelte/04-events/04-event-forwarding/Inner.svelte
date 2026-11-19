@@ -1,13 +1,13 @@
 <script>
-	import { createEventDispatcher } from 'svelte';
+import { createEventDispatcher } from "svelte";
 
-	const dispatch = createEventDispatcher();
+const dispatch = createEventDispatcher();
 
-	function sayHello() {
-		dispatch('message', {
-			text: 'Hello!'
-		});
-	}
+function sayHello() {
+	dispatch("message", {
+		text: "Hello!",
+	});
+}
 </script>
 
 <button on:click={sayHello}>

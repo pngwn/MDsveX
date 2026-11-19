@@ -1,0 +1,6 @@
+root
+  paragraph
+    directive_inline name="d"
+      text "x"
+    text " (a=1)"
+  line_break

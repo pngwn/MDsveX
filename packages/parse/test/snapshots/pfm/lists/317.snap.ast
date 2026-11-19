@@ -1,0 +1,13 @@
+root
+  list ordered=false start=0 tight=false
+    list_item
+      paragraph
+        text "a"
+    list_item
+      paragraph
+        text "b"
+      definition label="ref" href="/url"
+    list_item
+      paragraph
+        text "d"
+  line_break

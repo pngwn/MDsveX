@@ -1,0 +1,7 @@
+root
+  paragraph
+    image src="uri3"
+      link href="uri2"
+        link href="uri1"
+          text "foo"
+  line_break

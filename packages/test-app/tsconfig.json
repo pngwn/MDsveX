@@ -9,7 +9,7 @@
 		"sourceMap": true,
 		"strict": true,
 		"target": "ESNext",
-		"moduleResolution": "node"
+		"types": ["node", "mdsvex/globals"]
 	}
 	// Path aliases are handled by https://svelte.dev/docs/kit/configuration#alias
 	// except $lib which is handled by https://svelte.dev/docs/kit/configuration#files

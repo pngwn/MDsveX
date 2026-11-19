@@ -1,0 +1,9 @@
+root
+  list ordered=false start=0 tight=true
+    list_item
+      text "one"
+  line_break
+  line_break
+  paragraph
+    text "two"
+  line_break

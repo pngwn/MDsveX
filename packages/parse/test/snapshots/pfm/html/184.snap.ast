@@ -1,0 +1,8 @@
+root
+  paragraph
+    text "<div>"
+  line_break
+  line_break
+  paragraph
+    text "<div>"
+  line_break

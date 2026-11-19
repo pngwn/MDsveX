@@ -1,0 +1,40 @@
+---
+title: Editor tour
+level: beginner
+draft: yes
+template: guide
+---
+
+<script>
+	let opened = $state(0);
+</script>
+
+This page demos the editor support for templates, replacement components and
+directives. Run the dev server once so the plugin writes its manifest, then open
+this file with the PFM extension.
+
+## Hover a replaced element
+
+Hover the `##` of the heading above or the `!` of the image below. Each shows the
+component that renders it, and go to definition opens that component.
+
+![A penguin](/favicon.png)
+
+:::Note[Directives are components](tone=info)
+Hover `Note` to see its component, or `tone` to see the prop type. Press :kbd[F12] on
+`Note` to jump to it.
+:::
+
+The frontmatter is typed too: {metadata.title} is a string, and hovering `title`
+in the frontmatter shows its type. Opened {opened} times.
+
+## Deliberate mistakes
+
+This page builds and renders, but the editor flags two things on purpose.
+
+- In the frontmatter, `draft: yes` is a string, and the guide template wants a boolean.
+- The note below passes `tone=urgent`, which is not a tone `Note` accepts.
+
+:::Note[A wrong arg](tone=urgent)
+The editor underlines `tone`.
+:::

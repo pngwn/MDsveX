@@ -1,0 +1,8 @@
+root
+  block_quote
+    code_fence
+  line_break
+  paragraph
+    text "foo"
+  line_break
+  code_fence

@@ -1,0 +1,562 @@
+import type { Emitter } from "./opcodes.js";
+import { AttrSpans, NodeKind, build_attrs, is_raw_text_tag } from "./utils.js";
+
+/**
+ * wire format for PFM parser opcode streaming.
+ *
+ * events are batched as JSON arrays of opcode tuples (one batch per feed() call):
+ *
+ *   [["S", [...kinds]], ["O", 1, 7, 0, 0, 0], ["T", 1, "Hello"], ...]
+ *
+ * opcodes:
+ *
+ *   S  Schema    ["S", kinds: string[]]
+ *                sent once as the first opcode. Maps numeric kind codes to names.
+ *
+ *   O  Open      ["O", id, kind, parent, pending, extra]
+ *                opens a new node. pending=1 for speculative (optimistic rendering).
+ *                extra is kind-specific (heading depth, backtick count, etc.).
+ *
+ *   C  Close     ["C", id] or ["C", id, 1]
+ *                closes a node. Implicitly commits if pending, unless it is a
+ *                paragraph, which K or R settles, or the close has the flag,
+ *                a delimiter with no closer whose R follows
+ *
+ *   T  Text      ["T", id, content] or ["T", id, content, 1]
+ *                appends text content to a node. multiple T opcodes for the same id
+ *                are concatenated by the client. Text nodes (kind=1) are suppressed
+ *                on the wire, their content becomes T opcodes on the parent.
+ *                the flag says the author escaped the first character of content
+ *
+ *   A  Attr      ["A", id, key, value]
+ *                sets an attribute on a node (href, title, info, ordered, etc.).
+ *                byte-offset attrs (value_start, value_end, info_start, info_end)
+ *                are resolved to content strings before emission.
+ *
+ *   R  Revoke    ["R", id, delimiter]
+ *                revokes a speculative node. children reparent to grandparent.
+ *                delimiter is the literal text for the opening marker ("_", "*", etc.).
+ *
+ *   X  Clear     ["X", id]
+ *                clears all children/text of a node. sent when the text of
+ *                a content leaf went out past where it ends.
+ *
+ * Design:
+ *   - optimistic: speculative nodes are sent immediately, revocation is the rare path
+ *   - text nodes (kind=1) are invisible on the wire, flattened into T on parent
+ *   - utf-16 source offsets resolved server-side, client never needs the source string
+ *   - one batch per feed() call; transport layer decides framing
+ */
+
+/** kind names indexed by NodeKind value. */
+const KIND_NAMES: string[] = [
+	"root",
+	"text",
+	"html",
+	"heading",
+	"mustache",
+	"code_fence",
+	"line_break",
+	"paragraph",
+	"code_span",
+	"emphasis",
+	"strong_emphasis",
+	"thematic_break",
+	"link",
+	"image",
+	"block_quote",
+	"list",
+	"list_item",
+	"hard_break",
+	"soft_break",
+	"strikethrough",
+	"superscript",
+	"subscript",
+	"table",
+	"table_header",
+	"table_row",
+	"table_cell",
+	"html_comment",
+	"svelte_tag",
+	"svelte_block",
+	"svelte_branch",
+	"directive_inline",
+	"directive_leaf",
+	"directive_container",
+	"frontmatter",
+	"import_statement",
+	"directive_label",
+	"footnote_reference",
+	"footnote_definition",
+	"definition",
+];
+
+/** tracks progressive text emission for a node. */
+interface TextState {
+	/** offset where content starts in source */
+	start: number;
+	/** offset up to which content has been sent */
+	sent: number;
+	/** wire target id: parent id for text nodes, self id for leaves. */
+	target: number;
+	/** true once value_end has been received (node text is finalized). */
+	done: boolean;
+	/** true if this is a code_fence node (needs backtick holdback). */
+	is_fence: boolean;
+	/** true for a text node that starts at a character the author escaped */
+	escaped: boolean;
+}
+
+/**
+ * kinds where value_start/value_end on the node itself should produce t events.
+ * container nodes (emphasis, strong, link, etc.) also receive value_start/value_end
+ * as range markers, but their content is delivered via child text nodes, we must
+ * not double-emit.
+ *
+ * note: html nodes are handled specially by the attr() switch below, for the
+ * raw-text variants (script, style) they are treated as content leaves too,
+ * but the decision requires the tag which arrives as a separate attr.
+ */
+function is_content_leaf(kind: NodeKind): boolean {
+	return (
+		kind === NodeKind.code_fence ||
+		kind === NodeKind.code_span ||
+		kind === NodeKind.html_comment
+	);
+}
+
+// biome-ignore lint/suspicious/no-const-enum: matches project convention
+export const enum WireOp {
+	Schema = "S",
+	Open = "O",
+	Close = "C",
+	Text = "T",
+	Attr = "A",
+	Revoke = "R",
+	Commit = "K",
+	Clear = "X",
+}
+
+export class WireEmitter implements Emitter {
+	/** current source string. updated via set_source(). */
+	private source = "";
+	/** accumulated opcodes for the current batch. */
+	private batch: unknown[][] = [];
+	/** whether the schema opcode has been emitted. */
+	private schema_emitted = false;
+
+	/** maps node id -> NodeKind (for all nodes, including suppressed text nodes). */
+	private kinds: Map<number, NodeKind> = new Map();
+	/** maps pending node id -> source start offset (for revoke source reconstruction). */
+	private pending_starts: Map<number, number> = new Map();
+	/** maps text node id -> wire-visible parent id. */
+	private text_parents: Map<number, number> = new Map();
+	/** tracks progressive text state per node id. */
+	private text_state: Map<number, TextState> = new Map();
+	/** buffers info_start offsets until info_end arrives. */
+	private info_starts: Map<number, number> = new Map();
+	/** tags for html nodes whose content is delivered as value range (script, style). */
+	private raw_html_ids: Set<number> = new Set();
+	/** inline directive names by id, a revoke sends the name back as text */
+	private directive_names: Map<number, string> = new Map();
+	/** parser cursor position, updated via cursor(). */
+	private parser_cursor = 0;
+
+	/**
+	 * set the current source string. in incremental mode, call this
+	 * with the accumulated source before each feed() call.
+	 */
+	set_source(source: string): void {
+		this.source = source;
+	}
+
+	// emitter interface
+
+	open(
+		id: number,
+		kind: NodeKind,
+		start: number,
+		parent: number,
+		extra: number,
+		pending: boolean,
+	): void {
+		this.kinds.set(id, kind);
+
+		// suppress text nodes, map to wire-visible parent
+		if (kind === NodeKind.text) {
+			const wire_parent =
+				this.kinds.get(parent) === NodeKind.text
+					? (this.text_parents.get(parent) ?? parent)
+					: parent;
+			this.text_parents.set(id, wire_parent);
+			return;
+		}
+
+		if (pending) {
+			this.pending_starts.set(id, start);
+		}
+		this.batch.push([WireOp.Open, id, kind, parent, pending ? 1 : 0, extra]);
+	}
+
+	close(id: number, _end: number): void {
+		// suppress close for text nodes
+		if (this.kinds.get(id) === NodeKind.text) return;
+
+		this.batch.push([WireOp.Close, id]);
+	}
+
+	close_pending(id: number, _end: number): void {
+		// the flag tells a consumer the node is not final, its revoke follows
+		this.batch.push([WireOp.Close, id, 1]);
+	}
+
+	text(parent: number, start: number, end: number): void {
+		// the text() opcode creates an inline text child (used for table cells).
+		// resolve to string and emit t on the parent directly.
+		if (end > start) {
+			const content = this.source.slice(start, end);
+			if (content) {
+				this.send(parent, content, this.escaped_at(start));
+			}
+		}
+	}
+
+	/** an escape opens its text node at the escaped character, after an odd run of backslashes */
+	private escaped_at(pos: number): boolean {
+		const source = this.source;
+		let at = pos;
+		while (at > 0 && source.charCodeAt(at - 1) === 0x5c) at--;
+		return ((pos - at) & 1) === 1;
+	}
+
+	/** the flag is only sent when set, so a consumer that reads three fields sees no change */
+	private send(target: number, content: string, escaped: boolean): void {
+		this.batch.push(
+			escaped
+				? [WireOp.Text, target, content, 1]
+				: [WireOp.Text, target, content],
+		);
+	}
+
+	attr(id: number, key: string, value: unknown): void {
+		// the wire carries the record, a lazy tag builds it here
+		if (value instanceof AttrSpans) value = build_attrs(value);
+
+		// tag on html: remember raw-text variants so their value range
+		// (script/style content) becomes t events on self. the 'tag' attr
+		// is always set before value_start/value_end by the parser.
+
+		if (
+			key === "tag" &&
+			this.kinds.get(id) === NodeKind.html &&
+			is_raw_text_tag(value)
+		) {
+			this.raw_html_ids.add(id);
+		}
+
+		// value_start / value_end -> progressive t events
+
+		if (key === "value_start") {
+			const kind = this.kinds.get(id);
+			// track value ranges for text nodes (suppressed -> t on parent),
+			// content leaves (heading, code_fence, code_span -> t on self),
+			// and raw-text html elements (script, style -> t on self).
+			// container nodes (emphasis, link, etc.) also get value_start but
+			// their content arrives via child text nodes.
+			const is_raw_html = kind === NodeKind.html && this.raw_html_ids.has(id);
+			if (
+				kind !== NodeKind.text &&
+				!is_raw_html &&
+				(kind === undefined || !is_content_leaf(kind))
+			) {
+				return;
+			}
+
+			const target =
+				kind === NodeKind.text ? (this.text_parents.get(id) ?? id) : id;
+
+			// if value_start is re-set after we've already sent text,
+			// emit a clear so the client discards the stale content.
+			const existing = this.text_state.get(id);
+			if (existing && existing.sent > (value as number)) {
+				this.batch.push([WireOp.Clear, existing.target]);
+			}
+
+			this.text_state.set(id, {
+				start: value as number,
+				sent: value as number,
+				target,
+				done: false,
+				is_fence: kind === NodeKind.code_fence,
+				escaped:
+					kind === NodeKind.text && this.escaped_at(value as number),
+			});
+			return;
+		}
+
+		// the text replaces what was sent of the range, its value_end then sends nothing
+
+		if (key === "text") {
+			// the text of an expression is not sent, as its range is not
+			const kind = this.kinds.get(id);
+			if (kind === NodeKind.mustache || kind === NodeKind.svelte_tag) return;
+			const state = this.text_state.get(id);
+			if (state && state.sent > state.start) {
+				this.batch.push([WireOp.Clear, state.target]);
+			}
+			this.text_state.delete(id);
+			this.batch.push([WireOp.Text, id, value]);
+			return;
+		}
+
+		if (key === "value_end") {
+			const state = this.text_state.get(id);
+			if (state) {
+				if ((value as number) > state.sent) {
+					// unsent content remains, send the rest
+					const content = this.source.slice(state.sent, value as number);
+					if (content) {
+						this.send(
+							state.target,
+							content,
+							state.escaped && state.sent === state.start,
+						);
+						state.sent = value as number;
+					}
+				} else if (state.sent > (value as number)) {
+					// over-sent: eagerly flushed past the final end.
+					// clear and re-send the correct range.
+					this.batch.push([WireOp.Clear, state.target]);
+					const content = this.source.slice(state.start, value as number);
+					if (content) {
+						this.send(state.target, content, state.escaped);
+					}
+					state.sent = value as number;
+				}
+				state.done = true;
+			}
+			return;
+		}
+
+		//  info_start / info_end -> resolved 'info' attr
+
+		if (key === "info_start") {
+			this.info_starts.set(id, value as number);
+			return;
+		}
+
+		if (key === "info_end") {
+			const info_start = this.info_starts.get(id);
+			if (info_start !== undefined) {
+				const info = this.source.slice(info_start, value as number);
+				if (info) {
+					this.batch.push([WireOp.Attr, id, "info", info]);
+				}
+				this.info_starts.delete(id);
+			}
+			return;
+		}
+
+		//  skip attrs for suppressed text nodes
+
+		if (this.kinds.get(id) === NodeKind.text) return;
+
+		if (key === "name" && this.kinds.get(id) === NodeKind.directive_inline) {
+			this.directive_names.set(id, value as string);
+		}
+
+		//  pass through all other attrs
+
+		this.batch.push([WireOp.Attr, id, key, value]);
+	}
+
+	set_value_start(id: number, pos: number): void {
+		this.attr(id, "value_start", pos);
+	}
+
+	set_value_end(id: number, pos: number): void {
+		this.attr(id, "value_end", pos);
+	}
+
+	cursor(pos: number): void {
+		this.parser_cursor = pos;
+	}
+
+	revoke(id: number, source_text?: string): void {
+		const kind = this.kinds.get(id);
+		// use source_text if provided (block-level revocations),
+		// otherwise derive delimiter from kind (inline revocations).
+		let content =
+			source_text ??
+			(kind === NodeKind.directive_inline
+				? `:${this.directive_names.get(id)}[`
+				: get_delimiter(kind));
+		// a node that starts at a pipe was led by the intraword marker, the pipe is text again
+		const start = this.pending_starts.get(id);
+		if (
+			source_text === undefined &&
+			start !== undefined &&
+			this.source.charCodeAt(start) === 0x7c
+		) {
+			content = `|${content}`;
+		}
+		this.batch.push([WireOp.Revoke, id, content]);
+
+		// clean up
+		this.text_state.delete(id);
+		this.pending_starts.delete(id);
+		this.raw_html_ids.delete(id);
+		this.directive_names.delete(id);
+	}
+
+	commit(id: number): void {
+		this.batch.push([WireOp.Commit, id]);
+		this.pending_starts.delete(id);
+	}
+
+	//  batch control
+
+	/**
+	 * flush accumulated opcodes. returns the batch as an array of
+	 * opcode tuples. the first flush includes the schema as the
+	 * first opcode.
+	 *
+	 * call this after each feed() in incremental mode, or once
+	 * after parse() in batch mode.
+	 */
+	flush(): unknown[][] {
+		// eagerly emit unsent text for nodes still being streamed
+		// (value_start set, value_end not yet received).
+		//
+		// for code fences: use source.length as boundary (the parser
+		// stalls internally but the content is safe to show). hold
+		// back the trailing line only if it starts with backticks
+		// (potential closing fence).
+		//
+		// for everything else: use the parser cursor as boundary
+		// (the parser advances through confirmed content).
+		const fed_end = this.source.length;
+		for (const [id, state] of this.text_state) {
+			if (state.done) continue;
+
+			let end: number;
+			if (state.is_fence) {
+				end = fed_end;
+				if (end > state.sent) {
+					const text = this.source.slice(state.sent, end);
+					const last_nl = text.lastIndexOf("\n");
+					if (last_nl !== -1) {
+						const tail = text.slice(last_nl + 1);
+						let ti = 0;
+						while (
+							ti < tail.length &&
+							(tail.charCodeAt(ti) === 0x20 || tail.charCodeAt(ti) === 0x09)
+						)
+							ti++;
+						if (ti < tail.length && tail.charCodeAt(ti) === 0x60) {
+							end = state.sent + last_nl;
+						}
+					} else {
+						let ti = 0;
+						while (
+							ti < text.length &&
+							(text.charCodeAt(ti) === 0x20 || text.charCodeAt(ti) === 0x09)
+						)
+							ti++;
+						if (ti < text.length && text.charCodeAt(ti) === 0x60) {
+							continue;
+						}
+					}
+				}
+			} else {
+				end = this.parser_cursor;
+				// the parser trims a run that ends in spaces or tabs, and a clear
+				// of a parent would drop its earlier runs with them, so they wait
+				if (state.target !== id) {
+					while (end > state.sent) {
+						const last = this.source.charCodeAt(end - 1);
+						if (last !== 0x20 && last !== 0x09) break;
+						end--;
+					}
+				}
+			}
+
+			if (end > state.sent) {
+				const content = this.source.slice(state.sent, end);
+				if (content) {
+					this.send(
+						state.target,
+						content,
+						state.escaped && state.sent === state.start,
+					);
+					state.sent = end;
+				}
+			}
+		}
+
+		const result: unknown[][] = [];
+
+		if (!this.schema_emitted) {
+			result.push([WireOp.Schema, KIND_NAMES]);
+			this.schema_emitted = true;
+		}
+
+		for (let i = 0; i < this.batch.length; i++) {
+			result.push(this.batch[i]);
+		}
+		this.batch.length = 0;
+
+		return result;
+	}
+
+	/**
+	 * flush and serialize to json. convenience for transports
+	 * that need a string.
+	 */
+	flush_json(): string {
+		return JSON.stringify(this.flush());
+	}
+
+	/**
+	 * reset all state. call when reusing the emitter for a new parse.
+	 */
+	reset(): void {
+		this.source = "";
+		this.batch.length = 0;
+		this.schema_emitted = false;
+		this.kinds.clear();
+		this.text_parents.clear();
+		this.text_state.clear();
+		this.pending_starts.clear();
+		this.info_starts.clear();
+		this.raw_html_ids.clear();
+		this.directive_names.clear();
+		this.parser_cursor = 0;
+	}
+}
+
+/** derive the opening delimiter string from a node kind. */
+function get_delimiter(kind: NodeKind | undefined): string {
+	switch (kind) {
+		case NodeKind.emphasis:
+			return "_";
+		case NodeKind.strong_emphasis:
+			return "*";
+		case NodeKind.strikethrough:
+			return "~~";
+		case NodeKind.superscript:
+			return "^";
+		case NodeKind.subscript:
+			return "~";
+		case NodeKind.link:
+			return "[";
+		case NodeKind.image:
+			return "![";
+		case NodeKind.code_span:
+			return "`";
+		case NodeKind.html:
+			return "<";
+		default:
+			return "";
+	}
+}

@@ -1,0 +1,9 @@
+root
+  paragraph
+    link href="b"
+      text "a"
+    directive_inline name="d" args.e="f"
+      text "c"
+    image src="h"
+      text "g"
+  line_break

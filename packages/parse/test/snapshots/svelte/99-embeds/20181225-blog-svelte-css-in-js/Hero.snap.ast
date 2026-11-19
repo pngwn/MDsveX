@@ -1,0 +1,24 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="div" class="{title} {comicSans}"
+    line_break
+    html tag="h1"
+      line_break
+      html tag="div" class=[object Object]
+        line_break
+        html tag="div" class=[object Object]
+          line_break
+          html tag="div" class=[object Object]
+            text "CSS"
+          line_break
+          paragraph
+            text "in JS"
+          line_break
+        line_break
+        paragraph
+          text "in HTML"
+        line_break
+      line_break
+    line_break

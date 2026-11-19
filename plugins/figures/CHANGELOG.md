@@ -1,0 +1,27 @@
+# @mdsvex/plugin-figures
+
+## 0.1.0-next.1
+
+### Patch Changes
+
+- [#1255](https://github.com/pngwn/MDsveX/pull/1255) [`0b0bc32`](https://github.com/pngwn/MDsveX/commit/0b0bc324af748e9e97bcebf7b20d4c1a2c399bda) Thanks [@pngwn](https://github.com/pngwn)! - Each package's `package.json` has an `mdsvex` field that says what the plugin is for and what it reads: `concerns`, the jobs it does, such as `layout` or `cite`; `syntax`, samples of what it reads, each compiled with the plugin when the docs build and required to change the output; `needs`, the mdsvex options it needs beside it, such as `heading_ids`; and `waits`, why a document that uses it needs `compile_async` or the Vite plugin. The docs' plugin finder reads it, and a third-party plugin can set the same field. Nothing in the plugins' code changes.
+
+- Updated dependencies [[`66bdb8d`](https://github.com/pngwn/MDsveX/commit/66bdb8d89274417537ba021f91ec2f733bda1ee4), [`09100bf`](https://github.com/pngwn/MDsveX/commit/09100bf02b7aa771c8bea99b61fa4b40508c8147), [`15fe6dc`](https://github.com/pngwn/MDsveX/commit/15fe6dce507dac7abee4be14ed608df90a408f1c), [`cabe59c`](https://github.com/pngwn/MDsveX/commit/cabe59ce286d42306de75c4f650ffc589758eda8)]:
+  - mdsvex@1.0.0-next.4
+
+## 0.1.0-next.0
+
+### Minor Changes
+
+- [#1228](https://github.com/pngwn/MDsveX/pull/1228) [`0fc60ae`](https://github.com/pngwn/MDsveX/commit/0fc60aeb4629b680fe99070c04c9e331118de70f) Thanks [@pngwn](https://github.com/pngwn)! - New package: a `:::figure` directive. What is written inside it, an image, a code block, a table or a diagram, is put in a `<figure>` with the bracket text as its caption, and an optional `id` stays on the element so a link can reach it. A numbering plugin can number it through plugin data.
+
+  ```md
+  :::figure[Sales by month](id=fig:sales)
+  ![A bar chart of sales by month](./chart.png)
+  :::
+  ```
+
+### Patch Changes
+
+- Updated dependencies [[`ba7f8dd`](https://github.com/pngwn/MDsveX/commit/ba7f8dd3d8441edfeb529b34b07dac80058de35a), [`eddbaa4`](https://github.com/pngwn/MDsveX/commit/eddbaa482c7ae775020f147e9a10ecdccb81025a), [`22e8562`](https://github.com/pngwn/MDsveX/commit/22e85628a68e3557707a5b34488822d5ceb63657), [`6f92236`](https://github.com/pngwn/MDsveX/commit/6f9223665b799344096fedfb050f8dd6db9b9e8c)]:
+  - mdsvex@1.0.0-next.3

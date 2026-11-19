@@ -1,0 +1,4 @@
+root
+  html tag="div" id="foo" class="bar\n  baz"
+    line_break
+  line_break

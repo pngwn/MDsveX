@@ -1,0 +1,32 @@
+root
+  html tag="script"
+  line_break
+  line_break
+  html tag="style"
+  line_break
+  line_break
+  html tag="h1"
+    text "Photo album"
+  line_break
+  line_break
+  html tag="div" class="photos"
+    line_break
+    svelte_block tag="each"
+      svelte_branch tag="each" "photos as photo"
+        line_break
+        html tag="figure"
+          line_break
+          html tag="img" src=[object Object] alt=[object Object] self_closing=true
+          line_break
+          html tag="figcaption"
+            mustache "photo.title"
+          line_break
+        line_break
+      svelte_branch tag="else"
+        line_break
+        html_comment " this block renders when photos.length === 0 "
+        line_break
+        html tag="p"
+          text "loading..."
+        line_break
+    line_break

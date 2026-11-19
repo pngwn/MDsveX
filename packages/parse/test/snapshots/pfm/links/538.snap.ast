@@ -1,0 +1,9 @@
+root
+  definition label="ref" href="/uri"
+  line_break
+  paragraph
+    text "["
+    text "foo"
+    link href="https://example.com/?search=][ref]"
+      text "https://example.com/?search=][ref]"
+  line_break

@@ -1,0 +1,8 @@
+root
+  paragraph
+    directive_inline name="d"
+      text "not an "
+      text "!"
+      text "[image"
+      text "](src) here"
+  line_break
