@@ -3,7 +3,7 @@
 Tabs and code groups for [mdsvex](https://mdsvex.pngwn.io). Each heading inside a `:::tabs` container is a tab, and so is each code fence when the container holds only fences.
 
 ```bash
-pnpm add --save-dev @mdsvex/plugin-tabs@next
+pnpm add --save-dev @mdsvex/plugin-tabs
 ```
 
 ```js

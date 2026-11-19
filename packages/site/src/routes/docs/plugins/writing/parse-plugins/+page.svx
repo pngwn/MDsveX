@@ -4,7 +4,7 @@ order: 21
 group: Writing plugins
 ---
 
-[plugins-md]: https://github.com/pngwn/MDsveX/blob/next/packages/parse/PLUGINS.md
+[plugins-md]: https://github.com/pngwn/MDsveX/blob/main/packages/parse/PLUGINS.md
 # Parse plugins
 
 ## `parse_plugins`

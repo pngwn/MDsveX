@@ -3,7 +3,7 @@
 Numbering for [mdsvex](https://mdsvex.pngwn.io): numbered figures, tables, equations and sections, and references that read as the number and link to it, in the way of [pandoc-crossref](https://lierdakil.github.io/pandoc-crossref/).
 
 ```bash
-pnpm add --save-dev @mdsvex/plugin-numbering@next
+pnpm add --save-dev @mdsvex/plugin-numbering
 ```
 
 ```js

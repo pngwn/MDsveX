@@ -3,7 +3,7 @@
 Numbered steps for [mdsvex](https://mdsvex.pngwn.io). Each heading inside a `:::steps` container starts a step.
 
 ```bash
-pnpm add --save-dev @mdsvex/plugin-steps@next
+pnpm add --save-dev @mdsvex/plugin-steps
 ```
 
 ```js

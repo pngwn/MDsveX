@@ -3,7 +3,7 @@
 Directives for [mdsvex](https://mdsvex.pngwn.io) over plain HTML elements: details, accordions, keys, ruby, badges, marks, insertions and abbreviations.
 
 ```bash
-pnpm add --save-dev @mdsvex/plugin-elements@next
+pnpm add --save-dev @mdsvex/plugin-elements
 ```
 
 ```js

@@ -31,7 +31,7 @@
 	// the plugin needs one of its optional peers, the install line takes the first listed
 	const optional = $derived(p.peers.filter((x) => x.optional).map((x) => x.name));
 	const install_with = (peer?: string) =>
-		['pnpm add -D', `${p.package}@next`, ...(p.example.with ?? []).map((w) => `${w}@next`), ...p.peers.filter((x) => !x.optional).map((x) => x.name), ...(peer ? [peer] : [])].join(' ');
+		['pnpm add -D', `${p.package}`, ...(p.example.with ?? []).map((w) => `${w}`), ...p.peers.filter((x) => !x.optional).map((x) => x.name), ...(peer ? [peer] : [])].join(' ');
 	const install = $derived(install_with(optional[0]));
 	const alternatives = $derived(optional.slice(1).map(install_with));
 	const config = $derived.by(() => {

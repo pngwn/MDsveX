@@ -4,7 +4,7 @@ order: 3
 ---
 # Markdown
 
-mdsvex reads its own flavour of markdown, [Penguin-Flavoured Markdown](https://github.com/pngwn/MDsveX/blob/next/PFM.md). It is CommonMark with the ambiguous parts taken out, the GFM additions most people use, and a few of its own. Most of a document reads as it does anywhere else. This section covers the rest.
+mdsvex reads its own flavour of markdown, [Penguin-Flavoured Markdown](https://github.com/pngwn/MDsveX/blob/main/PFM.md). It is CommonMark with the ambiguous parts taken out, the GFM additions most people use, and a few of its own. Most of a document reads as it does anywhere else. This section covers the rest.
 
 Coming from 0.x, the [migrator](/docs/guides/migrating-from-0x#run-the-migrator) rewrites your documents for you.
 

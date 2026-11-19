@@ -3,9 +3,9 @@ title: Packages
 order: 11
 ---
 
-[plugins-md]: https://github.com/pngwn/MDsveX/blob/next/packages/parse/PLUGINS.md
-[wire-md]: https://github.com/pngwn/MDsveX/blob/next/packages/parse/WIRE_FORMAT.md
-[architecture]: https://github.com/pngwn/MDsveX/blob/next/language-tools/ARCHITECTURE.md
+[plugins-md]: https://github.com/pngwn/MDsveX/blob/main/packages/parse/PLUGINS.md
+[wire-md]: https://github.com/pngwn/MDsveX/blob/main/packages/parse/WIRE_FORMAT.md
+[architecture]: https://github.com/pngwn/MDsveX/blob/main/language-tools/ARCHITECTURE.md
 
 # Packages
 

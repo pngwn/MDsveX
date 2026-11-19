@@ -9,20 +9,20 @@ order: 2
 
 ## Install it
 
-Install the prerelease as a development dependency.
+Install mdsvex as a development dependency.
 
 :::::command_group
 :::tabs(group=pm)
 
 ```bash [npm]
-npm i --save-dev mdsvex@next
+npm i --save-dev mdsvex
 ```
 
 ```bash [pnpm] src=../../../../lib/docs/install-pnpm.sh
 ```
 
 ```bash [bun]
-bun add --dev mdsvex@next
+bun add --dev mdsvex
 ```
 
 :::

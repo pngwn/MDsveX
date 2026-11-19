@@ -3,7 +3,7 @@
 Video embeds for [mdsvex](https://mdsvex.pngwn.io), each a leaf directive: a YouTube or Vimeo player named by its title.
 
 ```bash
-pnpm add --save-dev @mdsvex/plugin-embeds@next
+pnpm add --save-dev @mdsvex/plugin-embeds
 ```
 
 ```js

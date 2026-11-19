@@ -3,7 +3,7 @@
 Callouts for [mdsvex](https://mdsvex.pngwn.io): `:::note`, `:::tip`, `:::important`, `:::warning` and `:::caution`, GitHub's five alerts written as directives.
 
 ```bash
-pnpm add --save-dev @mdsvex/plugin-callouts@next
+pnpm add --save-dev @mdsvex/plugin-callouts
 ```
 
 ```js

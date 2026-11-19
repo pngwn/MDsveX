@@ -3,7 +3,7 @@
 Emoji shortcodes for [mdsvex](https://mdsvex.pngwn.io): `:tada:` becomes the emoji, with an optional accessible label.
 
 ```bash
-pnpm add --save-dev @mdsvex/plugin-emoji@next
+pnpm add --save-dev @mdsvex/plugin-emoji
 ```
 
 ```js

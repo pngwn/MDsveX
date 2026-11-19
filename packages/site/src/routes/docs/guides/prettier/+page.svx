@@ -10,7 +10,7 @@ order: 5
 Install it beside Prettier, and add it to the `plugins` of your Prettier config:
 
 ```bash
-pnpm add --save-dev prettier @mdsvex/prettier-plugin@next
+pnpm add --save-dev prettier @mdsvex/prettier-plugin
 ```
 
 ```json

@@ -3,7 +3,7 @@
 Code blocks for [mdsvex](https://mdsvex.pngwn.io): a replaced `pre` with a copy button that says what it copies and announces the result, the title of the fence above the code and its caption below.
 
 ```bash
-pnpm add --save-dev @mdsvex/plugin-code-blocks@next
+pnpm add --save-dev @mdsvex/plugin-code-blocks
 ```
 
 ```js

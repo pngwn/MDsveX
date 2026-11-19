@@ -3,7 +3,7 @@
 References for [mdsvex](https://mdsvex.pngwn.io): `@user`, `#123`, `owner/repo#123` and commit hashes become links, and bare urls do too when you ask.
 
 ```bash
-pnpm add --save-dev @mdsvex/plugin-references@next
+pnpm add --save-dev @mdsvex/plugin-references
 ```
 
 ```js

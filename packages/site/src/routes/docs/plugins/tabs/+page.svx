@@ -7,11 +7,11 @@ example:
     :::tabs(group=pm)
 
     ```sh [npm]
-    npm install mdsvex@next
+    npm install mdsvex
     ```
 
     ```sh [pnpm]
-    pnpm add mdsvex@next
+    pnpm add mdsvex
     ```
 
     :::
@@ -60,11 +60,11 @@ Run the installer.
 :::tabs
 
 ```sh [npm]
-npm install mdsvex@next
+npm install mdsvex
 ```
 
 ```sh [pnpm]
-pnpm add mdsvex@next
+pnpm add mdsvex
 ```
 
 :::

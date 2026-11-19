@@ -84,7 +84,7 @@
 Quick installation instructions.
 
 ```bash
-npm i -D mdsvex@next
+npm i -D mdsvex
 ```
 
 ```bash src=../lib/docs/install-pnpm.sh

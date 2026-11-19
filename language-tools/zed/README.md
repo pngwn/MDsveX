@@ -13,7 +13,7 @@ A [Zed](https://zed.dev) extension for `.svx` and `.pfm` files. It highlights wi
 
 ## Language server
 
-The extension installs `@mdsvex/language-server` from npm at the version of its `next` tag, since `latest` is a deprecated `0.0.0` placeholder until 1.0 and Zed's own version lookup reads only `latest`. It checks the tag once a session and keeps the installed server when offline. Once `latest` is real, `tagged_version` can become `zed::npm_package_latest_version`.
+The extension installs `@mdsvex/language-server` from npm at the version of its `latest` tag. It checks the tag once a session and keeps the installed server when offline.
 
 The server reads templates, components and plugins from `node_modules/.mdsvex/manifest.json`, which the Vite plugin writes when `vite dev` or `vite build` runs, or else from a `mdsvex.config.json`. A project configured only in `vite.config` has no templates in the editor until Vite has run once there. Run `editor: restart language server` afterwards.
 
