@@ -1,5 +1,11 @@
 # vscode-pfm
 
+## 1.0.0-next.7
+
+### Major Changes
+
+- [#1269](https://github.com/pngwn/MDsveX/pull/1269) [`65810bc`](https://github.com/pngwn/MDsveX/commit/65810bc6232dbe645190d5fce092ac026e6acfd7) Thanks [@pngwn](https://github.com/pngwn)! - The extension is stable, and its version follows mdsvex 1.0. It is published as a normal release, so VS Code installs it without the pre-release switch.
+
 ## 0.1.0-next.6
 
 ### Patch Changes
