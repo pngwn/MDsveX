@@ -3,7 +3,7 @@
 Facts about each [mdsvex](https://mdsvex.pngwn.io) document, for its template and for pages that list documents: a reading time and word count, an excerpt, a title read from the first heading, an edit url, and the date it was last changed.
 
 ```bash
-pnpm add --save-dev @mdsvex/plugin-page-data@next
+pnpm add --save-dev @mdsvex/plugin-page-data
 ```
 
 ```js

@@ -6,15 +6,15 @@ A Markdown preprocessor for Svelte. Markdown in Svelte.
 
 ## Packages
 
-This is a monorepo. `next` is the development branch, and holds a rewrite that is published under the `next` tag on npm.
+This is a monorepo.
 
-- [`mdsvex`](https://github.com/pngwn/MDsveX/tree/next/packages/mdsvex), the compiler and the Vite plugin.
-- [`@mdsvex/parse`](https://github.com/pngwn/MDsveX/tree/next/packages/parse), the markdown parser. The markdown it reads is described in [`PFM.md`](https://github.com/pngwn/MDsveX/blob/next/PFM.md).
-- [`@mdsvex/render`](https://github.com/pngwn/MDsveX/tree/next/packages/render), the renderer.
-- [`@mdsvex/migrate`](https://github.com/pngwn/MDsveX/tree/next/packages/migrate), which moves a project from mdsvex 0.x.
-- [`plugins`](https://github.com/pngwn/MDsveX/tree/next/plugins), the first-party plugins, each an `@mdsvex/plugin-*` package.
-- [`language-tools`](https://github.com/pngwn/MDsveX/tree/next/language-tools), the language server, the TypeScript plugin and the VS Code extension.
-- [`site`](https://github.com/pngwn/MDsveX/tree/next/packages/site), the documentation website and the playground.
+- [`mdsvex`](https://github.com/pngwn/MDsveX/tree/main/packages/mdsvex), the compiler and the Vite plugin.
+- [`@mdsvex/parse`](https://github.com/pngwn/MDsveX/tree/main/packages/parse), the markdown parser. The markdown it reads is described in [`PFM.md`](https://github.com/pngwn/MDsveX/blob/main/PFM.md).
+- [`@mdsvex/render`](https://github.com/pngwn/MDsveX/tree/main/packages/render), the renderer.
+- [`@mdsvex/migrate`](https://github.com/pngwn/MDsveX/tree/main/packages/migrate), which moves a project from mdsvex 0.x.
+- [`plugins`](https://github.com/pngwn/MDsveX/tree/main/plugins), the first-party plugins, each an `@mdsvex/plugin-*` package.
+- [`language-tools`](https://github.com/pngwn/MDsveX/tree/main/language-tools), the language server, the TypeScript plugin and the VS Code extension.
+- [`site`](https://github.com/pngwn/MDsveX/tree/main/packages/site), the documentation website and the playground.
 
 ## Contributing
 

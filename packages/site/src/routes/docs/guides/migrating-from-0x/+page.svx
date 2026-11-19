@@ -15,7 +15,7 @@ Layouts are now [templates](/docs/guides/templates). The idea is the same, a com
 `@mdsvex/migrate` rewrites your config and documents, and flags what it can't rewrite:
 
 ```bash
-npm i --save-dev @mdsvex/migrate@next
+npm i --save-dev @mdsvex/migrate
 ```
 
 It is a library of functions. A short script runs them over a project. Commit your work first, then set `config` to the file that calls `mdsvex()`, `layouts` to your layout components, and `options` to what your documents were written for:

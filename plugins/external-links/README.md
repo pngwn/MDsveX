@@ -3,7 +3,7 @@
 External link policy for [mdsvex](https://mdsvex.pngwn.io): `rel` and `target` on every markdown link that leaves the site.
 
 ```bash
-pnpm add --save-dev @mdsvex/plugin-external-links@next
+pnpm add --save-dev @mdsvex/plugin-external-links
 ```
 
 ```js

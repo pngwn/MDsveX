@@ -6,7 +6,7 @@
 	"publisher": "mdsvex",
 	"license": "MIT",
 	"icon": "images/icon.png",
-	"homepage": "https://github.com/pngwn/MDsveX/tree/next/language-tools/vscode-pfm",
+	"homepage": "https://github.com/pngwn/MDsveX/tree/main/language-tools/vscode-pfm",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/pngwn/MDsveX.git",

@@ -8,7 +8,7 @@ import type { LegacySmartypants } from "./serialize.js";
 
 export const HELP = `Usage: mdsvex-migrate [options] <path...>
 
-Migrates mdsvex 0.x files to mdsvex next, in place.
+Migrates mdsvex 0.x files to mdsvex 1.0, in place.
 
   a directory          every .md and .svx document in it, outside
                        node_modules and folders that start with a dot

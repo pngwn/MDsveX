@@ -3,7 +3,7 @@
 Figures for [mdsvex](https://mdsvex.pngwn.io). A `:::figure` directive puts anything written inside it, an image, a code block, a table or a diagram, in a `<figure>` with the bracket text as its caption.
 
 ```bash
-pnpm add --save-dev @mdsvex/plugin-figures@next
+pnpm add --save-dev @mdsvex/plugin-figures
 ```
 
 ```js

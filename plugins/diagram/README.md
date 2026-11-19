@@ -3,7 +3,7 @@
 Diagrams for [mdsvex](https://mdsvex.pngwn.io). Each `mermaid` fence is drawn as a diagram, by [pele](https://pele.run) at build time or by [mermaid](https://mermaid.js.org) in the browser.
 
 ```bash
-pnpm add --save-dev @mdsvex/plugin-diagram@next pele
+pnpm add --save-dev @mdsvex/plugin-diagram pele
 ```
 
 ```js

@@ -75,7 +75,7 @@
 			<Example plugin={p} />
 			<p class="links">
 				<a href={p.href}>{p.title}, the whole page</a>
-				<code>pnpm add -D {p.package}@next{needs.filter((n) => p.peers.some((x) => x.name === n)).map((n) => ` ${n}`).join('')}</code>
+				<code>pnpm add -D {p.package}{needs.filter((n) => p.peers.some((x) => x.name === n)).map((n) => ` ${n}`).join('')}</code>
 			</p>
 		</div>
 	{:else}

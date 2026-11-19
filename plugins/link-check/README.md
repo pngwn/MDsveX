@@ -3,7 +3,7 @@
 Link checking for [mdsvex](https://mdsvex.pngwn.io): a warning at every link to an id or a document that is not there.
 
 ```bash
-pnpm add --save-dev @mdsvex/plugin-link-check@next
+pnpm add --save-dev @mdsvex/plugin-link-check
 ```
 
 ```js

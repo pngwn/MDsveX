@@ -37,7 +37,7 @@
 			out.
 		</p>
 		<!-- the command stands alone, with no rule under it, as v7 had it -->
-		<p class="install"><span>Install the prerelease</span><code>{install.trim()}</code></p>
+		<p class="install"><span>Install</span><code>{install.trim()}</code></p>
 	</section>
 
 	<section class="contents" aria-labelledby="contents">

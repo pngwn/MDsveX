@@ -3,7 +3,7 @@
 Citations for [mdsvex](https://mdsvex.pngwn.io): `:cite[key]` cites an entry of a [CSL JSON](https://citeproc-js.readthedocs.io/en/latest/csl-json/markup.html) bibliography, and `::bibliography` lists every entry the document cites. Each citation links to its entry and each entry links back.
 
 ```bash
-pnpm add --save-dev @mdsvex/plugin-citations@next
+pnpm add --save-dev @mdsvex/plugin-citations
 ```
 
 ```js

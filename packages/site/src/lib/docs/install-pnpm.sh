@@ -1,1 +1,1 @@
-pnpm add -D mdsvex@next
+pnpm add -D mdsvex

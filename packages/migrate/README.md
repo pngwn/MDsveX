@@ -2,7 +2,7 @@
 
 Migrate **CommonMark / GFM** markdown to **Penguin-Flavoured Markdown (PFM)**,
 and mdsvex 0.x layouts, highlight options, smart punctuation and plugin lists
-to mdsvex next.
+to mdsvex 1.0.
 
 The source document is parsed with the [remark](https://github.com/remarkjs/remark)
 (unified) ecosystem into an `mdast` tree, then re-serialised under PFM's rules.
@@ -201,7 +201,7 @@ In either mode, a code span that already had a dollar on each side
 
 ## Legacy layouts to templates
 
-mdsvex next replaces 0.x layouts with templates. Three helpers cover the move.
+mdsvex 1.0 replaces 0.x layouts with templates. Three helpers cover the move.
 
 ### Config
 
@@ -216,7 +216,7 @@ import { migrate_config } from "@mdsvex/migrate";
 const { code, notes } = migrate_config(source);
 ```
 
-| mdsvex 0.x                              | mdsvex next                                     |
+| mdsvex 0.x                              | mdsvex 1.0                                      |
 | --------------------------------------- | ----------------------------------------------- |
 | `layout: './src/Layout.svelte'`         | `templates: { default: './src/Layout.svelte' }` |
 | `layout: { _: ..., blog: ... }`             | `templates: { default: ..., blog: ... }`            |
@@ -236,11 +236,11 @@ select_template: (id) => (id.includes('/blog/') ? 'blog' : undefined),
 
 ### Highlight options
 
-`migrate_config` also rewrites the 0.x `highlight` option. mdsvex next
+`migrate_config` also rewrites the 0.x `highlight` option. mdsvex 1.0
 highlights with twinkleplop instead of Prism, and escapes whatever a
 highlighter returns, so a few things go away.
 
-| mdsvex 0.x                              | mdsvex next                                     |
+| mdsvex 0.x                              | mdsvex 1.0                                      |
 | --------------------------------------- | ----------------------------------------------- |
 | `highlight: false`                      | kept                                            |
 | `highlight: { alias: { x: 'y' } }`      | `highlight: { languages: { x: 'y' } }`          |
@@ -260,11 +260,11 @@ gets a note too.
 ### Smart punctuation
 
 mdsvex 0.x ran smartypants over every document unless `smartypants` was
-`false`. mdsvex next has `smart_punctuation`, which is off by default.
+`false`. mdsvex 1.0 has `smart_punctuation`, which is off by default.
 `migrate_config` turns it on for a config that relied on the old default, and
 maps the old option onto the new one.
 
-| mdsvex 0.x                              | mdsvex next                                     |
+| mdsvex 0.x                              | mdsvex 1.0                                      |
 | --------------------------------------- | ----------------------------------------------- |
 | no `smartypants` option                 | `smart_punctuation: true` is added              |
 | `smartypants: true`                     | `smart_punctuation: true`                       |
@@ -302,14 +302,14 @@ are. The notes from `migrate_config` say which of these apply to a config.
 
 ### Remark and rehype plugins
 
-mdsvex next has its own parser and runs no remark or rehype plugins.
+mdsvex 1.0 has its own parser and runs no remark or rehype plugins.
 `migrate_config` leaves `remarkPlugins` and `rehypePlugins` where they are,
 under a `// TODO(mdsvex-migrate)` comment, and adds a note for each plugin
 that says what replaces it: core syntax, an option, a first-party plugin, a
 component, or nothing yet. It knows a plugin by the module it is imported or
 required from.
 
-| mdsvex 0.x                              | mdsvex next                                     |
+| mdsvex 0.x                              | mdsvex 1.0                                      |
 | --------------------------------------- | ----------------------------------------------- |
 | `rehype-slug`, `remark-slug`            | `heading_ids: true` is added, with a note       |
 | `remark-unwrap-images`                  | `unwrap_images: true` is added, with a note     |
@@ -321,7 +321,7 @@ The list is the one in the docs, under
 [coming from remark and rehype plugins](https://mdsvex.com/docs#coming-from-remark-and-rehype-plugins).
 
 mdsvex 0.x also put `rel="nofollow"` on every link to another site, with no
-option to turn it off. mdsvex next writes links as they are. A 0.x config gets
+option to turn it off. mdsvex 1.0 writes links as they are. A 0.x config gets
 a note that says how to keep it, with `@mdsvex/plugin-external-links`.
 
 ### Documents

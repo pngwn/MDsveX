@@ -3,7 +3,7 @@
 A table of contents for [mdsvex](https://mdsvex.pngwn.io): the headings of each document as data, a component that renders them as a nested list, and a `::toc` directive that puts that list in the document.
 
 ```bash
-pnpm add --save-dev @mdsvex/plugin-toc@next
+pnpm add --save-dev @mdsvex/plugin-toc
 ```
 
 ```js

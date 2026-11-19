@@ -12,8 +12,7 @@ const SERVER_PACKAGE: &str = "@mdsvex/language-server";
 const SERVER_SCRIPT: &str = "node_modules/@mdsvex/language-server/dist/server.cjs";
 const SERVER_ID: &str = "mdsvex-language-server";
 
-// the latest tag is a placeholder, and zed version lookup reads only latest
-const DIST_TAG: &str = "next";
+const DIST_TAG: &str = "latest";
 const DIST_TAGS_URL: &str =
     "https://registry.npmjs.org/-/package/@mdsvex%2flanguage-server/dist-tags";
 

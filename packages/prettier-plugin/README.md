@@ -3,7 +3,7 @@
 A [Prettier](https://prettier.io) plugin for mdsvex documents (`.svx`, `.pfm`).
 
 ```bash
-pnpm add --save-dev prettier @mdsvex/prettier-plugin@next
+pnpm add --save-dev prettier @mdsvex/prettier-plugin
 ```
 
 ```json

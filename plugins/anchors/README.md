@@ -3,7 +3,7 @@
 Heading anchors for [mdsvex](https://mdsvex.pngwn.io): a link to itself on every heading that has an id.
 
 ```bash
-pnpm add --save-dev @mdsvex/plugin-anchors@next
+pnpm add --save-dev @mdsvex/plugin-anchors
 ```
 
 ```js
