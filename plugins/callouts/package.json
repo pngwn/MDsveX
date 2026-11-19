@@ -1,6 +1,6 @@
 {
 	"name": "@mdsvex/plugin-callouts",
-	"version": "0.1.0-next.0",
+	"version": "0.1.0",
 	"description": "Callouts for mdsvex: note, tip, important, warning and caution, with a default or custom title",
 	"type": "module",
 	"scripts": {

@@ -62,6 +62,9 @@
 		],
 		"overrides": {
 			"@lezer/common": "^1.5.3"
+		},
+		"patchedDependencies": {
+			"@changesets/get-github-info@0.6.0": "patches/@changesets__get-github-info@0.6.0.patch"
 		}
 	},
 	"packageManager": "pnpm@10.33.0"

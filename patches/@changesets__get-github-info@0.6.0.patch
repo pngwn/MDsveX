@@ -1,0 +1,26 @@
+diff --git a/dist/changesets-get-github-info.cjs.js b/dist/changesets-get-github-info.cjs.js
+index a74df59f8a5988f458a3476087399f5e6dfe4818..2e14970e43904f4467e087c72bc179852063f74c 100644
+--- a/dist/changesets-get-github-info.cjs.js
++++ b/dist/changesets-get-github-info.cjs.js
+@@ -211,7 +211,7 @@ const GHDataLoader = new DataLoader__default["default"](async requests => {
+ 
+     return cleanedData[repo][data.kind][data.kind === "pull" ? data.pull : data.commit];
+   });
+-});
++}, { maxBatchSize: 50, cacheKeyFn: (request) => JSON.stringify(request) });
+ async function getInfo(request) {
+   if (!request.commit) {
+     throw new Error("Please pass a commit SHA to getInfo");
+diff --git a/dist/changesets-get-github-info.esm.js b/dist/changesets-get-github-info.esm.js
+index 27e5c972ab1202ff16f5124b471f4bbcc46be2b5..c9317a74c2ea5b756335bf4073112633be286fd4 100644
+--- a/dist/changesets-get-github-info.esm.js
++++ b/dist/changesets-get-github-info.esm.js
+@@ -202,7 +202,7 @@ const GHDataLoader = new DataLoader(async requests => {
+ 
+     return cleanedData[repo][data.kind][data.kind === "pull" ? data.pull : data.commit];
+   });
+-});
++}, { maxBatchSize: 50, cacheKeyFn: (request) => JSON.stringify(request) });
+ async function getInfo(request) {
+   if (!request.commit) {
+     throw new Error("Please pass a commit SHA to getInfo");
