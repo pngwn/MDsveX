@@ -46,7 +46,7 @@
 		"prettier-plugin-svelte": "^3.5.1",
 		"remark-syntax-highlight": "^0.1.3",
 		"smol-toml": "^1.9.1",
-		"svelte": "^5.55.1",
+		"svelte": "^5.57.3",
 		"typeface-catamaran": "^1.1.13",
 		"typeface-roboto": "^1.1.13",
 		"unist-util-visit": "^5.0.0",
