@@ -1,5 +1,11 @@
 # mdsvex
 
+## 1.0.1
+
+### Patch Changes
+
+- [#1290](https://github.com/pngwn/MDsveX/pull/1290) [`90d9b99`](https://github.com/pngwn/MDsveX/commit/90d9b992630868b06872690868d78e24fc9f70ae) Thanks [@pngwn](https://github.com/pngwn)! - The install commands in each README no longer use the `next` tag, and links point at the `main` branch. `mdsvex-migrate --help` says it migrates to mdsvex 1.0.
+
 ## 1.0.0
 
 ### Major Changes
