@@ -48,6 +48,26 @@
 
 - Updated dependencies [[`6ac3826`](https://github.com/pngwn/MDsveX/commit/6ac382615eb410230e8423d5ca4202005588869e), [`e5b7abe`](https://github.com/pngwn/MDsveX/commit/e5b7abe1ebf868b1df1e934fb96e1e363696f3e9), [`5b54692`](https://github.com/pngwn/MDsveX/commit/5b54692d6c895f02c947ce620a46c7a9beb856e9)]:
   - mdsvex@1.0.0-next.0
+## 1.0.5
+
+### Patch Changes
+
+- Updated dependencies [[`60d6939`](https://github.com/pngwn/MDsveX/commit/60d6939cef092c101960d27836d9ba67b13c0a38)]:
+  - mdsvex@0.12.8
+
+## 1.0.4
+
+### Patch Changes
+
+- Updated dependencies [[`1a91b94`](https://github.com/pngwn/MDsveX/commit/1a91b94fe9bf967468f024df95ce02ca73fc5368)]:
+  - mdsvex@0.12.7
+
+## 1.0.3
+
+### Patch Changes
+
+- Updated dependencies [[`671cc65`](https://github.com/pngwn/MDsveX/commit/671cc6594c20600fc9f95421e6d09ee28fc0c243)]:
+  - mdsvex@0.12.6
 
 ## 1.0.2
 

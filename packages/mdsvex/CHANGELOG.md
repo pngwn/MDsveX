@@ -1447,6 +1447,23 @@
 - Updated dependencies [[`6ac3826`](https://github.com/pngwn/MDsveX/commit/6ac382615eb410230e8423d5ca4202005588869e), [`46f655f`](https://github.com/pngwn/MDsveX/commit/46f655f90a838726eda34e1b07667e86fa61e7cb), [`e5b7abe`](https://github.com/pngwn/MDsveX/commit/e5b7abe1ebf868b1df1e934fb96e1e363696f3e9), [`5b54692`](https://github.com/pngwn/MDsveX/commit/5b54692d6c895f02c947ce620a46c7a9beb856e9)]:
   - @mdsvex/render@1.0.0-next.0
   - @mdsvex/parse@1.0.0-next.0
+## 0.12.8
+
+### Patch Changes
+
+- [#810](https://github.com/pngwn/MDsveX/pull/810) [`60d6939`](https://github.com/pngwn/MDsveX/commit/60d6939cef092c101960d27836d9ba67b13c0a38) Thanks [@jfbloom22](https://github.com/jfbloom22)! - Add a `layoutPropForwarding` option that can generate Svelte 5 runes-compatible layout prop forwarding.
+
+## 0.12.7
+
+### Patch Changes
+
+- [#775](https://github.com/pngwn/MDsveX/pull/775) [`1a91b94`](https://github.com/pngwn/MDsveX/commit/1a91b94fe9bf967468f024df95ce02ca73fc5368) Thanks [@kevinji](https://github.com/kevinji)! - fix: allow filename to be undefined in Preprocessor
+
+## 0.12.6
+
+### Patch Changes
+
+- [#728](https://github.com/pngwn/MDsveX/pull/728) [`671cc65`](https://github.com/pngwn/MDsveX/commit/671cc6594c20600fc9f95421e6d09ee28fc0c243) Thanks [@paoloricciuti](https://github.com/paoloricciuti)! - fix: prevent race condition with `add_layouts`
 
 ## 0.12.5
 
