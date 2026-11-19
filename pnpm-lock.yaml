@@ -7,6 +7,11 @@ settings:
 overrides:
   '@lezer/common': ^1.5.3
 
+patchedDependencies:
+  '@changesets/get-github-info@0.6.0':
+    hash: 443b6ea2369e64b9a0908b4b7f2f3781ee21d06507e791fa0fc882fd7cff29b0
+    path: patches/@changesets__get-github-info@0.6.0.patch
+
 importers:
 
   .:
@@ -7037,7 +7042,7 @@ snapshots:
 
   '@changesets/changelog-github@0.5.1':
     dependencies:
-      '@changesets/get-github-info': 0.6.0
+      '@changesets/get-github-info': 0.6.0(patch_hash=443b6ea2369e64b9a0908b4b7f2f3781ee21d06507e791fa0fc882fd7cff29b0)
       '@changesets/types': 6.1.0
       dotenv: 8.6.0
 
@@ -7093,7 +7098,7 @@ snapshots:
       picocolors: 1.1.1
       semver: 7.8.5
 
-  '@changesets/get-github-info@0.6.0':
+  '@changesets/get-github-info@0.6.0(patch_hash=443b6ea2369e64b9a0908b4b7f2f3781ee21d06507e791fa0fc882fd7cff29b0)':
     dependencies:
       dataloader: 1.4.0
       node-fetch: 2.6.1
