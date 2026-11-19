@@ -1,5 +1,12 @@
 # @mdsvex/repl
 
+## 0.0.2
+
+### Patch Changes
+
+- Updated dependencies [[`90d9b99`](https://github.com/pngwn/MDsveX/commit/90d9b992630868b06872690868d78e24fc9f70ae)]:
+  - mdsvex@1.0.1
+
 ## 0.0.1
 
 ### Patch Changes
