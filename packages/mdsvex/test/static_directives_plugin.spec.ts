@@ -489,7 +489,7 @@ describe('static directive styles, assets and the live barrel', () => {
 				`import "${dir}/callout.css";\n` +
 				`import __mdsvex_asset_0 from "${dir}/logo.svg";\n` +
 				'</script><aside class="warn svelte-' +
-				code.split('svelte-')[1].split('"')[0] +
+				code.split('class="warn svelte-')[1].split('"')[0] +
 				'"><img src="{__mdsvex_asset_0}" alt=""/><strong>Hi</strong><p>body</p></aside>'
 		);
 	});
