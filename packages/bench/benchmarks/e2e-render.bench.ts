@@ -12,6 +12,9 @@ import { marked } from "marked";
 import { createMarkdownExit } from "markdown-exit";
 import { remark } from "remark";
 import { markdownToHtml, defineMdastPlugin , defineHastPlugin} from "satteri";
+import { renderToHtml as words_render } from "@pierre/words";
+
+const words_decoder = new TextDecoder();
 
 function slugify(text: string): string {
 	return text
@@ -93,6 +96,13 @@ const fixtures = {
 // 	return renderer.html;
 // }
 
+function pfm_html(source: string, plugins?: ParsePlugin[]): string {
+	const result = parse_markdown_svelte(source, plugins ? { plugins } : undefined);
+	const renderer = new CursorHTMLRenderer({ cache: false });
+	renderer.update(result.nodes, result.source);
+	return renderer.html;
+}
+
 const mdexit = createMarkdownExit();
 const remark_html = remark().use(remarkHtml);
 
@@ -100,12 +110,16 @@ const remark_html = remark().use(remarkHtml);
 
 for (const [name, source] of Object.entries(fixtures)) {
 	describe(`e2e: ${name} (${source.length} bytes)`, () => {
-		bench("pfm", () => {
+		bench("pfm (parse only)", () => {
 			parse_markdown_svelte(source);
 		});
 
+		bench("pfm", () => {
+			pfm_html(source);
+		});
+
 		bench("pfm(autolinks)", () => {
-			parse_markdown_svelte(source, { plugins: [pfm_autolink()] })
+			pfm_html(source, [pfm_autolink()]);
 		});
 
 		bench("marked", () => {
@@ -126,6 +140,15 @@ for (const [name, source] of Object.entries(fixtures)) {
 
 		bench("satteri (satteri_autolink)", () => {
 			markdownToHtml(source, { mdastPlugins: [satteri_autolink]});
+		});
+
+		// the bytes share wasm memory, a caller has to decode or copy them
+		bench("@pierre/words (bytes)", () => {
+			words_render(source);
+		});
+
+		bench("@pierre/words (decoded string)", () => {
+			words_decoder.decode(words_render(source));
 		});
 
 		bench("satteri (mdast + hast)", () => {
