@@ -41,6 +41,9 @@ import {
 // magic-string and rollup read window, it stays inline so it is not treeshaken
 self.window = self;
 
+/** a workspace file imported as its text, as vite does it */
+const RAW = '?raw';
+
 const ENTRYPOINT = '__entry.js';
 const WRAPPER = '__wrapper.svelte';
 const STYLES = '__styles.js';
@@ -223,6 +226,10 @@ async function get_bundle(
 
 			if (importee[0] === '.') {
 				if (importer.startsWith(VIRTUAL)) {
+					if (importee.endsWith(RAW))
+						return (
+							resolve(virtual, importee.slice(0, -RAW.length), importer) + RAW
+						);
 					return resolve(virtual, importee, importer);
 				}
 
@@ -292,12 +299,17 @@ async function get_bundle(
 			if (uid !== current_id) throw ABORT;
 
 			if (resolved.startsWith(VIRTUAL)) {
-				const file = virtual.get(resolved.slice(VIRTUAL.length + 1));
-				if (!file)
-					throw new Error(
-						`'${resolved.slice(VIRTUAL.length + 1)}' does not exist`
-					);
-				return file.contents;
+				const raw = resolved.endsWith(RAW);
+				const name = resolved.slice(
+					VIRTUAL.length + 1,
+					raw ? -RAW.length : undefined
+				);
+				const file = virtual.get(name);
+				if (!file) throw new Error(`'${name}' does not exist`);
+				// no transform reads the suffix as a file type, so the text is left alone
+				return raw
+					? `export default ${JSON.stringify(file.contents)};`
+					: file.contents;
 			}
 
 			if (resolved.startsWith(NPM)) {

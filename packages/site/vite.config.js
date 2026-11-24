@@ -49,8 +49,9 @@ export default ({ command }) => {
 		],
 		server: {
 			fs: {
-				// the repl workers are loaded by url, outside the import graph
-				allow: ["../repl"],
+				// the repl workers are loaded by url, outside the import graph, and
+				// the stream lab reads the parser's fixtures one at a time
+				allow: ["../repl", "../parse/test/fixtures"],
 			},
 		},
 		optimizeDeps: {

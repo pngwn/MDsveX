@@ -22,6 +22,7 @@ const ORDER: [slug: string, title: string][] = [
 	['math', 'Math'],
 	['footnotes', 'Footnotes'],
 	['all-mode', 'All mode'],
+	['streaming', 'Streaming'],
 ];
 
 /** the entry and config lead, everything else keeps its path order */

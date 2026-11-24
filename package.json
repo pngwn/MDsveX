@@ -7,7 +7,7 @@
 	"scripts": {
 		"test": "pnpm -r --filter=!site test",
 		"test:run": "run-s test:run:build test:run:vitest",
-		"test:run:build": "pnpm --filter=!site --filter=!incremental-parse-test --filter=!mdsvex-demo -r build",
+		"test:run:build": "pnpm --filter=!site --filter=!mdsvex-demo -r build",
 		"test:run:vitest": "vitest run .",
 		"test:e2e": "pnpm --filter=mdsvex-demo test:e2e",
 		"check:package-types": "node scripts/check-package-types.mjs",
@@ -16,7 +16,7 @@
 		"build:ls:ts-plugin": "pnpm --filter @mdsvex/typescript-plugin build",
 		"build:ls:vscode": "pnpm --filter vscode-pfm build",
 		"release": "run-s release:build release:publish",
-		"release:build": "pnpm --filter=!site --filter=!incremental-parse-test --filter=!mdsvex-demo -r build",
+		"release:build": "pnpm --filter=!site --filter=!mdsvex-demo -r build",
 		"release:publish": "changeset publish",
 		"changeset:add": "changeset add",
 		"changeset:pre-enter": "changeset pre enter",

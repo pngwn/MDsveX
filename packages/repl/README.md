@@ -42,6 +42,7 @@ It started as a copy of the [Svelte playground](https://github.com/sveltejs/svel
   ```
 
   Every bundled language is available, so `languages` only holds aliases. `annotations` names the built-in annotations and `shiki_notation`. `false` turns highlighting off. `twoslash` and `parse_meta` aren't available. The worker loads only the languages a document names, the first time it sees them. mdsvex adds no CSS, so pass a theme stylesheet as `injected_css` to colour the preview.
+- **`?raw` imports.** `import source from './document.md?raw'` gives a workspace file as a string, as Vite does, so a harness can feed markdown to the parser itself.
 - **URL state.** `encode_state` and `decode_state` turn a whole playground into a gzipped base64url string for a URL hash.
 
 ## What it drops

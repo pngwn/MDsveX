@@ -1,7 +1,7 @@
 <script lang="ts">
 	// the page frame every 1.0 page sits in: paper, the faces, the texture, a slot
 	// for the nav and a footer, in light or dark. The root layout puts every page
-	// in it but the playground, which owns the viewport.
+	// in it but the playground and the stream lab, which own the viewport.
 	//
 	// Dark is a proposal: SCORE.md gives no dark palette, so tokens.css carries one
 	// made by SCORE.md's own contrast rule. `auto` follows the visitor's setting
