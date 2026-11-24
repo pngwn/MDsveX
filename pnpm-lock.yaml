@@ -284,6 +284,9 @@ importers:
       '@mdsvex/render':
         specifier: workspace:^
         version: link:../render
+      '@pierre/words':
+        specifier: 0.2.2
+        version: 0.2.2
       '@rsvelte/compiler':
         specifier: 0.12.6
         version: 0.12.6(svelte@5.55.1)
@@ -2605,6 +2608,17 @@ packages:
 
   '@oxc-project/types@0.152.0':
     resolution: {integrity: sha512-oM/5rLBm2tPkg0iBgkH/FOeR3PCDpY19GTgAZjMFM8h9WI9VW7cLgzp6nwtarYKmovavIQZ+Fe/RKX/8C8O/Rw==}
+
+  '@pierre/words@0.2.2':
+    resolution: {integrity: sha512-gOMolXeQzPK9IVNDimh8pronqzpFISFxp+rhobKT8NYQsTOpDLQKgr0rjwZn3I/kHLF+Sqoe2aIO/R7H71IzwQ==}
+    peerDependencies:
+      '@pierre/highlights': '>=0.5.1'
+      react: ^18.3.1 || ^19.0.0
+    peerDependenciesMeta:
+      '@pierre/highlights':
+        optional: true
+      react:
+        optional: true
 
   '@playwright/test@1.52.0':
     resolution: {integrity: sha512-uh6W7sb55hl7D6vsAeA+V2p5JnlAqzhqFyF0VcJkKZXkgnFcVG9PziERRHQfPLfNGx1C292a4JqbWzhR8L4R1g==}
@@ -8039,6 +8053,8 @@ snapshots:
   '@oxc-project/types@0.122.0': {}
 
   '@oxc-project/types@0.152.0': {}
+
+  '@pierre/words@0.2.2': {}
 
   '@playwright/test@1.52.0':
     dependencies:

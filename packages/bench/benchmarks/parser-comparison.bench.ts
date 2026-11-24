@@ -11,6 +11,10 @@ import {
 	createParse as comark_createParse,
 } from "comark";
 import { StreamParser, Renderer, MarkdownRecovery } from "@aibind/markdown";
+import {
+	renderToHtml as words_render,
+	createHtmlSession as words_session,
+} from "@pierre/words";
 
 //  Fixtures
 
@@ -51,6 +55,11 @@ for (const [name, source] of Object.entries(fixtures)) {
 
 		bench("comark (parse)", async () => {
 			await comark_parse(source);
+		});
+
+		// words cannot parse without rendering, this row also writes html
+		bench("@pierre/words (render to html bytes)", () => {
+			words_render(source);
 		});
 	});
 }
@@ -104,6 +113,21 @@ for (const [chunks, size] of [
 			const parse = comark_createParse();
 			for (let i = 0; i < chunks.length; i++) {
 				await parse(chunks.slice(0, i + 1).join(""), { streaming: true });
+			}
+		});
+
+		// a session takes the full string each time and reuses completed blocks
+		bench("@pierre/words (html session)", () => {
+			const session = words_session();
+			for (let i = 0; i < chunks.length; i++) {
+				session.render(chunks.slice(0, i + 1).join(""));
+			}
+		});
+
+		bench("@pierre/words (html session, incomplete)", () => {
+			const session = words_session();
+			for (let i = 0; i < chunks.length; i++) {
+				session.render(chunks.slice(0, i + 1).join(""), { incomplete: true });
 			}
 		});
 	});
