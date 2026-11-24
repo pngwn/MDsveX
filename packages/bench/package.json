@@ -12,7 +12,8 @@
     "bench:versions": "pnpm -C ../parse build && pnpm -C ../render build && pnpm -C ../mdsvex build && node --expose-gc ./node_modules/vitest/vitest.mjs bench --run benchmarks/mdsvex-versions.bench.ts",
     "bench:e2e": "node --expose-gc ./node_modules/vitest/vitest.mjs bench --run benchmarks/e2e-render.bench.ts",
     "bench:throughput": "npx tsx benchmarks/throughput.ts",
-    "bench:hydration": "node hydration/run.mjs"
+    "bench:hydration": "node hydration/run.mjs",
+    "bench:streaming": "pnpm -C ../parse build && pnpm -C ../render build && node streaming/run.mjs"
   },
   "repository": {
     "type": "git",
@@ -35,7 +36,7 @@
     "@lukeed/html": "^1.0.2",
     "@mdsvex/parse": "workspace:^",
     "@mdsvex/render": "workspace:^",
-    "@pierre/words": "0.2.2",
+    "@pierre/words": "0.3.0",
     "@rsvelte/compiler": "0.12.6",
     "@rsvelte/vite-plugin-svelte-native": "0.3.17",
     "@types/node": "^20.12.7",
@@ -47,9 +48,15 @@
     "mdsvex-legacy": "npm:mdsvex@0.12.8",
     "parse5": "^8.0.0",
     "playwright-core": "1.52.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-markdown": "10.1.0",
     "remark": "^15.0.1",
+    "remark-gfm": "4.0.1",
     "remark-html": "^16.0.1",
     "remark-parse": "^11.0.0",
+    "streamdown": "2.8.0",
+    "streaming-markdown": "0.2.15",
     "svelte": "^5.55.1",
     "unified": "^11.0.5",
     "vitest": "^1.5.0"
