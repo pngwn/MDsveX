@@ -1256,14 +1256,16 @@ describe('parse plugins: nodes around an open wrapper', () => {
 		expect(closes).toEqual(['heading', 'heading', 'directive_container']);
 	});
 
-	it('a close callback that waits keeps every close going through', () => {
+	it('a close callback costs the nodes opened after it nothing', () => {
 		const source = '> a *b*\n\nc *d*\n';
-		const { closes } = asked(source, [on('block_quote', () => () => {})]);
-		expect(closes.filter((kind) => kind !== 'text')).toEqual([
-			'strong_emphasis',
-			'paragraph',
-			'block_quote',
+		let ran = 0;
+		const { closes } = asked(source, [
+			on('block_quote', () => () => {
+				ran++;
+			}),
 		]);
+		expect(ran).toBe(1);
+		expect(closes.filter((kind) => kind !== 'text')).toEqual(['block_quote']);
 	});
 
 	it('a document parsed inside a handler does not share the mask', () => {
