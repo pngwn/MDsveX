@@ -1,6 +1,6 @@
 /**
- * the mdsvex packages this playground was built with and the highlighter they
- * were installed with, the preview bundles them in place of the ones on npm
+ * the mdsvex packages this playground was built with and the highlighter and
+ * math library they were installed with, the preview bundles them in place of the ones on npm
  * so it shows what the compiler here writes
  */
 
@@ -59,6 +59,18 @@ for (const path in twinkleplop) {
 	const [scope, name, ...rest] = path.slice(TWINKLEPLOP.length).split('/');
 	(SOURCES[scope + '/' + name] ??= {})[rest.join('/')] = twinkleplop[path];
 }
+
+// the math library mdsvex was installed with, load_math imports it by name
+SOURCES.temml = under(
+	'../../../mdsvex/node_modules/temml/',
+	import.meta.glob<string>(
+		[
+			'../../../mdsvex/node_modules/temml/package.json',
+			'../../../mdsvex/node_modules/temml/dist/temml.mjs',
+		],
+		{ query: '?raw', import: 'default' }
+	)
+);
 
 const loaded = new Map<string, Promise<Package>>();
 

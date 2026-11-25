@@ -431,6 +431,14 @@ export async function highlight_for(
 const MATH_FENCE = /(?:```+|~~~+)[ \t]*math(?=\s|$)/;
 let math_current: { key: string; render: Promise<MathRenderer> } | null = null;
 
+/** the math config a stream of a document renders with, null when its compile renders no math */
+export function stream_math(
+	source: string,
+	config: ResolvedConfig
+): ReplMath | null {
+	return config.math === false || !MATH_FENCE.test(source) ? null : config.math;
+}
+
 /**
  * the math option for a document, temml is fetched with the first one that
  * has a math fence, katex is not bundled, so its math shows as written

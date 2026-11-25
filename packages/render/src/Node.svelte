@@ -1,5 +1,6 @@
 <script lang="ts" module>
-	import type { Highlight } from './component.js';
+	import type { NodeBuffer } from '@mdsvex/parse/utils';
+	import type { Highlight, MathRenderer } from './component.js';
 
 	// each chunk replaces every token of an open fence, about 1ms for 1000 characters, a longer one waits until it closes
 	const OPEN_FENCE_LIMIT = 4096;
@@ -180,11 +181,56 @@
 			return null;
 		}
 	}
+
+	// the markup compile writes around math
+	const MATH_OPEN = '<div class="math math-display" translate="no">';
+	const MATH_INLINE_OPEN = '<span class="math math-inline" translate="no">';
+
+	/** the html of a math fence or of inline math from the renderer, null draws it plain */
+	function math_html(
+		math: MathRenderer,
+		latex: string,
+		display: boolean,
+		meta: string
+	): string | null {
+		try {
+			const out = math(latex, { display, meta, filename: undefined });
+			if (typeof out !== 'string') return null;
+			return display
+				? MATH_OPEN + out + '</div>'
+				: MATH_INLINE_OPEN + out + '</span>';
+		} catch {
+			// a stream has no build to fail, latex the renderer can not read shows as written
+			return null;
+		}
+	}
+
+	// the last html of each open math fence by its node, an open block is a new component on every chunk
+	const open_math = new WeakMap<NodeBuffer, Map<number, string>>();
+
+	/** the html of a math fence that is still open, what it last rendered as when its latex can not be read yet */
+	function open_math_html(
+		math: MathRenderer,
+		buf: NodeBuffer,
+		idx: number,
+		latex: string,
+		meta: string
+	): string | null {
+		let last = open_math.get(buf);
+		if (latex.length <= OPEN_FENCE_LIMIT && latex.trim() !== '') {
+			const html = math_html(math, latex, true, meta);
+			if (html !== null) {
+				if (last === undefined) open_math.set(buf, (last = new Map()));
+				last.set(idx, html);
+				return html;
+			}
+		}
+		return last?.get(idx) ?? null;
+	}
 </script>
 
 <script lang="ts">
 	import { is_raw_text_tag } from '@mdsvex/parse/utils';
-	import type { NodeBuffer } from '@mdsvex/parse/utils';
 	import {
 		buf_children,
 		buf_code,
@@ -206,6 +252,7 @@
 		directives,
 		plugin_data,
 		highlight,
+		math,
 	}: {
 		buf: NodeBuffer;
 		idx: number;
@@ -220,6 +267,8 @@
 		plugin_data?: { readonly current: unknown };
 		/** highlights code fences, takes what the highlight option of compile takes, its html is not escaped */
 		highlight?: Highlight | false | null;
+		/** renders math fences and inline math, takes what the math option of compile takes, its html is not escaped */
+		math?: MathRenderer | false | null;
 	} = $props();
 
 	// the key of @mdsvex/render/stream and of a compiled document, Symbol.for so every copy agrees
@@ -401,12 +450,37 @@
 			: undefined
 	);
 
+	// the meta of a math fence, undefined for any other node and with no renderer
+	let math_meta = $derived.by(() => {
+		if (!math || node_kind !== K_CODE_FENCE || !fence_info) return undefined;
+		const space = fence_info.search(/[ \t]/);
+		if (space === -1) return fence_info === 'math' ? '' : undefined;
+		return fence_info.slice(0, space) === 'math'
+			? fence_info.slice(space).trim()
+			: undefined;
+	});
+
+	let rendered_math = $derived.by(() => {
+		if (!math) return null;
+		const open = buf.end_at(idx) === NONE;
+		if (node_kind === K_CODE_SPAN)
+			return extra === 1 && !open
+				? math_html(math, buf_code(buf, idx, source), false, '')
+				: null;
+		if (math_meta === undefined) return null;
+		const latex = buf_code(buf, idx, source);
+		if (open) return open_math_html(math, buf, idx, latex, math_meta);
+		open_math.get(buf)?.delete(idx);
+		return math_html(math, latex, true, math_meta);
+	});
+
 	// a highlighter that reads state runs again for a closed fence when that state changes
 	let highlighted = $derived.by(() => {
+		if (rendered_math !== null) return rendered_math;
 		if (!highlight) return null;
 		if (node_kind === K_CODE_SPAN) {
-			// inline math is a code span too, it has no hint
-			if (!fence_info) return null;
+			// inline math is a code span too, it has no hint, and a math hint is not a language
+			if (!fence_info || (math && fence_info === 'math')) return null;
 			return span_html(
 				highlight,
 				buf_code(buf, idx, source),
@@ -415,7 +489,8 @@
 				buf.end_at(idx) === NONE
 			);
 		}
-		if (node_kind !== K_CODE_FENCE) return null;
+		// a math fence the renderer left plain is no code to highlight
+		if (node_kind !== K_CODE_FENCE || math_meta !== undefined) return null;
 		const code = buf_code(buf, idx, source);
 		const open = buf.end_at(idx) === NONE;
 		if (open && code.length > OPEN_FENCE_LIMIT) return null;
@@ -454,9 +529,9 @@
 			case K_LIST_ITEM:
 				return 'li';
 			case K_CODE_SPAN:
-				return 'code';
+				return math && extra === 1 ? 'math' : 'code';
 			case K_CODE_FENCE:
-				return 'pre';
+				return math_meta !== undefined ? 'math' : 'pre';
 			case K_LINK:
 				return 'a';
 			case K_IMAGE:
@@ -484,6 +559,9 @@
 		if (components === undefined) return undefined;
 		const name = element_name();
 		if (name === '') return undefined;
+		// math that has not rendered is the code it is drawn as, no math replacement takes that
+		if (name === 'math')
+			return rendered_math === null ? undefined : components.math;
 		// highlighted html that is not one code element is drawn as it is
 		if (highlighted !== null && node_kind === K_CODE_SPAN && code_span === null)
 			return undefined;
@@ -531,10 +609,19 @@
 					? { ...get_attrs(meta), checked: meta.checked }
 					: get_attrs(meta);
 			case K_CODE_SPAN:
+				if (rendered_math !== null)
+					return { code: buf_code(buf, idx, source), ...get_attrs(meta) };
 				return code_span === null
 					? get_attrs(meta)
 					: { lang: fence_info, ...code_span.props };
 			case K_CODE_FENCE: {
+				if (rendered_math !== null)
+					return {
+						display: true,
+						code: buf_code(buf, idx, source),
+						meta: math_meta || undefined,
+						...get_attrs(meta),
+					};
 				const [lang, rest] = info_parts(fence_info);
 				return {
 					...get_attrs(meta),
@@ -587,6 +674,7 @@
 				{directives}
 				{plugin_data}
 				{highlight}
+				{math}
 			/>
 		{/if}
 	{/each}
@@ -730,7 +818,7 @@
 	{#if node_kind === K_PARAGRAPH}
 		{@render task_box()}{@render child_nodes(idx)}
 	{:else if node_kind === K_CODE_SPAN}
-		{#if code_span !== null}{@html code_span.body}{:else}{buf_code(
+		{#if code_span !== null}{@html code_span.body}{:else if rendered_math !== null}{@html rendered_math}{:else}{buf_code(
 				buf,
 				idx,
 				source
