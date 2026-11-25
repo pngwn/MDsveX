@@ -113,7 +113,6 @@ enum { C_WS, C_PUNCT, C_WORD };
 
 // past this the scanner stops pushing, so the state always fits its buffer
 #define MAX_DEPTH 100
-#define MAX_DEFINITIONS 128
 
 typedef struct {
 	Array(Block) open;
@@ -121,8 +120,6 @@ typedef struct {
 	Array(uint8_t) brackets;
 	// colons and container depth of each open container directive, two bytes an entry
 	Array(uint8_t) directives;
-	// hashes of the labels of the link reference definitions read so far
-	Array(uint16_t) definitions;
 	uint8_t matched;
 	uint8_t flags;
 	uint8_t fence_len;
@@ -276,47 +273,8 @@ static bool in_list_item(Scanner *s) {
 	return s->open.size > 0 && s->open.contents[s->open.size - 1].type == LIST_ITEM;
 }
 
-// a label hashed as labels match, case folded, whitespace collapsed and trimmed
-typedef struct {
-	uint32_t hash;
-	bool started;
-	bool space;
-} Label;
-
-static void label_init(Label *l) {
-	l->hash = 2166136261u;
-	l->started = false;
-	l->space = false;
-}
-
-static void label_mix(Label *l, uint32_t c) {
-	l->hash = (l->hash ^ c) * 16777619u;
-}
-
-static void label_add(Label *l, int32_t c) {
-	if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
-		l->space = l->started;
-		return;
-	}
-	if (l->space) label_mix(l, ' ');
-	l->space = false;
-	l->started = true;
-	if ((c >= 'A' && c <= 'Z') || (c >= 0xc0 && c <= 0xde && c != 0xd7) ||
-	    (c >= 0x391 && c <= 0x3a9) || (c >= 0x410 && c <= 0x42f)) {
-		c += 32;
-	}
-	label_mix(l, (uint32_t)c);
-}
-
-static uint16_t label_key(Label *l) {
-	return (uint16_t)(l->hash ^ (l->hash >> 16));
-}
-
-static bool is_defined(Scanner *s, Label *l) {
-	uint16_t key = label_key(l);
-	for (unsigned i = 0; i < s->definitions.size; i++)
-		if (s->definitions.contents[i] == key) return true;
-	return false;
+static bool is_label_space(int32_t c) {
+	return c == ' ' || c == '\t' || c == '\n' || c == '\r';
 }
 
 static void drop_directives(Scanner *s) {
@@ -955,11 +913,13 @@ static bool check_link_tail(Scanner *s, TSLexer *lexer) {
 	return ok && lexer->lookahead == ')';
 }
 
-// a reference link, `[text][label]` or `[text][]`, needs a definition of its label above it
+// a reference link, `[text][label]` or `[text][]`, is one by its brackets alone, no definition
+// is looked up
 static bool find_bracket_close(Scanner *s, TSLexer *lexer, bool label) {
 	unsigned depth = 1;
-	Label text;
-	label_init(&text);
+	// the text holds a char that is not whitespace, so it can be the label of `[text][]`
+	bool text = false;
+	int32_t text_first = lexer->lookahead;
 	for (;;) {
 		if (lexer->eof(lexer)) return false;
 		int32_t c = lexer->lookahead;
@@ -968,17 +928,13 @@ static bool find_bracket_close(Scanner *s, TSLexer *lexer, bool label) {
 			skip_newline(lexer);
 			bool lazy;
 			if (!paragraph_continues(s, lexer, &lazy)) return false;
-			label_add(&text, ' ');
 			if (s->peek_mark == '[') depth++;
 			continue;
 		}
 		adv(lexer);
-		if (!(c == ']' && depth == 1)) label_add(&text, c);
+		if (!(c == ']' && depth == 1) && !is_label_space(c)) text = true;
 		if (c == '\\') {
-			if (!at_eol(lexer)) {
-				label_add(&text, lexer->lookahead);
-				adv(lexer);
-			}
+			if (!at_eol(lexer)) adv(lexer);
 		} else if (c == '<') {
 			int32_t d = lexer->lookahead;
 			if (is_alpha(d) || d == '/' || d == '!') {
@@ -1018,21 +974,22 @@ static bool find_bracket_close(Scanner *s, TSLexer *lexer, bool label) {
 	if (label) return true;
 	if (lexer->lookahead == '[') {
 		adv(lexer);
-		if (lexer->lookahead == ']') return is_defined(s, &text);
-		// a reference label holds no brackets
-		Label ref;
-		label_init(&ref);
+		// a label that starts with a caret is a footnote reference, the brackets before it text
+		if (lexer->lookahead == ']') return text && text_first != '^';
+		if (lexer->lookahead == '^') return false;
+		// a reference label holds no brackets, and a char that is not whitespace
+		bool ref = false;
 		while (!at_eol(lexer) && lexer->lookahead != ']') {
 			if (lexer->lookahead == '[') return false;
 			if (lexer->lookahead == '\\') {
-				label_add(&ref, '\\');
+				ref = true;
 				adv(lexer);
 			}
 			if (at_eol(lexer)) break;
-			label_add(&ref, lexer->lookahead);
+			if (!is_label_space(lexer->lookahead)) ref = true;
 			adv(lexer);
 		}
-		return lexer->lookahead == ']' && ref.started && is_defined(s, &ref);
+		return lexer->lookahead == ']' && ref;
 	}
 	if (lexer->lookahead != '(') return false;
 	adv(lexer);
@@ -1434,16 +1391,16 @@ static int scan_line_start(Scanner *s, TSLexer *lexer, const bool *valid,
 		}
 		int32_t first = lexer->lookahead;
 		unsigned n = 0;
-		Label label;
-		label_init(&label);
+		// the label holds a char that is not whitespace
+		bool label = false;
 		while (!at_eol(lexer) && lexer->lookahead != ']' && lexer->lookahead != '[') {
 			if (lexer->lookahead == '\\') {
-				label_add(&label, '\\');
+				label = true;
 				adv(lexer);
 				n++;
 				if (at_eol(lexer)) break;
 			}
-			label_add(&label, lexer->lookahead);
+			if (!is_label_space(lexer->lookahead)) label = true;
 			adv(lexer);
 			n++;
 		}
@@ -1463,7 +1420,7 @@ static int scan_line_start(Scanner *s, TSLexer *lexer, const bool *valid,
 			                                      : TASK_CHECKED;
 			return 1;
 		}
-		if (lexer->lookahead == ':' && label.started && !table &&
+		if (lexer->lookahead == ':' && label && !table &&
 		    valid[LINK_REFERENCE_DEFINITION_START]) {
 			// at the top level the destination and the title may each start the next line,
 			// in a container a definition is one line
@@ -1494,9 +1451,6 @@ static int scan_line_start(Scanner *s, TSLexer *lexer, const bool *valid,
 					if (at_eol(lexer)) s->flags |= F_DEFINITION_TITLE;
 				}
 			}
-			uint16_t key = label_key(&label);
-			if (!is_defined(s, &label) && s->definitions.size < MAX_DEFINITIONS)
-				array_push(&s->definitions, key);
 			return emit_zero(s, lexer, LINK_REFERENCE_DEFINITION_START, col);
 		}
 		break;
@@ -2213,7 +2167,6 @@ void *tree_sitter_mdsvex_external_scanner_create(void) {
 	array_init(&s->open);
 	array_init(&s->brackets);
 	array_init(&s->directives);
-	array_init(&s->definitions);
 	s->flags = F_LINE_START | F_IMPORTS;
 	s->prev_char = ' ';
 	return s;
@@ -2224,7 +2177,6 @@ void tree_sitter_mdsvex_external_scanner_destroy(void *payload) {
 	array_delete(&s->open);
 	array_delete(&s->brackets);
 	array_delete(&s->directives);
-	array_delete(&s->definitions);
 	ts_free(s);
 }
 
@@ -2254,9 +2206,6 @@ unsigned tree_sitter_mdsvex_external_scanner_serialize(void *payload, char *buff
 	buffer[i++] = (char)s->directives.size;
 	for (unsigned j = 0; j < s->directives.size; j++)
 		buffer[i++] = (char)s->directives.contents[j];
-	buffer[i++] = (char)s->definitions.size;
-	memcpy(&buffer[i], s->definitions.contents, s->definitions.size * 2);
-	i += s->definitions.size * 2;
 	return i;
 }
 
@@ -2266,7 +2215,6 @@ void tree_sitter_mdsvex_external_scanner_deserialize(void *payload, const char *
 	array_clear(&s->open);
 	array_clear(&s->brackets);
 	array_clear(&s->directives);
-	array_clear(&s->definitions);
 	s->matched = 0;
 	s->flags = F_LINE_START | F_IMPORTS;
 	s->fence_len = 0;
@@ -2303,10 +2251,6 @@ void tree_sitter_mdsvex_external_scanner_deserialize(void *payload, const char *
 	uint8_t directives = (uint8_t)buffer[i++];
 	for (unsigned j = 0; j < directives; j++)
 		array_push(&s->directives, (uint8_t)buffer[i++]);
-	uint8_t definitions = (uint8_t)buffer[i++];
-	array_reserve(&s->definitions, definitions);
-	memcpy(s->definitions.contents, &buffer[i], definitions * 2u);
-	s->definitions.size = definitions;
 }
 
 bool tree_sitter_mdsvex_external_scanner_scan(void *payload, TSLexer *lexer,

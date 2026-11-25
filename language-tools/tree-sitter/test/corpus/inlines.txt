@@ -190,7 +190,7 @@ Link destinations with parens and escapes
       (link_destination))))
 
 ========================================
-Reference links need a definition above them
+A reference link is one wherever its definition is
 ========================================
 [x][ref] [ref][]
 
@@ -201,7 +201,12 @@ Reference links need a definition above them
 ----------------------------------------
 
 (document
-  (paragraph)
+  (paragraph
+    (full_reference_link
+      (link_text)
+      (link_label))
+    (collapsed_reference_link
+      (link_text)))
   (link_reference_definition
     (link_label)
     (link_destination)
@@ -215,6 +220,78 @@ Reference links need a definition above them
     (full_reference_link
       (link_text)
       (link_label))))
+
+========================================
+A reference needs no definition
+========================================
+[x][a] and ![y][b] and ![z][] and m[0][1]
+
+----------------------------------------
+
+(document
+  (paragraph
+    (full_reference_link
+      (link_text)
+      (link_label))
+    (image
+      (image_description)
+      (link_label))
+    (image
+      (image_description))
+    (full_reference_link
+      (link_text)
+      (link_label))))
+
+========================================
+A reference needs a label
+========================================
+[x][ ] and [ ][] and [][] and [x][a[b]] and [x][a
+b]
+
+----------------------------------------
+
+(document
+  (paragraph))
+
+========================================
+A caret label is a footnote reference
+========================================
+[x][^1] and [^1][]
+
+----------------------------------------
+
+(document
+  (paragraph
+    (footnote_reference)
+    (footnote_reference)))
+
+========================================
+A reference comes before a destination in parentheses
+========================================
+[x][a](/v) and [x](/v)[a]
+
+----------------------------------------
+
+(document
+  (paragraph
+    (full_reference_link
+      (link_text)
+      (link_label))
+    (inline_link
+      (link_text)
+      (link_destination))))
+
+========================================
+An escaped bracket opens no reference
+========================================
+\[x][a] and m[0]\[1]
+
+----------------------------------------
+
+(document
+  (paragraph
+    (backslash_escape)
+    (backslash_escape)))
 
 ========================================
 Link reference definition over lines
