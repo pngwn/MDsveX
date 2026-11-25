@@ -152,7 +152,13 @@ function onhashchange() {
 	</header>
 
 	<main>
-		<Repl bind:this={repl} theme={dark ? "dark" : "light"} injected_css={preview_css} {onchange} />
+		<Repl
+			bind:this={repl}
+			theme={dark ? "dark" : "light"}
+			injected_css={preview_css}
+			streamable={data.example.streamable}
+			{onchange}
+		/>
 	</main>
 </div>
 

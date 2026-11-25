@@ -4,6 +4,8 @@ export interface Example {
 	slug: string;
 	title: string;
 	state: ReplState;
+	/** false when the document needs its script, which a stream does not run */
+	streamable: boolean;
 }
 
 const raw = import.meta.glob('./examples/*/**/*', {
@@ -28,6 +30,9 @@ const ORDER: [slug: string, title: string][] = [
 /** the examples whose preview opens streamed */
 const STREAMED = new Set(['streaming']);
 
+/** the examples that are components and blocks of their own script, a stream would draw half of them */
+const UNSTREAMED = new Set(['components']);
+
 /** the entry and config lead, everything else keeps its path order */
 function rank(name: string) {
 	if (/^App\.(svx|md|svelte)$/.test(name)) return 0;
@@ -51,6 +56,7 @@ export const examples: Example[] = ORDER.map(([slug, title]) => ({
 	state: STREAMED.has(slug)
 		? { files: files_for(slug), stream: true }
 		: { files: files_for(slug) },
+	streamable: !UNSTREAMED.has(slug),
 }));
 
 export const DEFAULT_EXAMPLE = examples[0].slug;
