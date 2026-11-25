@@ -88,7 +88,7 @@ The node is a view of the tree as it is being built:
 | --- | --- |
 | `type` | the node type. Writing it changes what the node renders as |
 | `attrs` | its attributes. Writing one sets it on the element, or passes it to a [replacement](/docs/guides/components) as a prop |
-| `text_content` | the text inside it |
+| `text_content` | the text inside it, as written. `ctx.text(node)` gives it as the page shows it |
 | `parent`, `first_child`, `last_child`, `next`, `prev` | its neighbours, each a node or `null` |
 | `depth`, `href`, `title`, `info`, `math`, `ordered`, `start`, `tight` | what its type has: the depth of a heading, the url of a link, the info string of a fence |
 | `position` | `{ start, end }`, each with an `offset`, a `line` and a `column`. `offset` is a string index, in UTF-16 code units, into the source with every `\r\n` made a `\n`. `end` is not set until the node closes |
@@ -151,6 +151,7 @@ The context also has:
 | `ctx.warn(code, message, node)` | reports a problem. The build prints it with the line of the node |
 | `ctx.set(key, value)`, `ctx.add(key, value)` | write what the plugin leaves for the page, see [plugin data](/docs/plugins/writing/plugin-data). They need a `name` |
 | `ctx.data` | what the plugin has written so far, read-only |
+| `ctx.text(node)` | the text of a node as the page shows it: a reference such as `&amp;` is its character, and the quotes and dashes are those of [`smart_punctuation`](/docs/reference/options) |
 
 ```js
 const one_title = {

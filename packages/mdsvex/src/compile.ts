@@ -1299,6 +1299,8 @@ class PluginHost {
 	resolve: CompileOptions['resolve'] = undefined;
 	/** what ctx.cached keeps, that of the session */
 	cache: PluginCache | undefined = undefined;
+	/** what ctx.text applies, that of the render */
+	smart_punctuation: SmartPunctuation | undefined = undefined;
 	/**
 	 * the deferred tasks and document hooks the document still waits for,
 	 * null when everything ran during the parse
@@ -1326,6 +1328,7 @@ class PluginHost {
 		dispatcher.async_hint = ASYNC_HINT;
 		this.read = inputs.read;
 		this.resolve = inputs.resolve;
+		this.smart_punctuation = inputs.smart_punctuation;
 		this.pending = null;
 		this.source = source;
 		this.filename = inputs.filename;

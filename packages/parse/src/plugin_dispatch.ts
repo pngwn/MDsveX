@@ -48,6 +48,7 @@ import type {
 	TaskContext as PublicTaskContext,
 } from './plugin_types.js';
 import { HeadingIds } from './heading_ids.js';
+import { reader_text } from './reader_text.js';
 import { RunPieces, TextRun } from './text_run.js';
 import {
 	DraftView,
@@ -796,6 +797,10 @@ class Context implements PluginContext {
 		return this[HOST]._id(base, options?.fixed === true);
 	}
 
+	text(node: NodeView): string {
+		return this[HOST]._text(node);
+	}
+
 	warn(code: string, message: string, node?: NodeView): void {
 		this[HOST]._warn(this[PLUGIN], code, message, node);
 	}
@@ -1346,6 +1351,21 @@ export class PluginDispatcher
 	_filename(): string | undefined {
 		const doc = this.doc;
 		return doc === null ? undefined : doc.filename;
+	}
+
+	/** @internal the text of a node for ctx.text */
+	_text(node: NodeView): string {
+		if (node === null || typeof node !== 'object')
+			throw new TypeError('ctx.text takes a node');
+		// the node of a deferred task reads through to the tree
+		if (typeof node._live !== 'function') return String(node.text_content);
+		const doc = this.doc;
+		return reader_text(
+			node._live(),
+			this.text_source,
+			node._index,
+			doc === null ? undefined : doc.smart_punctuation
+		);
 	}
 
 	/** @internal */

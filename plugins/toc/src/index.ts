@@ -61,70 +61,6 @@ function depth_option(name: string, value: unknown, fallback: number): number {
 	);
 }
 
-const REFERENCE =
-	/&(?:#(\d{1,7})|#[xX]([0-9a-fA-F]{1,6})|(amp|lt|gt|quot|apos|nbsp));/g;
-const NAMED: Record<string, string> = {
-	amp: '&',
-	lt: '<',
-	gt: '>',
-	quot: '"',
-	apos: "'",
-	nbsp: String.fromCharCode(0xa0),
-};
-
-/** a numeric reference and the few named ones html needs are their character, any other stays as written */
-function reference(
-	_match: string,
-	decimal: string | undefined,
-	hex: string | undefined,
-	name: string | undefined
-): string {
-	if (name !== undefined) return NAMED[name];
-	const code =
-		decimal !== undefined ? parseInt(decimal, 10) : parseInt(hex!, 16);
-	if (code === 0 || code > 0x10ffff || (code >= 0xd800 && code <= 0xdfff))
-		return String.fromCharCode(0xfffd);
-	return String.fromCodePoint(code);
-}
-
-const is_element = /^[a-z][^.:]*$/;
-
-/** the text heading_ids makes the id from, an image is its alt, what svelte or a component renders is nothing */
-function text_of(node: NodeView): string {
-	let out = '';
-	for (let child = node.first_child; child !== null; child = child.next) {
-		switch (child.type) {
-			case 'text': {
-				const text = child.text_content;
-				out +=
-					text.indexOf('&') === -1 ? text : text.replace(REFERENCE, reference);
-				break;
-			}
-			// code shows a reference as written
-			case 'code_span':
-				out += child.text_content;
-				break;
-			case 'mustache':
-			case 'svelte_tag':
-			case 'svelte_block':
-			case 'html_comment':
-			case 'directive_inline':
-			case 'directive_leaf':
-			case 'directive_container':
-				break;
-			case 'html': {
-				const tag = child.attrs.tag;
-				if (typeof tag === 'string' && is_element.test(tag))
-					out += text_of(child);
-				break;
-			}
-			default:
-				out += text_of(child);
-		}
-	}
-	return out;
-}
-
 /** anywhere inside, an anchor that wraps the content of the heading holds the comment too */
 function is_marked(node: NodeView): boolean {
 	for (let child = node.first_child; child !== null; child = child.next) {
@@ -197,7 +133,7 @@ function close_heading(
 			node
 		);
 	}
-	const text = text_of(node).trim();
+	const text = ctx.text(node).trim();
 	if (!has_id) {
 		if (HAS_WORD.test(text)) seen.sluggable = true;
 		ctx.warn(

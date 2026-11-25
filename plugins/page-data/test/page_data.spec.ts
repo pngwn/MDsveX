@@ -403,6 +403,16 @@ describe('excerpt', () => {
 });
 
 describe('title', () => {
+	test('the title and the excerpt have the smart punctuation of the compile', () => {
+		const source = `# It's a "title"\n\nThe first -- and *'only'* -- one...\n`;
+		const smart = page(source, undefined, { smart_punctuation: true });
+		expect(smart.title).toBe('It’s a “title”');
+		expect(smart.excerpt).toBe('The first – and ‘only’ – one…');
+		const plain = page(source);
+		expect(plain.title).toBe(`It's a "title"`);
+		expect(plain.excerpt).toBe("The first -- and 'only' -- one...");
+	});
+
 	test('the text of the first level 1 heading', () => {
 		expect(
 			page(

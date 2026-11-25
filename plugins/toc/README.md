@@ -45,7 +45,7 @@ It needs Svelte 5.20 or later.
 
 - **`depth`**, 1 to 6.
 - **`id`**, the id the heading has in the page, so `'#' + id` links to it.
-- **`text`**, the text a reader sees, without markup. Emphasis, links and code are their text, an image is its alt, and a character reference such as `&amp;` is its character. What only exists once the page runs is not in it: a `{expression}`, a component, a directive.
+- **`text`**, the text a reader sees, without markup. Emphasis, links and code are their text, an image is its alt, and a character reference such as `&amp;` is its character. With the `smart_punctuation` option of mdsvex on, the quotes, dashes and ellipses are the ones the heading shows. What only exists once the page runs is not in it: a `{expression}`, a component, a directive.
 - **`position`**, where the heading is in the source, as `{ start, end }` with an `offset`, a `line` from 1 and a `column` from 0 each.
 
 The list is flat because that is what the document holds and what is easy to filter. `toc_tree` nests it:

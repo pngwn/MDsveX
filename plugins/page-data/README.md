@@ -114,7 +114,7 @@ and this one are the excerpt.
 This one is not.
 ```
 
-- **It is plain text.** A parse plugin sees the document before it is rendered, so there is no HTML to give. Emphasis, links and code are their text, a character reference such as `&amp;` is its character, and the lines of a paragraph are joined with a space. For a rendered excerpt, render the start of the document in the template instead.
+- **It is plain text.** A parse plugin sees the document before it is rendered, so there is no HTML to give. Emphasis, links and code are their text, a character reference such as `&amp;` is its character, and the lines of a paragraph are joined with a space. With the `smart_punctuation` option of mdsvex on, the quotes, dashes and ellipses are the ones the page shows. For a rendered excerpt, render the start of the document in the template instead.
 - **The first paragraph** is the first one with text that is not inside a block quote, a list, a table, a footnote, a container directive or a Svelte block. A paragraph that only holds an image, a component or an expression is passed over.
 - **Before `<!-- more -->`** it is every block of prose, joined with spaces. Headings, code blocks, tables and footnotes are left out. The comment can be on a line of its own or inside a paragraph, which is then cut there. Only the first one counts.
 - **`max_length`** is the most characters the excerpt has. A longer one is cut where a word ends and gets the `ellipsis`, which counts toward the length. Text with no spaces, such as Japanese, is cut between two characters.

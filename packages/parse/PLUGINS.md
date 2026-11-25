@@ -267,6 +267,7 @@ const toc = {
 | `ctx.read(path)`, `ctx.resolve(specifier)` | read and resolve with what the host passes |
 | `ctx.cached(key, load)` | a load shared by the documents of a compiler |
 | `ctx.id(base)` | an id no element of the document has, see [Ids](#ids) |
+| `ctx.text(node)` | the text of a node as the page shows it, see [`ctx.text`](#ctxtext) |
 
 A handler bound to a directive gets the same members beside `directive`, `index` and `state`.
 
@@ -288,6 +289,29 @@ The parser knows neither. Whoever runs the parse tells the dispatcher, see [For 
 - **A warning from a sequential pass, or from the close callback of a node that is final, stays.**
 
 In `mdsvex` these join the `warnings` of the compile, with `plugin` set to the name of the plugin and `start` as a line and a column. The Vite plugin reports them like any other warning.
+
+### `ctx.text`
+
+`node.text_content` is the text as the author wrote it. `ctx.text(node)` is the text as the page shows it, which is what a table of contents, a search index or an excerpt wants.
+
+```js
+const plugin = {
+  name: 'toc',
+  heading: {
+    parse(node, ctx) {
+      return () => ctx.add('headings', { depth: node.depth, text: ctx.text(node) });
+    },
+  },
+};
+```
+
+- **A text node gives its text, a code span its code, any other node the text of its children.** An image is its alt and a line end is a space. A comment, a `{expression}`, a component and a directive inside the node add nothing.
+- **A character reference html needs is its character:** a numeric one, and `&amp;`, `&lt;`, `&gt;`, `&quot;`, `&apos;` and `&nbsp;`. One whose `&` is escaped stays as written.
+- **The smart punctuation of the compile is applied** as the renderer applies it. With `smart_punctuation: true` in `mdsvex`, `## Let's go` gives `Let’s go`. Code, the url of an autolink, an alt and an escaped character stay as written, as they do on the page.
+- **Text a plugin added is as it was added.**
+- **Read it once the block that holds the node has closed.** A quote looks at the text on both sides of it, so in an open handler the answer can change. A delimiter that never closes, such as the `**` of `a **b`, is still an open emphasis in the close callback of a paragraph, so its characters are missing there, from `text_content` too. A heading has settled by its close callback, and the document hook reads every block as it ends up.
+
+A caller with a dispatcher of its own passes the option as `smart_punctuation` of `set_document`. Without it the punctuation is as written.
 
 ### `ctx.set`, `ctx.add` and `ctx.data`
 

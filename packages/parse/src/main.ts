@@ -75,6 +75,7 @@ export type {
 	TaskContext,
 } from './plugin_types.js';
 export { PluginCache, PluginDataError } from './plugin_data.js';
+export { reader_text } from './reader_text.js';
 export { PluginAsyncError, PluginTaskError } from './plugin_tasks.js';
 export type { NodeView, WrapperView, Point, Position } from './node_view.js';
 export { NodeKind, NodeBuffer, take_src } from './utils.js';
