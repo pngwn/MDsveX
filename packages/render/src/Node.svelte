@@ -11,6 +11,18 @@
 	};
 	const OPEN_HIGHLIGHT_CONTEXT = { ...HIGHLIGHT_CONTEXT, open: true };
 
+	// the text selector keeps the arrow from being drawn as an emoji
+	const BACK_ARROW = String.fromCharCode(0x21a9, 0xfe0e);
+
+	/** the href of an id, a label with half a surrogate pair has no encoding and goes as it is */
+	function fragment(id: string): string {
+		try {
+			return '#' + encodeURIComponent(id);
+		} catch {
+			return '#' + id;
+		}
+	}
+
 	function attribute_text(attrs: Record<string, any>): string {
 		let out = '';
 		for (const key in attrs) {
@@ -141,7 +153,10 @@
 		buf_code,
 		buf_text,
 		buf_text_content,
+		footnote_id,
+		footnote_ref_id,
 	} from '@mdsvex/parse/buf-utils';
+	import type { FootnoteIndex } from '@mdsvex/parse/buf-utils';
 	import { setContext } from 'svelte';
 	import type { Component } from 'svelte';
 	import Node from './Node.svelte';
@@ -156,6 +171,7 @@
 		directives,
 		plugin_data,
 		highlight,
+		footnotes,
 	}: {
 		buf: NodeBuffer;
 		idx: number;
@@ -168,6 +184,8 @@
 		plugin_data?: { readonly current: unknown };
 		/** highlights code fences, takes what the highlight option of compile takes, its html is not escaped */
 		highlight?: Highlight | false | null;
+		/** the footnotes of a ComponentRenderer, without it a reference is its label and a definition is drawn in place */
+		footnotes?: FootnoteIndex | null;
 	} = $props();
 
 	// the key of @mdsvex/render/stream and of a compiled document, Symbol.for so every copy agrees
@@ -212,6 +230,9 @@
 	const K_FOOTNOTE_REFERENCE = 36;
 	const K_FOOTNOTE_DEFINITION = 37;
 	const K_DEFINITION = 38;
+	// the block a ComponentRenderer adds for the footnotes section, which is no node
+	const FOOTNOTES_BLOCK = -1;
+	const K_FOOTNOTES = -1;
 
 	const NEWLINE = '\n';
 
@@ -256,7 +277,9 @@
 		return result;
 	}
 
-	let kind = $derived(buf.kind_at(idx));
+	let kind = $derived(
+		idx === FOOTNOTES_BLOCK ? K_FOOTNOTES : (buf.kind_at(idx) as number)
+	);
 	let extra = $derived(buf.extra_at(idx));
 	let meta = $derived(buf.metadata_at(idx));
 
@@ -327,6 +350,57 @@
 			: undefined
 	);
 
+	/** the props compile gives a footnote replacement, null for a reference in a note that is not drawn */
+	let reference = $derived.by(() => {
+		if (kind !== K_FOOTNOTE_REFERENCE || !footnotes) return undefined;
+		const at = footnotes.references.get(idx);
+		if (at === undefined) return null;
+		const number = Math.floor(at / 65536);
+		const label = footnotes.labels[number - 1];
+		return {
+			label,
+			number,
+			href: fragment(footnote_id(label)),
+			id: footnote_ref_id(number, at % 65536),
+		};
+	});
+
+	interface Note {
+		node: number;
+		number: number;
+		id: string;
+		/** set when a footnote before it has no definition, so the list skips a number */
+		value: number | undefined;
+		count: number;
+		/** its last block when that is a paragraph, which then holds the links back */
+		paragraph: number;
+	}
+
+	/** every footnote a reference reached that has a definition, in number order */
+	function notes_of(index: FootnoteIndex): Note[] {
+		const notes: Note[] = [];
+		let next = 1;
+		for (let i = 0; i < index.definitions.length; i++) {
+			const node = index.definitions[i];
+			if (node === NONE) continue;
+			let last = NONE;
+			for (const child of buf_children(buf, node)) {
+				if (buf.kind_at(child) !== K_LINE_BREAK) last = child;
+			}
+			notes.push({
+				node,
+				number: i + 1,
+				id: footnote_id(index.labels[i]),
+				value: i + 1 !== next ? i + 1 : undefined,
+				count: index.counts[i],
+				paragraph:
+					last !== NONE && buf.kind_at(last) === K_PARAGRAPH ? last : NONE,
+			});
+			next = i + 2;
+		}
+		return notes;
+	}
+
 	// the info string of a fence, the #! hint of a code span
 	let fence_info = $derived(
 		kind === K_CODE_FENCE || kind === K_CODE_SPAN
@@ -381,8 +455,21 @@
 				{directives}
 				{plugin_data}
 				{highlight}
+				{footnotes}
 			/>
 		{/if}
+	{/each}
+{/snippet}
+
+{#snippet back_links(note: Note)}
+	{#each { length: note.count } as _, i (i)}
+		{@const name = i === 0 ? '' + note.number : note.number + '-' + (i + 1)}
+		{' '}<a
+			href={fragment(footnote_ref_id(note.number, i + 1))}
+			role="doc-backlink"
+			aria-label={'Back to reference ' + name}
+			>{BACK_ARROW}{#if i !== 0}<sup>{i + 1}</sup>{/if}</a
+		>
 	{/each}
 {/snippet}
 
@@ -573,18 +660,63 @@
 {:else if kind === K_DIRECTIVE_LABEL}
 	<!-- a directive renders as its children, its label is not one of them -->
 {:else if kind === K_FOOTNOTE_REFERENCE}
-	<!-- a stream has no number for it yet, so the label stands in -->
-	<sup class="footnote-reference">{meta?.label}</sup>
-{:else if kind === K_FOOTNOTE_DEFINITION}
-	<div class="footnote">
+	{#if reference === undefined}
 		<sup class="footnote-reference">{meta?.label}</sup>
-		{@render child_nodes(idx)}
-	</div>
+	{:else if reference !== null}
+		<sup
+			><a href={reference.href} id={reference.id} role="doc-noteref"
+				>{reference.number}</a
+			></sup
+		>
+	{/if}
+{:else if kind === K_FOOTNOTE_DEFINITION}
+	{#if !footnotes}
+		<div class="footnote">
+			<sup class="footnote-reference">{meta?.label}</sup>
+			{@render child_nodes(idx)}
+		</div>
+	{/if}
 {:else if kind === K_DEFINITION}
 	<!-- a link reference definition renders nothing, the links that use it carry its url -->
 {:else if highlighted !== null}
 	<!-- last so the branch index svelte writes for every other node stays the same -->
 	{@html highlighted}
+{:else if kind === K_FOOTNOTES}
+	{@const notes = footnotes ? notes_of(footnotes) : []}
+	{#if notes.length !== 0}
+		<section class="footnotes" role="doc-endnotes" aria-label="Footnotes">
+			<ol>
+				{#each notes as note (note.node)}
+					<li id={note.id} value={note.value}>
+						{#each buf_children(buf, note.node) as child_idx (child_idx)}
+							{@const kind = buf.kind_at(child_idx)}
+							{#if kind === K_TEXT}
+								{buf_text(buf, child_idx, source)}
+							{:else if kind === K_LINE_BREAK}
+								<!-- skip -->
+							{:else if child_idx === note.paragraph}
+								<p {...get_attrs(buf.metadata_at(child_idx))}>
+									{@render child_nodes(child_idx)}{@render back_links(note)}
+								</p>
+							{:else}
+								<Node
+									{buf}
+									idx={child_idx}
+									{source}
+									{components}
+									{directives}
+									{plugin_data}
+									{highlight}
+									{footnotes}
+								/>
+							{/if}
+						{/each}
+						{#if note.paragraph === NONE}{@render back_links(note)}{/if}
+					</li>
+				{/each}
+			</ol>
+		</section>
+	{/if}
 {:else}
 	{@render child_nodes(idx)}
 {/if}

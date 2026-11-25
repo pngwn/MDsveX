@@ -116,6 +116,7 @@ ${components.imports}${directives.imports}
 	let ended = $state(false);
 	let stream = $state.raw(null);
 	let blocks = $state.raw([]);
+	let footnotes = $state.raw(null);
 	let highlight = $state.raw();
 
 	const data = {
@@ -163,6 +164,7 @@ ${components.imports}${directives.imports}
 		next.renderers.push(renderer);
 		next.on_change(() => {
 			blocks = renderer.update(next.buffer, '').map(({ idx, v }) => ({ idx, v }));
+			footnotes = renderer.footnotes;
 		});
 		stream = next;
 		emitter = new WireEmitter();
@@ -171,6 +173,7 @@ ${components.imports}${directives.imports}
 		fed = 0;
 		ended = false;
 		blocks = [];
+		footnotes = null;
 		marked_at.clear();
 	}
 
@@ -269,7 +272,7 @@ ${highlight === null ? '' : load_highlight(highlight)}		return () => observer.di
 	{#if stream !== null}
 		{#each blocks as block (block.idx)}
 			{#key block.v}
-				<Node buf={stream.buffer} idx={block.idx} source="" {components} {directives} {highlight} plugin_data={data} />
+				<Node buf={stream.buffer} idx={block.idx} source="" {components} {directives} {highlight} plugin_data={data} {footnotes} />
 			{/key}
 		{/each}
 	{/if}
