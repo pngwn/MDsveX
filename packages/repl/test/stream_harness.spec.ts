@@ -28,4 +28,32 @@ describe('the stream harness', () => {
 		expect(source).toContain('{highlight} plugin_data={data}');
 		expect(() => compiles(source)).not.toThrow();
 	});
+
+	it('loads no math library when the document has no math', () => {
+		const source = stream_harness('App.svx', {}, [], false, null, null);
+		expect(source).not.toContain('mdsvex/math');
+		expect(source).not.toContain('load_math');
+		expect(() => compiles(source)).not.toThrow();
+	});
+
+	it('loads temml with the options of the config and hands the renderer to every node', () => {
+		const source = stream_harness('App.svx', {}, [], false, null, {
+			options: { macros: { '\\RR': '\\mathbb{R}' } },
+		});
+		expect(source).toContain(`from 'mdsvex/math'`);
+		expect(source).toContain(
+			'load_math({ options: {"macros":{"\\\\RR":"\\\\mathbb{R}"}} })'
+		);
+		expect(source).toContain('plugin_data={data} {math} />');
+		expect(() => compiles(source)).not.toThrow();
+	});
+
+	it('shows katex math as its latex, as the compile here does', () => {
+		const source = stream_harness('App.svx', {}, [], false, null, {
+			renderer: 'katex',
+		});
+		expect(source).toContain('math = source_math;');
+		expect(source).not.toContain('load_math(');
+		expect(() => compiles(source)).not.toThrow();
+	});
 });
