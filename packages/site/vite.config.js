@@ -49,9 +49,10 @@ export default ({ command }) => {
 		],
 		server: {
 			fs: {
-				// the repl workers are loaded by url, outside the import graph, and
-				// the stream lab reads the parser's fixtures one at a time
-				allow: ["../repl", "../parse/test/fixtures"],
+				// the repl workers are loaded by url, outside the import graph, the
+				// stream lab reads the parser's fixtures one at a time, and the
+				// playground preview bundles the builds of the packages here
+				allow: ["../repl", "../parse", "../render", "../mdsvex"],
 			},
 		},
 		optimizeDeps: {

@@ -1,6 +1,7 @@
 import * as resolve from 'resolve.exports';
 import { parseTar, type FileDescription } from 'tarparser';
 import { NPM } from './constants';
+import { is_local, local_package } from './local_packages';
 
 export interface Package {
 	meta: any; // package.json contents
@@ -79,6 +80,12 @@ export async function resolve_version(
 		return version;
 	}
 
+	// every range reaches the build here, an exact other version comes from npm
+	if (is_local(name)) {
+		const local = (await local_package(name)).meta.version;
+		if (!/^\d+\.\d+\.\d+/.test(version) || version === local) return local;
+	}
+
 	const key = `${name}@${version}`;
 
 	if (!versions.has(key)) {
@@ -105,6 +112,11 @@ export async function fetch_package(
 	name: string,
 	version: string
 ): Promise<Package> {
+	if (is_local(name)) {
+		const local = await local_package(name);
+		if (local.meta.version === version) return local;
+	}
+
 	const key = `${name}@${version}`;
 
 	if (!packages.has(key)) {

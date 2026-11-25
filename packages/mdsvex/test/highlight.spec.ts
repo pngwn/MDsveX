@@ -17,6 +17,7 @@ import {
 	shiki_notation,
 } from '../src/highlight';
 import type { HighlightOptions } from '../src/highlight';
+import type { HighlightContext } from '../src/highlight_run';
 import { meta_parts, read_meta, split_element } from '../src/code_meta';
 
 const languages = await load_default_languages();
@@ -45,6 +46,60 @@ function body(code: string): string {
 function codes(warnings: CompileWarning[] | undefined) {
 	return (warnings ?? []).map((w) => [w.code, w.start.line]);
 }
+
+const OPEN: HighlightContext = {
+	filename: undefined,
+	unknown_language() {},
+	warn() {},
+	open: true,
+};
+const CLOSED: HighlightContext = { ...OPEN, open: false };
+
+describe('a fence still being written', () => {
+	const full = 'let a = 1; // [!add]\nlet b = 2;';
+
+	test('a comment that may become an annotation is not drawn until it is one', () => {
+		for (const cut of [16, 17, 19]) {
+			const body = highlight.block(full.slice(0, cut), 'ts', '', OPEN)!.body;
+			expect(body).not.toContain('[!');
+			expect(body).toContain('<span class="tok number">1</span>');
+		}
+		expect(
+			highlight.block(full.slice(0, 19), 'ts', '', CLOSED)!.body
+		).toContain('// [!add');
+	});
+
+	test('the first char of a comment opener is held until the next one', () => {
+		const text = (code: string) =>
+			highlight.block(code, 'ts', '', OPEN)!.body.replace(/<[^>]+>/g, '');
+		expect(text('let a = 1; /')).toBe('let a = 1;');
+		expect(text('let a = 1 / 2')).toBe('let a = 1 / 2');
+	});
+
+	test('a comment that can not become one is drawn at once', () => {
+		const body = highlight.block('let a = 1; // not', 'ts', '', OPEN)!.body;
+		expect(body).toContain('// not');
+	});
+
+	test('once written it is what compile draws', () => {
+		const open = highlight.block(full, 'ts', '', OPEN)!;
+		expect(open).toEqual(highlight.block(full, 'ts', '', CLOSED));
+		expect(open.body).not.toContain('[!');
+	});
+
+	test('a line range past what has arrived waits for its lines', () => {
+		expect(() => highlight.block('let a;', 'ts', '{2}', CLOSED)).toThrow(
+			/line 2 is beyond/
+		);
+		const one = highlight.block('let a;', 'ts', '{2}', OPEN)!.body;
+		expect(one).not.toContain('highlight');
+		const two = highlight.block('let a;\nlet b;', 'ts', '{2}', OPEN)!.body;
+		expect(two).toBe(
+			highlight.block('let a;\nlet b;', 'ts', '{2}', CLOSED)!.body
+		);
+		expect(two).toContain('highlight');
+	});
+});
 
 describe('compile without highlight', () => {
 	test('renders plain code, the class carries the language only', () => {

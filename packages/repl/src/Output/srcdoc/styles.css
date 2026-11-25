@@ -100,8 +100,26 @@ pre.twinkleplop > code {
 }
 
 .twinkleplop .l {
+	position: relative;
 	min-height: 1lh;
 	padding: 0 1rem;
+}
+
+/* a marked line fades in, a stream marks lines as their annotations arrive */
+@keyframes twinkleplop-line-in {
+	from {
+		background-color: transparent;
+	}
+}
+
+.twinkleplop .l:is(.highlight, .emphasis, .diff-add, .diff-del, .diff-mod) {
+	animation: twinkleplop-line-in 0.25s ease-out backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.twinkleplop .l {
+		animation: none !important;
+	}
 }
 
 .twinkleplop .ln {
@@ -142,12 +160,10 @@ pre.twinkleplop > code {
 	opacity: 1;
 }
 
-.twinkleplop.has-diff-add .l::before,
-.twinkleplop.has-diff-del .l::before,
-.twinkleplop.has-diff-mod .l::before {
-	content: ' ';
-	display: inline-block;
-	width: 2ch;
+/* the sign sits in the padding, so no line moves when the first one is marked */
+.twinkleplop .l:is(.diff-add, .diff-del, .diff-mod)::before {
+	position: absolute;
+	left: 0.25rem;
 	user-select: none;
 }
 

@@ -33,6 +33,50 @@ export function top_block(buf: NodeBuffer, node: number): number {
 	}
 }
 
+/** what a highlighter knows about the fence it renders */
+export interface HighlightInfo {
+	/** the first word of the info string, "" when the fence names none */
+	lang: string;
+	/** the rest of the info string, raw */
+	meta: string;
+	/** false, the Node component highlights fences only */
+	inline: boolean;
+	/** true while the fence is still being written, code is then what has arrived of it */
+	open: boolean;
+}
+
+/**
+ * html for a fence, usually a single pre, null or undefined draws it plain,
+ * it must be synchronous and must escape the code
+ */
+export type Highlighter = (
+	code: string,
+	info: HighlightInfo
+) => string | null | undefined;
+
+/** what create_highlight from mdsvex/highlight returns, as the Node component reads it */
+export interface HighlightConfig {
+	block(
+		code: string,
+		lang: string,
+		meta: string,
+		ctx: {
+			readonly filename: string | undefined;
+			unknown_language(lang: string): void;
+			warn(code: any, message: string): void;
+			readonly open?: boolean;
+		}
+	): {
+		before: string;
+		attributes: string | null;
+		body: string;
+		after: string;
+	} | null;
+}
+
+/** the highlight prop of the Node component, what the highlight option of compile takes */
+export type Highlight = Highlighter | HighlightConfig;
+
 //  block entry
 
 export interface ComponentBlock {
