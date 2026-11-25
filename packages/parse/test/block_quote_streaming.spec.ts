@@ -218,10 +218,17 @@ const cases: Case[] = [
 		],
 	],
 	[
-		'a line that may start a block waits for its end',
+		'a line that may start a block waits until it can be no other',
 		'> a\n> - b\n> c\n',
 		[
-			['> a\n> - b', quote(['paragraph', 'text:a'])],
+			['> a\n> - ', quote(['paragraph', 'text:a'])],
+			[
+				'> a\n> - b',
+				quote(
+					['paragraph', 'text:a'],
+					['list', ['list_item', ['paragraph', 'text:b']]]
+				),
+			],
 			[
 				'> a\n> - b\n> c',
 				quote(

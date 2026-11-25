@@ -3474,7 +3474,7 @@ export class PFMParser {
 
 	/**
 	 * true once enough input follows the linefeed at `pos` for a block level decision,
-	 * a first char that may start a block waits for its whole line, in a block quote
+	 * a first char that may start a block waits until the line can no longer be that block, in a block quote
 	 * the line is read after its markers and an unmarked line decides at once
 	 */
 	private can_decide_after_lf(pos: number): boolean {
@@ -3518,48 +3518,74 @@ export class PFMParser {
 				// block quote - immediate.
 				return true;
 			case BACKTICK:
-				// code fence needs three backticks visible.
+				// a fence is three backticks, a shorter run with a char after it is a code span
 				if (
-					p + 2 < length &&
-					char_code_at.call(source, p + 1 - base) === BACKTICK &&
-					char_code_at.call(source, p + 2 - base) === BACKTICK
+					p + 1 < length &&
+					(char_code_at.call(source, p + 1 - base) !== BACKTICK ||
+						p + 2 < length)
 				)
 					return true;
 				break;
 			case DASH:
 			case ASTERISK:
-				// could be a list marker or a thematic break. inside a list,
-				// scan the visible next-line prefix: as soon as we find a
-				// char that isn't marker/space/tab we know it's not a tb
-				// and can commit (list sibling or paragraph continuation).
-				// if we only see marker/ws chars, it could still become a
-				// thematic break - keep stalling.
-				if (this.list_depth > 0) {
-					for (let q = p + 1; q < length; q++) {
-						const qch = char_code_at.call(source, q - base);
-						if (qch === LINEFEED) return true;
-						if (qch !== ch && qch !== SPACE && qch !== TAB) return true;
-					}
-					return false;
+			case UNDERSCORE:
+				// a thematic break is its marker and whitespace alone, and a list
+				// marker is settled by the first char of its content, so the first
+				// char that is neither decides the line, until then it may be a break
+				for (let q = p + 1; q < length; q++) {
+					const qch = char_code_at.call(source, q - base);
+					if (qch === LINEFEED) return true;
+					if (qch !== ch && qch !== SPACE && qch !== TAB) return true;
 				}
-				break;
+				return false;
 			case PLUS:
 				// plus is only ever a list marker - no thematic break ambiguity.
-				if (this.list_depth > 0 && !this.plus_marker_pending(p)) return true;
+				if (!this.plus_marker_pending(p)) return true;
 				break;
-			case UNDERSCORE:
-			case OPEN_ANGLE_BRACKET:
-			case OPEN_SQUARE_BRACKET:
-			case PIPE:
-			case OPEN_BRACE:
 			case COLON:
-				// genuinely ambiguous - need to see the rest of the line.
+				// a second colon opens or closes a directive, any other char is text
+				if (p + 1 < length) return true;
+				break;
+			case OPEN_SQUARE_BRACKET:
+				// only a footnote definition ends a paragraph
+				if (p + 1 < length && char_code_at.call(source, p + 1 - base) !== CARET)
+					return true;
+				break;
+			case OPEN_BRACE:
+				if (p + 1 < length) {
+					const next = char_code_at.call(source, p + 1 - base);
+					// a block opens with a letter after its #, a branch or close token needs an open block
+					if (next === OCTOTHERP) {
+						if (p + 2 < length) return true;
+					} else if (
+						this.svelte_block_depth === 0 ||
+						(next !== COLON && next !== SLASH)
+					)
+						return true;
+				}
+				break;
+			case OPEN_ANGLE_BRACKET: {
+				// the name of the tag decides, it is all here once a char ends it
+				let q = p + 1;
+				if (q < length && char_code_at.call(source, q - base) === SLASH) q++;
+				if (q >= length) break;
+				if (!this.is_tag_name_start(char_code_at.call(source, q - base)))
+					return true;
+				while (
+					q < length &&
+					this.is_tag_name_char(char_code_at.call(source, q - base))
+				)
+					q++;
+				if (q < length) return true;
+				break;
+			}
+			case PIPE:
+				// the rest of the line decides
 				break;
 			default:
-				// digits may start an ordered list marker. inside a list we
-				// decide once the marker and the start of its content are visible
+				// digits may start an ordered list marker, decided once the
+				// marker and the start of its content are visible
 				if (ch >= 48 && ch <= 57) {
-					if (this.list_depth === 0) break;
 					if (!this.plus_marker_pending(p)) return true;
 					break;
 				}
