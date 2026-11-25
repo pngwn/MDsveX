@@ -124,6 +124,24 @@ ${components.imports}${directives.imports}
 		},
 	};
 
+	// an open block is drawn again on every chunk, so the fade of a marked line
+	// carries on from when the line was first marked, it does not start again
+	const MARKED = '.l.highlight, .l.emphasis, .l.diff-add, .l.diff-del, .l.diff-mod';
+	const marked_at = new Map();
+	let output;
+
+	function keep_fades() {
+		const now = performance.now();
+		output.querySelectorAll('pre.twinkleplop').forEach((pre, p) => {
+			pre.querySelectorAll('.l').forEach((line, l) => {
+				if (!line.matches(MARKED) || line.style.animationDelay) return;
+				const key = p + ':' + l;
+				if (!marked_at.has(key)) marked_at.set(key, now);
+				line.style.animationDelay = marked_at.get(key) - now + 'ms';
+			});
+		});
+	}
+
 	const renderer = new ComponentRenderer();
 	let emitter;
 	let parser;
@@ -149,6 +167,7 @@ ${components.imports}${directives.imports}
 		fed = 0;
 		ended = false;
 		blocks = [];
+		marked_at.clear();
 	}
 
 	function tick() {
@@ -196,9 +215,12 @@ ${components.imports}${directives.imports}
 	}
 
 	onMount(() => {
+		const observer = new MutationObserver(keep_fades);
+		observer.observe(output, { childList: true, subtree: true });
 		restart();
 		play();
-${highlight === null ? '' : load_highlight(highlight)}	});
+${highlight === null ? '' : load_highlight(highlight)}		return () => observer.disconnect();
+	});
 
 	onDestroy(() => {
 		pause();
@@ -237,15 +259,21 @@ ${highlight === null ? '' : load_highlight(highlight)}	});
 	/>
 </div>
 
-{#if stream !== null}
-	{#each blocks as block (block.idx)}
-		{#key block.v}
-			<Node buf={stream.buffer} idx={block.idx} source="" {components} {directives} {highlight} plugin_data={data} />
-		{/key}
-	{/each}
-{/if}
+<div class="stream-output" bind:this={output}>
+	{#if stream !== null}
+		{#each blocks as block (block.idx)}
+			{#key block.v}
+				<Node buf={stream.buffer} idx={block.idx} source="" {components} {directives} {highlight} plugin_data={data} />
+			{/key}
+		{/each}
+	{/if}
+</div>
 
 <style>
+	.stream-output {
+		display: contents;
+	}
+
 	.stream-controls {
 		display: flex;
 		flex-wrap: wrap;
