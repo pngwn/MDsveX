@@ -9,6 +9,7 @@ import {
 	WireEmitter,
 } from '@mdsvex/parse';
 import type { ParsePlugin } from '@mdsvex/parse';
+import { TreeBuilder } from '@mdsvex/parse/tree-builder';
 import type { Component } from 'svelte';
 import { compile } from 'svelte/compiler';
 import { render } from 'svelte/server';
@@ -181,5 +182,73 @@ describe('Node.svelte in a stream', () => {
 			await stream.end();
 			expect(html_of(stream), String(chunk)).toBe(want);
 		}
+	});
+});
+
+describe('Node.svelte over a tree that shows its open text', () => {
+	/** the text Node.svelte draws after each character */
+	function typed(source: string): string[] {
+		const tree = new TreeBuilder(128);
+		const parser = new PFMParser(tree);
+		parser.init();
+		const out: string[] = [];
+		for (let i = 0; i < source.length; i++) {
+			const fed = source.slice(0, i + 1);
+			tree.hide_open_text();
+			parser.feed(source[i]);
+			tree.show_open_text(fed);
+			out.push(
+				render(Node, {
+					props: { buf: tree.get_buffer(), idx: 0, source: fed },
+				}).body.replace(/<[^>]*>/g, '')
+			);
+		}
+		return out;
+	}
+
+	test('a paragraph grows as it is fed, less the spaces the parser would trim', () => {
+		const source = 'A metronome keeps a steady beat';
+		const texts = typed(source);
+		for (let i = 0; i < source.length; i++) {
+			expect(texts[i], String(i)).toBe(source.slice(0, i + 1).trimEnd());
+		}
+	});
+
+	test('a heading shows its text before its newline', () => {
+		expect(typed('# Tempo\n')).toEqual([
+			'',
+			'',
+			'T',
+			'Te',
+			'Tem',
+			'Temp',
+			'Tempo',
+			'Tempo',
+		]);
+	});
+
+	test('a character the parser holds is not drawn', () => {
+		const texts = typed('keeps *a* [beat](x) on');
+		// the asterisk and the bracket wait for what follows them
+		expect(texts[6]).toBe('keeps ');
+		expect(texts[7]).toBe('keeps a');
+		expect(texts[10]).toBe('keeps a ');
+		expect(texts[11]).toBe('keeps a b');
+		// the url is read whole before the link closes
+		expect(texts[17]).toBe('keeps a beat');
+		expect(texts[21]).toBe('keeps a beat on');
+	});
+
+	test('a fence and a code span show their code as it arrives', () => {
+		const fence = typed('```js\nlet a;\n```\n');
+		expect(fence[8]).toBe('let');
+		expect(fence[11]).toBe('let a;');
+		// the closing fence is never code, the linefeed before it is until it closes
+		expect(fence[14]).toBe('let a;\n');
+		expect(fence[fence.length - 1]).toBe('let a;');
+
+		const span = typed('a `let b` c');
+		expect(span[5]).toBe('a let');
+		expect(span[10]).toBe('a let b c');
 	});
 });
