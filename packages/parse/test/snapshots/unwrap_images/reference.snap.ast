@@ -14,9 +14,6 @@ root
       text "a"
   line_break
   line_break
-  paragraph
-    text "![a"
-    text "]"
-    text "[missing"
-    text "]"
+  image
+    text "a"
   line_break

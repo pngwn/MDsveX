@@ -2,8 +2,8 @@ root
   definition label="baz" href="/url"
   line_break
   paragraph
-    text "[foo"
+    link
+      text "foo"
+    text "[baz"
     text "]"
-    link href="/url"
-      text "bar"
   line_break

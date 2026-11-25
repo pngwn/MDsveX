@@ -42,7 +42,11 @@ The indent of an opening fence, past where its container's content starts, is no
 [ref][]
 ```
 
-The definition must appear **before** the reference is used. A reference with no definition above it stays literal text. This enables true streaming and incremental parsing.
+A reference is one by its syntax alone, as a footnote reference is. `[text][ref]` and `[ref][]` are a link wherever they stand, and `![alt][ref]` an image, whether or not a definition exists and whether it comes before or after. The definition only supplies the url and the title, so nothing above or below a reference changes how it is read, which is what streaming and incremental parsing need. A stream shows a reference with no url until its definition arrives.
+
+So two pairs of brackets in prose are a reference too, `m[0][1]` is one with the label `1`. Brackets that are not one are escaped, `m\[0][1]`, or put in code. `[text][ref](url)` is a reference followed by `(url)`. A label that starts with `^` is a footnote, so `[text][^1]` is `[text]` and a footnote reference.
+
+A label defined twice takes the first definition. In mdsvex a reference with no definition is an error.
 
 A definition may sit in any container. In a block quote or a list item it is written on one line, the destination and the title do not move to the next line there.
 
@@ -59,7 +63,7 @@ A claim[^1], and a second one[^smith].
 
 A label is one or more characters, none of them whitespace, `[`, `]` or `^`. Labels match exactly, case included.
 
-A reference is one by its syntax alone. `[^label]` is a reference wherever it stands in text, whether or not a definition exists and whether it comes before or after it, which is where footnotes differ from link references. So `[^abc]` in prose is a reference too: a bracket that is not one is escaped, `\[^abc]`, or put in code. A reference is not read in the text of a directive or the alt of an image, and `[^1](url)` is a reference followed by `(url)`.
+A reference is one by its syntax alone. `[^label]` is a reference wherever it stands in text, whether or not a definition exists and whether it comes before or after it, as a link reference is. So `[^abc]` in prose is a reference too: a bracket that is not one is escaped, `\[^abc]`, or put in code. A reference is not read in the text of a directive or the alt of an image, and `[^1](url)` is a reference followed by `(url)`.
 
 A definition is a block. It ends a paragraph as a heading does, and it may sit in any container. It is a container itself, and continues as a list item does: a line indented by four spaces past where the definition starts belongs to it, and so does a blank line. The first line that is not blank and not indented ends it, unless it goes on with a paragraph, which may run over lines that are not indented. The line of the label may start any block.
 

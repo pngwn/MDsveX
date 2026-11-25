@@ -1,14 +1,12 @@
 root
   paragraph
     text "Search the web at "
-    text "[Google"
-    text "]"
-    text "["
-    text "] or "
-    text "[Daring Fireball"
-    text "]"
-    text "["
-    text "]."
+    link href="http://google.com/"
+      text "Google"
+    text " or "
+    link href="http://daringfireball.net/"
+      text "Daring Fireball"
+    text "."
   line_break
   line_break
   paragraph

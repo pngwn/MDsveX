@@ -124,7 +124,7 @@ describe('a backslash before a space or a line end in a destination', () => {
 	});
 
 	test('does not carry an angle destination over a line end', () => {
-		expect(every_path('[a]: </u\\\n>\n\n[x][a]\n')).not.toContain('link');
+		expect(every_path('[a]: </u\\\n>\n\n[x][a]\n')).not.toContain('href');
 	});
 
 	test('ends an inline destination, which may not go on to the next line', () => {

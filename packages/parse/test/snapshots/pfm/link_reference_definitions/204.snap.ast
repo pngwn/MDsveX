@@ -1,9 +1,7 @@
 root
   paragraph
-    text "[foo"
-    text "]"
-    text "["
-    text "]"
+    link href="first"
+      text "foo"
   line_break
   line_break
   definition label="foo" href="first"

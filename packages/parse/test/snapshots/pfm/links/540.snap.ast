@@ -2,8 +2,6 @@ root
   definition label="SS" href="/url"
   line_break
   paragraph
-    text "[ẞ"
-    text "]"
-    text "["
-    text "]"
+    link
+      text "ẞ"
   line_break

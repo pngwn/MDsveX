@@ -1,12 +1,9 @@
 root
   paragraph
-    text "!["
-    strong_emphasis
-      text "foo"
-    text " bar"
-    text "]"
-    text "["
-    text "]"
+    image src="/url" title="title"
+      strong_emphasis
+        text "foo"
+      text " bar"
   line_break
   line_break
   definition label="*foo* bar" href="/url" title="title"

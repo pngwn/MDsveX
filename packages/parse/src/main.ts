@@ -45,6 +45,7 @@ import {
 	NodeKind,
 	is_raw_text_tag,
 	note_footnote,
+	note_reference,
 	note_math,
 	store_attr_rec,
 	stored_attr_at,
@@ -1209,6 +1210,8 @@ export class PFMParser {
 
 	// link reference definitions
 	private ref_map: Map<string, { url: string; title: string }> = NO_REFS;
+	// references read before their definition, ids by normalized label
+	private ref_waiting: Map<string, number[]> | null = null;
 	private link_text_start: number = 0;
 
 	// directive container state
@@ -1910,6 +1913,7 @@ export class PFMParser {
 		this.source = '';
 		if (this.wait_chunks.length !== 0) this.wait_chunks.length = 0;
 		if (this.ref_map.size !== 0) this.ref_map.clear();
+		this.ref_waiting = null;
 		if (this.html_tag_stack.length !== 0) this.html_tag_stack = [];
 		this.svelte_block_tag = '';
 		if (this.svelte_block_stack.length !== 0)
@@ -2010,6 +2014,7 @@ export class PFMParser {
 		this.frontmatter_failed = false;
 		this.imports_allowed = true;
 		if (this.ref_map.size !== 0) this.ref_map.clear();
+		this.ref_waiting = null;
 		this.link_text_start = 0;
 		if (this.directive_colon_counts.length !== 0) {
 			this.directive_colon_counts = NO_STACK;
@@ -6642,6 +6647,9 @@ export class PFMParser {
 			if (refs === NO_REFS) refs = this.ref_map = new Map();
 			if (!refs.has(normalized)) {
 				refs.set(normalized, { url: href, title: text });
+				const waiting = this.ref_waiting;
+				if (waiting !== null)
+					this.fill_references(waiting, normalized, href, text);
 			}
 		}
 
@@ -6655,6 +6663,28 @@ export class PFMParser {
 		this.emit_close(id, def_end);
 
 		return p;
+	}
+
+	/** the references that were read before this definition get its url and title */
+	private fill_references(
+		waiting: Map<string, number[]>,
+		key: string,
+		href: string,
+		title: string
+	): void {
+		const ids = waiting.get(key);
+		if (ids === undefined) return;
+		waiting.delete(key);
+		if (waiting.size === 0) this.ref_waiting = null;
+		for (let i = 0; i < ids.length; i++) {
+			const id = ids[i];
+			this.out.attr(
+				id,
+				this.kind_of(id) === NodeKind.image ? 'src' : 'href',
+				href
+			);
+			if (title) this.out.attr(id, 'title', title);
+		}
 	}
 
 	/**
@@ -10332,26 +10362,8 @@ export class PFMParser {
 						this.link_text_start - base,
 						this.cursor - base
 					);
-					const refs = this.ref_map;
-					const def =
-						refs.size === 0 ? undefined : refs.get(normalize_label(label));
-					if (def) {
-						const is_image = this.kind_of(current_node) === NodeKind.image;
-						this.out.attr(current_node, is_image ? 'src' : 'href', def.url);
-						if (def.title) this.out.attr(current_node, 'title', def.title);
-						this.out.set_value_end(current_node, this.cursor);
-						if (this.spec_para !== -1) this.spec_media_end(current_node, true);
-						this.pending_remove(current_node);
-						this.emit_close(current_node, ref_p + 1);
-						this.node_stack.pop();
-						this.states.pop();
-						if (this.states[this.states.length - 1] === StateKind.inline) {
-							this.states.pop();
-						}
-						this.chomp(ref_p + 1, true);
+					if (this.close_reference(current_node, label, ref_p + 1))
 						return false;
-					}
-					// no definition found - revoke
 					this.out.revoke(current_node);
 					this.pending_remove(current_node);
 					this.node_stack.pop();
@@ -10387,25 +10399,8 @@ export class PFMParser {
 						ref_start - base,
 						ref_p - base
 					);
-					const refs = this.ref_map;
-					const def =
-						refs.size === 0 ? undefined : refs.get(normalize_label(label));
-					if (def) {
-						const is_image = this.kind_of(current_node) === NodeKind.image;
-						this.out.attr(current_node, is_image ? 'src' : 'href', def.url);
-						if (def.title) this.out.attr(current_node, 'title', def.title);
-						this.out.set_value_end(current_node, this.cursor);
-						if (this.spec_para !== -1) this.spec_media_end(current_node, true);
-						this.pending_remove(current_node);
-						this.emit_close(current_node, ref_p + 1);
-						this.node_stack.pop();
-						this.states.pop();
-						if (this.states[this.states.length - 1] === StateKind.inline) {
-							this.states.pop();
-						}
-						this.chomp(ref_p + 1, true);
+					if (this.close_reference(current_node, label, ref_p + 1))
 						return false;
-					}
 				}
 			}
 
@@ -10437,6 +10432,42 @@ export class PFMParser {
 		// dispatch inline content inside the link text
 		this.states.push(StateKind.inline);
 		return false;
+	}
+
+	/**
+	 * closes the link or image whose text ends at the cursor as a reference, it is one
+	 * by its syntax alone, a label with no definition yet waits for one
+	 * @returns false when the label can name no definition, the caller revokes
+	 */
+	private close_reference(node: number, label: string, end: number): boolean {
+		// a caret label is a footnote reference, it is read once the bracket is text
+		if (char_code_at.call(label, 0) === CARET) return false;
+		const key = normalize_label(label);
+		if (key === '') return false;
+		const refs = this.ref_map;
+		const def = refs.size === 0 ? undefined : refs.get(key);
+		if (def !== undefined) {
+			const is_image = this.kind_of(node) === NodeKind.image;
+			this.out.attr(node, is_image ? 'src' : 'href', def.url);
+			if (def.title) this.out.attr(node, 'title', def.title);
+		} else {
+			let waiting = this.ref_waiting;
+			if (waiting === null) waiting = this.ref_waiting = new Map();
+			const ids = waiting.get(key);
+			if (ids === undefined) waiting.set(key, [node]);
+			else ids.push(node);
+		}
+		this.out.set_value_end(node, this.cursor);
+		if (this.spec_para !== -1) this.spec_media_end(node, true);
+		this.pending_remove(node);
+		this.emit_close(node, end);
+		this.node_stack.pop();
+		this.states.pop();
+		if (this.states[this.states.length - 1] === StateKind.inline) {
+			this.states.pop();
+		}
+		this.chomp(end, true);
+		return true;
 	}
 
 	/**
@@ -12931,6 +12962,8 @@ export class PFMParser {
 			}
 		}
 		if (stale_html.length !== 0) this.revoke_stale_html();
+		// a reference still waiting has no definition, a compile reports it
+		if (this.ref_waiting !== null) note_reference();
 		this.pending_count = 0;
 		this.pending_para_count = 0;
 		this.give_back_ids();

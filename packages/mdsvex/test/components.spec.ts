@@ -22,6 +22,7 @@ import type {
 	ParsePlugin,
 } from '../src/main';
 import { all_directives } from './utils';
+import { references_defined } from './reference_fixtures';
 
 const FIXTURES = resolve(
 	dirname(fileURLToPath(import.meta.url)),
@@ -418,7 +419,7 @@ describe('element replacement, markdown mode', () => {
 		const session = new CompilerSession();
 		// some fixtures open with frontmatter that is not yaml, keep it as metadata
 		const frontmatter = { parse: (raw: string) => ({ raw }) };
-		for (const file of fixture_files(FIXTURES)) {
+		for (const file of fixture_files(FIXTURES).filter(references_defined)) {
 			const raw = readFileSync(file, 'utf8');
 			const components = only('nothing-here', 'mark');
 			const directives = all_directives(raw);
@@ -1005,7 +1006,7 @@ describe('ComponentScope', () => {
 });
 
 describe('walks agree with replacements', () => {
-	const files = fixture_files(FIXTURES);
+	const files = fixture_files(FIXTURES).filter(references_defined);
 	// some fixtures open with frontmatter that is not yaml, keep it as metadata
 	const frontmatter = { parse: (raw: string) => ({ raw }) };
 

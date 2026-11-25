@@ -18,19 +18,16 @@ root [0,218] value=[0,218]
     link [84,93] value=[85,89] href="/r" title="ref title"
       text [85,89] value=[85,89] "full"
     text [93,94] value=[93,94] " "
-    text [94,104] value=[94,104] "[collapsed"
-    text [104,105] value=[104,105] "]"
-    text [105,106] value=[105,106] "["
-    text [106,108] value=[106,108] "] "
+    link [94,107] value=[95,104]
+      text [95,104] value=[95,104] "collapsed"
+    text [107,108] value=[107,108] " "
     text [108,110] value=[108,110] "[r"
     text [110,112] value=[110,112] "] "
     image [112,125] value=[114,121] src="/r" title="ref title"
       text [114,121] value=[114,121] "img ref"
     text [125,126] value=[125,126] " "
-    text [126,134] value=[126,134] "[missing"
-    text [134,135] value=[134,135] "]"
-    text [135,140] value=[135,140] "[nope"
-    text [140,141] value=[140,141] "]"
+    link [126,141] value=[127,134]
+      text [127,134] value=[127,134] "missing"
   line_break [141,142]
   line_break [142,143]
   paragraph [143,189]

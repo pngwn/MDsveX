@@ -9,10 +9,8 @@ root [0,335] value=[0,335]
     link [42,49] value=[43,46] href="https://x.com" title="T"
       text [43,46] value=[43,46] "ref"
     text [49,54] value=[49,54] " and "
-    text [54,56] value=[54,56] "[b"
-    text [56,57] value=[56,57] "]"
-    text [57,61] value=[57,61] "[dup"
-    text [61,62] value=[61,62] "]"
+    link [54,62] value=[55,56] href="/first"
+      text [55,56] value=[55,56] "b"
   line_break [62,63]
   line_break [63,64]
   definition [67,98] value=[68,69] label="b" href="url with spaces" title="single"

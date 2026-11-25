@@ -39,6 +39,20 @@ const find_child = (
 	return null;
 };
 
+/** the href of every link of the document, in its order, undefined for a reference no definition filled */
+const hrefs = (
+	nodes: ReturnType<typeof parse_markdown_svelte>['nodes']
+): unknown[] => {
+	const out: unknown[] = [];
+	const walk = (index: number): void => {
+		const node = nodes.get_node(index);
+		if (node.kind === 'link') out.push(node.metadata?.href);
+		for (const child of node.children) walk(child);
+	};
+	walk(nodes.get_node().index);
+	return out;
+};
+
 describe('link reference definitions', () => {
 	// Basic definition + collapsed reference [ref][]
 
@@ -138,17 +152,7 @@ describe('link reference definitions', () => {
 		const input = load_fixture('197');
 		const { nodes } = parse_markdown_svelte(input);
 
-		const root = nodes.get_node();
-		// Should produce paragraphs, not links
-		let found_link = false;
-		for (const child_idx of root.children) {
-			const child = nodes.get_node(child_idx);
-			if (child.kind === 'paragraph') {
-				const kinds = get_all_child_kinds(nodes, child.index);
-				if (kinds.includes('link')) found_link = true;
-			}
-		}
-		expect(found_link).toBe(false);
+		expect(hrefs(nodes)).toEqual([undefined]);
 	});
 
 	// [foo]:, no destination
@@ -205,16 +209,11 @@ describe('link reference definitions', () => {
 		expect(kinds).toContain('link');
 	});
 
-	// [foo][] before two definitions, still forward, no link
-	test('204, forward reference with duplicates does not resolve (PFM)', () => {
+	test('204, a reference before two definitions takes the first', () => {
 		const input = load_fixture('204');
 		const { nodes } = parse_markdown_svelte(input);
 
-		const root = nodes.get_node();
-		const paragraph = find_child(nodes, root.index, 'paragraph');
-		expect(paragraph).not.toBeNull();
-		const kinds = get_all_child_kinds(nodes, paragraph!.index);
-		expect(kinds).not.toContain('link');
+		expect(hrefs(nodes)).toEqual(['first']);
 	});
 
 	test('218, a definition in a block quote resolves a later reference', () => {
@@ -252,16 +251,7 @@ describe('link reference definitions', () => {
 		const input = load_fixture('212');
 		const { nodes } = parse_markdown_svelte(input);
 
-		const root = nodes.get_node();
-		let found_link = false;
-		for (const child_idx of root.children) {
-			const child = nodes.get_node(child_idx);
-			if (child.kind === 'paragraph') {
-				const kinds = get_all_child_kinds(nodes, child.index);
-				if (kinds.includes('link')) found_link = true;
-			}
-		}
-		expect(found_link).toBe(false);
+		expect(hrefs(nodes)).toEqual([undefined]);
 	});
 
 	// Definition not at block start, becomes paragraph text
@@ -269,16 +259,7 @@ describe('link reference definitions', () => {
 		const input = load_fixture('213');
 		const { nodes } = parse_markdown_svelte(input);
 
-		const root = nodes.get_node();
-		let found_link = false;
-		for (const child_idx of root.children) {
-			const child = nodes.get_node(child_idx);
-			if (child.kind === 'paragraph') {
-				const kinds = get_all_child_kinds(nodes, child.index);
-				if (kinds.includes('link')) found_link = true;
-			}
-		}
-		expect(found_link).toBe(false);
+		expect(hrefs(nodes)).toEqual([undefined]);
 	});
 
 	// Full reference [text][ref]

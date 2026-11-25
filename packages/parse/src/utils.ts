@@ -340,6 +340,26 @@ export function take_footnote(): boolean {
 	return true;
 }
 
+let reference_open = false;
+
+/** @internal a parse ended with a link reference whose label has no definition */
+export function note_reference(): void {
+	reference_open = true;
+	// a compile looks at one note, that of the footnotes
+	footnote_made = true;
+}
+
+/**
+ * @internal true once when a parse ended with a link reference that has no
+ * definition since the last call, so only such a document is looked through
+ * for them, the note is shared between documents as the note of take_src is
+ */
+export function take_reference(): boolean {
+	if (!reference_open) return false;
+	reference_open = false;
+	return true;
+}
+
 let math_made = false;
 
 /** @internal the parser made an inline math span */
