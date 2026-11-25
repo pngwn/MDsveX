@@ -31,14 +31,24 @@ const OUTLINE = `<script>
 <nav>{@render label?.()}<ol>{#each data?.current?.outline?.headings ?? [] as entry}<li>{entry}</li>{/each}</ol></nav>
 `;
 
+/** writes the props it was given and its children, so a test reads what a replacement gets */
+const PROBE = `<script>
+	let { children, ...props } = $props();
+</script>
+
+<x-probe props={JSON.stringify(props)}>{@render children?.()}</x-probe>
+`;
+
 let Node: Component<any>;
 let Outline: Component<any>;
+let Probe: Component<any>;
 
 beforeAll(async () => {
 	mkdirSync(DIR, { recursive: true });
 	const modules: [string, string][] = [
 		['Node', readFileSync(join(HERE, '../src/Node.svelte'), 'utf8')],
 		['Outline', OUTLINE],
+		['Probe', PROBE],
 	];
 	for (const [name, source] of modules) {
 		const js = compile(source, {
@@ -49,6 +59,7 @@ beforeAll(async () => {
 	}
 	Node = (await import(pathToFileURL(join(DIR, 'Node.js')).href)).default;
 	Outline = (await import(pathToFileURL(join(DIR, 'Outline.js')).href)).default;
+	Probe = (await import(pathToFileURL(join(DIR, 'Probe.js')).href)).default;
 });
 afterAll(() => rmSync(DIR, { recursive: true, force: true }));
 
@@ -271,5 +282,273 @@ describe('Node.svelte over a tree that shows its open text', () => {
 		const span = typed('a `let b` c');
 		expect(span[5]).toBe('a let');
 		expect(span[10]).toBe('a let b c');
+	});
+});
+
+describe('components in a stream', () => {
+	function stream_of(
+		source: string,
+		plugins: ParsePlugin[] = []
+	): PluginStream {
+		const stream = new PluginStream({ plugins });
+		for (const batch of batches_of(source, 100)) stream.apply(batch);
+		return stream;
+	}
+
+	/** the html with each probe as its name, its props as json and its children */
+	function drawn(
+		source: string,
+		names: string[],
+		props: Record<string, unknown> = {}
+	): string {
+		return html_of(stream_of(source), names, props);
+	}
+
+	function html_of(
+		stream: PluginStream,
+		names: string[],
+		props: Record<string, unknown> = {}
+	): string {
+		const components: Record<string, Component<any>> = {};
+		for (const name of names) components[name] = Probe;
+		return render(Node, {
+			props: { buf: stream.buffer, idx: 0, source: '', components, ...props },
+		})
+			.body.replace(/<!--[^]*?-->/g, '')
+			.replace(/ props="([^"]*)"/g, (_, json: string) =>
+				(' props="' + json + '"')
+					.replace(/&quot;/g, '"')
+					.replace(/&lt;/g, '<')
+					.replace(/&amp;/g, '&')
+			);
+	}
+
+	const probe = (props: Record<string, unknown>, children: string) =>
+		'<x-probe props="' + JSON.stringify(props) + '">' + children + '</x-probe>';
+
+	test('a heading is replaced and gets its level', () => {
+		expect(drawn('## A _fine_ day\n', ['h2'])).toBe(
+			probe({ level: 2 }, 'A <em>fine</em> day')
+		);
+		expect(drawn('# One\n\n## Two\n', ['h2'])).toBe(
+			'<h1>One</h1>' + probe({ level: 2 }, 'Two')
+		);
+	});
+
+	test('inline nodes are replaced inside the blocks that hold them', () => {
+		expect(
+			drawn('a _b_ *c* ~~d~~ [e](/f "g") ![h](/i.png "j")\n', [
+				'em',
+				'strong',
+				'del',
+				'a',
+				'img',
+			])
+		).toBe(
+			'<p>a ' +
+				probe({}, 'b') +
+				' ' +
+				probe({}, 'c') +
+				' ' +
+				probe({}, 'd') +
+				' ' +
+				probe({ href: '/f', title: 'g' }, 'e') +
+				' ' +
+				probe({ src: '/i.png', alt: 'h', title: 'j' }, '') +
+				'</p>'
+		);
+	});
+
+	test('a paragraph, a quote, a rule and a break are replaced', () => {
+		expect(
+			drawn('> one\\\n> two\n\n---\n', ['p', 'blockquote', 'hr', 'br'])
+		).toBe(probe({}, probe({}, 'one' + probe({}, '') + 'two')) + probe({}, ''));
+	});
+
+	test('an ordered list gets its start, a task item gets checked and draws its own box', () => {
+		expect(drawn('3. a\n4. b\n', ['ol'])).toBe(
+			probe({ start: 3 }, '<li>a</li><li>b</li>')
+		);
+		expect(drawn('1. a\n', ['ol'])).toBe(probe({ start: 1 }, '<li>a</li>'));
+		expect(drawn('- [x] a\n- [ ] b\n- c\n', ['ul', 'li'])).toBe(
+			probe(
+				{},
+				probe({ checked: true }, 'a') +
+					probe({ checked: false }, 'b') +
+					probe({}, 'c')
+			)
+		);
+		expect(drawn('- [x] a\n\n- [ ] b\n', ['p'])).toBe(
+			'<ul><li>' +
+				probe({}, '<input type="checkbox" disabled="" checked=""/> a') +
+				'</li><li>' +
+				probe({}, '<input type="checkbox" disabled=""/> b') +
+				'</li></ul>'
+		);
+		expect(drawn('- [x] a\n\n- [ ] b\n', ['p', 'li'])).toBe(
+			'<ul>' +
+				probe({ checked: true }, probe({}, 'a')) +
+				probe({ checked: false }, probe({}, 'b')) +
+				'</ul>'
+		);
+	});
+
+	test('a fence gives pre its language, meta and code, and the whole pre as children', () => {
+		expect(drawn('```js title="a.js"\nlet a = 1 < 2;\n```\n', ['pre'])).toBe(
+			probe(
+				{ lang: 'js', meta: 'title="a.js"', code: 'let a = 1 < 2;' },
+				'<pre><code class="language-js">let a = 1 &lt; 2;</code></pre>'
+			)
+		);
+		expect(drawn('```\nplain\n```\n', ['pre'])).toBe(
+			probe({ code: 'plain' }, '<pre><code>plain</code></pre>')
+		);
+	});
+
+	test('a highlighted fence gives pre the pre alone, with no figure around it', () => {
+		const highlight = {
+			block: (code: string) => ({
+				before: '<figure>',
+				attributes: ' class="hl"',
+				body: '<span>' + code + '</span>',
+				after: '</figure>',
+			}),
+		};
+		expect(drawn('```js\nlet a;\n```\n', ['pre'], { highlight })).toBe(
+			probe(
+				{ lang: 'js', code: 'let a;' },
+				'<pre class="hl"><span>let a;</span></pre>'
+			)
+		);
+		expect(drawn('```js\nlet a;\n```\n', [], { highlight })).toBe(
+			'<figure><pre class="hl"><span>let a;</span></pre></figure>'
+		);
+	});
+
+	test('a code span gives code its text, and its language when it is highlighted', () => {
+		expect(drawn('a `b < c`\n', ['code'])).toBe(
+			'<p>a ' + probe({}, 'b &lt; c') + '</p>'
+		);
+		const highlight = (code: string, info: { inline: boolean }) =>
+			info.inline
+				? '<code class="hl" data-a="1 &amp; 2"><i>' + code + '</i></code>'
+				: null;
+		expect(drawn('`#!js let a`\n', ['code'], { highlight })).toBe(
+			'<p>' +
+				probe({ lang: 'js', class: 'hl', 'data-a': '1 & 2' }, '<i>let a</i>') +
+				'</p>'
+		);
+		const loose = () => '<b>x</b>';
+		expect(drawn('`#!js let a`\n', ['code'], { highlight: loose })).toBe(
+			'<p><b>x</b></p>'
+		);
+	});
+
+	test('a table and its parts are replaced, a cell gets its alignment', () => {
+		const source = '| a | b |\n|:--|--:|\n| 1 | 2 |\n';
+		expect(drawn(source, ['table'])).toBe(
+			probe(
+				{},
+				'<thead><tr><th align="left">a</th><th align="right">b</th></tr></thead>' +
+					'<tbody><tr><td align="left">1</td><td align="right">2</td></tr></tbody>'
+			)
+		);
+		expect(drawn(source, ['th', 'tr'])).toBe(
+			'<table><thead>' +
+				probe(
+					{},
+					probe({ align: 'left' }, 'a') + probe({ align: 'right' }, 'b')
+				) +
+				'</thead><tbody>' +
+				probe({}, '<td align="left">1</td><td align="right">2</td>') +
+				'</tbody></table>'
+		);
+	});
+
+	test('a plugin attribute is a prop of the replacement', () => {
+		const ids: ParsePlugin = {
+			name: 'ids',
+			heading: {
+				parse: (node) => () => {
+					node.attrs.id = 'here';
+				},
+			},
+		};
+		const stream = stream_of('## Two\n', [ids]);
+		expect(html_of(stream, ['h2'])).toBe(
+			probe({ id: 'here', level: 2 }, 'Two')
+		);
+	});
+
+	test('typed html is replaced too, unless component_mode is markdown', () => {
+		const source = '## made\n\n<h2 class="c">typed</h2>\n';
+		const made = probe({ level: 2 }, 'made');
+		expect(drawn(source, ['h2'])).toBe(made + probe({ class: 'c' }, 'typed'));
+		expect(drawn(source, ['h2'], { component_mode: 'markdown' })).toBe(
+			made + '<h2 class="c">typed</h2>'
+		);
+		expect(
+			drawn('<div>\n\n## in\n\n<h2>typed</h2>\n\n</div>\n', ['h2', 'div'], {
+				component_mode: 'markdown',
+			})
+		).toBe('<div>' + probe({ level: 2 }, 'in') + '<h2>typed</h2></div>');
+	});
+
+	test('an element a plugin makes is replaced in either mode', async () => {
+		const notes: ParsePlugin = {
+			name: 'notes',
+			block_quote: {
+				parse: (node) => () =>
+					void node.append('html', { tag: 'aside' }).append('text', 'made'),
+			},
+		};
+		for (const component_mode of ['markdown', 'all']) {
+			const stream = stream_of('> hi\n', [notes]);
+			await stream.end();
+			expect(
+				html_of(stream, ['aside'], { component_mode }),
+				component_mode
+			).toContain(probe({}, 'made'));
+		}
+	});
+
+	test('an element with a directive stays an element', () => {
+		expect(drawn('<input bind:value={name} />\n', ['input'])).not.toContain(
+			'x-probe'
+		);
+		expect(drawn('<input value="a" />\n', ['input'])).toContain('x-probe');
+	});
+
+	test('an open node is replaced as soon as it opens, and its children grow', () => {
+		const stream = new PluginStream();
+		const seen: string[] = [];
+		for (const batch of batches_of('## One _two_ three\n\nafter\n', 3)) {
+			stream.apply(batch);
+			const html = html_of(stream, ['h2', 'em']);
+			if (seen[seen.length - 1] !== html) seen.push(html);
+		}
+		const text = seen.map((html) => html.replace(/<[^>]*>/g, ''));
+		expect(seen.every((html) => !html.includes('<h2'))).toBe(true);
+		expect(seen.find((html) => html.includes('O'))).toMatch(
+			/^<x-probe props="{"level":2}">O/
+		);
+		expect(text[text.length - 1]).toBe('One two threeafter');
+		expect(seen[seen.length - 1]).toBe(
+			probe({ level: 2 }, 'One ' + probe({}, 'two') + ' three') + '<p>after</p>'
+		);
+	});
+
+	test('no components and an empty map write what a stream wrote before', () => {
+		const source =
+			'# One\n\na *b* `c`\n\n- [x] d\n\n| a |\n|---|\n| 1 |\n\n```js\nlet a;\n```\n';
+		const stream = stream_of(source);
+		const props = { buf: stream.buffer, idx: 0, source: '' };
+		const plain = render(Node, { props }).body;
+		expect(render(Node, { props: { ...props, components: {} } }).body).toBe(
+			plain
+		);
+		expect(
+			render(Node, { props: { ...props, component_mode: 'markdown' } }).body
+		).toBe(plain);
 	});
 });
