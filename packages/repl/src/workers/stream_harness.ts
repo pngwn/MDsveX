@@ -5,7 +5,7 @@
  */
 
 import type { Bundle } from 'mdsvex/compile';
-import type { MdsvexCompileOptions, ReplHighlight } from './mdsvex';
+import type { MdsvexCompileOptions, ReplHighlight, ReplMath } from './mdsvex';
 import { PLUGINS_ENTRY } from './plugins';
 
 interface Source {
@@ -61,12 +61,25 @@ function load_highlight({ options, languages }: StreamHighlight): string {
 `;
 }
 
+/** the statements that set the math renderer, temml once it has loaded, katex math shows its latex */
+function load_stream_math(math: ReplMath): string {
+	return math.renderer === 'katex'
+		? `		math = source_math;
+`
+		: `		load_math({ options: ${JSON.stringify(math.options ?? {})} }).then(
+			(render) => (math = render),
+			(error) => console.error(error)
+		);
+`;
+}
+
 export function stream_harness(
 	entry: string,
 	options: MdsvexCompileOptions,
 	bundles: Bundle[],
 	has_plugins: boolean,
-	highlight: StreamHighlight | null = null
+	highlight: StreamHighlight | null = null,
+	math: ReplMath | null = null
 ): string {
 	const components = table('c', options.components ?? []);
 	// those of the plugins sit below the directives option, as in a compile
@@ -91,6 +104,7 @@ export function stream_harness(
 			? ''
 			: "import { create_highlight, default_annotations, language_loaders, shiki_notation } from 'mdsvex/highlight';"
 	}
+	${math === null ? '' : "import { load_math, source_math } from 'mdsvex/math';"}
 	import source from ${JSON.stringify(`./${entry}?raw`)};
 	${has_plugins ? `import exported from './${PLUGINS_ENTRY}';` : 'const exported = [];'}
 ${components.imports}${directives.imports}
@@ -118,6 +132,10 @@ ${components.imports}${directives.imports}
 	let blocks = $state.raw([]);
 	let footnotes = $state.raw(null);
 	let highlight = $state.raw();
+	// undefined until the library is here, math is drawn as written till then
+	let math = $state.raw();
+	// a stream is text and runs no script, the note says so once one arrives
+	let scripted = $state(false);
 
 	const data = {
 		get current() {
@@ -147,6 +165,8 @@ ${components.imports}${directives.imports}
 		});
 	}
 
+	// the kind of an html element
+	const HTML = 2;
 	const renderer = new ComponentRenderer();
 	let emitter;
 	let parser;
@@ -165,6 +185,9 @@ ${components.imports}${directives.imports}
 		next.on_change(() => {
 			blocks = renderer.update(next.buffer, '').map(({ idx, v }) => ({ idx, v }));
 			footnotes = renderer.footnotes;
+			scripted = blocks.some(
+				({ idx }) => next.buffer.kind_at(idx) === HTML && next.buffer.metadata_at(idx)?.tag === 'script'
+			);
 		});
 		stream = next;
 		emitter = new WireEmitter();
@@ -174,6 +197,7 @@ ${components.imports}${directives.imports}
 		ended = false;
 		blocks = [];
 		footnotes = null;
+		scripted = false;
 		marked_at.clear();
 	}
 
@@ -228,7 +252,7 @@ ${components.imports}${directives.imports}
 		observer.observe(output, { childList: true, subtree: true });
 		restart();
 		play();
-${highlight === null ? '' : load_highlight(highlight)}		return () => observer.disconnect();
+${highlight === null ? '' : load_highlight(highlight)}${math === null ? '' : load_stream_math(math)}		return () => observer.disconnect();
 	});
 
 	onDestroy(() => {
@@ -266,13 +290,19 @@ ${highlight === null ? '' : load_highlight(highlight)}		return () => observer.di
 		value={fed}
 		oninput={(e) => seek(Number(e.currentTarget.value))}
 	/>
+	{#if scripted}
+		<p>
+			A stream is text, so the script of this document does not run. Its components, expressions
+			and blocks draw nothing.
+		</p>
+	{/if}
 </div>
 
 <div class="stream-output" bind:this={output}>
 	{#if stream !== null}
 		{#each blocks as block (block.idx)}
 			{#key block.v}
-				<Node buf={stream.buffer} idx={block.idx} source="" {components} {directives} {highlight} plugin_data={data} {footnotes} />
+				<Node buf={stream.buffer} idx={block.idx} source="" {components} component_mode=${JSON.stringify(options.component_mode ?? 'markdown')} {directives} {footnotes} {highlight} plugin_data={data} {math} />
 			{/key}
 		{/each}
 	{/if}
@@ -308,6 +338,11 @@ ${highlight === null ? '' : load_highlight(highlight)}		return () => observer.di
 
 	.stream-controls span {
 		margin-left: auto;
+	}
+
+	.stream-controls p {
+		flex: 0 0 100%;
+		margin: 0;
 	}
 
 	.stream-controls input[type='range'] {
