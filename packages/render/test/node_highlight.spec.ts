@@ -170,7 +170,7 @@ describe('Node.svelte with a highlighter', () => {
 		expect(lit).toContain('<pre><code class="language-zig">');
 	});
 
-	test('a code span is never highlighted', () => {
+	test('a code span with no hint is never highlighted', () => {
 		const { highlight, calls } = recorder();
 		expect(drawn('a `let b` c\n', highlight)).toBe(drawn('a `let b` c\n'));
 		expect(calls).toEqual([]);
@@ -250,6 +250,82 @@ describe('Node.svelte with a highlighter', () => {
 				}),
 			})
 		).toBe(`<pre class="tp"${attrs}>x</pre>`);
+	});
+});
+
+describe('Node.svelte with a highlighter, over a code span with a #! hint', () => {
+	const span: Highlighter = (code, info) =>
+		info.inline && info.lang === 'js'
+			? `<code class="hl">${escape(code).replace(/\blet\b/g, '<b>let</b>')}</code>`
+			: null;
+
+	test('with no highlighter it is plain, to the comments svelte writes', () => {
+		const plain = raw('a `#!js let b` c\n');
+		expect(plain).toContain('<code>let b</code>');
+		expect(raw('a `#!js let b` c\n', false)).toBe(plain);
+	});
+
+	test('it is the html of the highlighter, which gets the hint as its language', () => {
+		const calls: [string, HighlightInfo][] = [];
+		const html = drawn('a `#!js let b` c\n', (code, info) => {
+			calls.push([code, info]);
+			return span(code, info);
+		});
+		expect(html).toBe('<p>a <code class="hl"><b>let</b> b</code> c</p>');
+		expect(calls).toEqual([
+			['let b', { lang: 'js', meta: '', inline: true, open: false }],
+		]);
+	});
+
+	test('a language the highlighter does not know, and one that throws, are plain', () => {
+		const plain = drawn('a `#!zig let b` c\n');
+		expect(drawn('a `#!zig let b` c\n', span)).toBe(plain);
+		expect(
+			drawn('a `#!zig let b` c\n', () => {
+				throw new Error('no');
+			})
+		).toBe(plain);
+	});
+
+	test('a highlight config is drawn as compile draws it, in its code', () => {
+		const seen: unknown[] = [];
+		const config: HighlightConfig = {
+			block: () => null,
+			inline(code, lang, ctx) {
+				seen.push([code, lang, ctx.open]);
+				return {
+					attributes: ' class="tp language-js"',
+					body: `<i>${code}</i>`,
+				};
+			},
+		};
+		expect(drawn('a `#!js let b` c\n', config)).toBe(
+			'<p>a <code class="tp language-js"><i>let b</i></code> c</p>'
+		);
+		expect(seen).toEqual([['let b', 'js', undefined]]);
+		expect(
+			drawn('a `#!js x` c\n', {
+				block: () => null,
+				inline: () => ({ attributes: null, body: '<kbd>x</kbd>' }),
+			})
+		).toBe('<p>a <kbd>x</kbd> c</p>');
+	});
+
+	test('a config with no inline, and one that gives null, are plain', () => {
+		const plain = drawn('a `#!js let b` c\n');
+		expect(drawn('a `#!js let b` c\n', { block: () => null })).toBe(plain);
+		expect(
+			drawn('a `#!js let b` c\n', { block: () => null, inline: () => null })
+		).toBe(plain);
+	});
+
+	test('it is highlighted as it is written', () => {
+		const frames = typed('a `#!js let b` c\n', span);
+		const at = frames.findIndex((frame) => frame.includes('class="hl"'));
+		expect(frames[at]).toContain('<code class="hl">');
+		expect(frames[frames.length - 1]).toBe(
+			'<p>a <code class="hl"><b>let</b> b</code> c</p>'
+		);
 	});
 });
 

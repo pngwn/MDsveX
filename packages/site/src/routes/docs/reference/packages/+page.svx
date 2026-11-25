@@ -36,7 +36,8 @@ The packages below sit under it and install on their own. The entries in these t
   - A `create_highlight` config knows a fence is open. A comment that may still become an annotation, as `// [!code` is, is not drawn until it is one or is not, and a line the meta names, as `{4-6}` does, is marked once it arrives.
   - An open fence is highlighted again on every chunk until it is 4,096 characters long. Past that it is plain until it closes, and is then highlighted once, so a long fence costs no more to stream than a plain one.
   - Languages that load later need nothing else. Leave the prop `undefined` until they are there, then set it: the fences already on the page are highlighted where they stand, and no other block renders again. A highlighter that reads `$state` does the same when that state changes.
-  - Code spans and math are not highlighted in a stream, and the live expressions of an `eval` fence show as text.
+  - A code span with a `#!` hint, as `` `#!js let a` `` is, goes through the same highlighter, with `inline: true`. A span with no hint stays plain.
+  - Math is not rendered in a stream, and the live expressions of an `eval` fence show as text.
 - **The wire format**, `WireEmitter` and `WireTreeBuilder`, sends a parse to another process as opcodes. It is not a stable surface yet. [`WIRE_FORMAT.md`][wire-md] describes it as it is now.
 
 ## Editor tools
