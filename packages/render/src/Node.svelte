@@ -1,5 +1,5 @@
 <script lang="ts" module>
-	import type { Highlight } from './component.js';
+	import type { Highlight, MathRenderer } from './component.js';
 
 	// each chunk replaces every token of an open fence, about 1ms for 1000 characters, a longer one waits until it closes
 	const OPEN_FENCE_LIMIT = 4096;
@@ -131,6 +131,29 @@
 			return null;
 		}
 	}
+
+	// the markup compile writes around math
+	const MATH_OPEN = '<div class="math math-display" translate="no">';
+	const MATH_INLINE_OPEN = '<span class="math math-inline" translate="no">';
+
+	/** the html of a math fence or of inline math from the renderer, null draws it plain */
+	function math_html(
+		math: MathRenderer,
+		latex: string,
+		display: boolean,
+		meta: string
+	): string | null {
+		try {
+			const out = math(latex, { display, meta, filename: undefined });
+			if (typeof out !== 'string') return null;
+			return display
+				? MATH_OPEN + out + '</div>'
+				: MATH_INLINE_OPEN + out + '</span>';
+		} catch {
+			// a stream has no build to fail, latex the renderer can not read shows as written
+			return null;
+		}
+	}
 </script>
 
 <script lang="ts">
@@ -156,6 +179,7 @@
 		directives,
 		plugin_data,
 		highlight,
+		math,
 	}: {
 		buf: NodeBuffer;
 		idx: number;
@@ -168,6 +192,8 @@
 		plugin_data?: { readonly current: unknown };
 		/** highlights code fences, takes what the highlight option of compile takes, its html is not escaped */
 		highlight?: Highlight | false | null;
+		/** renders math fences and inline math, takes what the math option of compile takes, its html is not escaped */
+		math?: MathRenderer | false | null;
 	} = $props();
 
 	// the key of @mdsvex/render/stream and of a compiled document, Symbol.for so every copy agrees
@@ -337,12 +363,35 @@
 			: undefined
 	);
 
+	// the meta of a math fence, undefined for any other node and with no renderer
+	let math_meta = $derived.by(() => {
+		if (!math || kind !== K_CODE_FENCE || !fence_info) return undefined;
+		const space = fence_info.search(/[ \t]/);
+		if (space === -1) return fence_info === 'math' ? '' : undefined;
+		return fence_info.slice(0, space) === 'math'
+			? fence_info.slice(space).trim()
+			: undefined;
+	});
+
+	// half written latex either fails or reads as other math, so math waits for its close
+	let rendered_math = $derived.by(() => {
+		if (!math || buf.end_at(idx) === NONE) return null;
+		if (kind === K_CODE_SPAN)
+			return extra === 1
+				? math_html(math, buf_code(buf, idx, source), false, '')
+				: null;
+		return math_meta === undefined
+			? null
+			: math_html(math, buf_code(buf, idx, source), true, math_meta);
+	});
+
 	// a highlighter that reads state runs again for a closed fence when that state changes
 	let highlighted = $derived.by(() => {
+		if (rendered_math !== null) return rendered_math;
 		if (!highlight) return null;
 		if (kind === K_CODE_SPAN) {
-			// inline math is a code span too, it has no hint
-			if (!fence_info) return null;
+			// inline math is a code span too, it has no hint, and a math hint is not a language
+			if (!fence_info || (math && fence_info === 'math')) return null;
 			return span_html(
 				highlight,
 				buf_code(buf, idx, source),
@@ -351,7 +400,8 @@
 				buf.end_at(idx) === NONE
 			);
 		}
-		if (kind !== K_CODE_FENCE) return null;
+		// a math fence the renderer left plain is no code to highlight
+		if (kind !== K_CODE_FENCE || math_meta !== undefined) return null;
 		const code = buf_code(buf, idx, source);
 		const open = buf.end_at(idx) === NONE;
 		if (open && code.length > OPEN_FENCE_LIMIT) return null;
@@ -381,6 +431,7 @@
 				{directives}
 				{plugin_data}
 				{highlight}
+				{math}
 			/>
 		{/if}
 	{/each}

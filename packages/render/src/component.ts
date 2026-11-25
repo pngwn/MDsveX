@@ -88,6 +88,19 @@ export interface HighlightConfig {
 /** the highlight prop of the Node component, what the highlight option of compile takes */
 export type Highlight = Highlighter | HighlightConfig;
 
+/** what a math renderer knows about the latex it renders, as the MathInfo of mdsvex */
+export interface MathInfo {
+	/** true for a math fence, false for inline math */
+	display: boolean;
+	/** the info string of the fence after math, '' for inline math */
+	meta: string;
+	/** undefined in a stream, it has no file */
+	filename?: string;
+}
+
+/** the math prop of the Node component, what the math option of compile takes */
+export type MathRenderer = (latex: string, info: MathInfo) => string;
+
 //  block entry
 
 export interface ComponentBlock {

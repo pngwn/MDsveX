@@ -37,7 +37,12 @@ The packages below sit under it and install on their own. The entries in these t
   - An open fence is highlighted again on every chunk until it is 4,096 characters long. Past that it is plain until it closes, and is then highlighted once, so a long fence costs no more to stream than a plain one.
   - Languages that load later need nothing else. Leave the prop `undefined` until they are there, then set it: the fences already on the page are highlighted where they stand, and no other block renders again. A highlighter that reads `$state` does the same when that state changes.
   - A code span with a `#!` hint, as `` `#!js let a` `` is, goes through the same highlighter, with `inline: true`. A span with no hint stays plain.
-  - Math is not rendered in a stream, and the live expressions of an `eval` fence show as text.
+  - The live expressions of an `eval` fence show as text.
+- **Math in a stream is rendered** when the `Node` component gets a `math` prop. It takes what the [`math` option](/docs/reference/math#math-with-compile) of `compile` takes, a function from LaTeX to HTML such as `load_math` from `mdsvex/math` gives, and writes the same markup as a compiled page. Pass it to every `Node`, as `<Node {buf} idx={block.idx} source="" {math} />`.
+  - Math shows as its LaTeX, in the code block or code span it is without the prop, until its fence or span closes. It is then rendered once. Half of an equation either fails to render or reads as some other equation, so it is never rendered.
+  - LaTeX the renderer throws on stays as written and nothing is reported, since a stream has no build to fail. To show an error in its place, catch it in the renderer and return the markup for it.
+  - The renderer is synchronous and its HTML goes to the page as it is. `load_math` is not, so leave the prop `undefined` until it resolves, then set it: the math already on the page is rendered where it stands.
+  - With the prop set, a `math` fence and a code span with a `#!math` hint never reach the highlighter, as in a compile.
 - **The wire format**, `WireEmitter` and `WireTreeBuilder`, sends a parse to another process as opcodes. It is not a stable surface yet. [`WIRE_FORMAT.md`][wire-md] describes it as it is now.
 
 ## Editor tools

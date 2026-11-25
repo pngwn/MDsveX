@@ -33,6 +33,7 @@ import {
 	highlight_for,
 	languages_used,
 	math_for,
+	stream_math,
 	is_markdown,
 	prepare,
 	resolve_virtual,
@@ -607,7 +608,8 @@ async function bundle(
 										prepared.config.highlight
 									),
 								],
-							}
+							},
+					stream_math(contents.get(options.entry) ?? '', prepared.config)
 				)
 			);
 
