@@ -42,7 +42,8 @@ export function compile_file(
 	file: File,
 	files: File[],
 	version: string,
-	options: ExposedCompilerOptions
+	options: ExposedCompilerOptions,
+	plugins: string | null = null
 ): Promise<Compiled> {
 	if (!BROWSER) return new Promise(() => {});
 
@@ -61,6 +62,7 @@ export function compile_file(
 		files: files.map((f) => [f.name, f.contents]),
 		version,
 		options,
+		plugins,
 	});
 
 	return new Promise((fulfil) => {

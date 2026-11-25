@@ -28,7 +28,7 @@ import {
 } from '../npm';
 import { is_sveltekit_virtual_module } from '../sveltekit';
 import {
-	compile_markdown,
+	compile_markdown_settled,
 	is_snippet,
 	highlight_for,
 	math_for,
@@ -37,12 +37,28 @@ import {
 	resolve_virtual,
 	type Prepared,
 } from '../mdsvex';
+import {
+	DIRECTIVES_MODULE,
+	NO_PLUGINS,
+	PLUGINS_ENTRY,
+	components_module,
+	find_directives,
+	find_plugins,
+	load_plugins,
+	plugins_entry,
+	type LoadedPlugins,
+} from '../plugins';
+import { stream_harness } from '../stream_harness';
 
 // magic-string and rollup read window, it stays inline so it is not treeshaken
 self.window = self;
 
+/** a workspace file imported as its text, as vite does it */
+const RAW = '?raw';
+
 const ENTRYPOINT = '__entry.js';
 const WRAPPER = '__wrapper.svelte';
+const STREAM = '__stream.svelte';
 const STYLES = '__styles.js';
 const ESM_ENV = '__esm-env.js';
 
@@ -132,7 +148,10 @@ async function get_bundle(
 	virtual: Map<string, File>,
 	prepared: Prepared,
 	options: BundleOptions,
-	can_use_experimental_async: boolean
+	can_use_experimental_async: boolean,
+	/** the module the bundle starts from */
+	input: string,
+	plugins: LoadedPlugins
 ) {
 	/** package names imported by workspace files, for downloads */
 	const imports: Set<string> = new Set();
@@ -176,16 +195,18 @@ async function get_bundle(
 			const highlight = await highlight_for(code, config);
 			const math = await math_for(code, config);
 			if (uid !== current_id) throw ABORT;
-			const compiled = compile_markdown(
+			const compiled = await compile_markdown_settled(
 				code,
 				name,
 				{
 					...prepared.options,
 					highlight,
 					math,
+					plugins: plugins.bundles,
 				},
 				prepared.files
 			);
+			if (uid !== current_id) throw ABORT;
 			if (compiled.snippets !== undefined)
 				for (const [specifier, text] of compiled.snippets)
 					snippets.set(new URL(specifier, id).href, text);
@@ -198,7 +219,7 @@ async function get_bundle(
 		async resolveId(importee, importer) {
 			if (uid !== current_id) throw ABORT;
 
-			if (!importer) return `${VIRTUAL}/${ENTRYPOINT}`;
+			if (!importer) return `${VIRTUAL}/${input}`;
 
 			if (importee === 'esm-env') return `${VIRTUAL}/${ESM_ENV}`;
 
@@ -223,6 +244,10 @@ async function get_bundle(
 
 			if (importee[0] === '.') {
 				if (importer.startsWith(VIRTUAL)) {
+					if (importee.endsWith(RAW))
+						return (
+							resolve(virtual, importee.slice(0, -RAW.length), importer) + RAW
+						);
 					return resolve(virtual, importee, importer);
 				}
 
@@ -292,12 +317,17 @@ async function get_bundle(
 			if (uid !== current_id) throw ABORT;
 
 			if (resolved.startsWith(VIRTUAL)) {
-				const file = virtual.get(resolved.slice(VIRTUAL.length + 1));
-				if (!file)
-					throw new Error(
-						`'${resolved.slice(VIRTUAL.length + 1)}' does not exist`
-					);
-				return file.contents;
+				const raw = resolved.endsWith(RAW);
+				const name = resolved.slice(
+					VIRTUAL.length + 1,
+					raw ? -RAW.length : undefined
+				);
+				const file = virtual.get(name);
+				if (!file) throw new Error(`'${name}' does not exist`);
+				// no transform reads the suffix as a file type, so the text is left alone
+				return raw
+					? `export default ${JSON.stringify(file.contents)};`
+					: file.contents;
 			}
 
 			if (resolved.startsWith(NPM)) {
@@ -413,7 +443,7 @@ async function get_bundle(
 	let user_css = '';
 
 	const bundle = await rollup({
-		input: './__entry.js',
+		input: './' + input,
 		plugins: [
 			mdsvex_plugin,
 			typescript_strip_types,
@@ -495,7 +525,9 @@ async function bundle(
 		`
 	);
 
-	const entry = JSON.stringify('./' + options.entry);
+	// a document streams, any other entry is mounted as it is
+	const streams = options.stream === true && /\.(svx|md)$/.test(options.entry);
+	const entry = JSON.stringify('./' + (streams ? STREAM : options.entry));
 	add(
 		WRAPPER,
 		can_use_experimental_async
@@ -526,6 +558,47 @@ async function bundle(
 		const prepared = prepare(contents);
 		if (prepared.error) throw prepared.error;
 
+		const directives = find_directives(contents.keys());
+		if (directives.length !== 0)
+			add(DIRECTIVES_MODULE, components_module(directives));
+
+		// the plugin files are built and run here first, the documents compile with what they export
+		const found = find_plugins(contents.keys());
+		let plugins = NO_PLUGINS;
+		let plugins_code: string | null = null;
+		if (found.length !== 0) {
+			add(PLUGINS_ENTRY, plugins_entry(found));
+			const built = await get_bundle(
+				svelte,
+				svelte_version,
+				uid,
+				lookup,
+				prepared,
+				options,
+				can_use_experimental_async,
+				PLUGINS_ENTRY,
+				NO_PLUGINS
+			);
+			plugins_code = (
+				await built.bundle.generate({ format: 'es', inlineDynamicImports: true })
+			).output[0].code;
+			plugins = await load_plugins(plugins_code, found);
+			for (const [name, code] of plugins.modules) add(name, code);
+		}
+		// the compiler worker has no bundler, it runs the same built module
+		self.postMessage({ type: 'plugins', uid, code: plugins_code });
+
+		if (streams)
+			add(
+				STREAM,
+				stream_harness(
+					options.entry,
+					prepared.options,
+					plugins.bundles,
+					found.length !== 0
+				)
+			);
+
 		const client = await get_bundle(
 			svelte,
 			svelte_version,
@@ -533,7 +606,9 @@ async function bundle(
 			lookup,
 			prepared,
 			options,
-			can_use_experimental_async
+			can_use_experimental_async,
+			ENTRYPOINT,
+			plugins
 		);
 
 		const client_result = (
