@@ -9303,6 +9303,15 @@ export class PFMParser {
 		if (changed) this.out.attr(id, 'text', text);
 	}
 
+	/** opens the paragraph of a line that starts with a code span, right under a list item tight or loose decides its wrapper when the list closes */
+	private span_line_para(start: number, parent: number): number {
+		if (this.kind_of(parent) !== NodeKind.list_item)
+			return this.emit_open(NodeKind.paragraph, start, parent);
+		const id = this.emit_open_pending(NodeKind.paragraph, start, parent);
+		this.track_list_pending_para(id);
+		return id;
+	}
+
 	/** finished parse, one or two backticks starting a block open a paragraph and take the inline code span step */
 	private span_para(parent: number): boolean {
 		const source = this.source;
@@ -9313,7 +9322,7 @@ export class PFMParser {
 		if (p < length && char_code_at.call(source, p - base) === BACKTICK) p++;
 		if (p >= length || char_code_at.call(source, p - base) === BACKTICK)
 			return false;
-		const para_id = this.emit_open(NodeKind.paragraph, start, parent);
+		const para_id = this.span_line_para(start, parent);
 		this.node_stack.push(para_id);
 		this.states.push(StateKind.paragraph);
 		this.class_floor = -1;
@@ -9521,8 +9530,7 @@ export class PFMParser {
 			return false;
 		} else {
 			this.states.pop();
-			const para_id = this.emit_open(
-				NodeKind.paragraph,
+			const para_id = this.span_line_para(
 				this.cursor - this.extra,
 				current_node
 			);
