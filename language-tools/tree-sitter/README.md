@@ -58,6 +58,8 @@ Compared kind by kind against `@mdsvex/parse` over `packages/parse/test/fixtures
 - A thematic break indented four or more columns still ends a paragraph here.
 - A few CommonMark link corners: a link holding a bracketed link, emphasis whose closer sits in a link destination (`[foo *bar](baz*)`), a destination and title split over lines with padding.
 - Two backtick runs of different lengths in the text of a link, where the first opens no code span and the second does, such as ```[` ``a]`` b](/u)```. The scanner follows one open run at a time, so the `]` in the code span closes the brackets here.
+- A `_`, `*` or `~` that could open a mark but has no closer, in the text of a link or the alt of an image, such as `[_](/u)`, `[a _b](/u)` or `[*a][ref]`. The parser leaves the brackets as text, here they are a link. A delimiter with a space after it, as in `[a _ b](/u)`, opens nothing and both agree.
+- An open tag with no close tag in the text of a link or the alt of an image, such as `[<b>](/u)` or `[<Foo>][ref]`. The parser leaves the brackets as text, here they are a link. A void element, a self closing tag and a lone close tag agree.
 - Text after the close tag of a raw element on the same line (`</script>1. item`) stays in the html line rather than starting a block.
 - A paragraph of only tags, or only images with `unwrap_images`, is still a `paragraph`, and a tight list item's text is still in one. Those are rendering choices, not syntax.
 
