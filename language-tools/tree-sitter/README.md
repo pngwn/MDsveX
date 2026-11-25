@@ -57,6 +57,7 @@ Compared kind by kind against `@mdsvex/parse` over `packages/parse/test/fixtures
 - Pathological emphasis, such as `foo*_*_*_bar*_*_*_*_*baz`, nests differently.
 - A thematic break indented four or more columns still ends a paragraph here.
 - A few CommonMark link corners: a link holding a bracketed link, emphasis whose closer sits in a link destination (`[foo *bar](baz*)`), a destination and title split over lines with padding.
+- A backtick that opens no code span in the text of a link or the alt of an image, such as ``[a ` b](/u)`` or ``[`][ref]``, leaves the brackets as text here. The scanner reads from the backtick to the line end for its closer and so never reaches the `]`.
 - Text after the close tag of a raw element on the same line (`</script>1. item`) stays in the html line rather than starting a block.
 - A paragraph of only tags, or only images with `unwrap_images`, is still a `paragraph`, and a tight list item's text is still in one. Those are rendering choices, not syntax.
 
