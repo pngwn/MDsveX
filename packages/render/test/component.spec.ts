@@ -117,4 +117,62 @@ describe('ComponentRenderer', () => {
 		expect(renderer.buf).toBe(buf);
 		expect(renderer.source).toBe(source);
 	});
+
+	it('incremental: a block follows the node that took the place of a guess', () => {
+		const source = 'One.\n\n<Metronome />\n\nTwo.\n';
+		const tree = new TreeBuilder(128);
+		const parser = new PFMParser(tree);
+		const renderer = new ComponentRenderer();
+		parser.init();
+
+		let guess = -1;
+		let drawn: { idx: number; v: number } | undefined;
+		for (let i = 0; i <= source.length; i++) {
+			if (i < source.length) parser.feed(source[i]);
+			else parser.finish();
+			const buf = tree.get_buffer();
+			renderer.update(buf, source.slice(0, i + 1));
+
+			const children: number[] = [];
+			for (
+				let child = buf.first_child_at(0);
+				child !== 0xffffffff && buf.parent_at(child) === 0;
+				child = buf.next_at(child)
+			) {
+				if (buf.kind_at(child) !== 6) children.push(child);
+			}
+			expect(
+				renderer.blocks.map((b) => b.idx),
+				String(i)
+			).toEqual(children);
+
+			// the paragraph the parser opens at the end of the tag
+			if (source[i] === '>') guess = renderer.blocks[1].idx;
+			// the html node that replaced it gets an entry of its own, so it draws
+			if (source[i] === '\n' && source[i - 1] === '\n' && guess !== -1) {
+				drawn ??= renderer.blocks[1];
+			}
+		}
+
+		expect(tree.get_buffer().kind_at(guess)).toBe(7);
+		expect(drawn!.idx).not.toBe(guess);
+		expect(tree.get_buffer().kind_at(renderer.blocks[1].idx)).toBe(2);
+		// closed since, its version is frozen
+		expect(renderer.blocks[1].v).toBe(drawn!.v);
+	});
+
+	it('incremental: blocks the tree no longer has are dropped', () => {
+		const tree = new TreeBuilder(128);
+		const parser = new PFMParser(tree);
+		const renderer = new ComponentRenderer();
+		parser.init();
+		parser.feed('one\n\ntwo\n');
+		renderer.update(tree.get_buffer(), 'one\n\ntwo\n');
+		expect(renderer.blocks.length).toBe(2);
+
+		const other = new TreeBuilder(128);
+		new PFMParser(other).parse('one\n');
+		const blocks = renderer.update(other.get_buffer(), 'one\n');
+		expect(blocks.length).toBe(1);
+	});
 });

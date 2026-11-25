@@ -3,7 +3,15 @@
 
 import { footnote_ids, footnote_index } from './buf_utils.js';
 import { SourceTextSource } from './node_view.js';
-import { NodeBuffer, NodeKind, kind_to_string } from './utils.js';
+import {
+	NodeBuffer,
+	NodeKind,
+	get_id_scan,
+	is_html_heading,
+	kind_to_string,
+	spans_have,
+	unread_spans,
+} from './utils.js';
 
 const NONE = 0xffffffff;
 
@@ -36,16 +44,63 @@ export class HeadingIdError extends Error {
 const DROPPED = /[^\p{L}\p{M}\p{Nd}\p{Nl}\p{Pc}\p{Alphabetic}\p{Cs} -]/gu;
 const SPACE = / /g;
 
+// ascii lookup keeps lowercase letters, digits, underscores and hyphens, turning spaces into hyphens
+const SLUG_ASCII = new Uint8Array(128);
+SLUG_ASCII[32] = 45;
+SLUG_ASCII[45] = 45;
+SLUG_ASCII[95] = 95;
+for (let c = 48; c <= 57; c++) SLUG_ASCII[c] = c;
+for (let c = 65; c <= 90; c++) SLUG_ASCII[c] = c + 32;
+for (let c = 97; c <= 122; c++) SLUG_ASCII[c] = c;
+
+let slug_buf = new Uint8Array(256);
+
 /** the default slug, as github-slugger makes it, lowercase, punctuation dropped, each space a hyphen */
 export function heading_slug(text: string): string {
-	return text.toLowerCase().replace(DROPPED, '').replace(SPACE, '-');
+	const len = text.length;
+	if (len === 0) return '';
+	let buf = slug_buf;
+	if (len > buf.length) buf = slug_buf = new Uint8Array(len * 2);
+	let k = 0;
+	let same = true;
+	for (let i = 0; i < len; i++) {
+		const c = text.charCodeAt(i);
+		if (c >= 128) {
+			return text.toLowerCase().replace(DROPPED, '').replace(SPACE, '-');
+		}
+		const m = SLUG_ASCII[c];
+		if (m !== 0) {
+			if (m !== c) same = false;
+			buf[k++] = m;
+		} else {
+			same = false;
+		}
+	}
+	if (same) return text;
+	if (k === 0) return '';
+	let out = '';
+	let p = 0;
+	while (p + 8 <= k) {
+		out += String.fromCharCode(
+			buf[p],
+			buf[p + 1],
+			buf[p + 2],
+			buf[p + 3],
+			buf[p + 4],
+			buf[p + 5],
+			buf[p + 6],
+			buf[p + 7]
+		);
+		p += 8;
+	}
+	while (p < k) out += String.fromCharCode(buf[p++]);
+	return out;
 }
 
 const REFERENCE =
 	/&(?:#(\d{1,7})|#[xX]([0-9a-fA-F]{1,6})|([a-zA-Z][a-zA-Z0-9]{1,31}));/g;
 
 const is_element = /^[a-z][^.:]*$/;
-const is_heading_tag = /^h[1-6]$/;
 
 /**
  * the ids of a document, given out in document order, and the id of each
@@ -74,6 +129,8 @@ export class HeadingIds {
 	private given = new Map<string, number>();
 	/** slots below this were looked at for ids already fixed */
 	private scanned = 1;
+	/** generation at last scan, skips walking the buffer when neither html headings nor footnotes entered */
+	private scan_gen = 0;
 	/** the heading closed last, a second close of it only fixes an id a plugin gave it since */
 	private last = NONE;
 	/** the id made for last, null for none */
@@ -117,9 +174,11 @@ export class HeadingIds {
 	 */
 	start(source = ''): void {
 		this.source = source;
-		this.seen.clear();
-		this.given.clear();
+		// map clear allocates a new table even when empty
+		if (this.seen.size !== 0) this.seen.clear();
+		if (this.given.size !== 0) this.given.clear();
 		this.scanned = 1;
+		this.scan_gen = get_id_scan();
 		this.last = NONE;
 		this.last_made = null;
 		this.footnotes = false;
@@ -225,11 +284,18 @@ export class HeadingIds {
 	/** ids fixed by nodes the last scan did not reach, an element heading keeps its own */
 	private scan(buf: NodeBuffer): void {
 		const size = buf._size;
+		const gen = get_id_scan();
+		if (gen === this.scan_gen) {
+			this.scanned = size;
+			return;
+		}
 		for (let i = this.scanned; i < size; i++) {
 			const kind = buf.kind_at(i) as number;
 			if (kind === NodeKind.html) {
 				const meta = buf.metadata_at(i);
-				if (!meta || !is_heading_tag.test(meta.tag)) continue;
+				if (!meta || !is_html_heading(meta.tag)) continue;
+				const spans = unread_spans(meta);
+				if (spans !== undefined && !spans_have(spans, 'id')) continue;
 				const id = meta.attributes?.id;
 				if (typeof id === 'string') this.fix(buf, id, i);
 			} else if (
@@ -239,6 +305,7 @@ export class HeadingIds {
 				this.footnotes = true;
 		}
 		this.scanned = size;
+		this.scan_gen = gen;
 	}
 
 	/** an id the document fixes for a node, no node before it may have it */
