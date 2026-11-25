@@ -2,9 +2,12 @@
 // what that finds wrong is a typed error here, or a warning
 
 import { footnote_index } from '@mdsvex/parse/buf-utils';
+import { take_reference } from '@mdsvex/parse/utils';
 import type { FootnoteProblem } from '@mdsvex/parse/buf-utils';
 import type { NodeBuffer } from '@mdsvex/parse/utils';
 import type { FootnoteRender } from '@mdsvex/render/html-cursor';
+
+import { check_references } from './references.js';
 
 export interface FootnoteOptions {
 	/** the accessible name of the footnotes section, `Footnotes` when unset */
@@ -109,6 +112,7 @@ function position(
 /**
  * the footnotes of a parsed document, null for one with none
  * @throws FootnoteError for a reference with no definition, a label defined twice and a definition with no text, unless strict is false
+ * @throws LinkReferenceError for a link or image reference with no definition
  */
 export function footnotes_of(
 	nodes: NodeBuffer,
@@ -118,6 +122,9 @@ export function footnotes_of(
 	moved: Map<string, string> | null = null
 ): Footnotes | null {
 	const strict = options === undefined || options.strict !== false;
+	// the parser sets the footnote note for a reference with no definition
+	// too, so a compile takes one note per document
+	if (take_reference()) check_references(nodes, source, filename, position);
 	const index = footnote_index(nodes);
 	if (index === null) return null;
 	let warnings: FootnoteWarning[] | null = null;

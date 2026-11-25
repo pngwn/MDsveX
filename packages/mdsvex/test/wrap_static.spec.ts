@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { compile, compile_inputs, CompilerSession } from '../src/compile';
 import type { CompileOptions, TraceTarget } from '../src/compile';
 import { all_directives } from './utils';
+import { references_defined } from './reference_fixtures';
 
 const OPEN = '<div style="display: contents">';
 const CLOSE = '</div>';
@@ -173,7 +174,7 @@ function unwrap(html: string): { html: string; at: (gen: number) => number } {
 }
 
 describe('wrap_static over the parser fixtures', () => {
-	const files = fixture_files(FIXTURES);
+	const files = fixture_files(FIXTURES).filter(references_defined);
 
 	it('only adds wrappers, and every mapping still points at its text', () => {
 		let wrapped = 0;

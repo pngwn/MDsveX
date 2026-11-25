@@ -7,8 +7,6 @@ root
   line_break
   line_break
   paragraph
-    text "[foo"
-    text "]"
-    text "["
-    text "]"
+    link
+      text "foo"
   line_break

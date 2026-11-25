@@ -209,7 +209,7 @@ Paragraph {
 
 The key insight for streaming renderers:
 
-1. **Block-level stability.** The root node's children are top-level blocks (headings, paragraphs, code fences, etc.). Once a block is closed, it never changes. Your renderer can cache closed blocks and skip re-rendering them.
+1. **Block-level stability.** The root node's children are top-level blocks (headings, paragraphs, code fences, etc.). Once a block is closed, it never changes, but for a link or image in it whose definition comes later, which gets its `href` or `src` then. Your renderer can cache closed blocks and skip re-rendering them, and drops the cached block of a node that gets an attr.
 
 2. **Only the last block is active.** During streaming, only the last block in the document is typically open and receiving updates. All prior blocks are closed.
 
@@ -266,7 +266,9 @@ These appear inside paragraphs, headings, list items, and other inline container
 
 A `code_span` whose `extra` is `1` is inline math, written ``$`x`$``. Its content is the LaTeX, without the dollars. A client with no math renderer shows it as it shows any other code span.
 
-A `definition` is a link reference definition, in a block quote or a list item too. Its attrs are the label as written and the `href` and `title` the links that use it carry, `title` only when it is not empty. It renders nothing, the links already hold its url.
+A `definition` is a link reference definition, in a block quote or a list item too. Its attrs are the label as written and the `href` and `title` the links that use it carry, `title` only when it is not empty. It renders nothing, the links hold its url.
+
+A link or image written as a reference, `[text][label]` or `[label][]`, is a `link` or `image` by its syntax alone. When its definition came first it has its `href` or `src` before it closes. When the definition comes later, or never, it closes with neither, and the `A` ops for `href` or `src` and `title` arrive with the definition, after the node and usually its block have closed. A client shows such a link as text with no target until then, and renders its block again when the attr arrives.
 
 A `footnote_reference` is a leaf with the attr `label` and no content. A `footnote_definition` is a block with the same attr, and its content is the blocks of the note. Nothing on the wire numbers them or moves a definition: a client shows the label where the reference is and the definition where it was written, or numbers the labels by first reference and collects the definitions at the end, as the compile does.
 

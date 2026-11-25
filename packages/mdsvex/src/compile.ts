@@ -143,6 +143,8 @@ export {
 export type { ImageNeed, ImportImagesOptions } from './image_imports.js';
 export { SourceError } from './fence_sources.js';
 export { FootnoteError } from './footnotes.js';
+export { LinkReferenceError } from './references.js';
+export type { ReferenceProblemAt } from './references.js';
 export type {
 	FootnoteErrorCode,
 	FootnoteOptions,
@@ -1853,7 +1855,8 @@ function render_once(raw: string, options?: CompileOptions): CompileResult {
 	);
 	const nodes = parse_once(source, host, inputs, false);
 	const spans = take_math();
-	// only a document the parser noted a footnote in is looked through
+	// only a document the parser noted a footnote in is looked through, or
+	// a reference with no definition, which is an error
 	const notes = take_footnote()
 		? footnotes_of(
 				nodes,
@@ -2691,7 +2694,8 @@ export class CompilerSession {
 							);
 			}
 			spans = this.spans = take_math();
-			// only a document the parser noted a footnote in is looked through
+			// only a document the parser noted a footnote in is looked through, or
+			// a reference with no definition, which is an error
 			notes = this.notes = take_footnote()
 				? footnotes_of(
 						nodes,

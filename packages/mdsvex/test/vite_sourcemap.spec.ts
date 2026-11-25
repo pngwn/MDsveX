@@ -12,6 +12,7 @@ import { CompilerSession, mdsvex } from '../src/main';
 import type { HighlightConfig, ParsePlugin } from '../src/main';
 import { create_highlight, load_default_languages } from '../src/highlight';
 import { directive_names } from './utils';
+import { references_defined } from './reference_fixtures';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURES = resolve(HERE, '../../parse/test/fixtures');
@@ -149,7 +150,7 @@ const maps: [string, MakeMap][] = [
 ];
 
 describe('vite plugin sourcemap', () => {
-	const files = fixture_files(FIXTURES);
+	const files = fixture_files(FIXTURES).filter(references_defined);
 
 	for (const [variant, to] of variants) {
 		for (const [name, make] of maps) {

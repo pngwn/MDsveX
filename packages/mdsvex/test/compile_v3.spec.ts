@@ -8,6 +8,7 @@ import { mappings_to_v3 } from '@mdsvex/render/sourcemap';
 import { compile, CompilerSession } from '../src/main';
 import type { ParsePlugin } from '../src/main';
 import { all_directives } from './utils';
+import { references_defined } from './reference_fixtures';
 
 const FIXTURES = resolve(
 	dirname(fileURLToPath(import.meta.url)),
@@ -50,7 +51,7 @@ const variants: [string, (s: string) => string][] = [
 ];
 
 describe('CompilerSession.compile_v3', () => {
-	const files = fixture_files(FIXTURES);
+	const files = fixture_files(FIXTURES).filter(references_defined);
 
 	test('finds the parser fixtures', () => {
 		expect(files.length).toBeGreaterThan(100);

@@ -3,8 +3,8 @@ root
   definition label="foo" href="/url2"
   line_break
   paragraph
-    text "[foo"
+    link
+      text "foo"
+    text "[baz"
     text "]"
-    link href="/url1"
-      text "bar"
   line_break

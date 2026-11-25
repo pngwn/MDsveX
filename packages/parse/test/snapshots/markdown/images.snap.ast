@@ -10,10 +10,8 @@ root
   line_break
   line_break
   paragraph
-    text "![Alt text"
-    text "]"
-    text "[id"
-    text "]"
+    image src="url/to/image.jpg" title="Optional title attribute"
+      text "Alt text"
   line_break
   line_break
   paragraph
@@ -27,10 +25,8 @@ root
   line_break
   line_break
   paragraph
-    text "![leave me alone"
-    text "]"
-    text "["
-    text "]"
+    image
+      text "leave me alone"
   line_break
   line_break
   definition label="id" href="url/to/image.jpg" title="Optional title attribute"

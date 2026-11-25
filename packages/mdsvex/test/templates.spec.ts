@@ -19,6 +19,7 @@ import type {
 	TemplateEntry,
 } from '../src/main';
 import { all_directives } from './utils';
+import { references_defined } from './reference_fixtures';
 
 const FIXTURES = resolve(
 	dirname(fileURLToPath(import.meta.url)),
@@ -504,7 +505,7 @@ describe('walks agree with a template', () => {
 			components: ROOT,
 			frontmatter: { parse: (raw: string) => ({ raw }) },
 		};
-		const files = fixture_files(FIXTURES);
+		const files = fixture_files(FIXTURES).filter(references_defined);
 		expect(files.length).toBeGreaterThan(100);
 		for (const file of files) {
 			const raw = readFileSync(file, 'utf8');

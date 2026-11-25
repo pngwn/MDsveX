@@ -116,8 +116,68 @@ const CODE_SPAN = 8;
 const HARD_BREAK = 17;
 const SOFT_BREAK = 18;
 const HTML_COMMENT = 26;
+const LINK = 12;
+const IMAGE = 13;
 const FOOTNOTE_REFERENCE = 36;
 const FOOTNOTE_DEFINITION = 37;
+
+/** a link or image reference whose label has no definition */
+export interface UndefinedReference {
+	/** the label as written, for `[label][]` the text between the brackets */
+	label: string;
+	node: number;
+	image: boolean;
+}
+
+/**
+ * the references of a document that no definition resolved, in its order, a
+ * reference is one by its syntax alone and the parser gives it no url, a link
+ * or image a plugin made has no end and is not one
+ */
+export function undefined_references(
+	buf: NodeBuffer,
+	source: string
+): UndefinedReference[] {
+	const out: UndefinedReference[] = [];
+	let node = buf.first_child_at(0);
+	while (node !== NONE) {
+		const kind = buf.kind_at(node) as number;
+		if ((kind === LINK || kind === IMAGE) && buf.end_at(node) !== NONE) {
+			const meta = buf.metadata_at(node);
+			const key = kind === IMAGE ? 'src' : 'href';
+			if (meta === undefined || meta === null || meta[key] === undefined) {
+				const text_end = buf.value_end_at(node);
+				const end = buf.end_at(node);
+				// `][]` takes the text as its label, `][label]` the second bracket
+				const label =
+					end - text_end === 3
+						? source.slice(buf.value_start_at(node), text_end)
+						: source.slice(text_end + 2, end - 1);
+				out.push({ label, node, image: kind === IMAGE });
+			}
+		}
+		const down = buf.first_child_at(node);
+		if (down !== NONE) {
+			node = down;
+			continue;
+		}
+		// the next node in document order
+		for (;;) {
+			const next = buf.next_at(node);
+			const parent = buf.parent_at(node);
+			if (next !== NONE && buf.parent_at(next) === parent) {
+				node = next;
+				break;
+			}
+			if (parent === 0 || parent === NONE) {
+				node = NONE;
+				break;
+			}
+			node = parent;
+		}
+	}
+	return out;
+}
 
 /** what a document gets wrong about its footnotes, node is the reference or the definition */
 export interface FootnoteProblem {

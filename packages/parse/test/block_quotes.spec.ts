@@ -1308,8 +1308,8 @@ describe('a block quote holds the blocks the document does', () => {
 
 	test('a definition in a block quote is one line', () => {
 		const input = '> [r]:\n> /u\n\n[a][r]\n';
-		expect(print_ast(parse_markdown_svelte(input).nodes, input)).not.toContain(
-			'link'
-		);
+		const ast = print_ast(parse_markdown_svelte(input).nodes, input);
+		expect(ast).not.toContain('definition');
+		expect(ast).not.toContain('href');
 	});
 });

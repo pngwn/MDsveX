@@ -1,9 +1,7 @@
 root
   paragraph
-    text "[Baz"
-    text "]"
-    text "[Foo bar"
-    text "]"
+    link
+      text "Baz"
   line_break
   line_break
   paragraph

@@ -143,14 +143,18 @@ Write `\{` for a brace.
 :::
 ::::
 
-::::plate[Definitions come first](mark="[]:", tone=link)
-A link reference definition comes before the first link that uses it. That lets a document render while it is still arriving, since nothing later in it can change what came before.
+::::plate[References by their syntax](mark="[]:", tone=link)
+`[text][label]` and `[label][]` are always a link, and the definition can come before or after. Nothing later in a document changes how a line is read, so it can render while it is still arriving. A reference with no definition fails the build.
 
 ```svx result score
-[svelte]: https://svelte.dev
-
 Made with [svelte][], see [the site][svelte].
+
+[svelte]: https://svelte.dev
 ```
+
+:::notes
+Two pairs of brackets that are not a link, `m[0][1]`, are written `m\[0][1]` or put in code.
+:::
 ::::
 
 ::::plate[Inside a word](mark="|_", tone=emph)

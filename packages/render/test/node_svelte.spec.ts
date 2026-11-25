@@ -183,3 +183,24 @@ describe('Node.svelte in a stream', () => {
 		}
 	});
 });
+
+describe('a reference whose definition comes later', () => {
+	test('is a link with no target until the definition is fed', () => {
+		const stream = new PluginStream();
+		const seen: string[] = [];
+		for (const batch of batches_of('see [x][a] and ![y][b]\n\n[a]: /u\n', 4)) {
+			stream.apply(batch);
+			const html = render(Node, {
+				props: { buf: stream.buffer, idx: 0, source: '' },
+			}).body.replace(/<!--[^]*?-->/g, '');
+			const link = /<a[^>]*>x<\/a>/.exec(html)?.[0];
+			if (link !== undefined && seen[seen.length - 1] !== link) seen.push(link);
+		}
+		expect(seen).toEqual(['<a>x</a>', '<a href="/u">x</a>']);
+		const html = render(Node, {
+			props: { buf: stream.buffer, idx: 0, source: '' },
+		}).body.replace(/<!--[^]*?-->/g, '');
+		expect(html).toContain('<img alt="y"');
+		expect(html).not.toContain('src=');
+	});
+});
