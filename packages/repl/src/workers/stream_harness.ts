@@ -130,6 +130,7 @@ ${components.imports}${directives.imports}
 	let ended = $state(false);
 	let stream = $state.raw(null);
 	let blocks = $state.raw([]);
+	let footnotes = $state.raw(null);
 	let highlight = $state.raw();
 	// undefined until the library is here, math is drawn as written till then
 	let math = $state.raw();
@@ -183,6 +184,7 @@ ${components.imports}${directives.imports}
 		next.renderers.push(renderer);
 		next.on_change(() => {
 			blocks = renderer.update(next.buffer, '').map(({ idx, v }) => ({ idx, v }));
+			footnotes = renderer.footnotes;
 			scripted = blocks.some(
 				({ idx }) => next.buffer.kind_at(idx) === HTML && next.buffer.metadata_at(idx)?.tag === 'script'
 			);
@@ -194,6 +196,7 @@ ${components.imports}${directives.imports}
 		fed = 0;
 		ended = false;
 		blocks = [];
+		footnotes = null;
 		scripted = false;
 		marked_at.clear();
 	}
@@ -299,7 +302,7 @@ ${highlight === null ? '' : load_highlight(highlight)}${math === null ? '' : loa
 	{#if stream !== null}
 		{#each blocks as block (block.idx)}
 			{#key block.v}
-				<Node buf={stream.buffer} idx={block.idx} source="" {components} component_mode=${JSON.stringify(options.component_mode ?? 'markdown')} {directives} {highlight} plugin_data={data} {math} />
+				<Node buf={stream.buffer} idx={block.idx} source="" {components} component_mode=${JSON.stringify(options.component_mode ?? 'markdown')} {directives} {footnotes} {highlight} plugin_data={data} {math} />
 			{/key}
 		{/each}
 	{/if}

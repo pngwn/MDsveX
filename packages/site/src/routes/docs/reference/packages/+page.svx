@@ -53,6 +53,10 @@ The packages below sit under it and install on their own. The entries in these t
   - A `math` replacement gets math once it has rendered, with `code`, `display` for a fence, `meta`, and the rendered math as `children`, which grows while a fence is open. Math that has not rendered yet, or that the renderer throws on, is a plain code block and goes to no replacement. With no `math` prop, math is code and goes to `pre` and `code`.
   - `footnote` and `footnotes` are not replaced in a stream.
   - A stream runs no `<script>`. A component the document imports, an expression and a block such as `{#each}` draw nothing.
+- **Footnotes in a stream** are numbered and collected as on a compiled page when every `Node` gets the `footnotes` of the `ComponentRenderer`, as `<Node {buf} idx={block.idx} source="" footnotes={renderer.footnotes} />`. Read `renderer.footnotes` after each `update`, it is a new object whenever the document has a footnote.
+  - A reference is numbered and linked as soon as it arrives, in the order of first reference, and a definition is not drawn where it was written.
+  - The notes are drawn in a `<section class="footnotes">` by one more entry at the end of `renderer.blocks`, which the same `Node` draws, so the each loop needs no other change. The section appears with the first note that has both a reference and a definition.
+  - The ids and links are those of a compiled page, so one stylesheet styles both and a link to a note works in either.
 - **The wire format**, `WireEmitter` and `WireTreeBuilder`, sends a parse to another process as opcodes. It is not a stable surface yet. [`WIRE_FORMAT.md`][wire-md] describes it as it is now.
 
 ## Editor tools

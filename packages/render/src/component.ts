@@ -8,7 +8,7 @@
  *
  *   {#each renderer.blocks as block (block.idx)}
  *     {#key block.v}
- *       <Node buf={renderer.buf} idx={block.idx} source={renderer.source} />
+ *       <Node buf={renderer.buf} idx={block.idx} source={renderer.source} footnotes={renderer.footnotes} />
  *     {/key}
  *   {/each}
  *
@@ -17,10 +17,43 @@
  * with fresh content.
  */
 
+import { footnote_index } from '@mdsvex/parse/buf-utils';
+import type { FootnoteIndex } from '@mdsvex/parse/buf-utils';
 import type { NodeBuffer } from '@mdsvex/parse/utils';
 
 const NONE = 0xffffffff;
 const K_LINE_BREAK = 6;
+const K_FOOTNOTE_REFERENCE = 36;
+const K_FOOTNOTE_DEFINITION = 37;
+
+/** the idx of the block that holds the footnotes section, which is no node */
+export const FOOTNOTES_BLOCK = -1;
+
+/** true when block or a node inside it is a footnote reference or definition */
+function has_footnote(buf: NodeBuffer, block: number): boolean {
+	let node = block;
+	for (;;) {
+		const kind = buf.kind_at(node) as number;
+		if (kind === K_FOOTNOTE_REFERENCE || kind === K_FOOTNOTE_DEFINITION)
+			return true;
+		const down = buf.first_child_at(node);
+		if (down !== NONE) {
+			node = down;
+			continue;
+		}
+		for (;;) {
+			if (node === block) return false;
+			const next = buf.next_at(node);
+			const parent = buf.parent_at(node);
+			if (next !== NONE && buf.parent_at(next) === parent) {
+				node = next;
+				break;
+			}
+			if (parent === NONE) return false;
+			node = parent;
+		}
+	}
+}
 
 /** the child of the root that holds a node, NONE for a node out of the tree */
 export function top_block(buf: NodeBuffer, node: number): number {
@@ -104,7 +137,7 @@ export type MathRenderer = (latex: string, info: MathInfo) => string;
 //  block entry
 
 export interface ComponentBlock {
-	/** Buffer index, use as Svelte each key. */
+	/** Buffer index, use as Svelte each key, FOOTNOTES_BLOCK for the footnotes section. */
 	idx: number;
 	/** Version counter, bumped on each update while the block is open. */
 	v: number;
@@ -118,7 +151,13 @@ export class ComponentRenderer {
 	buf: NodeBuffer | null = null;
 	/** The current source/text string (for passing to Node.svelte). */
 	source = '';
+	/** numbered by first reference, null with none, a new object at each update, pass it to every Node */
+	footnotes: FootnoteIndex | null = null;
 	private closed: Set<number> = new Set();
+	/** a block held a footnote, so each update numbers them again */
+	private noted = false;
+	private section_v = 0;
+	private section_key = '';
 
 	update(buf: NodeBuffer, source: string): ComponentBlock[] {
 		this.buf = buf;
@@ -126,6 +165,14 @@ export class ComponentRenderer {
 
 		let block_idx = 0;
 		let changed = false;
+
+		const last = this.blocks.length - 1;
+		const section =
+			last >= 0 && this.blocks[last].idx === FOOTNOTES_BLOCK
+				? this.blocks.pop()!
+				: null;
+		// a definition in a block drawn again draws the section again
+		const drawn: number[] = [];
 
 		// walk root's children via sibling chain
 		let child = buf.first_child_at(0);
@@ -136,6 +183,10 @@ export class ComponentRenderer {
 
 			if (kind !== K_LINE_BREAK) {
 				const closed = buf.end_at(child) !== NONE;
+				if (!this.closed.has(child)) {
+					drawn.push(child);
+					if (!this.noted) this.noted = has_footnote(buf, child);
+				}
 
 				if (block_idx >= this.blocks.length) {
 					this.blocks.push({ idx: child, v: 0 });
@@ -166,6 +217,34 @@ export class ComponentRenderer {
 			changed = true;
 		}
 
+		if (this.noted) {
+			const notes = (this.footnotes = footnote_index(buf, true));
+			let key = '';
+			let stale = false;
+			if (notes !== null) {
+				const definitions = notes.definitions;
+				for (let i = 0; i < definitions.length; i++) {
+					const node = definitions[i];
+					if (node === NONE) continue;
+					key += `${i} ${node} ${notes.counts[i]} ${notes.labels[i]}\n`;
+					if (drawn.includes(top_block(buf, node))) stale = true;
+				}
+			}
+			if (key !== this.section_key) {
+				this.section_key = key;
+				stale = true;
+			}
+			if (key === '') {
+				if (section !== null) changed = true;
+			} else if (section !== null && !stale) {
+				this.blocks.push(section);
+			} else {
+				if (section !== null) this.section_v++;
+				this.blocks.push({ idx: FOOTNOTES_BLOCK, v: this.section_v });
+				changed = true;
+			}
+		}
+
 		return changed ? (this.blocks = [...this.blocks]) : this.blocks;
 	}
 
@@ -186,5 +265,9 @@ export class ComponentRenderer {
 		this.buf = null;
 		this.source = '';
 		this.closed.clear();
+		this.footnotes = null;
+		this.noted = false;
+		this.section_v = 0;
+		this.section_key = '';
 	}
 }
