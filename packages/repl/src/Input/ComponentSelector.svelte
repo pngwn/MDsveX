@@ -30,7 +30,7 @@
 
 	const label_of = (file: File) => file.name.slice(prefix_of(file).length);
 
-	/** the files by what they are to mdsvex, in the order a tab strip shows them */
+	/** the files by what they are to mdsvex, a section of the bar each */
 	const groups = $derived.by(() => {
 		const content: File[] = [];
 		const directives: File[] = [];
@@ -49,18 +49,40 @@
 		return { content, directives, plugins: [...plugins], config };
 	});
 
-	let strip = $state() as HTMLElement;
+	type Section = 'files' | 'directives' | 'plugins' | 'config';
 
-	// the tab that is open shows what is being typed, so it follows the open file
+	/** the section whose menu is open */
+	let open = $state<Section | null>(null);
+	let bar = $state() as HTMLElement;
+
+	function section_of(file: File): Section {
+		if (file.name === CONFIG) return 'config';
+		if (file.name.startsWith(DIRECTIVES)) return 'directives';
+		return PLUGIN.test(file.name) ? 'plugins' : 'files';
+	}
+
+	const current_section = $derived(section_of(workspace.current));
+	/** the open file as its section names it, a plugin file with its plugin */
+	const current_label = $derived(
+		current_section === 'plugins'
+			? workspace.current.name.slice('plugins/'.length)
+			: label_of(workspace.current)
+	);
+
+	// the row that is open shows what is being typed, so it follows the open file
 	$effect(() => {
 		input_value = label_of(workspace.current);
-		// the strip is longer than its pane once there are plugins
-		tick().then(() =>
-			strip
-				?.querySelector('[aria-current="true"]')
-				?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
-		);
 	});
+
+	function toggle(id: Section) {
+		open = open === id ? null : id;
+	}
+
+	/** a click on the open file leaves the menu up, its row is where it is renamed */
+	function pick(file: File) {
+		if (file !== workspace.current) open = null;
+		select(file);
+	}
 
 	function select(file: File) {
 		workspace.select(file.name);
@@ -139,6 +161,7 @@
 
 	function add_config() {
 		add(CONFIG, '{\n\t"heading_ids": true\n}\n');
+		open = null;
 	}
 
 	/** set while the new plugin is being named */
@@ -148,6 +171,7 @@
 	function add_plugin() {
 		const name = plugin_name.trim();
 		naming = false;
+		if (name !== '') open = null;
 		plugin_name = '';
 		if (!NAME.test(name)) {
 			if (name !== '') alert(`A plugin is named with letters, digits and _, '${name}' is not`);
@@ -207,17 +231,16 @@ export default {
 	let dragover: File | null = $state.raw(null);
 </script>
 
-{#snippet tab(file: File)}
+{#snippet row(file: File)}
 	<div
-		class="button"
-		class:editable={file.name !== entry}
+		class="row"
 		role="button"
 		tabindex="0"
+		title={file.name}
 		aria-current={file === workspace.current}
 		class:drag-over={file === dragover}
-		title={file.name}
-		onclick={() => select(file)}
-		onkeyup={(e) => e.key === ' ' && select(file)}
+		onclick={() => pick(file)}
+		onkeyup={(e) => e.key === ' ' && e.target === e.currentTarget && pick(file)}
 		draggable="true"
 		ondragstart={() => (dragging = file)}
 		ondragover={(e) => (e.preventDefault(), (dragover = file))}
@@ -230,25 +253,12 @@ export default {
 			dragging = dragover = null;
 		}}
 	>
-		<i class="drag-handle"></i>
-
-		<span class="filename">
-			{(file === workspace.current && file.name !== entry ? input_value : label_of(file)) +
-				(workspace.modified[file.name] ? '*' : '') || ' '}
-		</span>
-
 		{#if file === workspace.current && file.name !== entry}
-			<!-- svelte-ignore a11y_autofocus -->
 			<input
 				spellcheck={false}
+				aria-label="the name of the file"
 				bind:this={input}
 				bind:value={input_value}
-				onfocus={async (event) => {
-					const input = event.currentTarget;
-					setTimeout(() => {
-						input.select();
-					});
-				}}
 				onblur={() => close_edit(file)}
 				onkeydown={(e) => {
 					if (e.key === 'Enter') {
@@ -263,79 +273,121 @@ export default {
 				}}
 			/>
 
-			<span
+			<button
 				class="remove"
+				aria-label="delete {file.name}"
+				title="delete"
 				onclick={(e) => {
-					remove_file(file);
 					e.stopPropagation();
-				}}
-				onkeyup={(e) => e.key === ' ' && remove_file(file)}
+					remove_file(file);
+				}}>×</button
 			>
-				<svg viewBox="0 0 24 24">
-					<line stroke="#999" x1="18" y1="6" x2="6" y2="18" />
-					<line stroke="#999" x1="6" y1="6" x2="18" y2="18" />
-				</svg>
-			</span>
+		{:else}
+			<span class="filename">{label_of(file)}{workspace.modified[file.name] ? '*' : ''}</span>
 		{/if}
 	</div>
 {/snippet}
 
-<div class="component-selector">
-	<div class="file-tabs" bind:this={strip}>
-		{#each groups.content as file (file.name)}{@render tab(file)}{/each}
-		<button class="add" onclick={add_new} aria-label="add a file" title="add a file">+</button>
-
-		<span class="group">directives</span>
-		{#each groups.directives as file (file.name)}{@render tab(file)}{/each}
-		<button
-			class="add"
-			onclick={add_directive}
-			aria-label="add a directive"
-			title="add a directive, a component named after its file">+</button
-		>
-
-		<span class="group">plugins</span>
-		{#each groups.plugins as [name, files] (name)}
-			<span class="plugin">{name}</span>
-			{#each files as file (file.name)}{@render tab(file)}{/each}
-		{/each}
-		{#if naming}
-			<!-- svelte-ignore a11y_autofocus -->
-			<input
-				class="naming"
-				autofocus
-				spellcheck={false}
-				placeholder="name"
-				aria-label="the name of the new plugin"
-				bind:value={plugin_name}
-				onblur={add_plugin}
-				onkeydown={(e) => {
-					if (e.key === 'Enter') e.currentTarget.blur();
-					if (e.key === 'Escape') {
-						plugin_name = '';
-						e.currentTarget.blur();
-					}
-				}}
-			/>
+{#snippet head(id: Section, count: number)}
+	<button
+		class="head"
+		aria-expanded={open === id}
+		aria-current={current_section === id}
+		onclick={() => toggle(id)}
+	>
+		<span class="label">{id}</span>
+		{#if current_section === id}
+			<span class="name">{current_label}{workspace.modified[workspace.current.name] ? '*' : ''}</span>
 		{:else}
-			<button
-				class="add"
-				onclick={() => (naming = true)}
-				aria-label="create a plugin"
-				title="create a plugin, a plugin file and the component of its directive">+</button
-			>
+			<span class="count">{count}</span>
 		{/if}
+		<span class="caret"></span>
+	</button>
+{/snippet}
 
-		<span class="group">config</span>
-		{#each groups.config as file (file.name)}{@render tab(file)}{/each}
-		{#if groups.config.length === 0}
-			<button
-				class="add"
-				onclick={add_config}
-				aria-label="add mdsvex.config.json"
-				title="add mdsvex.config.json">+</button
-			>
-		{/if}
+<svelte:window
+	onclick={(e) => {
+		// the path, as a click can replace what was clicked before it gets here
+		if (open !== null && !e.composedPath().includes(bar)) open = null;
+	}}
+	onkeydown={(e) => e.key === 'Escape' && (open = null)}
+/>
+
+<div class="component-selector">
+	<div class="sections" bind:this={bar}>
+		<div class="section">
+			{@render head('files', groups.content.length)}
+			{#if open === 'files'}
+				<div class="menu">
+					{#each groups.content as file (file.name)}{@render row(file)}{/each}
+					<button class="new" onclick={add_new}>+ new file</button>
+				</div>
+			{/if}
+		</div>
+
+		<div class="section">
+			{@render head('directives', groups.directives.length)}
+			{#if open === 'directives'}
+				<div class="menu">
+					{#each groups.directives as file (file.name)}{@render row(file)}{/each}
+					<button
+						class="new"
+						onclick={add_directive}
+						title="a component, the directive is named after its file">+ new directive</button
+					>
+				</div>
+			{/if}
+		</div>
+
+		<div class="section">
+			{@render head('plugins', groups.plugins.length)}
+			{#if open === 'plugins'}
+				<div class="menu">
+					{#each groups.plugins as [name, files] (name)}
+						<div class="plugin">{name}</div>
+						{#each files as file (file.name)}{@render row(file)}{/each}
+					{/each}
+					{#if naming}
+						<!-- svelte-ignore a11y_autofocus -->
+						<input
+							class="naming"
+							autofocus
+							spellcheck={false}
+							placeholder="name the plugin"
+							aria-label="the name of the new plugin"
+							bind:value={plugin_name}
+							onblur={add_plugin}
+							onkeydown={(e) => {
+								if (e.key === 'Enter') e.currentTarget.blur();
+								if (e.key === 'Escape') {
+									e.stopPropagation();
+									plugin_name = '';
+									e.currentTarget.blur();
+								}
+							}}
+						/>
+					{:else}
+						<button
+							class="new"
+							onclick={() => (naming = true)}
+							title="a plugin file and the component of its directive">+ new plugin</button
+						>
+					{/if}
+				</div>
+			{/if}
+		</div>
+
+		<div class="section">
+			{@render head('config', groups.config.length)}
+			{#if open === 'config'}
+				<div class="menu">
+					{#each groups.config as file (file.name)}{@render row(file)}{/each}
+					{#if groups.config.length === 0}
+						<button class="new" onclick={add_config}>+ add {CONFIG}</button>
+					{/if}
+				</div>
+			{/if}
+		</div>
 	</div>
 
 	<details class="settings">
@@ -371,8 +423,6 @@ export default {
 
 <style>
 	.component-selector {
-		--icon-file: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/%3E%3Cpath d='M14 2v6h6'/%3E%3C/svg%3E");
-		--icon-file-new: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/%3E%3Cpath d='M14 2v6h6M12 18v-6M9 15h6'/%3E%3C/svg%3E");
 		--icon-settings: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Cpath d='M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z'/%3E%3C/svg%3E");
 		position: relative;
 		display: flex;
@@ -392,141 +442,137 @@ export default {
 		}
 	}
 
-	.file-tabs {
-		border: none;
-		margin: 0;
+	.sections {
+		display: flex;
 		height: 100%;
-		white-space: nowrap;
-		overflow-x: auto;
-		overflow-y: hidden;
+		min-width: 0;
 	}
 
-	.file-tabs .button {
+	.section {
 		position: relative;
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		font: var(--repl-font-ui-small);
-		border: none;
-		padding: 0 10px;
 		height: 100%;
-		cursor: pointer;
 	}
 
-	.file-tabs .button {
-		--padding-left: 26px;
-		--padding-right: 14px;
-		padding: 0 var(--padding-right) 0 var(--padding-left);
+	/* the name of a section, and the open file when it is one of its own */
+	.head {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		height: 100%;
+		padding: 0 12px;
+		border: none;
+		border-bottom: 1px solid transparent;
+		border-radius: 0;
+		background: none;
 		color: var(--repl-fg-3);
+		font: var(--repl-font-ui-small);
+		white-space: nowrap;
+		cursor: pointer;
 
-		&:hover {
+		&:hover,
+		&[aria-expanded='true'] {
 			color: var(--repl-fg-1);
-		}
-
-		&.editable {
-			--padding-right: 18px;
-		}
-
-		.drag-handle {
-			cursor: move;
-			width: 2em;
-			height: 100%;
-			position: absolute;
-			left: 0em;
-			top: 0;
-			background: currentColor;
-			mask: var(--icon-file) 50% 50% / 1em no-repeat;
-			opacity: 0.6;
-					}
-
-		.remove {
-			position: absolute;
-			display: none;
-			top: 0;
-			right: 0;
-			padding: 0 2px;
-			width: 16px;
-			height: 100%;
-			cursor: pointer;
-
-			svg {
-				width: 100%;
-				height: 100%;
-			}
-		}
-
-		&.drag-over {
 			background: var(--repl-bg-4);
 		}
 
 		&[aria-current='true'] {
-			border-bottom: 1px solid var(--repl-fg-accent);
-			color: var(--repl-fg-1);
+			border-bottom-color: var(--repl-fg-accent);
+			color: var(--repl-fg-3);
 
-			&.editable .filename {
-				cursor: text;
+			.name {
+				color: var(--repl-fg-1);
 			}
+		}
 
-			.remove {
-				display: block;
-			}
+		.count {
+			color: var(--repl-fg-4);
+			font-variant-numeric: tabular-nums;
+		}
+
+		.caret {
+			width: 0;
+			height: 0;
+			border: 4px solid transparent;
+			border-top-color: currentColor;
+			border-bottom-width: 0;
+			opacity: 0.7;
 		}
 	}
 
-	.file-tabs input {
+	.menu {
 		position: absolute;
-		width: calc(100% - var(--padding-left) - var(--padding-right));
-		border: none;
-		outline: none;
-		background-color: inherit;
-		color: inherit;
-		top: 0;
-		left: var(--padding-left);
-		height: 100%;
+		top: 100%;
+		left: 0;
+		z-index: 10;
+		min-width: 240px;
+		padding: 4px 0;
+		background: var(--repl-bg-2);
+		border: 1px solid var(--repl-border);
+		border-radius: var(--repl-border-radius);
+		filter: var(--repl-shadow);
+		font: var(--repl-font-ui-small);
+	}
+
+	.row,
+	.new {
 		display: flex;
 		align-items: center;
-		justify-content: center;
-		font-family: var(--repl-font-family-ui);
-		font: var(--repl-font-ui-small);
+		width: 100%;
+		height: 30px;
+		padding: 0 12px;
 		box-sizing: border-box;
-
-		&:focus {
-			color: var(--repl-fg-accent);
-		}
-	}
-
-	/* what the files after it are to mdsvex */
-	.group,
-	.plugin {
-		display: inline-flex;
-		align-items: center;
-		height: 100%;
-		font: var(--repl-font-ui-small);
-		color: var(--repl-fg-4);
-	}
-
-	.group {
-		margin-left: 6px;
-		padding-left: 12px;
-		border-left: 1px solid var(--repl-border);
-	}
-
-	.plugin {
-		padding-left: 10px;
-		color: var(--repl-fg-3);
-	}
-
-	.plugin::after {
-		content: ':';
-	}
-
-	.add {
-		height: 100%;
-		padding: 0 8px;
 		border: none;
+		border-left: 2px solid transparent;
+		border-radius: 0;
 		background: none;
 		color: var(--repl-fg-3);
 		font: var(--repl-font-ui-small);
+		text-align: left;
+		white-space: nowrap;
+		cursor: pointer;
+
+		&:hover,
+		&.drag-over {
+			color: var(--repl-fg-1);
+			background: var(--repl-bg-4);
+		}
+	}
+
+	.row[aria-current='true'] {
+		border-left-color: var(--repl-fg-accent);
+		color: var(--repl-fg-1);
+	}
+
+	.row input,
+	input.naming {
+		flex: 1;
+		min-width: 0;
+		height: 100%;
+		padding: 0;
+		border: none;
+		outline: none;
+		background: none;
+		color: inherit;
+		font: var(--repl-font-ui-small);
+	}
+
+	input.naming {
+		display: block;
+		width: 100%;
+		height: 30px;
+		padding: 0 12px 0 14px;
+		box-sizing: border-box;
+		color: var(--repl-fg-1);
+	}
+
+	.remove {
+		padding: 0 4px;
+		border: none;
+		background: none;
+		color: var(--repl-fg-3);
+		font: inherit;
+		font-size: 1.2em;
+		line-height: 1;
 		cursor: pointer;
 
 		&:hover {
@@ -534,11 +580,20 @@ export default {
 		}
 	}
 
-	.file-tabs input.naming {
-		position: static;
-		width: 10ch;
-		margin: 0 6px;
-		border-bottom: 1px solid var(--repl-fg-accent);
+	/* the name of a plugin over its files */
+	.plugin {
+		padding: 8px 14px 2px;
+		color: var(--repl-fg-4);
+	}
+
+	.plugin ~ .row {
+		padding-left: 22px;
+	}
+
+	.new {
+		margin-top: 4px;
+		border-top: 1px solid var(--repl-border);
+		height: 32px;
 	}
 
 	.settings {

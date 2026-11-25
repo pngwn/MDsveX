@@ -124,6 +124,14 @@ ${components.imports}${directives.imports}
 		stream.apply(emitter.flush());
 	}
 
+	// the parser only goes forward, so a place behind is fed again from the start
+	function seek(to) {
+		pause();
+		if (to < fed || ended) restart();
+		while (fed < to) tick();
+		if (to >= source.length) finish();
+	}
+
 	function finish() {
 		pause();
 		if (ended) return;
@@ -183,6 +191,14 @@ ${components.imports}${directives.imports}
 		</select>
 	</label>
 	<span>{fed}/{source.length}{ended ? ', ended' : ''}</span>
+	<input
+		type="range"
+		aria-label="how much of the document has arrived"
+		min="0"
+		max={source.length}
+		value={fed}
+		oninput={(e) => seek(Number(e.currentTarget.value))}
+	/>
 </div>
 
 {#if stream !== null}
@@ -219,6 +235,13 @@ ${components.imports}${directives.imports}
 
 	.stream-controls span {
 		margin-left: auto;
+	}
+
+	.stream-controls input[type='range'] {
+		flex: 0 0 100%;
+		margin: 0;
+		accent-color: var(--fg-1, #222);
+		cursor: pointer;
 	}
 </style>
 `;
