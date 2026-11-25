@@ -20,6 +20,7 @@
 import {
 	NodeBuffer,
 	NodeKind,
+	bump_id_scan,
 	is_raw_text_tag,
 	make_meta,
 	merge_meta,
@@ -174,6 +175,12 @@ export class WireTreeBuilder {
 			parent_idx = dispatcher.resolve(parent_idx);
 		}
 
+		if (
+			kind === NodeKind.footnote_reference ||
+			kind === NodeKind.footnote_definition
+		) {
+			bump_id_scan();
+		}
 		const idx = pending
 			? this.buf.push_pending(kind as NodeKind, 0, parent_idx, extra)
 			: this.buf.push(kind as NodeKind, 0, parent_idx, extra);

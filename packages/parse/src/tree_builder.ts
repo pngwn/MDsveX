@@ -47,6 +47,10 @@ export class TreeBuilder implements Emitter {
 	private ids: IdSource | null = null;
 	/** makes the id of each heading as it closes, null for none */
 	private headings: HeadingIds | null = null;
+	/** where the parser stopped at the end of the last feed */
+	private fed_to = 0;
+	/** each node show_open_text gave a value end and the one it had, hide_open_text puts it back */
+	private shown: number[] | null = null;
 
 	constructor(capacity: number, dispatcher?: PluginDispatcher) {
 		this.nodes = new NodeBuffer(capacity);
@@ -61,6 +65,8 @@ export class TreeBuilder implements Emitter {
 	 * document until a batch caller points it at the new one with set_source
 	 */
 	reset(): void {
+		this.fed_to = 0;
+		if (this.shown !== null) this.shown.length = 0;
 		this.nodes.reset();
 		this.nodes.push(NodeKind.root, 0);
 		this.id_to_index = null;
@@ -542,9 +548,84 @@ export class TreeBuilder implements Emitter {
 		}
 	}
 
-	/** kept on the buffer, a live renderer draws an open text run up to it */
+	/** kept on the buffer too, a live renderer draws an open text run up to it */
 	cursor(pos: number): void {
+		this.fed_to = pos;
 		this.nodes.cursor = pos;
+	}
+
+	/**
+	 * gives the text the input has not ended yet a value end, so a render
+	 * between two feeds shows the line being written, call it after a feed
+	 * with the source fed so far and hide_open_text before the next feed or
+	 * the finish, the parser must not see these ends
+	 *
+	 * a text run ends where the parser stopped, less the spaces and tabs it
+	 * would trim, a code span or an html comment where the parser stopped, and
+	 * a code fence at the end of the source, less a last line that starts with
+	 * a backtick and may be its closing fence
+	 * @returns true when a node changed
+	 */
+	show_open_text(source: string): boolean {
+		const n = this.nodes._n;
+		const shown = (this.shown ??= []);
+		const fed_to = this.fed_to;
+		// an open node is the last child of an open node
+		let idx = n[NodeField.last_child];
+		while (idx !== NONE) {
+			const b = idx * NodeField.stride;
+			if (n[b + NodeField.end] !== NONE) break;
+			const start = n[b + NodeField.value_start];
+			const kind = n[b] & 0xff;
+			// a value end not past the start is one the parser has not set, and
+			// the value of a leaf with a delimiter starts past the node start
+			if (
+				n[b + NodeField.value_end] <= start &&
+				(kind === NodeKind.text || start > n[b + NodeField.start])
+			) {
+				let end = start;
+				if (kind === NodeKind.text) {
+					end = fed_to;
+					while (end > start) {
+						const last = source.charCodeAt(end - 1);
+						if (last !== 0x20 && last !== 0x09) break;
+						end--;
+					}
+				} else if (
+					kind === NodeKind.code_span ||
+					kind === NodeKind.html_comment
+				) {
+					end = fed_to;
+				} else if (kind === NodeKind.code_fence) {
+					end = source.length;
+					let at = source.lastIndexOf('\n', end - 1) + 1;
+					if (at < start) at = start;
+					const line = at;
+					while (at < end) {
+						const code = source.charCodeAt(at);
+						if (code !== 0x20 && code !== 0x09) break;
+						at++;
+					}
+					if (at < end && source.charCodeAt(at) === 0x60) end = line;
+				}
+				if (end > start) {
+					shown.push(idx, n[b + NodeField.value_end]);
+					n[b + NodeField.value_end] = end;
+				}
+			}
+			idx = n[b + NodeField.last_child];
+		}
+		return shown.length !== 0;
+	}
+
+	/** takes back the value ends show_open_text gave */
+	hide_open_text(): void {
+		const shown = this.shown;
+		if (shown === null || shown.length === 0) return;
+		const n = this.nodes._n;
+		for (let i = 0; i < shown.length; i += 2)
+			n[shown[i] * NodeField.stride + NodeField.value_end] = shown[i + 1];
+		shown.length = 0;
 	}
 
 	/** an incremental document is complete, give its unused slab tail back */

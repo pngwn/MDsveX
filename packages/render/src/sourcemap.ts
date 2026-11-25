@@ -617,15 +617,21 @@ function encode_mappings(
 	source: string,
 	generated: string
 ): string {
-	fill_line_starts(src_table, source, PAST_END, PAST_END);
-	fill_line_starts(gen_table, generated, PAST_END, PAST_END);
-
 	collect_spans(mappings);
+	if (span_count === 0) return '';
 	sort_spans();
 	if (runs_overlap()) {
 		collect_char_spans(mappings);
 		sort_spans();
 	}
+	const last = span_order[span_count - 1];
+	fill_line_starts(src_table, source, PAST_END, PAST_END);
+	fill_line_starts(
+		gen_table,
+		generated,
+		PAST_END,
+		span_gen[last] + span_len[last] - 1
+	);
 	return encode_spans();
 }
 
@@ -637,15 +643,21 @@ function encode_records(
 	source: string,
 	generated: string
 ): string {
-	fill_line_starts(src_table, source, PAST_END, PAST_END);
-	fill_line_starts(gen_table, generated, PAST_END, PAST_END);
-
 	collect_record_spans(rec, start, end);
+	if (span_count === 0) return '';
 	sort_spans();
 	if (runs_overlap()) {
 		collect_record_char_spans(rec, start, end);
 		sort_spans();
 	}
+	const last = span_order[span_count - 1];
+	fill_line_starts(src_table, source, PAST_END, PAST_END);
+	fill_line_starts(
+		gen_table,
+		generated,
+		PAST_END,
+		span_gen[last] + span_len[last] - 1
+	);
 	return encode_spans();
 }
 
@@ -656,15 +668,21 @@ function encode_trace(
 	source: string,
 	generated: string
 ): string {
-	fill_line_starts(src_table, source, PAST_END, PAST_END);
-	fill_line_starts(gen_table, generated, PAST_END, PAST_END);
-
 	collect_trace_spans(rec, start, end);
+	if (span_count === 0) return '';
 	sort_spans();
 	if (runs_overlap()) {
 		collect_trace_char_spans(rec, start, end);
 		sort_spans();
 	}
+	const last = span_order[span_count - 1];
+	fill_line_starts(src_table, source, PAST_END, PAST_END);
+	fill_line_starts(
+		gen_table,
+		generated,
+		PAST_END,
+		span_gen[last] + span_len[last] - 1
+	);
 	return encode_spans();
 }
 

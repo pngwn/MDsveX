@@ -439,3 +439,99 @@ describe('an indented fence', () => {
 		]);
 	});
 });
+
+describe('code_braces', () => {
+	const keep: Setup = (r) => (r.code_braces = false);
+
+	it('false leaves the braces of a fence and a code span as written', () => {
+		expect(
+			every_walk(
+				'a `{b}` c\n\n```js\nif (a < b) { c("&"); }\n```\n',
+				null,
+				keep
+			)
+		).toBe(
+			'<p>a <code>{b}</code> c</p>' +
+				'<pre><code class="language-js">if (a &lt; b) { c(&quot;&amp;&quot;); }</code></pre>'
+		);
+	});
+
+	it('true and unset write them as entities', () => {
+		const html =
+			'<p><code>&#123;b&#125;</code></p><pre><code>&#123; &lt; &#125;</code></pre>';
+		const source = '`{b}`\n\n```\n{ < }\n```\n';
+		expect(every_walk(source, null)).toBe(html);
+		expect(every_walk(source, null, (r) => (r.code_braces = true))).toBe(html);
+	});
+
+	it('a fence in a block quote, a list or an element keeps them too', () => {
+		expect(
+			every_walk(
+				'> ```\n> {a}\n> {b}\n> ```\n\n- ```\n  {c}\n  ```\n\n<div>\n  ```\n  {d}\n  ```\n</div>\n',
+				null,
+				keep
+			)
+		).toBe(
+			'<blockquote>\n<pre><code>{a}\n{b}</code></pre>\n</blockquote>' +
+				'<ul>\n<li><pre><code>{c}</code></pre></li>\n\n</ul>' +
+				'<div><pre><code>{d}</code></pre></div>'
+		);
+	});
+
+	it('the text of a fence source keeps them', () => {
+		expect(every_walk(DOC, [{ text: '{a} < {b}\n' }, null], keep)).toBe(
+			'<p>a</p><pre><code class="language-ts">{a} &lt; {b}\n</code></pre>' +
+				'<pre><code class="language-js">let b = 2;</code></pre>'
+		);
+	});
+
+	it('a brace outside code is not changed', () => {
+		expect(every_walk('a \\{b\\} c\n', null, keep)).toBe(
+			every_walk('a \\{b\\} c\n', null)
+		);
+		expect(every_walk('a \\{b\\} c\n', null, keep)).toContain('&#123;b');
+	});
+
+	it('a highlighter still writes its own output', () => {
+		const html = every_walk('```js {1}\n{a}\n```\n', null, (r) => {
+			r.code_braces = false;
+			r.highlight = stub();
+		});
+		expect(html).toBe(
+			every_walk('```js {1}\n{a}\n```\n', null, (r) => (r.highlight = stub()))
+		);
+	});
+
+	it('the cached render reads it, and a later render without it escapes again', () => {
+		const source = '`{a}`\n\n```\n{b}\n```\n';
+		const cached = new CursorHTMLRenderer();
+		cached.code_braces = false;
+		cached.update(parse(source), source);
+		expect(cached.html).toBe(
+			'<p><code>{a}</code></p><pre><code>{b}</code></pre>'
+		);
+		const r = new CursorHTMLRenderer({ cache: false });
+		r.code_braces = false;
+		r.update(parse(source), source);
+		expect(r.html).toBe(cached.html);
+		r.code_braces = undefined;
+		r.update(parse(source), source);
+		expect(r.html).toBe(
+			'<p><code>&#123;a&#125;</code></p><pre><code>&#123;b&#125;</code></pre>'
+		);
+		const other = new CursorHTMLRenderer({ cache: false });
+		other.update(parse(source), source);
+		expect(other.html).toBe(r.html);
+	});
+
+	it('a render that throws leaves the next one escaping', () => {
+		const source = '`{a}`\n';
+		const r = new CursorHTMLRenderer({ cache: false });
+		r.code_braces = false;
+		r.smart_punctuation = { quotes: ['a'] as never };
+		expect(() => r.update(parse(source), source)).toThrow();
+		const next = new CursorHTMLRenderer({ cache: false });
+		next.update(parse(source), source);
+		expect(next.html).toBe('<p><code>&#123;a&#125;</code></p>');
+	});
+});
