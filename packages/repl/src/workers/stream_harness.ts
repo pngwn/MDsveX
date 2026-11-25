@@ -117,6 +117,8 @@ ${components.imports}${directives.imports}
 	let stream = $state.raw(null);
 	let blocks = $state.raw([]);
 	let highlight = $state.raw();
+	// a stream is text and runs no script, the note says so once one arrives
+	let scripted = $state(false);
 
 	const data = {
 		get current() {
@@ -146,6 +148,8 @@ ${components.imports}${directives.imports}
 		});
 	}
 
+	// the kind of an html element
+	const HTML = 2;
 	const renderer = new ComponentRenderer();
 	let emitter;
 	let parser;
@@ -163,6 +167,9 @@ ${components.imports}${directives.imports}
 		next.renderers.push(renderer);
 		next.on_change(() => {
 			blocks = renderer.update(next.buffer, '').map(({ idx, v }) => ({ idx, v }));
+			scripted = blocks.some(
+				({ idx }) => next.buffer.kind_at(idx) === HTML && next.buffer.metadata_at(idx)?.tag === 'script'
+			);
 		});
 		stream = next;
 		emitter = new WireEmitter();
@@ -171,6 +178,7 @@ ${components.imports}${directives.imports}
 		fed = 0;
 		ended = false;
 		blocks = [];
+		scripted = false;
 		marked_at.clear();
 	}
 
@@ -263,13 +271,19 @@ ${highlight === null ? '' : load_highlight(highlight)}		return () => observer.di
 		value={fed}
 		oninput={(e) => seek(Number(e.currentTarget.value))}
 	/>
+	{#if scripted}
+		<p>
+			A stream is text, so the script of this document does not run. Its components, expressions
+			and blocks draw nothing.
+		</p>
+	{/if}
 </div>
 
 <div class="stream-output" bind:this={output}>
 	{#if stream !== null}
 		{#each blocks as block (block.idx)}
 			{#key block.v}
-				<Node buf={stream.buffer} idx={block.idx} source="" {components} {directives} {highlight} plugin_data={data} />
+				<Node buf={stream.buffer} idx={block.idx} source="" {components} component_mode=${JSON.stringify(options.component_mode ?? 'markdown')} {directives} {highlight} plugin_data={data} />
 			{/key}
 		{/each}
 	{/if}
@@ -305,6 +319,11 @@ ${highlight === null ? '' : load_highlight(highlight)}		return () => observer.di
 
 	.stream-controls span {
 		margin-left: auto;
+	}
+
+	.stream-controls p {
+		flex: 0 0 100%;
+		margin: 0;
 	}
 
 	.stream-controls input[type='range'] {

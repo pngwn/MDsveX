@@ -38,6 +38,13 @@ The packages below sit under it and install on their own. The entries in these t
   - Languages that load later need nothing else. Leave the prop `undefined` until they are there, then set it: the fences already on the page are highlighted where they stand, and no other block renders again. A highlighter that reads `$state` does the same when that state changes.
   - A code span with a `#!` hint, as `` `#!js let a` `` is, goes through the same highlighter, with `inline: true`. A span with no hint stays plain.
   - Math is not rendered in a stream, and the live expressions of an `eval` fence show as text.
+- **Components replace elements in a stream** when the `Node` component gets a `components` prop, an object from an element name to a component, as `{ h2: Heading, pre: CodeBlock }`. A replacement gets [the props it gets in a compiled document](/docs/guides/components#element-props), so one component serves both. Pass it to every `Node`.
+  - The elements markdown makes are replaced, and those a plugin makes, and the parts of a table. So is lowercase HTML in the source, unless an element has a directive such as `bind:`. `component_mode="markdown"` keeps HTML in the source as plain elements, as [`component_mode`](/docs/guides/components#component_mode-all) does by default for a compiled document.
+  - A replacement is drawn as soon as its node opens, with the props and the children that have arrived. A link whose definition comes later has no `href` until then, and the `code` of a `pre` grows.
+  - A block that changes is drawn again from nothing when it is keyed by its `v`, so a replacement in an open block is made again on each chunk. State it keeps lasts only once its block has closed.
+  - A `pre` replacement gets `lang`, `meta` and `code`, and the `<pre>` as `children`, highlighted when there is a `highlight` prop. The `title`, `caption` and meta props of a compiled document are not passed.
+  - `footnote`, `footnotes` and `math` are not replaced in a stream.
+  - A stream runs no `<script>`. A component the document imports, an expression and a block such as `{#each}` draw nothing.
 - **The wire format**, `WireEmitter` and `WireTreeBuilder`, sends a parse to another process as opcodes. It is not a stable surface yet. [`WIRE_FORMAT.md`][wire-md] describes it as it is now.
 
 ## Editor tools
