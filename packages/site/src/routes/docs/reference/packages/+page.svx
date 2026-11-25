@@ -39,8 +39,10 @@ The packages below sit under it and install on their own. The entries in these t
   - A code span with a `#!` hint, as `` `#!js let a` `` is, goes through the same highlighter, with `inline: true`. A span with no hint stays plain.
   - The live expressions of an `eval` fence show as text.
 - **Math in a stream is rendered** when the `Node` component gets a `math` prop. It takes what the [`math` option](/docs/reference/math#math-with-compile) of `compile` takes, a function from LaTeX to HTML such as `load_math` from `mdsvex/math` gives, and writes the same markup as a compiled page. Pass it to every `Node`, as `<Node {buf} idx={block.idx} source="" {math} />`.
-  - Math shows as its LaTeX, in the code block or code span it is without the prop, until its fence or span closes. It is then rendered once. Half of an equation either fails to render or reads as some other equation, so it is never rendered.
-  - LaTeX the renderer throws on stays as written and nothing is reported, since a stream has no build to fail. To show an error in its place, catch it in the renderer and return the markup for it.
+  - A `math` fence is rendered while it is still being written. It shows as its LaTeX, in the code block it is without the prop, until the LaTeX so far first renders. From then on, LaTeX the renderer throws on keeps the last render on the page, so an equation grows a term at a time and holds still through a half written `\frac`. An environment such as `aligned` renders nothing until its `\end`, so it shows as LaTeX until then.
+  - An open fence is rendered again on every chunk until it is 4,096 characters long. Past that it keeps its last render until it closes.
+  - Inline math shows nothing until its closing dollar, then is rendered once.
+  - A closed fence or span the renderer throws on is drawn as written and nothing is reported, since a stream has no build to fail. To show an error in its place, catch it in the renderer and return the markup for it.
   - The renderer is synchronous and its HTML goes to the page as it is. `load_math` is not, so leave the prop `undefined` until it resolves, then set it: the math already on the page is rendered where it stands.
   - With the prop set, a `math` fence and a code span with a `#!math` hint never reach the highlighter, as in a compile.
 - **The wire format**, `WireEmitter` and `WireTreeBuilder`, sends a parse to another process as opcodes. It is not a stable surface yet. [`WIRE_FORMAT.md`][wire-md] describes it as it is now.

@@ -194,26 +194,83 @@ describe('Node.svelte with a math renderer', () => {
 	});
 });
 
-describe('Node.svelte with a math renderer, over math that is still open', () => {
-	test('a fence is plain until it closes and is rendered once', () => {
-		const { math, calls } = recorder();
-		const source = 'a\n\n```math\n\\frac{a}{b}\n```\n';
+describe('Node.svelte with a math renderer, over a fence that is still open', () => {
+	const PLAIN = '<pre><code class="language-math">';
+	const shown = (html: string) => /<math[^>]*>([^]*)<\/math>/.exec(html)?.[1];
+
+	test('it is plain until its latex first renders, then never plain again', () => {
+		const { math } = recorder();
+		const source = 'a\n\n```math\nx + \\frac{a}{b}\n```\n';
 		const steps = typed(source, math);
-		const closes = source.lastIndexOf('```') + 2;
-		for (let i = source.indexOf('\\frac'); i < closes; i++)
-			expect(steps[i], String(i)).toContain('<pre><code class="language-math">');
-		expect(steps[source.indexOf('{b}') + 2]).toContain(
-			'<pre><code class="language-math">\\frac{a}{b}</code></pre>'
-		);
+		const first = source.indexOf('x');
+		for (let i = source.indexOf('```'); i < first; i++)
+			expect(steps[i], String(i)).not.toContain(DISPLAY);
+		for (let i = first; i < source.length; i++) {
+			expect(steps[i], String(i)).toContain(DISPLAY);
+			expect(steps[i], String(i)).not.toContain(PLAIN);
+		}
+	});
+
+	test('latex that can not be read yet keeps what was last rendered', () => {
+		const { math } = recorder();
+		const source = '```math\nx + \\frac{a}{b} + y\n```\n';
+		const steps = typed(source, math);
+		const at = (text: string) => steps[source.indexOf(text) + text.length - 1];
+		expect(shown(at('x +'))).toBe('x +');
+		expect(shown(at('\\frac{'))).toBe('x + \\frac');
+		expect(shown(at('{a}{'))).toBe('x + \\frac{a}');
+		expect(shown(at('{b}'))).toBe('x + \\frac{a}{b}');
 		expect(steps.at(-1)).toBe(
-			'<p>a</p>' + DISPLAY + '<math display="block">\\frac{a}{b}</math></div>'
-		);
-		expect(new Set(calls.map(([latex]) => latex))).toEqual(
-			new Set(['\\frac{a}{b}'])
+			DISPLAY + '<math display="block">x + \\frac{a}{b} + y</math></div>'
 		);
 	});
 
-	test('inline math is never drawn from half its latex', () => {
+	test('a fence that closes on latex that fails is drawn as written', () => {
+		const { math } = recorder();
+		const source = '```math\nx + \\frac{a\n```\n';
+		const steps = typed(source, math);
+		expect(steps[source.indexOf('{a')]).toContain(DISPLAY);
+		expect(steps.at(-1)).toBe(
+			'<pre><code class="language-math">x + \\frac{a</code></pre>'
+		);
+	});
+
+	test('past 4,096 characters it keeps what it has and waits for the close', () => {
+		const { math, calls } = recorder();
+		const long = 'x + '.repeat(1100) + 'y';
+		const tree = new TreeBuilder(128);
+		const parser = new PFMParser(tree);
+		parser.init();
+		const html = (fed: string) => {
+			tree.show_open_text(fed);
+			const out = render(Node, {
+				props: { buf: tree.get_buffer(), idx: 0, source: fed, math },
+			}).body;
+			tree.hide_open_text();
+			return out;
+		};
+		let fed = '```math\n' + long.slice(0, 40);
+		parser.feed(fed);
+		expect(shown(html(fed))).toBe(long.slice(0, 40));
+		parser.feed(long.slice(40));
+		fed += long.slice(40);
+		expect(shown(html(fed))).toBe(long.slice(0, 40));
+		expect(calls.length).toBe(1);
+		parser.feed('\n```\n');
+		fed += '\n```\n';
+		expect(shown(html(fed))).toBe(long);
+		expect(calls.length).toBe(2);
+	});
+
+	test('two documents do not share what they last rendered', () => {
+		const { math } = recorder();
+		expect(typed('```math\nx{a', math).at(-1)).toContain(DISPLAY);
+		expect(typed('```math\n{a', math).at(-1)).toContain(PLAIN);
+	});
+});
+
+describe('Node.svelte with a math renderer, over inline math that is still open', () => {
+	test('it is never drawn from half its latex', () => {
 		const { math, calls } = recorder();
 		const steps = typed('so $`a^{2}`$ is\n', math);
 		expect(steps.at(-1)).toBe(

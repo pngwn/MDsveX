@@ -1,4 +1,5 @@
 <script lang="ts" module>
+	import type { NodeBuffer } from '@mdsvex/parse/utils';
 	import type { Highlight, MathRenderer } from './component.js';
 
 	// each chunk replaces every token of an open fence, about 1ms for 1000 characters, a longer one waits until it closes
@@ -154,11 +155,33 @@
 			return null;
 		}
 	}
+
+	// the last html of each open math fence by its node, an open block is a new component on every chunk
+	const open_math = new WeakMap<NodeBuffer, Map<number, string>>();
+
+	/** the html of a math fence that is still open, what it last rendered as when its latex can not be read yet */
+	function open_math_html(
+		math: MathRenderer,
+		buf: NodeBuffer,
+		idx: number,
+		latex: string,
+		meta: string
+	): string | null {
+		let last = open_math.get(buf);
+		if (latex.length <= OPEN_FENCE_LIMIT && latex.trim() !== '') {
+			const html = math_html(math, latex, true, meta);
+			if (html !== null) {
+				if (last === undefined) open_math.set(buf, (last = new Map()));
+				last.set(idx, html);
+				return html;
+			}
+		}
+		return last?.get(idx) ?? null;
+	}
 </script>
 
 <script lang="ts">
 	import { is_raw_text_tag } from '@mdsvex/parse/utils';
-	import type { NodeBuffer } from '@mdsvex/parse/utils';
 	import {
 		buf_children,
 		buf_code,
@@ -373,16 +396,18 @@
 			: undefined;
 	});
 
-	// half written latex either fails or reads as other math, so math waits for its close
 	let rendered_math = $derived.by(() => {
-		if (!math || buf.end_at(idx) === NONE) return null;
+		if (!math) return null;
+		const open = buf.end_at(idx) === NONE;
 		if (kind === K_CODE_SPAN)
-			return extra === 1
+			return extra === 1 && !open
 				? math_html(math, buf_code(buf, idx, source), false, '')
 				: null;
-		return math_meta === undefined
-			? null
-			: math_html(math, buf_code(buf, idx, source), true, math_meta);
+		if (math_meta === undefined) return null;
+		const latex = buf_code(buf, idx, source);
+		if (open) return open_math_html(math, buf, idx, latex, math_meta);
+		open_math.get(buf)?.delete(idx);
+		return math_html(math, latex, true, math_meta);
 	});
 
 	// a highlighter that reads state runs again for a closed fence when that state changes
