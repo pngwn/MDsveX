@@ -69,6 +69,13 @@ describe('a fence still being written', () => {
 		).toContain('// [!add');
 	});
 
+	test('the first char of a comment opener is held until the next one', () => {
+		const text = (code: string) =>
+			highlight.block(code, 'ts', '', OPEN)!.body.replace(/<[^>]+>/g, '');
+		expect(text('let a = 1; /')).toBe('let a = 1;');
+		expect(text('let a = 1 / 2')).toBe('let a = 1 / 2');
+	});
+
 	test('a comment that can not become one is drawn at once', () => {
 		const body = highlight.block('let a = 1; // not', 'ts', '', OPEN)!.body;
 		expect(body).toContain('// not');
