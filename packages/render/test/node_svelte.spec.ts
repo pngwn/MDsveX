@@ -551,4 +551,88 @@ describe('components in a stream', () => {
 			render(Node, { props: { ...props, component_mode: 'markdown' } }).body
 		).toBe(plain);
 	});
+
+	const math = (latex: string, info: { display: boolean }) => {
+		if (latex.split('{').length !== latex.split('}').length)
+			throw new Error('Expected }');
+		return `<math${info.display ? ' display="block"' : ''}>${latex}</math>`;
+	};
+	const DISPLAY = '<div class="math math-display" translate="no">';
+	const INLINE = '<span class="math math-inline" translate="no">';
+
+	test('math goes to the math replacement with its latex, rendered as its children', () => {
+		expect(
+			drawn('so $`a^2`$ is\n\n```math label\nx + y\n```\n', ['math'], { math })
+		).toBe(
+			'<p>so ' +
+				probe({ code: 'a^2' }, INLINE + '<math>a^2</math></span>') +
+				' is</p>' +
+				probe(
+					{ display: true, code: 'x + y', meta: 'label' },
+					DISPLAY + '<math display="block">x + y</math></div>'
+				)
+		);
+	});
+
+	test('math never goes to pre or code, and code never goes to math', () => {
+		const source = 'so $`a^2`$ and `b`\n\n```math\nx\n```\n\n```js\ny\n```\n';
+		const html = drawn(source, ['math', 'pre', 'code'], { math });
+		expect(html).toContain(probe({ code: 'a^2' }, INLINE + '<math>a^2</math></span>'));
+		expect(html).toContain(probe({}, 'b'));
+		expect(html).toContain(
+			probe(
+				{ display: true, code: 'x' },
+				DISPLAY + '<math display="block">x</math></div>'
+			)
+		);
+		expect(html).toContain(
+			probe(
+				{ lang: 'js', code: 'y' },
+				'<pre><code class="language-js">y</code></pre>'
+			)
+		);
+	});
+
+	test('with no math renderer math is code and goes to pre and code', () => {
+		expect(drawn('so $`a^2`$\n\n```math\nx\n```\n', ['math', 'pre', 'code'])).toBe(
+			'<p>so ' +
+				probe({}, 'a^2') +
+				'</p>' +
+				probe(
+					{ lang: 'math', code: 'x' },
+					'<pre><code class="language-math">x</code></pre>'
+				)
+		);
+	});
+
+	test('math the renderer throws on is plain code and goes to no replacement', () => {
+		expect(
+			drawn('so $`a^{2`$\n\n```math\n\\frac{a\n```\n', ['math', 'pre', 'code'], {
+				math,
+			})
+		).toBe(
+			'<p>so <code>a^{2</code></p><pre><code class="language-math">\\frac{a</code></pre>'
+		);
+	});
+
+	test('an open math fence goes to the replacement once it renders, with what it last rendered as', () => {
+		const open = (source: string) => {
+			const stream = new PluginStream({});
+			let html = '';
+			for (const batch of batches_of(source, 1).slice(0, -1)) {
+				stream.apply(batch);
+				html = html_of(stream, ['math'], { math });
+			}
+			return html;
+		};
+		expect(open('```math\n{a')).toBe(
+			'<pre><code class="language-math">{a</code></pre>'
+		);
+		expect(open('```math\nx + {a')).toBe(
+			probe(
+				{ display: true, code: 'x + {a' },
+				DISPLAY + '<math display="block">x + </math></div>'
+			)
+		);
+	});
 });
