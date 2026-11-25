@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // output parity gate every optimisation must pass, exits 1 on any divergence
+// a typed error a compile throws is that arm's output, so a document one arm rejects is a divergence
 //
 //   node packages/bench/perf/bin/parity.mjs [--baseline <root>] [--candidate <root>]
 //                                           [--families a,b] [--modes a,b] [--max-report 3]
@@ -151,6 +152,30 @@ function output(arm, mode, src, session) {
 	}
 }
 
+// what javascript throws on its own, a compile that throws one of these is a bug to see whole
+const BUILTIN = new Set([
+	'Error',
+	'TypeError',
+	'RangeError',
+	'ReferenceError',
+	'SyntaxError',
+]);
+
+/**
+ * output, or one line for the typed error a compile rejects the document with,
+ * so an arm that rejects a document the other compiles is a divergence, not a crash
+ */
+function attempt(arm, mode, src, session) {
+	try {
+		return output(arm, mode, src, session);
+	} catch (e) {
+		if (!(e instanceof Error) || BUILTIN.has(e.name)) throw e;
+		return [`threw ${e.name}: ${e.message}`];
+	}
+}
+
+const threw = (lines) => lines.length === 1 && lines[0].startsWith('threw ');
+
 // node lines start with their index and kind, then the source start offset
 function context(src, line) {
 	const m = /^\d+ \d+ (\d+) /.exec(line ?? '');
@@ -189,6 +214,8 @@ const mapped_sessions = {
 
 const failures = [];
 const known = [];
+// checks where both arms reject the document with the same error
+const rejected = [];
 let checks = 0;
 
 for (const entry of corpus({ families })) {
@@ -199,9 +226,10 @@ for (const entry of corpus({ families })) {
 		if (mode === 'vite-transform' && DIRECTIVE.test(src)) continue;
 		if (skips_plugin_mode(mode, src)) continue;
 		const pick = mode === 'compile-reused-mapped' ? mapped_sessions : sessions;
-		const a = output(base, mode, src, pick.base);
-		const b = output(cand, mode, src, pick.cand);
+		const a = attempt(base, mode, src, pick.base);
+		const b = attempt(cand, mode, src, pick.cand);
 		checks++;
+		if (threw(a) && a[0] === b[0]) rejected.push(`${entry.id}:${mode}`);
 		const at = first_difference(a, b);
 		if (at !== -1) {
 			failures.push({
@@ -267,6 +295,15 @@ if (known.length > 0) {
 	for (const f of known.slice(0, max_report)) print(f);
 	if (known.length > max_report)
 		console.log(dim(`  ... and ${known.length - max_report} more`));
+}
+
+if (rejected.length > 0) {
+	console.log(
+		`\n${yellow(`${rejected.length} checks threw the same error on both arms:`)}`
+	);
+	for (const id of rejected.slice(0, max_report)) console.log(`  ${id}`);
+	if (rejected.length > max_report)
+		console.log(dim(`  ... and ${rejected.length - max_report} more`));
 }
 
 console.log(`\ncorpus ${CORPUS_HASH}, ${checks} checks`);
