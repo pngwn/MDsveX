@@ -185,6 +185,51 @@ describe('Node.svelte in a stream', () => {
 	});
 });
 
+describe('a list item that starts with a code span', () => {
+	/** the html after each character of source */
+	function typed(source: string): string[] {
+		const stream = new PluginStream({ plugins: [] });
+		const emitter = new WireEmitter();
+		const parser = new PFMParser(emitter);
+		parser.init();
+		const frames: string[] = [];
+		for (let i = 0; i < source.length; i++) {
+			emitter.set_source(source.slice(0, i + 1));
+			parser.feed(source[i]);
+			stream.apply(emitter.flush());
+			frames.push(
+				render(Node, {
+					props: { buf: stream.buffer, idx: 0, source: '' },
+				}).body.replace(/<!--[^]*?-->/g, '')
+			);
+		}
+		emitter.set_source(source);
+		parser.finish();
+		stream.apply(emitter.flush());
+		frames.push(
+			render(Node, {
+				props: { buf: stream.buffer, idx: 0, source: '' },
+			}).body.replace(/<!--[^]*?-->/g, '')
+		);
+		return frames;
+	}
+
+	test('has no paragraph while its tight list is open, as an item of text has none', () => {
+		const frames = typed('- `a` b\n- c\n\nd\n');
+		for (const frame of frames) expect(frame).not.toContain('<li><p>');
+		expect(frames[frames.length - 1]).toBe(
+			'<ul><li><code>a</code> b</li><li>c</li></ul><p>d</p>'
+		);
+	});
+
+	test('gets its paragraph when a blank line makes the list loose, with every other item', () => {
+		const frames = typed('- `a` b\n\n- c\n\nd\n');
+		expect(frames[frames.length - 1]).toBe(
+			'<ul><li><p><code>a</code> b</p></li><li><p>c</p></li></ul><p>d</p>'
+		);
+	});
+});
+
 describe('a reference whose definition comes later', () => {
 	test('is a link with no target until the definition is fed', () => {
 		const stream = new PluginStream();
