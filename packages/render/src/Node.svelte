@@ -1,3 +1,88 @@
+<script lang="ts" module>
+	import type { Highlight } from './component.js';
+
+	// each chunk replaces every token of an open fence, about 1ms for 1000 characters, a longer one waits until it closes
+	const OPEN_FENCE_LIMIT = 4096;
+
+	const HIGHLIGHT_CONTEXT = {
+		filename: undefined,
+		unknown_language() {},
+		warn() {},
+	};
+
+	function attribute_text(attrs: Record<string, any>): string {
+		let out = '';
+		for (const key in attrs) {
+			const value = attrs[key];
+			out +=
+				value === true
+					? ' ' + key
+					: ' ' +
+						key +
+						'="' +
+						String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;') +
+						'"';
+		}
+		return out;
+	}
+
+	/** html with attrs at the end of its pre open tag, unchanged when it does not open with one */
+	function with_pre_attributes(html: string, attrs: string): string {
+		if (attrs === '' || !/^<pre[\s>]/.test(html)) return html;
+		let quote = 0;
+		for (let i = 4; i < html.length; i++) {
+			const ch = html.charCodeAt(i);
+			if (quote !== 0) {
+				if (ch === quote) quote = 0;
+			} else if (ch === 34 || ch === 39) quote = ch;
+			else if (ch === 62) return html.slice(0, i) + attrs + html.slice(i);
+		}
+		return html;
+	}
+
+	/** the html of a fence from the highlighter, null draws it plain */
+	function fence_html(
+		highlight: Highlight,
+		code: string,
+		info: string | undefined,
+		attrs: Record<string, any>,
+		open: boolean
+	): string | null {
+		let lang = info ?? '';
+		let meta = '';
+		const space = lang.search(/[ \t]/);
+		if (space !== -1) {
+			meta = lang.slice(space).trim();
+			lang = lang.slice(0, space);
+		}
+		try {
+			if (typeof highlight === 'function') {
+				const out = highlight(code, { lang, meta, inline: false, open });
+				return typeof out === 'string'
+					? with_pre_attributes(out, attribute_text(attrs))
+					: null;
+			}
+			const block = highlight.block(code, lang, meta, HIGHLIGHT_CONTEXT);
+			if (block === null) return null;
+			if (block.attributes === null)
+				return block.before + block.body + block.after;
+			return (
+				block.before +
+				'<pre' +
+				block.attributes +
+				attribute_text(attrs) +
+				'>' +
+				block.body +
+				'</pre>' +
+				block.after
+			);
+		} catch {
+			// an open fence can be code the highlighter can not read yet
+			return null;
+		}
+	}
+</script>
+
 <script lang="ts">
 	import { is_raw_text_tag } from '@mdsvex/parse/utils';
 	import type { NodeBuffer } from '@mdsvex/parse/utils';
@@ -20,6 +105,7 @@
 		components,
 		directives,
 		plugin_data,
+		highlight,
 	}: {
 		buf: NodeBuffer;
 		idx: number;
@@ -30,6 +116,8 @@
 		directives?: ComponentMap;
 		/** what plugins wrote, a component reads it from the context, see PluginStream */
 		plugin_data?: { readonly current: unknown };
+		/** highlights code fences, takes what the highlight option of compile takes, its html is not escaped */
+		highlight?: Highlight | false | null;
 	} = $props();
 
 	// the key of @mdsvex/render/stream and of a compiled document, Symbol.for so every copy agrees
@@ -188,6 +276,24 @@
 			? directives?.[meta?.name as string]
 			: undefined
 	);
+
+	let fence_info = $derived(
+		kind === K_CODE_FENCE
+			? ((meta?.info as string | undefined) ??
+					(meta?.info_start != null
+						? source.slice(meta.info_start as number, meta.info_end as number)
+						: undefined))
+			: undefined
+	);
+
+	// a highlighter that reads state runs again for a closed fence when that state changes
+	let highlighted = $derived.by(() => {
+		if (kind !== K_CODE_FENCE || !highlight) return null;
+		const code = buf_code(buf, idx, source);
+		const open = buf.end_at(idx) === NONE;
+		if (open && code.length > OPEN_FENCE_LIMIT) return null;
+		return fence_html(highlight, code, fence_info, get_attrs(meta), open);
+	});
 </script>
 
 {#snippet task_box()}
@@ -211,6 +317,7 @@
 				{components}
 				{directives}
 				{plugin_data}
+				{highlight}
 			/>
 		{/if}
 	{/each}
@@ -314,12 +421,8 @@
 	<code {...get_attrs(meta)}
 		>{buf_code(buf, idx, source).replace(/\n/g, ' ')}</code
 	>
-{:else if kind === K_CODE_FENCE}
-	{@const info =
-		(meta?.info as string | undefined) ??
-		(meta?.info_start != null
-			? source.slice(meta.info_start as number, meta.info_end as number)
-			: undefined)}
+{:else if kind === K_CODE_FENCE && highlighted === null}
+	{@const info = fence_info}
 	<pre><code class={info ? 'language-' + info : undefined} {...get_attrs(meta)}
 			>{buf_code(buf, idx, source)}</code
 		></pre>
@@ -416,6 +519,9 @@
 	</div>
 {:else if kind === K_DEFINITION}
 	<!-- a link reference definition renders nothing, the links that use it carry its url -->
+{:else if highlighted !== null}
+	<!-- last so the branch index svelte writes for every other node stays the same -->
+	{@html highlighted}
 {:else}
 	{@render child_nodes(idx)}
 {/if}
