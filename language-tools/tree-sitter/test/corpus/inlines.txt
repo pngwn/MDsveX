@@ -294,6 +294,72 @@ An escaped bracket opens no reference
     (backslash_escape)))
 
 ========================================
+A backtick that opens no code span is text in a link
+========================================
+[a ` b](/u)
+
+[`][]
+
+![`][c]
+
+----------------------------------------
+
+(document
+  (paragraph
+    (inline_link
+      (link_text)
+      (link_destination)))
+  (paragraph
+    (collapsed_reference_link
+      (link_text)))
+  (paragraph
+    (image
+      (image_description)
+      (link_label))))
+
+========================================
+A code span that closes past a bracket holds it
+========================================
+[`]`](/u)
+
+[`](/u)`](/v)
+
+[not a `link](/foo`)
+
+[`a](/u)
+and`
+
+----------------------------------------
+
+(document
+  (paragraph
+    (inline_link
+      (link_text
+        (code_span
+          (code_span_delimiter)
+          (code_span_content)
+          (code_span_delimiter)))
+      (link_destination)))
+  (paragraph
+    (inline_link
+      (link_text
+        (code_span
+          (code_span_delimiter)
+          (code_span_content)
+          (code_span_delimiter)))
+      (link_destination)))
+  (paragraph
+    (code_span
+      (code_span_delimiter)
+      (code_span_content)
+      (code_span_delimiter)))
+  (paragraph
+    (code_span
+      (code_span_delimiter)
+      (code_span_content)
+      (code_span_delimiter))))
+
+========================================
 Link reference definition over lines
 ========================================
 [foo]:

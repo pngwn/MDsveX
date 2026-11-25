@@ -913,71 +913,74 @@ static bool check_link_tail(Scanner *s, TSLexer *lexer) {
 	return ok && lexer->lookahead == ')';
 }
 
-// a reference link, `[text][label]` or `[text][]`, is one by its brackets alone, no definition
-// is looked up
-static bool find_bracket_close(Scanner *s, TSLexer *lexer, bool label) {
-	unsigned depth = 1;
-	// the text holds a char that is not whitespace, so it can be the label of `[text][]`
-	bool text = false;
-	int32_t text_first = lexer->lookahead;
-	for (;;) {
-		if (lexer->eof(lexer)) return false;
-		int32_t c = lexer->lookahead;
-		if (is_eol_char(c)) {
-			if (s->flags & F_SINGLE_LINE) return false;
-			skip_newline(lexer);
-			bool lazy;
-			if (!paragraph_continues(s, lexer, &lazy)) return false;
-			if (s->peek_mark == '[') depth++;
-			continue;
-		}
-		adv(lexer);
-		if (!(c == ']' && depth == 1) && !is_label_space(c)) text = true;
-		if (c == '\\') {
-			if (!at_eol(lexer)) adv(lexer);
-		} else if (c == '<') {
-			int32_t d = lexer->lookahead;
-			if (is_alpha(d) || d == '/' || d == '!') {
-				while (!at_eol(lexer) && lexer->lookahead != '>') {
-					int32_t q = lexer->lookahead;
-					adv(lexer);
-					if (q == '"' || q == '\'') {
-						while (!at_eol(lexer) && lexer->lookahead != q) adv(lexer);
-						if (lexer->lookahead == q) adv(lexer);
-					}
-				}
-			}
-		} else if (c == '`') {
-			unsigned n = 1;
-			while (lexer->lookahead == '`') {
-				adv(lexer);
-				n++;
-			}
-			while (!at_eol(lexer)) {
-				if (lexer->lookahead != '`') {
-					adv(lexer);
-					continue;
-				}
-				unsigned m = 0;
-				while (lexer->lookahead == '`') {
-					adv(lexer);
-					m++;
-				}
-				if (m == n) break;
-			}
-		} else if (c == '[') {
-			depth++;
-		} else if (c == ']') {
-			if (--depth == 0) break;
-		}
+// forwards to another lexer and notes a backtick run of one length
+typedef struct {
+	TSLexer lexer;
+	TSLexer *inner;
+	unsigned want;
+	unsigned run;
+	bool seen;
+} TickLexer;
+
+static void tick_lexer_advance(TSLexer *lexer, bool skip) {
+	TickLexer *t = (TickLexer *)lexer;
+	if (t->inner->lookahead == '`') {
+		t->run++;
+	} else {
+		if (t->run == t->want) t->seen = true;
+		t->run = 0;
 	}
-	if (label) return true;
+	t->inner->advance(t->inner, skip);
+	t->lexer.lookahead = t->inner->lookahead;
+}
+
+static void tick_lexer_mark_end(TSLexer *lexer) {
+	TickLexer *t = (TickLexer *)lexer;
+	t->inner->mark_end(t->inner);
+}
+
+static uint32_t tick_lexer_get_column(TSLexer *lexer) {
+	TickLexer *t = (TickLexer *)lexer;
+	return t->inner->get_column(t->inner);
+}
+
+static bool tick_lexer_eof(const TSLexer *lexer) {
+	const TickLexer *t = (const TickLexer *)lexer;
+	return t->inner->eof(t->inner);
+}
+
+static bool tick_lexer_range_start(const TSLexer *lexer) {
+	const TickLexer *t = (const TickLexer *)lexer;
+	return t->inner->is_at_included_range_start(t->inner);
+}
+
+static void tick_lexer_init(TickLexer *t, TSLexer *inner, unsigned want) {
+	t->lexer = *inner;
+	t->lexer.advance = tick_lexer_advance;
+	t->lexer.mark_end = tick_lexer_mark_end;
+	t->lexer.get_column = tick_lexer_get_column;
+	t->lexer.eof = tick_lexer_eof;
+	t->lexer.is_at_included_range_start = tick_lexer_range_start;
+	t->inner = inner;
+	t->want = want;
+	t->run = 0;
+	t->seen = false;
+}
+
+// consumes a run still open, true when a run of the wanted length was read
+static bool tick_lexer_end(TickLexer *t) {
+	while (t->inner->lookahead == '`') tick_lexer_advance(&t->lexer, false);
+	return t->seen || t->run == t->want;
+}
+
+// past the bracket that closes link text or image alt, a label or a destination
+static bool check_bracket_tail(Scanner *s, TSLexer *lexer, bool text, int32_t text_first) {
 	if (lexer->lookahead == '[') {
 		adv(lexer);
-		// a label that starts with a caret is a footnote reference, the brackets before it text
+		// a caret label is a footnote reference
 		if (lexer->lookahead == ']') return text && text_first != '^';
 		if (lexer->lookahead == '^') return false;
-		// a reference label holds no brackets, and a char that is not whitespace
+		// a label holds no brackets and needs a char that is not whitespace
 		bool ref = false;
 		while (!at_eol(lexer) && lexer->lookahead != ']') {
 			if (lexer->lookahead == '[') return false;
@@ -996,6 +999,88 @@ static bool find_bracket_close(Scanner *s, TSLexer *lexer, bool label) {
 	return check_link_tail(s, lexer);
 }
 
+// a reference link is one by its brackets alone, no definition is looked up
+// the lexer cannot move back, so chars after a backtick run are read as text and a closing run
+// restores the bracket depth, only one open run is followed
+static bool find_bracket_close(Scanner *s, TSLexer *lexer, bool label) {
+	unsigned depth = 1;
+	// the text can be the label of a collapsed reference
+	bool text = false;
+	int32_t text_first = lexer->lookahead;
+	// length of the open backtick run and the bracket depth at it
+	unsigned ticks = 0;
+	unsigned ticks_depth = 0;
+	for (;;) {
+		if (lexer->eof(lexer)) return false;
+		int32_t c = lexer->lookahead;
+		if (is_eol_char(c)) {
+			if (s->flags & F_SINGLE_LINE) return false;
+			skip_newline(lexer);
+			bool lazy;
+			if (!paragraph_continues(s, lexer, &lazy)) return false;
+			if (s->peek_mark == '[') {
+				depth++;
+			} else if (s->peek_mark == '`' && !ticks) {
+				ticks = s->peek_count;
+				ticks_depth = depth;
+			} else if (s->peek_mark == '`' && s->peek_count == ticks) {
+				ticks = 0;
+				depth = ticks_depth;
+			}
+			continue;
+		}
+		adv(lexer);
+		if (!(c == ']' && depth == 1) && !is_label_space(c)) text = true;
+		if (c == '\\') {
+			// a backslash escapes nothing in a code span
+			if (!at_eol(lexer) && !(ticks && lexer->lookahead == '`')) adv(lexer);
+		} else if (c == '<' && !ticks) {
+			int32_t d = lexer->lookahead;
+			if (is_alpha(d) || d == '/' || d == '!') {
+				while (!at_eol(lexer) && lexer->lookahead != '>') {
+					int32_t q = lexer->lookahead;
+					adv(lexer);
+					if (q == '"' || q == '\'') {
+						while (!at_eol(lexer) && lexer->lookahead != q) adv(lexer);
+						if (lexer->lookahead == q) adv(lexer);
+					}
+				}
+			}
+		} else if (c == '`') {
+			unsigned n = 1;
+			while (lexer->lookahead == '`') {
+				adv(lexer);
+				n++;
+			}
+			if (!ticks) {
+				ticks = n;
+				ticks_depth = depth;
+			} else if (n == ticks) {
+				ticks = 0;
+				depth = ticks_depth;
+			}
+		} else if (c == '[') {
+			depth++;
+		} else if (c == ']') {
+			if (--depth > 0) continue;
+			if (!ticks) break;
+			// the tail cannot be unread, so it is read first and a closing run looked for in it
+			// and past it
+			bool tail = false;
+			bool span = false;
+			if (!label && (lexer->lookahead == '[' || lexer->lookahead == '(')) {
+				TickLexer watch;
+				tick_lexer_init(&watch, lexer, ticks);
+				tail = check_bracket_tail(s, &watch.lexer, text, text_first);
+				span = tick_lexer_end(&watch);
+			}
+			if (!span && !find_code_close(s, lexer, ticks, false)) return label || tail;
+			ticks = 0;
+			depth = ticks_depth;
+		}
+	}
+	return label || check_bracket_tail(s, lexer, text, text_first);
+}
 static bool check_tag_body(Scanner *s, TSLexer *lexer, bool close);
 
 // past `<`, an open tag or a close tag with its `>`
@@ -1391,16 +1476,15 @@ static int scan_line_start(Scanner *s, TSLexer *lexer, const bool *valid,
 		}
 		int32_t first = lexer->lookahead;
 		unsigned n = 0;
-		// the label holds a char that is not whitespace
-		bool label = false;
+		bool has_char = false;
 		while (!at_eol(lexer) && lexer->lookahead != ']' && lexer->lookahead != '[') {
 			if (lexer->lookahead == '\\') {
-				label = true;
+				has_char = true;
 				adv(lexer);
 				n++;
 				if (at_eol(lexer)) break;
 			}
-			if (!is_label_space(lexer->lookahead)) label = true;
+			if (!is_label_space(lexer->lookahead)) has_char = true;
 			adv(lexer);
 			n++;
 		}
@@ -1420,7 +1504,7 @@ static int scan_line_start(Scanner *s, TSLexer *lexer, const bool *valid,
 			                                      : TASK_CHECKED;
 			return 1;
 		}
-		if (lexer->lookahead == ':' && label && !table &&
+		if (lexer->lookahead == ':' && has_char && !table &&
 		    valid[LINK_REFERENCE_DEFINITION_START]) {
 			// at the top level the destination and the title may each start the next line,
 			// in a container a definition is one line
