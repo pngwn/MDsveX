@@ -31,14 +31,24 @@ const OUTLINE = `<script>
 <nav>{@render label?.()}<ol>{#each data?.current?.outline?.headings ?? [] as entry}<li>{entry}</li>{/each}</ol></nav>
 `;
 
+/** a replacement that shows the props compile adds for the kind of its element */
+const KIND = `<script>
+	let { level, start, children } = $props();
+</script>
+
+<b data-level={level} data-start={start}>{@render children?.()}</b>
+`;
+
 let Node: Component<any>;
 let Outline: Component<any>;
+let Kind: Component<any>;
 
 beforeAll(async () => {
 	mkdirSync(DIR, { recursive: true });
 	const modules: [string, string][] = [
 		['Node', readFileSync(join(HERE, '../src/Node.svelte'), 'utf8')],
 		['Outline', OUTLINE],
+		['Kind', KIND],
 	];
 	for (const [name, source] of modules) {
 		const js = compile(source, {
@@ -49,6 +59,7 @@ beforeAll(async () => {
 	}
 	Node = (await import(pathToFileURL(join(DIR, 'Node.js')).href)).default;
 	Outline = (await import(pathToFileURL(join(DIR, 'Outline.js')).href)).default;
+	Kind = (await import(pathToFileURL(join(DIR, 'Kind.js')).href)).default;
 });
 afterAll(() => rmSync(DIR, { recursive: true, force: true }));
 
@@ -182,6 +193,36 @@ describe('Node.svelte in a stream', () => {
 			await stream.end();
 			expect(html_of(stream), String(chunk)).toBe(want);
 		}
+	});
+});
+
+describe('a typed element a component replaces', () => {
+	function drawn(source: string): string {
+		const stream = new PluginStream({ plugins: [] });
+		for (const batch of batches_of(source, 64)) stream.apply(batch);
+		return render(Node, {
+			props: {
+				buf: stream.buffer,
+				idx: 0,
+				source: '',
+				components: { h2: Kind, ol: Kind, em: Kind },
+			},
+		}).body.replace(/<!--[^]*?-->/g, '');
+	}
+
+	test('a heading gets its level, as compile gives it', () => {
+		expect(drawn('<h2>typed</h2>\n')).toBe('<b data-level="2">typed</b>');
+	});
+
+	test('a level the author wrote is kept', () => {
+		expect(drawn('<h2 level="5">typed</h2>\n')).toBe(
+			'<b data-level="5">typed</b>'
+		);
+	});
+
+	test('an ordered list gets its start, and any other element gets neither', () => {
+		expect(drawn('<ol><li>a</li></ol>\n')).toContain('<b data-start="1">');
+		expect(drawn('a <em>b</em>\n')).toBe('<p>a <b>b</b></p>');
 	});
 });
 
