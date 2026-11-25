@@ -50,7 +50,7 @@ export class TreeBuilder implements Emitter {
 	/** where the parser stopped at the end of the last feed */
 	private fed_to = 0;
 	/** each node show_open_text gave a value end and the one it had, hide_open_text puts it back */
-	private shown: number[] = [];
+	private shown: number[] | null = null;
 
 	constructor(capacity: number, dispatcher?: PluginDispatcher) {
 		this.nodes = new NodeBuffer(capacity);
@@ -66,7 +66,7 @@ export class TreeBuilder implements Emitter {
 	 */
 	reset(): void {
 		this.fed_to = 0;
-		this.shown.length = 0;
+		if (this.shown !== null) this.shown.length = 0;
 		this.nodes.reset();
 		this.nodes.push(NodeKind.root, 0);
 		this.id_to_index = null;
@@ -566,7 +566,7 @@ export class TreeBuilder implements Emitter {
 	 */
 	show_open_text(source: string): boolean {
 		const n = this.nodes._n;
-		const shown = this.shown;
+		const shown = (this.shown ??= []);
 		const fed_to = this.fed_to;
 		// an open node is the last child of an open node
 		let idx = n[NodeField.last_child];
@@ -619,7 +619,7 @@ export class TreeBuilder implements Emitter {
 	/** takes back the value ends show_open_text gave */
 	hide_open_text(): void {
 		const shown = this.shown;
-		if (shown.length === 0) return;
+		if (shown === null || shown.length === 0) return;
 		const n = this.nodes._n;
 		for (let i = 0; i < shown.length; i += 2)
 			n[shown[i] * NodeField.stride + NodeField.value_end] = shown[i + 1];
