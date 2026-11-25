@@ -72,6 +72,11 @@ export class ComponentRenderer {
 				if (block_idx >= this.blocks.length) {
 					this.blocks.push({ idx: child, v: 0 });
 					changed = true;
+				} else if (this.blocks[block_idx].idx !== child) {
+					// the parser took a guess back, as the paragraph it opens for a
+					// tag that turns out to stand alone, another node has its place
+					this.blocks[block_idx] = { idx: child, v: 0 };
+					changed = true;
 				} else if (!this.closed.has(child)) {
 					this.blocks[block_idx].v++;
 					changed = true;
@@ -85,6 +90,12 @@ export class ComponentRenderer {
 			}
 
 			child = is_sibling ? next : NONE;
+		}
+
+		// a guess taken back can leave the root with fewer children
+		if (block_idx < this.blocks.length) {
+			this.blocks.length = block_idx;
+			changed = true;
 		}
 
 		return changed ? (this.blocks = [...this.blocks]) : this.blocks;

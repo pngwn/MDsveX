@@ -712,6 +712,12 @@ export class NodeBuffer {
 	_size = 0;
 	/** slots from _size up to here hold the template */
 	private _filled = 0;
+	/**
+	 * how far into the source the parser has read, a builder that follows an
+	 * incremental parse sets it after each feed, an open text node has its
+	 * text from its value start up to here
+	 */
+	cursor = 0;
 
 	constructor(initial_capacity = DEFAULT_TOKEN_CAPACITY) {
 		// the comparison also sends a nan capacity to the floor
@@ -778,6 +784,7 @@ export class NodeBuffer {
 		// a length store is a runtime call even when already empty
 		if (this._meta.length !== 0) this._meta.length = 0;
 		if (this._strings.length !== 0) this._strings.length = 0;
+		this.cursor = 0;
 		// make the pushed slots template again, copying the template above them
 		// when there is enough, one copy costs about what stores for eight nodes do
 		const size = this._size;

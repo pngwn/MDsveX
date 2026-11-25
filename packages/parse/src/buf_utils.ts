@@ -32,6 +32,27 @@ export function buf_text(buf: NodeBuffer, idx: number, source: string): string {
 	return source.slice(vs, ve);
 }
 
+/**
+ * buf_text for a tree that is still being parsed, a text node the parser has
+ * not closed yet gives the source from its start up to the parser's cursor,
+ * so a run shows as it arrives and never shows a character the parser holds
+ *
+ * @example
+ * parser.feed('A metro');
+ * buf_live_text(buf, text, 'A metro'); // 'A metro', buf_text gives ''
+ */
+export function buf_live_text(
+	buf: NodeBuffer,
+	idx: number,
+	source: string
+): string {
+	if (buf.end_at(idx) !== NONE || buf._strings[idx] !== undefined)
+		return buf_text(buf, idx, source);
+	const vs = buf.value_start_at(idx);
+	const cursor = buf.cursor;
+	return vs === NONE || cursor <= vs ? '' : source.slice(vs, cursor);
+}
+
 /** collect all text content from a node and its children recursively. */
 export function buf_text_content(
 	buf: NodeBuffer,
@@ -69,6 +90,55 @@ export function buf_code(
 	const own = own_text(buf, idx, source);
 	const first = buf.first_child_at(idx);
 	return first === NONE ? own : own + held_code(buf, idx, first, source);
+}
+
+/**
+ * buf_code for a tree that is still being parsed, an open code span gives its
+ * code up to the parser's cursor, an open fence gives what was fed of it, less
+ * a last line that is blank or starts with a backtick so far, which may be its
+ * closing fence
+ *
+ * a fence in a block quote or a list item, or an indented one, gives nothing
+ * until it closes, the parser takes what is in front of its lines off then
+ *
+ * @example
+ * parser.feed('```js\nlet a');
+ * buf_live_code(buf, fence, '```js\nlet a'); // 'let a', buf_code gives ''
+ */
+export function buf_live_code(
+	buf: NodeBuffer,
+	idx: number,
+	source: string
+): string {
+	if (buf.end_at(idx) !== NONE || buf._strings[idx] !== undefined)
+		return buf_code(buf, idx, source);
+	const start = buf.start_at(idx);
+	const vs = buf.value_start_at(idx);
+	// the value start is past the opening backticks once it is known
+	if (vs === NONE || vs <= start) return buf_code(buf, idx, source);
+	const kind = buf.kind_at(idx) as number;
+	if (kind === CODE_SPAN) {
+		const cursor = buf.cursor;
+		return cursor > vs ? source.slice(vs, cursor) : '';
+	}
+	if (
+		kind !== CODE_FENCE ||
+		buf.parent_at(idx) !== 0 ||
+		(start !== 0 && source.charCodeAt(start - 1) !== 10)
+	)
+		return buf_code(buf, idx, source);
+	let end = source.length;
+	if (end <= vs) return '';
+	let line = source.lastIndexOf('\n', end - 1) + 1;
+	if (line < vs) line = vs;
+	let p = line;
+	let ch = source.charCodeAt(p);
+	while (ch === 32 || ch === 9) ch = source.charCodeAt(++p);
+	// a line of only spaces and tabs so far may still get its backticks
+	if (ch === 96 || p >= end) end = line;
+	// the linefeed before the closing fence is not code, so the last one waits
+	if (end > vs && source.charCodeAt(end - 1) === 10) end--;
+	return source.slice(vs, end);
 }
 
 /** what buf_code reads offsets of the source through, a string is one */

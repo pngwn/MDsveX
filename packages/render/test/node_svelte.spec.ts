@@ -9,11 +9,13 @@ import {
 	WireEmitter,
 } from '@mdsvex/parse';
 import type { ParsePlugin } from '@mdsvex/parse';
+import { TreeBuilder } from '@mdsvex/parse/tree-builder';
 import type { Component } from 'svelte';
 import { compile } from 'svelte/compiler';
 import { render } from 'svelte/server';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
+import { CursorHTMLRenderer } from '../src/html_cursor';
 import { PluginStream } from '../src/stream';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -181,5 +183,164 @@ describe('Node.svelte in a stream', () => {
 			await stream.end();
 			expect(html_of(stream), String(chunk)).toBe(want);
 		}
+	});
+});
+
+describe('Node.svelte over a tree that is still being parsed', () => {
+	/** the text Node.svelte draws after each character, and where the cursor was */
+	function typed(source: string): { text: string; cursor: number }[] {
+		const tree = new TreeBuilder(128);
+		const parser = new PFMParser(tree);
+		parser.init();
+		const out: { text: string; cursor: number }[] = [];
+		for (let i = 0; i < source.length; i++) {
+			parser.feed(source[i]);
+			const buf = tree.get_buffer();
+			const html = render(Node, {
+				props: { buf, idx: 0, source: source.slice(0, i + 1) },
+			}).body;
+			out.push({
+				text: html.replace(/<[^>]*>/g, ''),
+				cursor: buf.cursor,
+			});
+		}
+		return out;
+	}
+
+	test('a paragraph grows by one character a feed while the cursor keeps up', () => {
+		const source = 'A metronome keeps a steady beat';
+		const steps = typed(source);
+		for (let i = 0; i < source.length; i++) {
+			expect(steps[i].cursor, String(i)).toBe(i + 1);
+			expect(steps[i].text, String(i)).toBe(source.slice(0, i + 1));
+		}
+	});
+
+	test('a heading shows its text before its newline', () => {
+		const steps = typed('# Tempo\n');
+		expect(steps.map((s) => s.text)).toEqual([
+			'',
+			'',
+			'T',
+			'Te',
+			'Tem',
+			'Temp',
+			'Tempo',
+			'Tempo',
+		]);
+	});
+
+	test('a character the parser holds is not drawn', () => {
+		const source = 'keeps *a* [beat](x) on';
+		const steps = typed(source);
+		const texts = steps.map((s) => s.text);
+		// the asterisk and the bracket wait for what follows them
+		expect(texts[5]).toBe('keeps ');
+		expect(texts[6]).toBe('keeps ');
+		expect(texts[7]).toBe('keeps a');
+		expect(texts[10]).toBe('keeps a ');
+		expect(texts[11]).toBe('keeps a b');
+		// the url is read whole before the link closes
+		expect(texts[17]).toBe('keeps a beat');
+		expect(texts[21]).toBe('keeps a beat on');
+		for (let i = 0; i < source.length; i++) {
+			// nothing past the cursor, and nothing drawn is taken back
+			expect(steps[i].text.length).toBeLessThanOrEqual(steps[i].cursor);
+			if (i > 0) expect(texts[i].startsWith(texts[i - 1]), String(i)).toBe(true);
+		}
+	});
+
+	test('a run reads the same when it closes', () => {
+		const source = 'one *two* three\nfour\n\n- five\n- six\n\n> seven\n';
+		const tree = new TreeBuilder(128);
+		const parser = new PFMParser(tree);
+		parser.init();
+		let last = '';
+		for (let i = 0; i <= source.length; i++) {
+			if (i < source.length) parser.feed(source[i]);
+			else parser.finish();
+			const text = render(Node, {
+				props: { buf: tree.get_buffer(), idx: 0, source },
+			}).body.replace(/<[^>]*>/g, '');
+			expect(text.startsWith(last), `${i}: ${last} then ${text}`).toBe(true);
+			last = text;
+		}
+		expect(last).toBe('one two three\nfourfivesixseven');
+	});
+
+	test('a fence shows its code as it arrives, and never its closing fence', () => {
+		const source = '```js\nlet a;\n  b\n```\n';
+		const texts = typed(source).map((s) => s.text);
+		expect(texts).toEqual([
+			'',
+			'',
+			'',
+			'',
+			'',
+			'',
+			'l',
+			'le',
+			'let',
+			'let ',
+			'let a',
+			'let a;',
+			// a linefeed may be the one before the closing fence
+			'let a;',
+			// and a blank line may still get its backticks
+			'let a;',
+			'let a;',
+			'let a;\n  b',
+			'let a;\n  b',
+			'let a;\n  b',
+			'let a;\n  b',
+			'let a;\n  b',
+			'let a;\n  b',
+		]);
+	});
+
+	test('a fence in a block quote waits for its close, its lines have a marker to lose', () => {
+		const source = '> ```\n> let a;\n> ```\n';
+		const texts = typed(source).map((s) => s.text);
+		expect(texts[14]).toBe('');
+		expect(texts[texts.length - 1]).toBe('let a;');
+	});
+
+	test('a code span shows its code as it arrives', () => {
+		const texts = typed('a `let b` c').map((s) => s.text);
+		expect(texts).toEqual([
+			'a',
+			'a ',
+			'a ',
+			'a l',
+			'a le',
+			'a let',
+			'a let ',
+			'a let b',
+			'a let b',
+			'a let b ',
+			'a let b c',
+		]);
+	});
+
+	test('a batch parse and the html renderer are as before', () => {
+		const source = '# Tempo\n\nA metronome keeps *a steady beat*\n';
+		const batch = new TreeBuilder(128);
+		new PFMParser(batch).parse(source);
+		const html_of = (tree: TreeBuilder) => {
+			const renderer = new CursorHTMLRenderer({ cache: false });
+			renderer.update(tree.get_buffer(), source);
+			return renderer.html;
+		};
+		const want = html_of(batch);
+		expect(want).toBe(
+			'<h1>Tempo</h1><p>A metronome keeps <strong>a steady beat</strong></p>'
+		);
+
+		const fed = new TreeBuilder(128);
+		const parser = new PFMParser(fed);
+		parser.init();
+		for (const char of source) parser.feed(char);
+		parser.finish();
+		expect(html_of(fed)).toBe(want);
 	});
 });

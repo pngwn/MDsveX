@@ -542,7 +542,10 @@ export class TreeBuilder implements Emitter {
 		}
 	}
 
-	cursor(_pos: number): void {}
+	/** kept on the buffer, a live renderer draws an open text run up to it */
+	cursor(pos: number): void {
+		this.nodes.cursor = pos;
+	}
 
 	/** an incremental document is complete, give its unused slab tail back */
 	end(): void {
