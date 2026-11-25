@@ -29,6 +29,8 @@
 		/** defaults to theme */
 		preview_theme?: 'light' | 'dark';
 		show_output?: boolean;
+		/** false takes the streamed preview away, for a document a stream can not show */
+		streamable?: boolean;
 		onversion?: (version: string) => void;
 		onchange?: () => void;
 		/** bundler and runtime errors */
@@ -48,6 +50,7 @@
 		theme = 'light',
 		preview_theme = theme,
 		show_output = $bindable(true),
+		streamable = true,
 		onversion,
 		onchange,
 		onerror,
@@ -86,7 +89,7 @@
 	/** replaces every file, resolving once the first bundle lands */
 	export async function set(state: ReplState) {
 		entry = state.entry;
-		workspace.stream = state.stream === true;
+		workspace.stream = streamable && state.stream === true;
 		if (state.svelte_version) workspace.set_svelte_version(state.svelte_version);
 		setting = true;
 		try {
@@ -243,7 +246,7 @@
 						{injected_css}
 						{preview_theme}
 						{workspace}
-						onstream={set_stream}
+						onstream={streamable ? set_stream : undefined}
 						bind:runtime_error
 					/>
 				</section>
