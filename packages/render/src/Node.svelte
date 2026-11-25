@@ -9,6 +9,7 @@
 		unknown_language() {},
 		warn() {},
 	};
+	const OPEN_HIGHLIGHT_CONTEXT = { ...HIGHLIGHT_CONTEXT, open: true };
 
 	function attribute_text(attrs: Record<string, any>): string {
 		let out = '';
@@ -62,7 +63,12 @@
 					? with_pre_attributes(out, attribute_text(attrs))
 					: null;
 			}
-			const block = highlight.block(code, lang, meta, HIGHLIGHT_CONTEXT);
+			const block = highlight.block(
+				code,
+				lang,
+				meta,
+				open ? OPEN_HIGHLIGHT_CONTEXT : HIGHLIGHT_CONTEXT
+			);
 			if (block === null) return null;
 			if (block.attributes === null)
 				return block.before + block.body + block.after;

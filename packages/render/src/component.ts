@@ -64,6 +64,7 @@ export interface HighlightConfig {
 			readonly filename: string | undefined;
 			unknown_language(lang: string): void;
 			warn(code: any, message: string): void;
+			readonly open?: boolean;
 		}
 	): {
 		before: string;

@@ -368,3 +368,6 @@ pre code {
 .prose widget::before {
 	content: '<Widget />';
 }
+.prose .l.highlight {
+	background: var(--bg-secondary);
+}

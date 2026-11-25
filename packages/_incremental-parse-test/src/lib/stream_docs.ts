@@ -47,7 +47,7 @@ A fence goes through the highlighter compile uses, on every chunk while it is op
 
 \`\`\`ts title="live.ts"
 const stream = new PluginStream({ plugins });
-stream.renderers.push(renderer);
+stream.renderers.push(renderer); // [!hl]
 // each batch of the wire is one update
 socket.onmessage = (event) => stream.apply(JSON.parse(event.data));
 \`\`\`

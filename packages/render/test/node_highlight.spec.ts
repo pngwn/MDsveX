@@ -288,6 +288,20 @@ describe('Node.svelte with a highlighter, over a fence that is still open', () =
 		);
 	});
 
+	test('a highlight config is told it is open too', () => {
+		const seen: [string, boolean | undefined][] = [];
+		const config: HighlightConfig = {
+			block(code, lang, meta, ctx) {
+				seen.push([code, ctx.open]);
+				return { before: '', attributes: '', body: code, after: '' };
+			},
+		};
+		const frames = typed('```js\nlet a;\n```\n', config);
+		expect(frames[frames.length - 1]).toBe('<pre>let a;</pre>');
+		expect(seen.find(([code]) => code === 'let')).toEqual(['let', true]);
+		expect(seen[seen.length - 1]).toEqual(['let a;', undefined]);
+	});
+
 	test('a highlighter that can not read half a fence draws it plain until it can', () => {
 		const frames = typed('```js\nlet a;\nlet b;\n```\n', (code) => {
 			if (!code.includes('b')) throw new Error('line 2 is beyond the fence');

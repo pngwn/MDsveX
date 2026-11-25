@@ -56,6 +56,8 @@ export interface HighlightContext {
 	/** warns once per compile and language */
 	unknown_language(lang: string): void;
 	warn(code: HighlightWarning, message: string): void;
+	/** true for a fence still being written, as a stream draws it */
+	readonly open?: boolean;
 }
 
 /**
