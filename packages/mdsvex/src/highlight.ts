@@ -17,6 +17,7 @@ import type {
 	LanguageOptions,
 	OverlayItem,
 	RenderOptions,
+	TokenizeOptions,
 	TokenizeResult,
 	VerbatimContribution,
 	VisibleText,
@@ -275,6 +276,8 @@ const NO_TOKENS: TokenizeResult = {
 };
 
 const NO_RANGES = new Uint32Array(0);
+
+const OPEN: TokenizeOptions = { open: true };
 
 const HIGHLIGHT_CLASS = 'highlight';
 const WORD_CLASS = 'highlighted-word';
@@ -544,7 +547,8 @@ export function create_highlight(
 	function build_render(
 		name: string,
 		parsed: ParsedMeta,
-		source: string
+		source: string,
+		open: boolean
 	): RenderOptions {
 		const items: OverlayItem[] =
 			base.overlays === undefined ? [] : [...base.overlays];
@@ -554,8 +558,11 @@ export function create_highlight(
 			for (const group of parsed.line_groups) {
 				for (const entry of group.lines) {
 					const [from, to] = typeof entry === 'number' ? [entry, entry] : entry;
-					check_line(from, line_count);
-					check_line(to, line_count);
+					// the lines of an open fence may not have arrived
+					if (!open) {
+						check_line(from, line_count);
+						check_line(to, line_count);
+					}
 					if (to < from) fail(`line range ${from}-${to} runs backwards`);
 					if (group.id !== undefined)
 						for (let line = from; line <= to; line++)
@@ -653,9 +660,12 @@ export function create_highlight(
 			entry = lookup(name) ?? null;
 			if (entry === null) unknown(name, ctx, 'fence');
 		}
-		let render = build_render(name, parsed, code);
+		const open = ctx.open === true;
+		const call = open ? OPEN : undefined;
+		let render = build_render(name, parsed, code, open);
 		if (hook !== undefined) render = hook(meta, render) ?? render;
 		render.escape = escape;
+		if (open) render.open = true;
 
 		let attributes: string | null;
 		let body: string;
@@ -686,7 +696,7 @@ export function create_highlight(
 				};
 				eval_run = run;
 				try {
-					result = tokenize ? tokenize(code) : NO_TOKENS;
+					result = tokenize ? tokenize(code, call) : NO_TOKENS;
 				} finally {
 					eval_run = prev;
 				}
@@ -711,7 +721,7 @@ export function create_highlight(
 					}
 				} else groups = verbatim_ranges(result);
 				if (groups.length === 0) groups = null;
-			} else result = tokenize ? tokenize(code) : NO_TOKENS;
+			} else result = tokenize ? tokenize(code, call) : NO_TOKENS;
 			const parts = to_parts(code, result, render);
 			attributes = attribute_text(parts.attributes);
 			body = parts.body;

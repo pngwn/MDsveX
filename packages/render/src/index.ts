@@ -28,7 +28,13 @@ export {
 	K_IMPORT_STATEMENT,
 } from './html_cursor.js';
 export { ComponentRenderer } from './component.js';
-export type { ComponentBlock } from './component.js';
+export type {
+	ComponentBlock,
+	Highlight,
+	HighlightConfig,
+	Highlighter,
+	HighlightInfo,
+} from './component.js';
 export { CI_TEXT, CI_CODE, CI_SVELTE, CI_STRUCTURE } from './mappings.js';
 export type {
 	Mapping,
