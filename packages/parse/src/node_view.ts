@@ -49,6 +49,8 @@ export interface Position {
 export interface TextSource {
 	slice(start: number, end: number): string;
 	get_string(index: number): string | undefined;
+	/** the whole source the value ranges index, only a source that has one has it */
+	text?(): string;
 	/** the line and column of an offset, only a source that has offsets has it */
 	point?(offset: number): Point;
 	/**
@@ -76,6 +78,9 @@ export class SourceTextSource implements TextSource {
 	}
 	get_string(_index: number): string | undefined {
 		return undefined;
+	}
+	text(): string {
+		return this.source;
 	}
 	escapes(buf: NodeBuffer, index: number): readonly number[] | null {
 		// a stored string is a repair or the text of a plugin, neither is escaped

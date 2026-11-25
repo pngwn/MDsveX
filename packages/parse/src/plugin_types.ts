@@ -1,5 +1,6 @@
 import type { NodeView } from './node_view.js';
 import type { Json, PluginCache } from './plugin_data.js';
+import type { SmartPunctuation } from './reader_text.js';
 import type { TextRun } from './text_run.js';
 
 export type { DataChange, Json } from './plugin_data.js';
@@ -43,6 +44,8 @@ export interface PluginDocument {
 	) => string | null | undefined | Promise<string | null | undefined>;
 	/** what ctx.cached keeps, shared by the documents of one compiler */
 	cache?: PluginCache;
+	/** the smart punctuation the document renders with, ctx.text applies it, off when undefined */
+	smart_punctuation?: SmartPunctuation;
 }
 
 /** what every handler learns about its document and can hand back */
@@ -55,6 +58,18 @@ export interface DocumentContext {
 	 * runs before it is complete, do not write to it
 	 */
 	readonly frontmatter: Record<string, unknown> | undefined;
+	/**
+	 * the text of a node as the page shows it, where text_content is the text
+	 * as written, an image is its alt, a line end is a space, and a comment,
+	 * an expression, a component and a directive add nothing, a character
+	 * reference is its character and the smart_punctuation of the compile is
+	 * applied, a quote asks the text beside it, so read it once the block
+	 * that holds the node closed
+	 *
+	 * @example
+	 * heading: { parse: (node, ctx) => () => ctx.add('headings', ctx.text(node)) }
+	 */
+	text(node: NodeView): string;
 	/**
 	 * report a problem, at the node when one is given, it is dropped when the
 	 * node whose handler reported it is revoked
