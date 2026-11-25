@@ -1,0 +1,77 @@
+/* what the panes of the stream lab share. :where keeps these under the scoped
+   rules of a component, so a rendered document's own controls are not restyled */
+
+.lab :where(select, button) {
+	padding: 0.25rem 0.5rem;
+	border: 1px solid var(--quiet-line);
+	border-radius: 0;
+	color: var(--ink);
+	background: var(--paper);
+	font: inherit;
+	font-variant-ligatures: none;
+	cursor: pointer;
+}
+
+.lab :where(select, button):hover {
+	border-color: var(--ink);
+}
+
+.lab :where(label) {
+	display: flex;
+	align-items: baseline;
+	gap: 0.5rem;
+}
+
+/* the name of a pane, and a count at its end */
+.lab .pane-head {
+	flex: none;
+	display: flex;
+	justify-content: space-between;
+	gap: 0.75rem;
+	margin: 0;
+	padding: 0.5rem 0.75rem;
+	border-bottom: 1px solid var(--staff);
+	color: var(--quiet);
+	font: inherit;
+	letter-spacing: 0.02em;
+}
+
+.lab .count {
+	color: var(--quiet-line);
+	font-variant-numeric: tabular-nums;
+}
+
+/* a rendered document reads as a docs page does, in the text face */
+.lab .prose {
+	font-family: var(--face-text);
+	font-variant-ligatures: normal;
+}
+
+/* a node a parse plugin made, outlined and named with what the plugin calls it */
+.lab .prose [data-made] {
+	position: relative;
+	margin: 0 0 1.1rem;
+	padding: 0.75rem;
+	border: 1px dashed var(--line-directive);
+}
+
+.lab .prose [data-made]::before {
+	content: attr(data-made);
+	position: absolute;
+	top: -0.7rem;
+	left: 0.5rem;
+	padding: 0 0.35rem;
+	color: var(--name-directive);
+	background: var(--paper);
+	font: 400 0.6875rem / 1.4 var(--face-mono);
+}
+
+/* a streamed image has no src until its url has arrived */
+.lab .prose img {
+	max-width: 100%;
+	height: auto;
+}
+
+.lab .prose img:not([src]) {
+	opacity: 0;
+}

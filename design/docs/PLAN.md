@@ -304,8 +304,8 @@ Neither `@mdsvex/parse` nor `@mdsvex/render` has a README, and both export inter
 | the playground: multi-file, `mdsvex.config.json`, result, PFM AST, Svelte, JS and CSS output with source mapping, console, share links | **part**, linked from six sections, never described | `packages/repl`, `packages/site/src/routes/playground` |
 | 9 playground examples | `basics` and `components` are never linked | `packages/site/src/lib/playground/examples` |
 | plugins in the playground | **no**. The worker reads plugin directive modules from a manifest but, as far as I can see, passes no `plugins` to the compile, so a plugin's handlers don't run there | `packages/repl/src/workers/mdsvex.ts:261` |
-| incremental parse viewer: feed a source by chunks, step, play, the opcode panel | **no**, private dev app | `packages/_incremental-parse-test/src/lib/Viewer.svelte` |
-| streaming plugin demos: a growing toc, deferred lookups, a growing bibliography | **no**, private dev app | `_incremental-parse-test/src/routes/stream/[demo]` |
+| incremental parse viewer: feed a source by chunks, step, play, the opcode panel | **no**, public at `/stream` | `packages/site/src/lib/stream/Viewer.svelte` |
+| streaming plugin demos: a growing toc, deferred lookups, a growing bibliography | **no**, public at `/stream/plugin-streams` | `packages/site/src/lib/stream/StreamDemo.svelte` |
 | `test-app`, 25 routes, one per feature and plugin, including the editor tour | **no**, private | `packages/test-app/src/routes` |
 | the score notation (design branches) | n/a | shared notes, `lib/experiments/05-surprise`, `02-atlas` |
 
@@ -488,7 +488,7 @@ API, for [the public surface](#the-public-surface-of-mdsvexparse-and-mdsvexrende
 
 - **The playground**, as today, with a page that says what it can do.
 - **Plugins in the playground:** the worker loads a first-party plugin on demand when `mdsvex.config.json` names it (decision 8), so every plugin page can open an example of itself.
-- **The stream lab:** the private `_incremental-parse-test` viewer (chunks, step, play, opcodes) and its `PluginStream` demos, made public. This is where goal 5's "test streaming" is answered.
+- **The stream lab:** the viewer (chunks, step, play, opcodes) and its `PluginStream` demos, public at `/stream` since the private `_incremental-parse-test` app moved into the site. The playground's Streaming example runs the same harness with your own components and plugins. This is where goal 5's "test streaming" is answered.
 - **Embeds:** a small editable example on any page. It renders statically with the page and starts the worker only when a reader first edits it (decision 7), with "Open in playground". The PFM tour and the plugin pages are built from these.
 
 ### The order a reader takes
