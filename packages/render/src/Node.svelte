@@ -4,8 +4,6 @@
 	import {
 		buf_children,
 		buf_code,
-		buf_live_code,
-		buf_live_text,
 		buf_text,
 		buf_text_content,
 	} from '@mdsvex/parse/buf-utils';
@@ -202,7 +200,7 @@
 	{#each buf_children(buf, parent_idx) as child_idx (child_idx)}
 		{@const kind = buf.kind_at(child_idx)}
 		{#if kind === K_TEXT}
-			{buf_live_text(buf, child_idx, source)}
+			{buf_text(buf, child_idx, source)}
 		{:else if kind === K_LINE_BREAK}
 			<!-- skip -->
 		{:else}
@@ -314,7 +312,7 @@
 	<strong {...get_attrs(meta)}>{@render child_nodes(idx)}</strong>
 {:else if kind === K_CODE_SPAN}
 	<code {...get_attrs(meta)}
-		>{buf_live_code(buf, idx, source).replace(/\n/g, ' ')}</code
+		>{buf_code(buf, idx, source).replace(/\n/g, ' ')}</code
 	>
 {:else if kind === K_CODE_FENCE}
 	{@const info =
@@ -323,7 +321,7 @@
 			? source.slice(meta.info_start as number, meta.info_end as number)
 			: undefined)}
 	<pre><code class={info ? 'language-' + info : undefined} {...get_attrs(meta)}
-			>{buf_live_code(buf, idx, source)}</code
+			>{buf_code(buf, idx, source)}</code
 		></pre>
 {:else if kind === K_BLOCK_QUOTE}
 	<blockquote {...get_attrs(meta)}>{@render child_nodes(idx)}</blockquote>

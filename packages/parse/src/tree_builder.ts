@@ -548,10 +548,8 @@ export class TreeBuilder implements Emitter {
 		}
 	}
 
-	/** kept on the buffer too, a live renderer draws an open text run up to it */
 	cursor(pos: number): void {
 		this.fed_to = pos;
-		this.nodes.cursor = pos;
 	}
 
 	/**
