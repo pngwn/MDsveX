@@ -31,6 +31,7 @@ import {
 	compile_markdown_settled,
 	is_snippet,
 	highlight_for,
+	languages_used,
 	math_for,
 	is_markdown,
 	prepare,
@@ -595,7 +596,18 @@ async function bundle(
 					options.entry,
 					prepared.options,
 					plugins.bundles,
-					found.length !== 0
+					found.length !== 0,
+					prepared.config.highlight === false
+						? null
+						: {
+								options: prepared.config.highlight,
+								languages: [
+									...languages_used(
+										contents.get(options.entry) ?? '',
+										prepared.config.highlight
+									),
+								],
+							}
 				)
 			);
 
