@@ -45,6 +45,14 @@ The packages below sit under it and install on their own. The entries in these t
   - A closed fence or span the renderer throws on is drawn as written and nothing is reported, since a stream has no build to fail. To show an error in its place, catch it in the renderer and return the markup for it.
   - The renderer is synchronous and its HTML goes to the page as it is. `load_math` is not, so leave the prop `undefined` until it resolves, then set it: the math already on the page is rendered where it stands.
   - With the prop set, a `math` fence and a code span with a `#!math` hint never reach the highlighter, as in a compile.
+- **Components replace elements in a stream** when the `Node` component gets a `components` prop, an object from an element name to a component, as `{ h2: Heading, pre: CodeBlock }`. A replacement gets [the props it gets in a compiled document](/docs/guides/components#element-props), so one component serves both. Pass it to every `Node`.
+  - The elements markdown makes are replaced, and those a plugin makes, and the parts of a table. So is lowercase HTML in the source, unless an element has a directive such as `bind:`. `component_mode="markdown"` keeps HTML in the source as plain elements, as [`component_mode`](/docs/guides/components#component_mode-all) does by default for a compiled document.
+  - A replacement is drawn as soon as its node opens, with the props and the children that have arrived. A link whose definition comes later has no `href` until then, and the `code` of a `pre` grows.
+  - A block that changes is drawn again from nothing when it is keyed by its `v`, so a replacement in an open block is made again on each chunk. State it keeps lasts only once its block has closed.
+  - A `pre` replacement gets `lang`, `meta` and `code`, and the `<pre>` as `children`, highlighted when there is a `highlight` prop. The `title`, `caption` and meta props of a compiled document are not passed.
+  - A `math` replacement gets math once it has rendered, with `code`, `display` for a fence, `meta`, and the rendered math as `children`, which grows while a fence is open. Math that has not rendered yet, or that the renderer throws on, is a plain code block and goes to no replacement. With no `math` prop, math is code and goes to `pre` and `code`.
+  - `footnote` and `footnotes` are not replaced in a stream.
+  - A stream runs no `<script>`. A component the document imports, an expression and a block such as `{#each}` draw nothing.
 - **The wire format**, `WireEmitter` and `WireTreeBuilder`, sends a parse to another process as opcodes. It is not a stable surface yet. [`WIRE_FORMAT.md`][wire-md] describes it as it is now.
 
 ## Editor tools
