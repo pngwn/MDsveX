@@ -107,70 +107,6 @@ function part<T>(name: string, value: unknown): T | undefined {
 	);
 }
 
-const REFERENCE =
-	/&(?:#(\d{1,7})|#[xX]([0-9a-fA-F]{1,6})|(amp|lt|gt|quot|apos|nbsp));/g;
-const NAMED: Record<string, string> = {
-	amp: '&',
-	lt: '<',
-	gt: '>',
-	quot: '"',
-	apos: "'",
-	nbsp: String.fromCharCode(0xa0),
-};
-
-/** a numeric reference and the few named ones html needs are their character, any other stays as written */
-function reference(
-	_match: string,
-	decimal: string | undefined,
-	hex: string | undefined,
-	name: string | undefined
-): string {
-	if (name !== undefined) return NAMED[name];
-	const code =
-		decimal !== undefined ? parseInt(decimal, 10) : parseInt(hex!, 16);
-	if (code === 0 || code > 0x10ffff || (code >= 0xd800 && code <= 0xdfff))
-		return String.fromCharCode(0xfffd);
-	return String.fromCodePoint(code);
-}
-
-function decoded(text: string): string {
-	return text.indexOf('&') === -1 ? text : text.replace(REFERENCE, reference);
-}
-
-const is_element = /^[a-z][^.:]*$/;
-
-/** the text heading_ids makes an id from, an image is its alt, what svelte or a component renders is nothing */
-function heading_text(node: NodeView): string {
-	let out = '';
-	for (let child = node.first_child; child !== null; child = child.next) {
-		switch (child.type) {
-			case 'text':
-				out += decoded(child.text_content);
-				break;
-			case 'code_span':
-				out += child.text_content;
-				break;
-			case 'mustache':
-			case 'svelte_tag':
-			case 'svelte_block':
-			case 'html_comment':
-			case 'directive_inline':
-			case 'directive_leaf':
-			case 'directive_container':
-				break;
-			case 'html': {
-				const tag = child.attrs.tag;
-				if (typeof tag === 'string' && is_element.test(tag))
-					out += heading_text(child);
-				break;
-			}
-			default:
-				out += heading_text(child);
-		}
-	}
-	return out;
-}
-
 const SPACES = /\s+/g;
 
 interface Reading {
@@ -206,12 +142,12 @@ function flush(state: Reading): void {
 	if (state.first === undefined && state.paragraph) state.first = text;
 }
 
-function read(parent: NodeView, state: Reading): void {
+function read(parent: NodeView, state: Reading, ctx: PluginContext): void {
 	for (let child = parent.first_child; child !== null; child = child.next) {
 		const type = child.type;
 		switch (type) {
 			case 'text':
-				state.run += decoded(child.text_content);
+				state.run += ctx.text(child);
 				break;
 			// read as part of its sentence
 			case 'code_span':
@@ -242,7 +178,7 @@ function read(parent: NodeView, state: Reading): void {
 			case 'html': {
 				const tag = child.attrs.tag;
 				// an element can be inline or a block, the blocks inside it end the run
-				if (tag !== 'script' && tag !== 'style') read(child, state);
+				if (tag !== 'script' && tag !== 'style') read(child, state, ctx);
 				break;
 			}
 			case 'heading':
@@ -252,18 +188,18 @@ function read(parent: NodeView, state: Reading): void {
 					state.nested === 0 &&
 					child.depth === 1
 				) {
-					const title = heading_text(child).trim();
+					const title = ctx.text(child).trim();
 					if (title !== '') state.title = title;
 				}
 				state.heading = true;
-				read(child, state);
+				read(child, state, ctx);
 				flush(state);
 				state.heading = false;
 				break;
 			case 'paragraph':
 				flush(state);
 				state.paragraph = state.nested === 0;
-				read(child, state);
+				read(child, state, ctx);
 				flush(state);
 				state.paragraph = false;
 				break;
@@ -273,7 +209,7 @@ function read(parent: NodeView, state: Reading): void {
 			case 'directive_label':
 			case 'svelte_branch':
 				flush(state);
-				read(child, state);
+				read(child, state, ctx);
 				flush(state);
 				break;
 			case 'block_quote':
@@ -287,7 +223,7 @@ function read(parent: NodeView, state: Reading): void {
 				flush(state);
 				state.nested++;
 				if (out) state.table++;
-				read(child, state);
+				read(child, state, ctx);
 				flush(state);
 				if (out) state.table--;
 				state.nested--;
@@ -295,7 +231,7 @@ function read(parent: NodeView, state: Reading): void {
 			}
 			// emphasis, links, inline directives and whatever a plugin made
 			default:
-				read(child, state);
+				read(child, state, ctx);
 		}
 	}
 }
@@ -463,7 +399,7 @@ export function page_data(options: PageDataOptions = {}): Bundle {
 			first: undefined,
 			title: with_title ? undefined : null,
 		};
-		read(root, state);
+		read(root, state, ctx);
 		flush(state);
 
 		if (typeof state.title === 'string') {

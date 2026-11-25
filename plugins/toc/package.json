@@ -61,7 +61,7 @@
 	"author": "pngwn <hello@pngwn.io>",
 	"license": "MIT",
 	"peerDependencies": {
-		"mdsvex": "^1.0.0-next.2",
+		"mdsvex": "^1.1.0",
 		"svelte": "^5.20.0"
 	},
 	"devDependencies": {

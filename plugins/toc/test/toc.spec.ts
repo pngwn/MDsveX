@@ -49,6 +49,22 @@ function thrown(make: () => unknown): any {
 }
 
 describe('data', () => {
+	test('the text has the smart punctuation of the compile', () => {
+		const source = `## Let's go\n\n## "Quoted" -- and...\n\n## \`it's\`\n`;
+		const { data, code } = run(source, [toc()], { smart_punctuation: true });
+		expect(data!.toc!.headings.map((heading) => heading.text)).toEqual([
+			'Let’s go',
+			'“Quoted” – and…',
+			"it's",
+		]);
+		expect(code).toContain('<h2 id="lets-go">Let’s go</h2>');
+		expect(entries(source)).toEqual([
+			"2 lets-go Let's go",
+			'2 quoted----and "Quoted" -- and...',
+			"2 its it's",
+		]);
+	});
+
 	test('each heading has its depth, id, text and position', () => {
 		const { data } = run('# Title\n\n## One\n\ntext\n\n### Two *words*\n');
 		expect(data).toEqual({
