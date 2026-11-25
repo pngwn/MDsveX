@@ -1,5 +1,63 @@
 ## 1.0.0-next.0
 
+## 1.1.0
+
+### Minor Changes
+
+- [#1296](https://github.com/pngwn/MDsveX/pull/1296) [`a195a07`](https://github.com/pngwn/MDsveX/commit/a195a075330e35433b4c3c54d1c08a8f79928c71) Thanks [@pngwn](https://github.com/pngwn)! - `CursorHTMLRenderer` has a `code_braces` option. Set it to `false` when the output is HTML that Svelte never compiles, and the braces in plain fences and code spans stay as written instead of becoming `&#123;` and `&#125;`:
+
+  ```ts
+  const renderer = new CursorHTMLRenderer({ cache: false });
+  renderer.code_braces = false;
+  renderer.update(nodes, source);
+  ```
+
+  Rendering a code-heavy document is faster with it off. The default is unchanged, and a highlighter still escapes its own output.
+
+- [#1312](https://github.com/pngwn/MDsveX/pull/1312) [`842117c`](https://github.com/pngwn/MDsveX/commit/842117c2776ab9b62f8830d93ee33bf0f973c9e8) Thanks [@pngwn](https://github.com/pngwn)! - Footnotes work in a stream drawn with the `Node` component. `ComponentRenderer` numbers them on every `update` and has the result as `footnotes`. Pass it to every `Node`:
+
+  ```svelte
+  {#each blocks as block (block.idx)}
+  	{#key block.v}
+  		<Node {buf} idx={block.idx} source="" footnotes={renderer.footnotes} />
+  	{/key}
+  {/each}
+  ```
+
+  A reference is then a numbered link, a definition is no longer drawn where it was written, and the notes are collected in a `<section class="footnotes">` that one more entry at the end of `blocks` draws. The markup, ids and links are those of a compiled page. Without the prop `Node` draws footnotes as before.
+
+- [#1303](https://github.com/pngwn/MDsveX/pull/1303) [`e11396a`](https://github.com/pngwn/MDsveX/commit/e11396a68a14a9667178ca8d976fbb85503fb6fe) Thanks [@pngwn](https://github.com/pngwn)! - The `Node` component takes a `highlight` prop, the same function or `create_highlight` config the `highlight` option of `compile` takes, so a code fence in a stream is highlighted with the markup a compiled page has. An open fence is highlighted on every chunk while it is under 4,096 characters, a longer one when it closes.
+
+- [#1309](https://github.com/pngwn/MDsveX/pull/1309) [`83697d2`](https://github.com/pngwn/MDsveX/commit/83697d2fe0698b0a37bfc337a1164df04d295a52) Thanks [@pngwn](https://github.com/pngwn)! - A code span with a `#!` language hint, as `` `#!js let a` `` is, is highlighted in a stream. The `highlight` prop of the `Node` component is asked for it as `compile` asks its `highlight` option, with `inline: true` for a function.
+
+- [#1313](https://github.com/pngwn/MDsveX/pull/1313) [`249f354`](https://github.com/pngwn/MDsveX/commit/249f35456122506c998673bdfd20b76376989e21) Thanks [@pngwn](https://github.com/pngwn)! - The `components` prop of the `Node` component replaces the elements markdown makes in a stream, as it does in a compiled document, where it replaced only HTML typed in the source. A heading, paragraph, link, image, list, item, quote, code span, fence, table and its parts, rule, break and the inline marks are drawn as the component of their element name, with the props a compiled document gives it, and an open node is replaced as soon as it opens. The new `component_mode` prop takes `'markdown'` to keep typed HTML as plain elements. A typed element with a directive such as `bind:`, and a `script` or `style`, is no longer replaced.
+
+- [#1311](https://github.com/pngwn/MDsveX/pull/1311) [`d9c87c6`](https://github.com/pngwn/MDsveX/commit/d9c87c6b36b56763f3ba22256470d08ac0ae4262) Thanks [@pngwn](https://github.com/pngwn)! - The `Node` component renders math in a stream when it gets a `math` prop, which takes what the `math` option of `compile` takes. A `math` fence and inline math are drawn in the markup a compiled page has. A fence is rendered while it is still being written: LaTeX that can not be read yet keeps the last render on the page, so an equation grows as it arrives. A closed fence the renderer throws on shows its LaTeX. A `math` entry in `components` replaces rendered math, with the props it gets in a compiled document.
+
+  ```svelte
+  <script>
+  	import { load_math } from 'mdsvex/math';
+
+  	let math = $state.raw();
+  	load_math().then((render) => (math = render));
+  </script>
+
+  <Node {buf} idx={block.idx} source="" {math} />
+  ```
+
+### Patch Changes
+
+- [#1302](https://github.com/pngwn/MDsveX/pull/1302) [`be110d0`](https://github.com/pngwn/MDsveX/commit/be110d0ef13150f5beb69d9527a090a7147f44e5) Thanks [@pngwn](https://github.com/pngwn)! - `ComponentRenderer` follows the node that takes the place of a guess the parser took back, so a component on its own line renders in a stream.
+
+- [#1297](https://github.com/pngwn/MDsveX/pull/1297) [`358684a`](https://github.com/pngwn/MDsveX/commit/358684ab903c6c4cd7a4d2a7f5f6f4cf7d43408a) Thanks [@pngwn](https://github.com/pngwn)! - Sourcemap encoding collects and sorts spans before building line start tables, returning immediately when there are no spans and bounding the generated line scan by the end of the last mapped span instead of walking trailing unmapped output. Sourcemap generation is 3% to 8% faster on code, table and list workloads. Output is unchanged.
+
+- [#1310](https://github.com/pngwn/MDsveX/pull/1310) [`273aee8`](https://github.com/pngwn/MDsveX/commit/273aee89fa78e02e5cc63be6cf87e5e4cd00b95e) Thanks [@pngwn](https://github.com/pngwn)! - In a stream, a component that replaces a typed heading, as `components.h2` does for `<h2>`, gets its `level`, and one that replaces a typed `<ol>` gets `start`, as on a compiled page. A heading component that builds its tag from `level` rendered `hundefined` before.
+
+- [#1297](https://github.com/pngwn/MDsveX/pull/1297) [`358684a`](https://github.com/pngwn/MDsveX/commit/358684ab903c6c4cd7a4d2a7f5f6f4cf7d43408a) Thanks [@pngwn](https://github.com/pngwn)! - `wrap_static` checks opening tag names for `slot`, `style` and `script` by character code instead of slicing every opening tag name, and skips the attribute scan on bare tags. Compiles with `wrap_static: true` are about 3% faster across real documents. Output is unchanged.
+
+- Updated dependencies [[`a195a07`](https://github.com/pngwn/MDsveX/commit/a195a075330e35433b4c3c54d1c08a8f79928c71), [`358684a`](https://github.com/pngwn/MDsveX/commit/358684ab903c6c4cd7a4d2a7f5f6f4cf7d43408a), [`358684a`](https://github.com/pngwn/MDsveX/commit/358684ab903c6c4cd7a4d2a7f5f6f4cf7d43408a), [`7189fee`](https://github.com/pngwn/MDsveX/commit/7189feed542cef6ee94eb9f0276cdbb02295035c), [`179e01f`](https://github.com/pngwn/MDsveX/commit/179e01f321d9924149879f7c1accc0539300c690), [`2a84f96`](https://github.com/pngwn/MDsveX/commit/2a84f965448769dacd187e1397254c36c4d925bb), [`339271c`](https://github.com/pngwn/MDsveX/commit/339271c1f05305bbbc538d9ae8ceb99202a4d4fe), [`3714f93`](https://github.com/pngwn/MDsveX/commit/3714f93d6a36bb55f4511f28700dcdbe27872bdd)]:
+  - @mdsvex/parse@1.1.0
+
 ## 1.0.0
 
 ### Major Changes

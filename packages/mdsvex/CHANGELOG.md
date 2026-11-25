@@ -1,5 +1,46 @@
 # mdsvex
 
+## 1.1.0
+
+### Minor Changes
+
+- [#1303](https://github.com/pngwn/MDsveX/pull/1303) [`e11396a`](https://github.com/pngwn/MDsveX/commit/e11396a68a14a9667178ca8d976fbb85503fb6fe) Thanks [@pngwn](https://github.com/pngwn)! - A `create_highlight` config draws a fence that is still being written, as the `Node` component of `@mdsvex/render` does for a stream. A comment that may still become an annotation is not drawn until it is complete, nor is the first character of one, as the `/` of `//` is, and a line range in the meta that names lines not written yet waits for them. This needs twinkleplop 0.4, which mdsvex now depends on.
+
+- [#1317](https://github.com/pngwn/MDsveX/pull/1317) [`7189fee`](https://github.com/pngwn/MDsveX/commit/7189feed542cef6ee94eb9f0276cdbb02295035c) Thanks [@pngwn](https://github.com/pngwn)! - A parse plugin can read the text of a node as the page shows it with `ctx.text(node)`. `node.text_content` is the text as written. `ctx.text` gives a character reference such as `&amp;` as its character and applies the `smart_punctuation` of the compile as the renderer does, so with the option on the apostrophe of `## Let's go` is the curly one the page shows.
+
+  ```js
+  const plugin = {
+  	name: 'headings',
+  	heading: {
+  		parse(node, ctx) {
+  			return () => ctx.add('headings', ctx.text(node));
+  		},
+  	},
+  };
+  ```
+
+- [#1304](https://github.com/pngwn/MDsveX/pull/1304) [`179e01f`](https://github.com/pngwn/MDsveX/commit/179e01f321d9924149879f7c1accc0539300c690) Thanks [@pngwn](https://github.com/pngwn)! - A link reference no longer needs its definition above it. `[text][ref]`, `[ref][]` and `![alt][ref]` are a link or an image by their syntax alone, as a footnote reference is, and the definition supplies the url wherever it is written:
+
+  ```md
+  See [the guide][guide].
+
+  [guide]: https://example.com/guide
+  ```
+
+  A reference with no definition used to stay literal text. It is now a link with no `href`, and in mdsvex a `LinkReferenceError` with the line of the reference. Two pairs of brackets in prose that are not a reference, `m[0][1]`, are escaped as `m\[0][1]` or put in code.
+
+  On the wire the `href` or `src` of a reference whose definition comes later arrives as an attr on a node that has closed. `undefined_references` in `@mdsvex/parse/buf-utils` lists the references of a tree that have no definition.
+
+### Patch Changes
+
+- [#1296](https://github.com/pngwn/MDsveX/pull/1296) [`a195a07`](https://github.com/pngwn/MDsveX/commit/a195a075330e35433b4c3c54d1c08a8f79928c71) Thanks [@pngwn](https://github.com/pngwn)! - Parsing is faster for documents with long runs of plain text, around 3% on real documents and up to 13% on prose-heavy ones.
+
+- [#1297](https://github.com/pngwn/MDsveX/pull/1297) [`358684a`](https://github.com/pngwn/MDsveX/commit/358684ab903c6c4cd7a4d2a7f5f6f4cf7d43408a) Thanks [@pngwn](https://github.com/pngwn)! - Default YAML frontmatter parsing reuses a shared parser instance with preallocated typed-array line buffers, resolves plain ASCII integers and non-numeric dates without regex passes, and avoids allocating a wrapper array per flow collection. Compiles of documents with YAML frontmatter are about 20% to 26% faster on average, and up to 40% to 50% faster when frontmatter dominates the file. Output is unchanged.
+
+- Updated dependencies [[`a195a07`](https://github.com/pngwn/MDsveX/commit/a195a075330e35433b4c3c54d1c08a8f79928c71), [`be110d0`](https://github.com/pngwn/MDsveX/commit/be110d0ef13150f5beb69d9527a090a7147f44e5), [`a195a07`](https://github.com/pngwn/MDsveX/commit/a195a075330e35433b4c3c54d1c08a8f79928c71), [`358684a`](https://github.com/pngwn/MDsveX/commit/358684ab903c6c4cd7a4d2a7f5f6f4cf7d43408a), [`358684a`](https://github.com/pngwn/MDsveX/commit/358684ab903c6c4cd7a4d2a7f5f6f4cf7d43408a), [`7189fee`](https://github.com/pngwn/MDsveX/commit/7189feed542cef6ee94eb9f0276cdbb02295035c), [`179e01f`](https://github.com/pngwn/MDsveX/commit/179e01f321d9924149879f7c1accc0539300c690), [`2a84f96`](https://github.com/pngwn/MDsveX/commit/2a84f965448769dacd187e1397254c36c4d925bb), [`358684a`](https://github.com/pngwn/MDsveX/commit/358684ab903c6c4cd7a4d2a7f5f6f4cf7d43408a), [`842117c`](https://github.com/pngwn/MDsveX/commit/842117c2776ab9b62f8830d93ee33bf0f973c9e8), [`e11396a`](https://github.com/pngwn/MDsveX/commit/e11396a68a14a9667178ca8d976fbb85503fb6fe), [`83697d2`](https://github.com/pngwn/MDsveX/commit/83697d2fe0698b0a37bfc337a1164df04d295a52), [`249f354`](https://github.com/pngwn/MDsveX/commit/249f35456122506c998673bdfd20b76376989e21), [`d9c87c6`](https://github.com/pngwn/MDsveX/commit/d9c87c6b36b56763f3ba22256470d08ac0ae4262), [`339271c`](https://github.com/pngwn/MDsveX/commit/339271c1f05305bbbc538d9ae8ceb99202a4d4fe), [`3714f93`](https://github.com/pngwn/MDsveX/commit/3714f93d6a36bb55f4511f28700dcdbe27872bdd), [`273aee8`](https://github.com/pngwn/MDsveX/commit/273aee89fa78e02e5cc63be6cf87e5e4cd00b95e), [`358684a`](https://github.com/pngwn/MDsveX/commit/358684ab903c6c4cd7a4d2a7f5f6f4cf7d43408a)]:
+  - @mdsvex/render@1.1.0
+  - @mdsvex/parse@1.1.0
+
 ## 1.0.1
 
 ### Patch Changes

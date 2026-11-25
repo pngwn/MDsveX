@@ -1,5 +1,12 @@
 # @mdsvex/prettier-plugin
 
+## 0.1.2
+
+### Patch Changes
+
+- Updated dependencies [[`a195a07`](https://github.com/pngwn/MDsveX/commit/a195a075330e35433b4c3c54d1c08a8f79928c71), [`358684a`](https://github.com/pngwn/MDsveX/commit/358684ab903c6c4cd7a4d2a7f5f6f4cf7d43408a), [`358684a`](https://github.com/pngwn/MDsveX/commit/358684ab903c6c4cd7a4d2a7f5f6f4cf7d43408a), [`7189fee`](https://github.com/pngwn/MDsveX/commit/7189feed542cef6ee94eb9f0276cdbb02295035c), [`179e01f`](https://github.com/pngwn/MDsveX/commit/179e01f321d9924149879f7c1accc0539300c690), [`2a84f96`](https://github.com/pngwn/MDsveX/commit/2a84f965448769dacd187e1397254c36c4d925bb), [`339271c`](https://github.com/pngwn/MDsveX/commit/339271c1f05305bbbc538d9ae8ceb99202a4d4fe), [`3714f93`](https://github.com/pngwn/MDsveX/commit/3714f93d6a36bb55f4511f28700dcdbe27872bdd)]:
+  - @mdsvex/parse@1.1.0
+
 ## 0.1.1
 
 ### Patch Changes

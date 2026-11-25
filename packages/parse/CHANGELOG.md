@@ -1,5 +1,62 @@
 # parse
 
+## 1.1.0
+
+### Minor Changes
+
+- [#1317](https://github.com/pngwn/MDsveX/pull/1317) [`7189fee`](https://github.com/pngwn/MDsveX/commit/7189feed542cef6ee94eb9f0276cdbb02295035c) Thanks [@pngwn](https://github.com/pngwn)! - A parse plugin can read the text of a node as the page shows it with `ctx.text(node)`. `node.text_content` is the text as written. `ctx.text` gives a character reference such as `&amp;` as its character and applies the `smart_punctuation` of the compile as the renderer does, so with the option on the apostrophe of `## Let's go` is the curly one the page shows.
+
+  ```js
+  const plugin = {
+  	name: 'headings',
+  	heading: {
+  		parse(node, ctx) {
+  			return () => ctx.add('headings', ctx.text(node));
+  		},
+  	},
+  };
+  ```
+
+- [#1304](https://github.com/pngwn/MDsveX/pull/1304) [`179e01f`](https://github.com/pngwn/MDsveX/commit/179e01f321d9924149879f7c1accc0539300c690) Thanks [@pngwn](https://github.com/pngwn)! - A link reference no longer needs its definition above it. `[text][ref]`, `[ref][]` and `![alt][ref]` are a link or an image by their syntax alone, as a footnote reference is, and the definition supplies the url wherever it is written:
+
+  ```md
+  See [the guide][guide].
+
+  [guide]: https://example.com/guide
+  ```
+
+  A reference with no definition used to stay literal text. It is now a link with no `href`, and in mdsvex a `LinkReferenceError` with the line of the reference. Two pairs of brackets in prose that are not a reference, `m[0][1]`, are escaped as `m\[0][1]` or put in code.
+
+  On the wire the `href` or `src` of a reference whose definition comes later arrives as an attr on a node that has closed. `undefined_references` in `@mdsvex/parse/buf-utils` lists the references of a tree that have no definition.
+
+- [#1299](https://github.com/pngwn/MDsveX/pull/1299) [`2a84f96`](https://github.com/pngwn/MDsveX/commit/2a84f965448769dacd187e1397254c36c4d925bb) Thanks [@pngwn](https://github.com/pngwn)! - A tree built by `TreeBuilder` while a document streams can show the line that is still being written. Call `show_open_text` after a feed and `hide_open_text` before the next one.
+
+  ```ts
+  const tree = new TreeBuilder(128);
+  const parser = new PFMParser(tree);
+  parser.init();
+
+  for await (const chunk of chunks) {
+  	source += chunk;
+  	tree.hide_open_text();
+  	parser.feed(chunk);
+  	tree.show_open_text(source);
+  	render(tree.get_buffer(), source);
+  }
+  ```
+
+### Patch Changes
+
+- [#1296](https://github.com/pngwn/MDsveX/pull/1296) [`a195a07`](https://github.com/pngwn/MDsveX/commit/a195a075330e35433b4c3c54d1c08a8f79928c71) Thanks [@pngwn](https://github.com/pngwn)! - Parsing is faster for documents with long runs of plain text, around 3% on real documents and up to 13% on prose-heavy ones.
+
+- [#1297](https://github.com/pngwn/MDsveX/pull/1297) [`358684a`](https://github.com/pngwn/MDsveX/commit/358684ab903c6c4cd7a4d2a7f5f6f4cf7d43408a) Thanks [@pngwn](https://github.com/pngwn)! - `heading_ids` skips scanning the node buffer for explicit HTML heading `id` attributes and footnotes when none entered the buffer, checks lazy HTML attribute spans before slicing them, and slugifies ASCII heading text through a byte table instead of regex passes. Compiles with `heading_ids: true` are about 6% faster on average across micro and real documents, with the largest gains on short documents. Output is unchanged.
+
+- [#1297](https://github.com/pngwn/MDsveX/pull/1297) [`358684a`](https://github.com/pngwn/MDsveX/commit/358684ab903c6c4cd7a4d2a7f5f6f4cf7d43408a) Thanks [@pngwn](https://github.com/pngwn)! - A parse plugin that registers an `on_close` callback on an outer node no longer keeps its inner descendants off the plain open and close fast paths. Nodes opened above the highest live close callback stay on `plain_from` and `plain_close`, and empty view and callback maps are no longer cleared between parses. List-heavy documents with outer close callbacks parse about 4% to 5% faster. The tree is unchanged.
+
+- [#1306](https://github.com/pngwn/MDsveX/pull/1306) [`339271c`](https://github.com/pngwn/MDsveX/commit/339271c1f05305bbbc538d9ae8ceb99202a4d4fe) Thanks [@pngwn](https://github.com/pngwn)! - A line of a paragraph shows as it arrives in a stream when it starts with a character that could open a block, such as a backtick, `*`, `_`, `-`, `<`, `[`, `{`, `:` or a digit. The parser used to hold such a line until its end, so it appeared all at once. It now waits only until the line can no longer be that block: `` `a `` is a code span, since a fence takes three backticks.
+
+- [#1314](https://github.com/pngwn/MDsveX/pull/1314) [`3714f93`](https://github.com/pngwn/MDsveX/commit/3714f93d6a36bb55f4511f28700dcdbe27872bdd) Thanks [@pngwn](https://github.com/pngwn)! - In a stream, a list item that starts with a code span no longer shows a paragraph around its text while its list is open. The parser holds that paragraph back until the list closes, as it does for every other item, so a tight list no longer draws one item in a `<p>` and then takes it away.
+
 ## 1.0.0
 
 ### Major Changes
@@ -828,10 +885,14 @@
 
 - [#931](https://github.com/pngwn/MDsveX/pull/931) [`7900bf2`](https://github.com/pngwn/MDsveX/commit/7900bf24137c24de5ff749e65bf98e5f5fa18ec9) Thanks [@pngwn](https://github.com/pngwn)! - A doubled `~~~~` nests two strikethroughs before punctuation, a link or a code span, as it does before a letter, and tildes with nothing between them stay literal text. Neither produces an empty strikethrough any more.
 
-  ```md
+  ````md
   ```(x)~~~~ and a ~~~~ b
 
   ```
+  ````
+
+  ```
+
   ```
 
 - [#1012](https://github.com/pngwn/MDsveX/pull/1012) [`3343943`](https://github.com/pngwn/MDsveX/commit/3343943f3907da8ce45488c2da3d78023bd68851) Thanks [@pngwn](https://github.com/pngwn)! - A leaf or container directive opens inside an html element, as it does at the root and in a block quote.

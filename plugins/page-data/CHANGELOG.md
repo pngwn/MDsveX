@@ -1,5 +1,14 @@
 # @mdsvex/plugin-page-data
 
+## 0.1.2
+
+### Patch Changes
+
+- [#1317](https://github.com/pngwn/MDsveX/pull/1317) [`7189fee`](https://github.com/pngwn/MDsveX/commit/7189feed542cef6ee94eb9f0276cdbb02295035c) Thanks [@pngwn](https://github.com/pngwn)! - The text these plugins collect has the smart punctuation of the compile. With `smart_punctuation` on, the `text` of a heading in `@mdsvex/plugin-toc` and the `title` and `excerpt` of `@mdsvex/plugin-page-data` have the quotes, dashes and ellipses the page shows. Both plugins now need mdsvex 1.1.
+
+- Updated dependencies [[`a195a07`](https://github.com/pngwn/MDsveX/commit/a195a075330e35433b4c3c54d1c08a8f79928c71), [`e11396a`](https://github.com/pngwn/MDsveX/commit/e11396a68a14a9667178ca8d976fbb85503fb6fe), [`7189fee`](https://github.com/pngwn/MDsveX/commit/7189feed542cef6ee94eb9f0276cdbb02295035c), [`179e01f`](https://github.com/pngwn/MDsveX/commit/179e01f321d9924149879f7c1accc0539300c690), [`358684a`](https://github.com/pngwn/MDsveX/commit/358684ab903c6c4cd7a4d2a7f5f6f4cf7d43408a)]:
+  - mdsvex@1.1.0
+
 ## 0.1.1
 
 ### Patch Changes
