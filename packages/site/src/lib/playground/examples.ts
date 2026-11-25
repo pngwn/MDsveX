@@ -22,7 +22,11 @@ const ORDER: [slug: string, title: string][] = [
 	['math', 'Math'],
 	['footnotes', 'Footnotes'],
 	['all-mode', 'All mode'],
+	['streaming', 'Plugins, streamed'],
 ];
+
+/** the examples whose preview opens streamed */
+const STREAMED = new Set(['streaming']);
 
 /** the entry and config lead, everything else keeps its path order */
 function rank(name: string) {
@@ -44,7 +48,9 @@ function files_for(slug: string) {
 export const examples: Example[] = ORDER.map(([slug, title]) => ({
 	slug,
 	title,
-	state: { files: files_for(slug) },
+	state: STREAMED.has(slug)
+		? { files: files_for(slug), stream: true }
+		: { files: files_for(slug) },
 }));
 
 export const DEFAULT_EXAMPLE = examples[0].slug;

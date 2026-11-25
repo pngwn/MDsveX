@@ -17,6 +17,8 @@ export interface CompilerRequest {
 	files: [string, string][];
 	version: string;
 	options: ExposedCompilerOptions;
+	/** the plugin files as the bundler built them, null when there are none or none built yet */
+	plugins: string | null;
 }
 
 export interface Compiled {
@@ -34,6 +36,8 @@ export interface BundleOptions {
 	entry: string;
 	fragments?: 'html' | 'tree';
 	async?: boolean;
+	/** the preview feeds an entry document to the incremental parser and renders it as it grows */
+	stream?: boolean;
 }
 
 export type BundleMessageData = {

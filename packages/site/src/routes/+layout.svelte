@@ -12,8 +12,8 @@ const theme = provide_theme();
 afterNavigate(({ to }) => to && theme.from(to.url));
 </script>
 
-<!-- the playground owns the viewport and draws the nav in its own bar -->
-{#if page.route.id?.startsWith("/playground")}
+<!-- the playground and the stream lab own the viewport and draw the nav in their own bar -->
+{#if page.route.id?.startsWith("/playground") || page.route.id?.startsWith("/stream")}
 	{@render children()}
 {:else}
 	<Frame theme={theme.value}>

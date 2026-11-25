@@ -9,6 +9,7 @@ const links = [
 	["/docs", "docs"],
 	["/atlas", "atlas"],
 	["/playground", "playground"],
+	["/stream", "stream"],
 	["https://github.com/pngwn/mdsvex", "github"],
 ];
 

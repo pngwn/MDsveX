@@ -86,6 +86,7 @@
 	/** replaces every file, resolving once the first bundle lands */
 	export async function set(state: ReplState) {
 		entry = state.entry;
+		workspace.stream = state.stream === true;
 		if (state.svelte_version) workspace.set_svelte_version(state.svelte_version);
 		setting = true;
 		try {
@@ -109,6 +110,7 @@
 			entry,
 			selected: workspace.current.name,
 			svelte_version: workspace.svelte_version,
+			...(workspace.stream ? { stream: true } : {}),
 		};
 	}
 
@@ -124,7 +126,14 @@
 			entry: current_entry(),
 			fragments: workspace.compiler_options.fragments,
 			async: workspace.compiler_options.async,
+			stream: workspace.stream,
 		});
+	}
+
+	function set_stream(stream: boolean) {
+		workspace.stream = stream;
+		onchange?.();
+		rebundle();
 	}
 
 	let width = $state(0);
@@ -164,6 +173,7 @@
 				onerror: (message) => {
 					runtime_error = new Error(message);
 				},
+				onplugins: (code) => workspace.set_plugins(code),
 			})
 		: null;
 
@@ -233,6 +243,7 @@
 						{injected_css}
 						{preview_theme}
 						{workspace}
+						onstream={set_stream}
 						bind:runtime_error
 					/>
 				</section>

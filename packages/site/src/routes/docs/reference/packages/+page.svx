@@ -30,6 +30,7 @@ The packages below sit under it and install on their own. The entries in these t
 - **Node kinds are types only.** `NodeKind`, `WireOp` and `StateKind` from `@mdsvex/parse`, and `NodeKind` and `NodeField` from `@mdsvex/parse/utils`, are `const enum`s, which have no value at runtime. A named import of one fails in JavaScript, and TypeScript with `isolatedModules` reports TS2748. At runtime, `string_to_kind('heading')` and `kind_to_string(kind)` from `@mdsvex/parse/utils` turn a kind into its number and back.
 - **Parse plugins** are written against the types `mdsvex` exports, see [parse plugins](/docs/plugins/writing/parse-plugins). [`PLUGINS.md`][plugins-md] in `@mdsvex/parse` has the whole API.
 - **Source offsets** are string indices, in UTF-16 code units, into the source with its line endings made `\n`.
+- **Braces in code** come out of `CursorHTMLRenderer` as `&#123;` and `&#125;`, since Svelte reads a bare brace as an expression. For HTML that Svelte never compiles, set `renderer.code_braces = false` before `update`. Plain fences and code spans then keep their braces as written, and a document with a lot of code renders faster. A highlighter still escapes its own output.
 - **The wire format**, `WireEmitter` and `WireTreeBuilder`, sends a parse to another process as opcodes. It is not a stable surface yet. [`WIRE_FORMAT.md`][wire-md] describes it as it is now.
 
 ## Editor tools

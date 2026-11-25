@@ -2653,7 +2653,22 @@ export class PFMParser {
 		const source = this.source;
 		const base = this.source_base;
 		const length = this.source_end;
+		// four chars a trip, a trip of one pays the loop test and the stack check of its back edge per char
+		const stop = length - 3;
+		let i = p - base;
 		// the ascii guard keeps the table load in bounds so it never takes out of bounds feedback
+		while (p < stop) {
+			let ch = char_code_at.call(source, i);
+			if (ch < 128 && TEXT_BREAK[ch] !== 0) return p;
+			ch = char_code_at.call(source, i + 1);
+			if (ch < 128 && TEXT_BREAK[ch] !== 0) return p + 1;
+			ch = char_code_at.call(source, i + 2);
+			if (ch < 128 && TEXT_BREAK[ch] !== 0) return p + 2;
+			ch = char_code_at.call(source, i + 3);
+			if (ch < 128 && TEXT_BREAK[ch] !== 0) return p + 3;
+			p += 4;
+			i += 4;
+		}
 		while (p < length) {
 			const ch = char_code_at.call(source, p - base);
 			if (ch < 128 && TEXT_BREAK[ch] !== 0) break;

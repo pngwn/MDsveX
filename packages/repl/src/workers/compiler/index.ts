@@ -4,7 +4,7 @@ import type { CompilerRequest, Compiled } from '../workers';
 import { load_svelte } from '../npm';
 import { strip_types } from '../typescript_strip_types';
 import {
-	compile_markdown,
+	compile_markdown_settled,
 	highlight_for,
 	math_for,
 	is_markdown,
@@ -13,6 +13,7 @@ import {
 } from '../mdsvex';
 import { chain, offset_mapper } from '../sourcemap';
 import { pfm_ast, type PfmNode } from '../pfm_ast';
+import { find_plugins, load_plugins } from '../plugins';
 
 // magic-string reads window, this must stay in this module
 self.window = self;
@@ -34,7 +35,7 @@ function plain(e: any) {
 }
 
 addEventListener('message', async (event: MessageEvent<CompilerRequest>) => {
-	const { id, file, files, version, options } = event.data;
+	const { id, file, files, version, options, plugins } = event.data;
 
 	cache[version] ??= load_svelte(version);
 	cache[version].catch(() => {
@@ -77,13 +78,18 @@ addEventListener('message', async (event: MessageEvent<CompilerRequest>) => {
 		if (markdown) {
 			const highlight = await highlight_for(file.contents, prepared.config);
 			const math = await math_for(file.contents, prepared.config);
-			md = compile_markdown(
+			const { bundles } =
+				plugins === null
+					? { bundles: undefined }
+					: await load_plugins(plugins, find_plugins(prepared.files.keys()));
+			md = await compile_markdown_settled(
 				file.contents,
 				file.name,
 				{
 					...prepared.options,
 					highlight,
 					math,
+					plugins: bundles,
 				},
 				prepared.files
 			);

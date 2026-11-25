@@ -300,10 +300,33 @@ export function take_src(): boolean {
 }
 
 let footnote_made = false;
+let id_scan_gen = 1;
+
+/** @internal bumped when an html heading tag or a footnote node enters a buffer */
+export function bump_id_scan(): void {
+	id_scan_gen = (id_scan_gen + 1) | 1;
+}
+
+/** @internal current generation of html heading and footnote additions */
+export function get_id_scan(): number {
+	return id_scan_gen;
+}
+
+/** @internal true when tag is h1 through h6 */
+export function is_html_heading(tag: unknown): boolean {
+	return (
+		typeof tag === 'string' &&
+		tag.length === 2 &&
+		tag.charCodeAt(0) === 104 &&
+		tag.charCodeAt(1) >= 49 &&
+		tag.charCodeAt(1) <= 54
+	);
+}
 
 /** @internal the parser made a footnote reference or definition */
 export function note_footnote(): void {
 	footnote_made = true;
+	bump_id_scan();
 }
 
 /**
@@ -440,7 +463,10 @@ export class AttrSpans {
 
 /** @internal the attributes of a canonical tag as written */
 export function spans_text(s: AttrSpans): string {
-	return (s.text ??= s.source.slice(s.attrs_start - s.base, s.attrs_end - s.base));
+	return (s.text ??= s.source.slice(
+		s.attrs_start - s.base,
+		s.attrs_end - s.base
+	));
 }
 
 // one store for every lazy tag, a full chunk is left to the spans that use it
@@ -555,6 +581,7 @@ export function unread_spans(meta: unknown): AttrSpans | undefined {
 export function make_meta(key: string, value: any): Record<string, any> {
 	switch (key) {
 		case 'tag':
+			if (is_html_heading(value)) bump_id_scan();
 			return new HtmlMeta(value) as unknown as Record<string, any>;
 		case 'href':
 			return { href: value };
@@ -639,6 +666,7 @@ export function merge_meta(
 			meta.args = value;
 			return;
 		case 'tag':
+			if (is_html_heading(value)) bump_id_scan();
 			meta.tag = value;
 			return;
 		case 'href':
@@ -975,6 +1003,13 @@ export class NodeBuffer {
 	): number {
 		const index = this.push_node(kind, cursor, parent, extra, false);
 		this._n[index * NodeField.stride + NodeField.pending] = 2;
+		if (
+			kind === NodeKind.footnote_reference ||
+			kind === NodeKind.footnote_definition ||
+			(metadata !== undefined && is_html_heading(metadata.tag))
+		) {
+			bump_id_scan();
+		}
 		if (metadata !== undefined) this.set_metadata(index, metadata);
 		return index;
 	}
@@ -1702,6 +1737,13 @@ export class NodeBuffer {
 	 * @param kind new kind
 	 */
 	set_kind(index: number, kind: NodeKind): void {
+		if (
+			kind === NodeKind.html ||
+			kind === NodeKind.footnote_reference ||
+			kind === NodeKind.footnote_definition
+		) {
+			bump_id_scan();
+		}
 		const n = this._n;
 		const b = index * NodeField.stride;
 		n[b] = (n[b] & 0xffff00) | (kind & 0xff);
