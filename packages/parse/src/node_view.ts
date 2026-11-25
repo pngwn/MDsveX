@@ -326,7 +326,8 @@ export class ViewCache {
 	/** discard all cached views. */
 	clear(): void {
 		this.first = null;
-		if (this.views !== null) this.views.clear();
+		// map clear allocates a new table even when empty
+		if (this.views !== null && this.views.size !== 0) this.views.clear();
 	}
 
 	/**

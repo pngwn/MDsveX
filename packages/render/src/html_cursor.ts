@@ -7939,6 +7939,7 @@ function ws_static(s: string): boolean {
 			i = lt + 2;
 			continue;
 		}
+		const first = ch;
 		// a capital, a dot or a colon in the name is a component or a svelte element
 		for (; j < len; j++) {
 			ch = s.charCodeAt(j);
@@ -7947,8 +7948,32 @@ function ws_static(s: string): boolean {
 				break;
 		}
 		if (j === lt + 1) return false;
-		const name = s.slice(lt + 1, j);
-		if (name === 'script' || name === 'style' || name === 'slot') return false;
+		// matching script, style and slot by code avoids slicing every opening tag
+		if (first === 115) {
+			const tag_len = j - lt - 1;
+			if (
+				(tag_len === 4 &&
+					s.charCodeAt(lt + 2) === 108 &&
+					s.charCodeAt(lt + 3) === 111 &&
+					s.charCodeAt(lt + 4) === 116) ||
+				(tag_len === 5 &&
+					s.charCodeAt(lt + 2) === 116 &&
+					s.charCodeAt(lt + 3) === 121 &&
+					s.charCodeAt(lt + 4) === 108 &&
+					s.charCodeAt(lt + 5) === 101) ||
+				(tag_len === 6 &&
+					s.charCodeAt(lt + 2) === 99 &&
+					s.charCodeAt(lt + 3) === 114 &&
+					s.charCodeAt(lt + 4) === 105 &&
+					s.charCodeAt(lt + 5) === 112 &&
+					s.charCodeAt(lt + 6) === 116)
+			)
+				return false;
+		}
+		if (ch === 62) {
+			i = j + 1;
+			continue;
+		}
 		// the attributes, a colon outside a value is a directive, a brace anywhere an expression
 		let quote = 0;
 		for (; j < len; j++) {
@@ -7958,7 +7983,10 @@ function ws_static(s: string): boolean {
 				if (ch === quote) quote = 0;
 			} else if (ch === 34 || ch === 39) quote = ch;
 			else if (ch === 58) return false;
-			else if (ch === 62) break;
+			else if (ch === 62) {
+				j++;
+				break;
+			}
 		}
 		i = j;
 	}

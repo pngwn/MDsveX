@@ -903,36 +903,49 @@ class CloseCallbackStore {
 	private store: Map<number, (() => void)[]> | null = null;
 	// entries still set, most nodes close with none so the lookup is skipped
 	live = 0;
+	// one past the highest node with a callback, 0 with none, so closes above it skip the dispatcher
+	top = 0;
+
+	has(idx: number): boolean {
+		return idx < this.top && this.store!.has(idx);
+	}
 
 	set(idx: number, callbacks: (() => void)[]): void {
 		let store = this.store;
 		if (store === null) store = this.store = new Map();
 		store.set(idx, callbacks);
 		this.live = store.size;
+		if (idx >= this.top) this.top = idx + 1;
 	}
 
 	/** take close callbacks for a node, removing the entry. returns undefined if none. */
 	take(idx: number): (() => void)[] | undefined {
-		if (this.live === 0) return undefined;
+		if (idx >= this.top) return undefined;
 		const store = this.store!;
 		const cbs = store.get(idx);
 		if (cbs !== undefined) {
 			store.delete(idx);
-			this.live = store.size;
+			const live = (this.live = store.size);
+			if (live === 0) this.top = 0;
+			else if (idx + 1 === this.top) {
+				let max = 0;
+				for (const k of store.keys()) if (k >= max) max = k + 1;
+				this.top = max;
+			}
 		}
 		return cbs;
 	}
 
 	/** a callback that fires ahead of the ones the node already has */
 	add_first(idx: number, callback: () => void): void {
-		const cbs = this.live === 0 ? undefined : this.store!.get(idx);
+		const cbs = idx >= this.top ? undefined : this.store!.get(idx);
 		if (cbs !== undefined) cbs.unshift(callback);
 		else this.set(idx, [callback]);
 	}
 
 	/** a callback that fires after the ones the node already has */
 	add_last(idx: number, callback: () => void): void {
-		const cbs = this.live === 0 ? undefined : this.store!.get(idx);
+		const cbs = idx >= this.top ? undefined : this.store!.get(idx);
 		if (cbs !== undefined) cbs.push(callback);
 		else this.set(idx, [callback]);
 	}
@@ -952,8 +965,9 @@ class CloseCallbackStore {
 	}
 
 	reset(): void {
-		if (this.store !== null) this.store.clear();
+		if (this.store !== null && this.store.size !== 0) this.store.clear();
 		this.live = 0;
+		this.top = 0;
 	}
 }
 
@@ -1186,6 +1200,7 @@ export class PluginDispatcher
 
 	/** a closed wrap_from wrapper whose last child was still open, keyed by that child */
 	private close_with: Map<number, number> | null = null;
+	private close_with_top = 0;
 
 	/** the node whose handler or close callback is running */
 	private running = NONE;
@@ -2066,18 +2081,13 @@ export class PluginDispatcher
 	}
 
 	/**
-	 * closes of nodes from this index on have nothing to dispatch, a close
-	 * callback or a wrapper that waits on a child can sit anywhere
+	 * closes of nodes from this index on have nothing to dispatch
 	 */
 	plain_from(): number {
-		if (
-			this.close_cbs.live !== 0 ||
-			this.close_with !== null ||
-			this.held !== NONE ||
-			this.uncommitted !== 0
-		)
-			return PAST_END;
+		if (this.held !== NONE || this.uncommitted !== 0) return PAST_END;
 		let from = this.floor;
+		if (this.close_cbs.top > from) from = this.close_cbs.top;
+		if (this.close_with_top > from) from = this.close_with_top;
 		const scope = this.scope;
 		// scopes nest, so the innermost has the highest directive
 		if (scope !== null && scope.directive >= from) from = scope.directive + 1;
@@ -2094,9 +2104,9 @@ export class PluginDispatcher
 		const scope = this.scope;
 		return (
 			this.held === NONE &&
-			this.close_cbs.live === 0 &&
+			!this.close_cbs.has(buf_idx) &&
 			(this.links === 0 || this.slot(buf_idx) === 0) &&
-			this.close_with === null &&
+			(buf_idx >= this.close_with_top || !this.close_with!.has(buf_idx)) &&
 			(scope === null || scope.directive !== buf_idx) &&
 			(this.undo.empty || !this.undo.has(buf_idx)) &&
 			this.uncommitted === 0
@@ -2361,6 +2371,7 @@ export class PluginDispatcher
 			let close_with = this.close_with;
 			if (close_with === null) close_with = this.close_with = new Map();
 			close_with.set(last, wrapper);
+			if (last >= this.close_with_top) this.close_with_top = last + 1;
 			return;
 		}
 		this.set_closed(buf, wrapper);
@@ -2390,7 +2401,10 @@ export class PluginDispatcher
 			const outer = close_with.get(node);
 			if (outer === undefined) return;
 			close_with.delete(node);
-			if (close_with.size === 0) this.close_with = null;
+			if (close_with.size === 0) {
+				this.close_with = null;
+				this.close_with_top = 0;
+			}
 			node = outer;
 		}
 	}
@@ -2402,12 +2416,16 @@ export class PluginDispatcher
 		const wrapper = close_with.get(node);
 		if (wrapper === undefined) return;
 		close_with.delete(node);
-		if (close_with.size === 0) this.close_with = null;
+		if (close_with.size === 0) {
+			this.close_with = null;
+			this.close_with_top = 0;
+		}
 		if (revoked) {
 			// the repair leaves the children of the node after it in the wrapper
 			const last = buf.last_child_at(node);
 			if (last !== NONE && this.still_open(buf, last)) {
 				(this.close_with ?? (this.close_with = new Map())).set(last, wrapper);
+				if (last >= this.close_with_top) this.close_with_top = last + 1;
 				return;
 			}
 		}
@@ -2424,7 +2442,10 @@ export class PluginDispatcher
 				found = true;
 			}
 		}
-		if (close_with.size === 0) this.close_with = null;
+		if (close_with.size === 0) {
+			this.close_with = null;
+			this.close_with_top = 0;
+		}
 		return found;
 	}
 
@@ -3390,15 +3411,16 @@ export class PluginDispatcher
 	 */
 	reset(): void {
 		if (this.undo !== NO_UNDO) this.undo.clear();
-		this.close_cbs.reset();
+		if (this.close_cbs !== NO_CLOSE_CBS) this.close_cbs.reset();
 		// a document that ended whole dropped every link when its root closed
 		if (this.links !== 0) {
 			this.slots.fill(0);
 			this.links = 0;
 			this.release_slots();
 		}
-		this.open_from.clear();
+		if (this.open_from.size !== 0) this.open_from.clear();
 		this.close_with = null;
+		this.close_with_top = 0;
 		// a throw in a handler leaves these set
 		this.running = NONE;
 		this.observing = null;

@@ -24,7 +24,7 @@ export class YamlError extends Error {
 
 /** empty text gives an empty object */
 export function parse_yaml(text: string): Record<string, unknown> {
-	return new YamlParser(text).document();
+	return shared_yaml.run(text);
 }
 
 const TAB = 9;
@@ -75,7 +75,6 @@ function set_key(obj: Record<string, unknown>, key: string, value: unknown) {
 	} else obj[key] = value;
 }
 
-const INT = /^[-+]?[0-9]+$/;
 const FLOAT = /^[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?$/;
 const OCT = /^0o[0-7]+$/;
 const HEX = /^0x[0-9a-fA-F]+$/;
@@ -103,7 +102,34 @@ export function resolve_plain(s: string): unknown {
 	const c = s.charCodeAt(0);
 	// only a digit, sign or dot can start a number
 	if (!((c >= 48 && c <= 57) || c === PLUS || c === DASH || c === 46)) return s;
-	if (INT.test(s) || FLOAT.test(s)) return Number(s);
+	const len = s.length;
+	let i = c === PLUS || c === DASH ? 1 : 0;
+	if (i < len) {
+		let d = s.charCodeAt(i);
+		if (d >= 48 && d <= 57) {
+			// fast path for short integers and early exit for dates like 2026/04/12
+			let val = d - 48;
+			i++;
+			while (i < len) {
+				d = s.charCodeAt(i);
+				if (d < 48 || d > 57) break;
+				val = val * 10 + (d - 48);
+				i++;
+			}
+			if (i === len) {
+				if (len <= 9) return c === DASH ? -val : val;
+				return Number(s);
+			}
+			if (
+				d !== 46 &&
+				d !== 101 &&
+				d !== 69 &&
+				!(c === 48 && i === 1 && (d === 111 || d === 120))
+			)
+				return s;
+		}
+	}
+	if (FLOAT.test(s)) return Number(s);
 	if (OCT.test(s)) return parseInt(s.slice(2), 8);
 	if (HEX.test(s)) return parseInt(s.slice(2), 16);
 	if (INF.test(s)) return c === DASH ? -Infinity : Infinity;
@@ -134,15 +160,27 @@ const ESCAPES: Record<string, string> = {
 const HEX_DIGITS: Record<string, number> = { x: 2, u: 4, U: 8 };
 const HEX_RUN = /^[0-9a-fA-F]+$/;
 
+function grow_i32(a: Int32Array, used: number): Int32Array<ArrayBuffer> {
+	const next = new Int32Array(a.length * 2);
+	next.set(a.subarray(0, used));
+	return next;
+}
+
+function grow_u8(a: Uint8Array, used: number): Uint8Array<ArrayBuffer> {
+	const next = new Uint8Array(a.length * 2);
+	next.set(a.subarray(0, used));
+	return next;
+}
+
 class YamlParser {
-	private src: string;
+	private src = '';
 	private n = 0;
-	private starts: number[] = [];
-	private ends: number[] = [];
+	private starts = new Int32Array(64);
+	private ends = new Int32Array(64);
 	/** content column per line, an entry moves it past its dash */
-	private cols: number[] = [];
+	private cols = new Int32Array(64);
 	/** lines of only whitespace or a comment */
-	private blank: boolean[] = [];
+	private blank = new Uint8Array(64);
 	/** line the block parse is on */
 	private at = 0;
 	/** offset after the last quoted or flow value */
@@ -150,23 +188,44 @@ class YamlParser {
 	/** whether the last plain line ended at a comment */
 	private cut = false;
 
-	constructor(src: string) {
+	run(src: string): Record<string, unknown> {
 		this.src = src;
+		this.at = 0;
+		this.pos = 0;
+		this.cut = false;
+		let starts = this.starts;
+		let ends = this.ends;
+		let cols = this.cols;
+		let blank = this.blank;
+		let n = 0;
 		let s = 0;
-		while (s < src.length) {
+		const len = src.length;
+		while (s < len) {
 			let e = src.indexOf('\n', s);
-			if (e === -1) e = src.length;
+			if (e === -1) e = len;
 			let col = s;
 			while (col < e && src.charCodeAt(col) === SPACE) col++;
 			let q = col;
 			while (q < e && is_ws(src.charCodeAt(q))) q++;
-			this.starts.push(s);
-			this.ends.push(e);
-			this.cols.push(col - s);
-			this.blank.push(q === e || src.charCodeAt(q) === HASH);
+			if (n === starts.length) {
+				starts = this.starts = grow_i32(starts, n);
+				ends = this.ends = grow_i32(ends, n);
+				cols = this.cols = grow_i32(cols, n);
+				blank = this.blank = grow_u8(blank, n);
+			}
+			starts[n] = s;
+			ends[n] = e;
+			cols[n] = col - s;
+			blank[n] = q === e || src.charCodeAt(q) === HASH ? 1 : 0;
+			n++;
 			s = e + 1;
 		}
-		this.n = this.starts.length;
+		this.n = n;
+		try {
+			return this.document();
+		} finally {
+			this.src = '';
+		}
 	}
 
 	document(): Record<string, unknown> {
@@ -201,7 +260,7 @@ class YamlParser {
 	private line_of(offset: number): number {
 		const starts = this.starts;
 		let lo = 0;
-		let hi = starts.length - 1;
+		let hi = this.n - 1;
 		while (lo < hi) {
 			const mid = (lo + hi + 1) >> 1;
 			if (starts[mid] <= offset) lo = mid;
@@ -211,7 +270,7 @@ class YamlParser {
 	}
 
 	private skip_blank(): void {
-		while (this.at < this.n && this.blank[this.at]) this.at++;
+		while (this.at < this.n && this.blank[this.at] !== 0) this.at++;
 	}
 
 	/** content column of a structural line, tabs may not indent */
@@ -703,8 +762,8 @@ class YamlParser {
 		const src = this.src;
 		const is_seq = src.charCodeAt(p) === LBRACKET;
 		const close = is_seq ? RBRACKET : RBRACE;
-		const arr: unknown[] = [];
-		const obj: Record<string, unknown> = {};
+		const arr: unknown[] | null = is_seq ? [] : null;
+		const obj: Record<string, unknown> | null = is_seq ? null : {};
 		let i = this.flow_ws(p + 1);
 		for (;;) {
 			if (i >= src.length)
@@ -715,7 +774,7 @@ class YamlParser {
 			const c = src.charCodeAt(i);
 			if (c === close) {
 				this.pos = i + 1;
-				return is_seq ? arr : obj;
+				return is_seq ? arr! : obj!;
 			}
 			if (c === COMMA) this.fail_at('empty entry in a flow collection', i);
 			if (is_seq) {
@@ -726,7 +785,7 @@ class YamlParser {
 						'a key in a flow sequence needs braces, write [{ key: value }]',
 						i
 					);
-				arr.push(v);
+				arr!.push(v);
 			} else {
 				const at = i;
 				let key: string;
@@ -748,8 +807,8 @@ class YamlParser {
 						i = this.flow_ws(this.pos);
 					}
 				}
-				if (has_own.call(obj, key)) this.fail_at(`duplicate key '${key}'`, at);
-				set_key(obj, key, v);
+				if (has_own.call(obj!, key)) this.fail_at(`duplicate key '${key}'`, at);
+				set_key(obj!, key, v);
 			}
 			const d = src.charCodeAt(i);
 			if (d === COMMA) i = this.flow_ws(i + 1);
@@ -761,3 +820,5 @@ class YamlParser {
 		}
 	}
 }
+
+const shared_yaml = new YamlParser();
