@@ -302,6 +302,11 @@ function escape_code(text: string): string {
 	return text.replace(CODE_MATCH, code_replace);
 }
 
+/** escape_code of fence or code span text, braces stay when code_braces is false */
+function escape_code_string(text: string): string {
+	return esc_brace_from === -1 ? escape_code(text) : escape_html(text);
+}
+
 const BRACE_TEST = /[{}]/;
 const BRACE_MATCH = /[{}]/g;
 
@@ -356,6 +361,9 @@ let esc_quot = -1;
 // only code reads the brace pointers, so prose never scans for braces
 let esc_lbrace = -1;
 let esc_rbrace = -1;
+// a reset puts the brace pointers here, BRACES_KEPT is past the end of any source so no brace is ever met
+let esc_brace_from = -1;
+const BRACES_KEPT = 0x3fffffff;
 // false for a buffer with no prebuilt strings, so text skips the lookup
 let esc_prebuilt = true;
 // only nodes whose bit is set hold a prebuilt string, a late repair can turn
@@ -390,8 +398,14 @@ function esc_reset(src: string): void {
 	esc_lt = -1;
 	esc_gt = -1;
 	esc_quot = -1;
-	esc_lbrace = -1;
-	esc_rbrace = -1;
+	esc_lbrace = esc_brace_from;
+	esc_rbrace = esc_brace_from;
+}
+
+function braces_kept(): void {
+	esc_brace_from = BRACES_KEPT;
+	esc_lbrace = BRACES_KEPT;
+	esc_rbrace = BRACES_KEPT;
 }
 
 function esc_next(ch: string, from: number): number {
@@ -424,11 +438,12 @@ function held_text(c: Cursor): string {
 
 /** equals escape_code of fence_text */
 function escape_fence_text(c: Cursor): string {
-	if (fs !== null) return escape_code(fence_text_from(c));
-	if (holds(c)) return escape_code(buf_code(c.buffer, c.index, c.source));
+	if (fs !== null) return escape_code_string(fence_text_from(c));
+	if (holds(c))
+		return escape_code_string(buf_code(c.buffer, c.index, c.source));
 	// a fence in a block quote or a list item holds its code as a string, without what they put before its lines
 	const text = c.prebuilt;
-	return text === undefined ? escape_code_text(c) : escape_code(text);
+	return text === undefined ? escape_code_text(c) : escape_code_string(text);
 }
 
 /** equals escape_code of c.text, reading source slices through the escape index */
@@ -438,7 +453,8 @@ function escape_code_text(c: Cursor): string {
 
 /** equals escape_code of the held_text of a code span */
 function escape_span_text(c: Cursor): string {
-	if (holds(c)) return escape_code(buf_code(c.buffer, c.index, c.source));
+	if (holds(c))
+		return escape_code_string(buf_code(c.buffer, c.index, c.source));
 	return escape_code_text(c);
 }
 
@@ -542,8 +558,9 @@ function escape_text_at(
 
 /** a stored string, apart so escape_text_at stays small enough for v8 to inline */
 function stored_text(c: Cursor, i: number, s: string, code: boolean): string {
+	if (code) return escape_code_string(s);
 	// text a plugin wrote is all characters, a brace or a reference too
-	return code || (c.words[i * W.stride + W.pending] & 2) !== 0
+	return (c.words[i * W.stride + W.pending] & 2) !== 0
 		? escape_code(s)
 		: escape_text_html(s);
 }
@@ -5888,6 +5905,12 @@ export class CursorHTMLRenderer {
 	 * directive with none renders live, the cached render of update ignores it
 	 */
 	declare shells?: ShellTable;
+	/**
+	 * false leaves the braces of plain fences and code spans as written, for
+	 * html that svelte never reads, where a brace is text, unset or true
+	 * writes them as entities, a highlighter escapes its own output
+	 */
+	declare code_braces?: boolean;
 	/** the cached render met a footnote, so each update numbers them again */
 	private noted = false;
 
@@ -5913,6 +5936,7 @@ export class CursorHTMLRenderer {
 		// ahead of the rest, it throws for an option it can not read
 		const smart = this.smart_punctuation;
 		if (smart !== undefined) sp_begin(smart);
+		if (this.code_braces === false) braces_kept();
 		hl = this.highlight;
 		pm = this.pre_meta;
 		const urls = this.urls;
@@ -5962,6 +5986,7 @@ export class CursorHTMLRenderer {
 				if (smart !== undefined) sp_end();
 				esc_prebuilt = true;
 				esc_bits = null;
+				esc_brace_from = -1;
 				if (dir_strict) dir_strict = false;
 				if (ws_on) ws_on = false;
 				if (comp_scope !== null) comp_end();
@@ -5983,6 +6008,7 @@ export class CursorHTMLRenderer {
 			if (urls !== undefined) ul = null;
 			if (fences !== undefined) fs = null;
 			if (smart !== undefined) sp_end();
+			esc_brace_from = -1;
 			if (code) module_end();
 		}
 		return this.blocks;
@@ -6052,6 +6078,7 @@ export class CursorHTMLRenderer {
 		// ahead of the rest, it throws for an option it can not read
 		const smart = this.smart_punctuation;
 		if (smart !== undefined) sp_begin(smart);
+		if (this.code_braces === false) braces_kept();
 		hl = this.highlight;
 		pm = this.pre_meta;
 		const urls = this.urls;
@@ -6107,6 +6134,7 @@ export class CursorHTMLRenderer {
 			if (smart !== undefined) sp_end();
 			esc_prebuilt = true;
 			esc_bits = null;
+			esc_brace_from = -1;
 			if (dir_strict) dir_strict = false;
 			if (ws_on) ws_on = false;
 			if (comp_scope !== null) comp_end();
@@ -6186,6 +6214,7 @@ export class CursorHTMLRenderer {
 			if (sp_on) sp_end();
 			esc_prebuilt = true;
 			esc_bits = null;
+			esc_brace_from = -1;
 			if (dir_strict) dir_strict = false;
 			if (ws_on) ws_on = false;
 			if (comp_scope !== null) comp_end();
@@ -6996,7 +7025,7 @@ function escape_past(
 ): string {
 	if (sp_on)
 		return code
-			? escape_code(c.source.slice(vs, ve))
+			? escape_code_string(c.source.slice(vs, ve))
 			: smart_text(c, i, vs, ve);
 	// a value cut short by the source, as a fed document has
 	return esc_len <= vs ? '' : escape_text_at(c, i, vs, esc_len, code);
