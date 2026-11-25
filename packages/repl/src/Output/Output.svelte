@@ -21,6 +21,8 @@
 		injected_css: string;
 		preview_theme: 'light' | 'dark';
 		workspace: Workspace;
+		/** called when the streamed preview is turned on or off */
+		onstream?: (stream: boolean) => void;
 	}
 
 	let {
@@ -33,6 +35,7 @@
 		injected_css,
 		preview_theme,
 		workspace,
+		onstream,
 	}: Props = $props();
 
 	type View = 'result' | 'pfm' | 'svelte' | 'js' | 'css' | 'ast';
@@ -235,6 +238,16 @@
 		{#each views as [v, label] (v)}
 			<button aria-current={view === v} onclick={() => (view = v)}>{label}</button>
 		{/each}
+		{#if onstream}
+			<!-- svelte-ignore a11y_label_has_associated_control -->
+			<label
+				class="option stream"
+				title="feed the document to the incremental parser a few characters at a time"
+			>
+				streamed
+				<Checkbox checked={workspace.stream} onchange={(value) => onstream(value)} />
+			</label>
+		{/if}
 	</div>
 {/if}
 
@@ -356,6 +369,21 @@
 		display: inline-flex;
 		gap: 10px;
 		align-items: center;
+	}
+
+	.view-toggle {
+		display: flex;
+	}
+
+	.view-toggle button {
+		flex: none;
+	}
+
+	.stream {
+		flex: none;
+		margin-left: auto;
+		padding: 0 10px;
+		color: var(--repl-fg-3);
 	}
 
 	.tab-content.visible {

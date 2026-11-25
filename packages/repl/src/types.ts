@@ -38,6 +38,8 @@ export interface ReplState {
 	/** the file open in the editor */
 	selected?: string;
 	svelte_version?: string;
+	/** the preview streams the entry document */
+	stream?: boolean;
 }
 
 export type ReplContext = {

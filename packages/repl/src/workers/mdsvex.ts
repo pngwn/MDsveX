@@ -34,6 +34,7 @@ import {
 import { mappings_to_v3, type SourceMapV3 } from '@mdsvex/render/sourcemap';
 import { strip_types } from './typescript_strip_types';
 import { VIRTUAL } from './constants';
+import { DIRECTIVES_MODULE, find_directives } from './plugins';
 
 export { CONFIG_FILE };
 
@@ -206,7 +207,8 @@ const modules = (list: { id: string; names: string[] }[]) =>
 export function prepare(files: FileMap): Prepared {
 	const config = empty_config(files);
 	const raw = files.get(CONFIG_FILE);
-	if (raw === undefined) return { config, options: {}, error: null, files };
+	if (raw === undefined)
+		return { config, options: with_folder({}, files), error: null, files };
 
 	let parsed: ReplConfig;
 	try {
@@ -267,7 +269,21 @@ export function prepare(files: FileMap): Prepared {
 	];
 	if (directives.length !== 0) options.directives = modules(directives);
 
-	return { config, options, error: null, files };
+	return { config, options: with_folder(options, files), error: null, files };
+}
+
+/** the files of directives/ above every directive the config names */
+function with_folder(options: MdsvexCompileOptions, files: FileMap) {
+	const found = find_directives(files.keys());
+	if (found.length === 0) return options;
+	options.directives = [
+		...(options.directives ?? []),
+		{
+			specifier: `${VIRTUAL}/${DIRECTIVES_MODULE}`,
+			names: found.map((d) => d.name),
+		},
+	];
+	return options;
 }
 
 const PLUGIN_OPTIONS = ['twoslash', 'parse_meta'];
@@ -538,12 +554,39 @@ export function compile_markdown(
 	options: MdsvexCompileOptions,
 	files?: FileMap
 ): MarkdownResult {
+	return render(parse(source, filename, options), files);
+}
+
+/** compile_markdown for a document whose plugins may defer work, which the render waits for */
+export async function compile_markdown_settled(
+	source: string,
+	filename: string,
+	options: MdsvexCompileOptions,
+	files?: FileMap
+): Promise<MarkdownResult> {
+	const parsing = parse(source, filename, options);
+	await parsing.session.settle(parsing.parsed);
+	return render(parsing, files);
+}
+
+function parse(
+	source: string,
+	filename: string,
+	options: MdsvexCompileOptions
+) {
 	const name = filename.slice(filename.lastIndexOf('/') + 1);
 	const specifier = (snippet: Snippet) =>
 		`./${name}.snippet-${snippet.hash}.${snippet.extension}`;
 	const session = new CompilerSession();
 	const inputs = compile_inputs({ ...options, snippets: specifier });
 	const parsed = session.parse(source, inputs);
+	return { source, filename, specifier, session, inputs, parsed };
+}
+
+function render(
+	{ source, filename, specifier, session, inputs, parsed }: ReturnType<typeof parse>,
+	files?: FileMap
+): MarkdownResult {
 	// the files its fences show, a relative path is read from the workspace
 	let sources: Record<string, string> | undefined;
 	for (const need of parsed.needs ?? []) {

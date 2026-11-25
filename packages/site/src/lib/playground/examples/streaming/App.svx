@@ -1,0 +1,26 @@
+# Plugins, streamed
+
+::toc[On this page]
+
+This document is fed to the parser a few characters at a time. Edit it, or any other file, and it streams again. Turn off _streamed_ above the preview and the same files compile to a Svelte component instead, as they do in a build.
+
+## A directive
+
+`directives/counter.svelte` is the component of :counter[3], named after its file. It is drawn before its paragraph has ended, and keeps its count once it has.
+
+## A plugin with a directive
+
+:lookup[markdown] and :lookup[opcodes] are shown at once. `plugins/lookup/plugin.js` looks each one up, and the answer patches a block that has already rendered. `lookup.svelte` beside it is the component.
+
+## A plugin on every heading
+
+Each heading got its link when its line ended, from `plugins/heading_links/plugin.js`.
+
+## A plugin from npm
+
+The list at the top is `@mdsvex/plugin-toc`, which `plugins/toc/plugin.js` exports. It grows as each heading arrives.
+
+- a list
+- with *strong*, _emphasis_ and `code`
+
+> The **+** after _plugins_ in the file tabs makes a new one: a plugin file and the component of its directive, registered as you type.

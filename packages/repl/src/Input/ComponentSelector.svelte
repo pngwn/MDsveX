@@ -14,17 +14,69 @@
 	let input = $state() as HTMLInputElement;
 
 	// svelte-ignore state_referenced_locally
-	let input_value = $state(workspace.current.name);
+	let input_value = $state(workspace.current.name.split('/').pop()!);
+
+	const CONFIG = 'mdsvex.config.json';
+	const DIRECTIVES = 'directives/';
+	const PLUGIN = /^plugins\/([^/]+)\//;
+	/** a directive is imported under its name */
+	const NAME = /^[A-Za-z_$][\w$]*$/;
+
+	/** the folder the repl registers a file from, a tab shows the name without it */
+	function prefix_of(file: File) {
+		if (file.name.startsWith(DIRECTIVES)) return DIRECTIVES;
+		return PLUGIN.exec(file.name)?.[0] ?? '';
+	}
+
+	const label_of = (file: File) => file.name.slice(prefix_of(file).length);
+
+	/** the files by what they are to mdsvex, in the order a tab strip shows them */
+	const groups = $derived.by(() => {
+		const content: File[] = [];
+		const directives: File[] = [];
+		const config: File[] = [];
+		const plugins = new Map<string, File[]>();
+		for (const file of workspace.file_nodes) {
+			const plugin = PLUGIN.exec(file.name);
+			if (file.name === CONFIG) config.push(file);
+			else if (file.name.startsWith(DIRECTIVES)) directives.push(file);
+			else if (plugin === null) content.push(file);
+			else plugins.set(plugin[1], [...(plugins.get(plugin[1]) ?? []), file]);
+		}
+		// the plugin file leads its components
+		for (const files of plugins.values())
+			files.sort((a, b) => Number(b.name.endsWith('/plugin.js')) - Number(a.name.endsWith('/plugin.js')));
+		return { content, directives, plugins: [...plugins], config };
+	});
+
+	let strip = $state() as HTMLElement;
+
+	// the tab that is open shows what is being typed, so it follows the open file
+	$effect(() => {
+		input_value = label_of(workspace.current);
+		// the strip is longer than its pane once there are plugins
+		tick().then(() =>
+			strip
+				?.querySelector('[aria-current="true"]')
+				?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+		);
+	});
+
+	function select(file: File) {
+		workspace.select(file.name);
+		input_value = label_of(file);
+	}
 
 	async function close_edit(file: File) {
-		if (input_value === file.name || input_value === '') {
-			input_value = file.name;
+		if (input_value === label_of(file) || input_value === '') {
+			input_value = label_of(file);
 			return;
 		}
 
-		const deconflicted = deconflict(input_value, file);
+		const deconflicted = deconflict(prefix_of(file) + input_value, file);
 
 		workspace.rename(file, deconflicted);
+		input_value = deconflicted.slice(prefix_of(file).length);
 		workspace.focus();
 	}
 
@@ -45,114 +97,246 @@
 		if (!result) return;
 
 		workspace.remove(file);
+		input_value = label_of(workspace.current);
+	}
+
+	function add(name: string, contents: string) {
+		const file = workspace.add({
+			type: 'file',
+			name,
+			basename: name.split('/').pop()!,
+			contents,
+			text: true
+		}) as File;
+		input_value = label_of(file);
+		return file;
 	}
 
 	async function add_new() {
-		const basename = deconflict(`Component.svx`);
-
-		const file = workspace.add({
-			type: 'file',
-			name: basename,
-			basename,
-			contents: '',
-			text: true
-		});
-
-		input_value = file.name;
+		add(deconflict(`Component.svx`), '');
 
 		await tick();
 		input.focus();
+	}
+
+	async function add_directive() {
+		add(
+			deconflict(`${DIRECTIVES}directive.svelte`),
+			`<script>
+	// the file name is the directive name. The bracket text of an inline
+	// directive is children, that of a leaf is label, and the args are props
+	let { children, label } = $props();
+</scr` +
+				`ipt>
+
+<mark>{#if children}{@render children()}{:else}{label}{/if}</mark>
+`
+		);
+
+		await tick();
+		input.focus();
+	}
+
+	function add_config() {
+		add(CONFIG, '{\n\t"heading_ids": true\n}\n');
+	}
+
+	/** set while the new plugin is being named */
+	let naming = $state(false);
+	let plugin_name = $state('');
+
+	function add_plugin() {
+		const name = plugin_name.trim();
+		naming = false;
+		plugin_name = '';
+		if (!NAME.test(name)) {
+			if (name !== '') alert(`A plugin is named with letters, digits and _, '${name}' is not`);
+			return;
+		}
+		const file = `plugins/${name}/plugin.js`;
+		if (workspace.file_nodes.some((f) => f.name === file)) {
+			workspace.select(file);
+			input_value = 'plugin.js';
+			return;
+		}
+
+		add(
+			`plugins/${name}/${name}.svelte`,
+			`<script>
+	// the component of :${name}[text]. The bracket text is children and
+	// the args are props, plugin.js adds length
+	let { children, length } = $props();
+</scr` +
+				`ipt>
+
+<mark title="{length} characters">{@render children?.()}</mark>
+`
+		);
+		add(
+			file,
+			`// the default export is the plugin, what the plugins option of mdsvex takes.
+// It is registered as it is saved, with each .svelte file of this folder as
+// the component of the directive of that name
+
+export default {
+	// handlers bound to a directive by its name
+	directives: {
+		${name}: {
+			// called as the directive opens, what it returns is called as it closes
+			parse(node, ctx) {
+				return () => {
+					const length = String(node.text_content.length);
+					node.attrs.args = { ...node.attrs.args, length };
+				};
+			},
+		},
+	},
+	// handlers by node type, for every node of the document
+	parse: {
+		heading: {
+			parse(node, ctx) {},
+		},
+	},
+};
+`
+		);
+		workspace.focus();
 	}
 
 	let dragging: File | null = null;
 	let dragover: File | null = $state.raw(null);
 </script>
 
-<div class="component-selector">
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div class="file-tabs">
-		{#each workspace.file_nodes as file, index (file.name)}
-			<div
-				class="button"
-				class:editable={file.name !== entry}
-				role="button"
-				tabindex="0"
-				aria-current={file === workspace.current}
-				class:drag-over={file === dragover}
-				onclick={() => {
-					workspace.select(file.name);
-					input_value = file.name;
+{#snippet tab(file: File)}
+	<div
+		class="button"
+		class:editable={file.name !== entry}
+		role="button"
+		tabindex="0"
+		aria-current={file === workspace.current}
+		class:drag-over={file === dragover}
+		title={file.name}
+		onclick={() => select(file)}
+		onkeyup={(e) => e.key === ' ' && select(file)}
+		draggable="true"
+		ondragstart={() => (dragging = file)}
+		ondragover={(e) => (e.preventDefault(), (dragover = file))}
+		ondragleave={(e) => (e.preventDefault(), (dragover = null))}
+		ondrop={() => {
+			if (dragging && dragover) {
+				workspace.move(dragging, dragover);
+			}
+
+			dragging = dragover = null;
+		}}
+	>
+		<i class="drag-handle"></i>
+
+		<span class="filename">
+			{(file === workspace.current && file.name !== entry ? input_value : label_of(file)) +
+				(workspace.modified[file.name] ? '*' : '') || ' '}
+		</span>
+
+		{#if file === workspace.current && file.name !== entry}
+			<!-- svelte-ignore a11y_autofocus -->
+			<input
+				spellcheck={false}
+				bind:this={input}
+				bind:value={input_value}
+				onfocus={async (event) => {
+					const input = event.currentTarget;
+					setTimeout(() => {
+						input.select();
+					});
 				}}
-				onkeyup={(e) => e.key === ' ' && workspace.select(file.name)}
-				draggable="true"
-				ondragstart={() => (dragging = file)}
-				ondragover={(e) => (e.preventDefault(), (dragover = file))}
-				ondragleave={(e) => (e.preventDefault(), (dragover = null))}
-				ondrop={() => {
-					if (dragging && dragover) {
-						workspace.move(dragging, dragover);
+				onblur={() => close_edit(file)}
+				onkeydown={(e) => {
+					if (e.key === 'Enter') {
+						e.preventDefault();
+						e.currentTarget.blur();
 					}
 
-					dragging = dragover = null;
+					if (e.key === 'Escape') {
+						input_value = label_of(file);
+						e.currentTarget.blur();
+					}
 				}}
+			/>
+
+			<span
+				class="remove"
+				onclick={(e) => {
+					remove_file(file);
+					e.stopPropagation();
+				}}
+				onkeyup={(e) => e.key === ' ' && remove_file(file)}
 			>
-				<i class="drag-handle"></i>
-
-				<span class="filename">
-					{(file === workspace.current && file.name !== entry ? input_value : file.name) +
-						(workspace.modified[file.name] ? '*' : '') || ' '}
-				</span>
-
-				{#if file === workspace.current && file.name !== entry}
-					<!-- svelte-ignore a11y_autofocus -->
-					<input
-						spellcheck={false}
-						bind:this={input}
-						bind:value={input_value}
-						onfocus={async (event) => {
-							const input = event.currentTarget;
-							setTimeout(() => {
-								input.select();
-							});
-						}}
-						onblur={() => close_edit(file)}
-						onkeydown={(e) => {
-							if (e.key === 'Enter') {
-								e.preventDefault();
-								e.currentTarget.blur();
-							}
-
-							if (e.key === 'Escape') {
-								input_value = file.name;
-								e.currentTarget.blur();
-							}
-						}}
-					/>
-
-					<span
-						class="remove"
-						onclick={(e) => {
-							remove_file(file);
-							e.stopPropagation();
-						}}
-						onkeyup={(e) => e.key === ' ' && remove_file(file)}
-					>
-						<svg viewBox="0 0 24 24">
-							<line stroke="#999" x1="18" y1="6" x2="6" y2="18" />
-							<line stroke="#999" x1="6" y1="6" x2="18" y2="18" />
-						</svg>
-					</span>
-				{/if}
-			</div>
-		{/each}
+				<svg viewBox="0 0 24 24">
+					<line stroke="#999" x1="18" y1="6" x2="6" y2="18" />
+					<line stroke="#999" x1="6" y1="6" x2="18" y2="18" />
+				</svg>
+			</span>
+		{/if}
 	</div>
+{/snippet}
 
-	<button
-		class="raised add-new"
-		onclick={add_new}
-		aria-label="add a file"
-		title="add a file"><span class="icon"></span></button
-	>
+<div class="component-selector">
+	<div class="file-tabs" bind:this={strip}>
+		{#each groups.content as file (file.name)}{@render tab(file)}{/each}
+		<button class="add" onclick={add_new} aria-label="add a file" title="add a file">+</button>
+
+		<span class="group">directives</span>
+		{#each groups.directives as file (file.name)}{@render tab(file)}{/each}
+		<button
+			class="add"
+			onclick={add_directive}
+			aria-label="add a directive"
+			title="add a directive, a component named after its file">+</button
+		>
+
+		<span class="group">plugins</span>
+		{#each groups.plugins as [name, files] (name)}
+			<span class="plugin">{name}</span>
+			{#each files as file (file.name)}{@render tab(file)}{/each}
+		{/each}
+		{#if naming}
+			<!-- svelte-ignore a11y_autofocus -->
+			<input
+				class="naming"
+				autofocus
+				spellcheck={false}
+				placeholder="name"
+				aria-label="the name of the new plugin"
+				bind:value={plugin_name}
+				onblur={add_plugin}
+				onkeydown={(e) => {
+					if (e.key === 'Enter') e.currentTarget.blur();
+					if (e.key === 'Escape') {
+						plugin_name = '';
+						e.currentTarget.blur();
+					}
+				}}
+			/>
+		{:else}
+			<button
+				class="add"
+				onclick={() => (naming = true)}
+				aria-label="create a plugin"
+				title="create a plugin, a plugin file and the component of its directive">+</button
+			>
+		{/if}
+
+		<span class="group">config</span>
+		{#each groups.config as file (file.name)}{@render tab(file)}{/each}
+		{#if groups.config.length === 0}
+			<button
+				class="add"
+				onclick={add_config}
+				aria-label="add mdsvex.config.json"
+				title="add mdsvex.config.json">+</button
+			>
+		{/if}
+	</div>
 
 	<details class="settings">
 		<summary aria-label="settings" title="settings"><span class="icon"></span></summary>
@@ -311,18 +495,50 @@
 		}
 	}
 
-	.add-new {
-		height: 32px;
-		aspect-ratio: 1;
+	/* what the files after it are to mdsvex */
+	.group,
+	.plugin {
+		display: inline-flex;
+		align-items: center;
+		height: 100%;
+		font: var(--repl-font-ui-small);
+		color: var(--repl-fg-4);
+	}
 
-		.icon {
-			display: block;
-			width: 100%;
-			height: 100%;
-			background: currentColor;
-			mask: var(--icon-file-new) 50% 50% no-repeat;
-			mask-size: 16px;
+	.group {
+		margin-left: 6px;
+		padding-left: 12px;
+		border-left: 1px solid var(--repl-border);
+	}
+
+	.plugin {
+		padding-left: 10px;
+		color: var(--repl-fg-3);
+	}
+
+	.plugin::after {
+		content: ':';
+	}
+
+	.add {
+		height: 100%;
+		padding: 0 8px;
+		border: none;
+		background: none;
+		color: var(--repl-fg-3);
+		font: var(--repl-font-ui-small);
+		cursor: pointer;
+
+		&:hover {
+			color: var(--repl-fg-1);
 		}
+	}
+
+	.file-tabs input.naming {
+		position: static;
+		width: 10ch;
+		margin: 0 6px;
+		border-bottom: 1px solid var(--repl-fg-accent);
 	}
 
 	.settings {

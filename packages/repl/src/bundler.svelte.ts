@@ -14,11 +14,14 @@ export default class Bundler {
 		onstatus,
 		onversion,
 		onerror,
+		onplugins,
 	}: {
 		svelte_version: string;
 		onstatus: (val: string | null) => void;
 		onversion?: (version: string, supports_async: boolean) => void;
 		onerror?: (message: string) => void;
+		/** the plugin files as built for a bundle, null when the workspace has none */
+		onplugins?: (code: string | null) => void;
 	}) {
 		this.#worker = new Worker(
 			new URL('./workers/bundler/index.ts', import.meta.url),
@@ -40,6 +43,11 @@ export default class Bundler {
 
 			if (event.data.type === 'version') {
 				onversion?.(event.data.version, event.data.supports_async);
+				return;
+			}
+
+			if (event.data.type === 'plugins') {
+				onplugins?.(event.data.code);
 				return;
 			}
 

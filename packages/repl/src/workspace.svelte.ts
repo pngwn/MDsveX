@@ -135,6 +135,9 @@ export class Workspace {
 	#svelte_version = $state('');
 	#readonly = false;
 	#files = $state.raw<Item[]>([]);
+	#plugins: string | null = null;
+	/** the preview streams the entry document in place of mounting what it compiles to */
+	stream = $state(false);
 	#current = $state.raw() as File;
 	#vim = $state(false);
 	supports_async = $state(true);
@@ -716,7 +719,8 @@ export class Workspace {
 				file,
 				all,
 				this.#svelte_version,
-				this.compiler_options
+				this.compiler_options,
+				this.#plugins
 			).then((compiled) => {
 				this.compiled[file.name] = compiled;
 			});
@@ -771,12 +775,23 @@ export class Workspace {
 		this.#onupdate(file);
 	}
 
+	/** the plugin files as the bundler built them, every document compiles again with them */
+	set_plugins(code: string | null) {
+		if (code === this.#plugins) return;
+		this.#plugins = code;
+		const extensions = markdown_extensions(this.#files);
+		for (const file of this.file_nodes) {
+			if (is_markdown_file(file, extensions)) this.#compile(file);
+		}
+	}
+
 	#compile(file: File) {
 		compile_file(
 			file,
 			this.file_nodes,
 			this.#svelte_version,
-			this.compiler_options
+			this.compiler_options,
+			this.#plugins
 		).then((compiled) => {
 			this.compiled[file.name] = compiled;
 		});
