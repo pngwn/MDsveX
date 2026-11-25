@@ -33,21 +33,22 @@ export function top_block(buf: NodeBuffer, node: number): number {
 	}
 }
 
-/** what a highlighter knows about the fence it renders */
+/** what a highlighter knows about the fence or the code span it renders */
 export interface HighlightInfo {
-	/** the first word of the info string, "" when the fence names none */
+	/** the first word of the info string, "" when the fence names none, the #! hint of a code span */
 	lang: string;
-	/** the rest of the info string, raw */
+	/** the rest of the info string, raw, "" for a code span */
 	meta: string;
-	/** false, the Node component highlights fences only */
+	/** true for a code span with a #! hint, false for a fence */
 	inline: boolean;
-	/** true while the fence is still being written, code is then what has arrived of it */
+	/** true while the code is still being written, code is then what has arrived of it */
 	open: boolean;
 }
 
 /**
- * html for a fence, usually a single pre, null or undefined draws it plain,
- * it must be synchronous and must escape the code
+ * html for a fence, usually a single pre, or for a code span with a #! hint,
+ * usually a single code, null or undefined draws it plain, it must be
+ * synchronous and must escape the code
  */
 export type Highlighter = (
 	code: string,
@@ -72,6 +73,16 @@ export interface HighlightConfig {
 		body: string;
 		after: string;
 	} | null;
+	inline?(
+		code: string,
+		lang: string,
+		ctx: {
+			readonly filename: string | undefined;
+			unknown_language(lang: string): void;
+			warn(code: any, message: string): void;
+			readonly open?: boolean;
+		}
+	): { attributes: string | null; body: string } | null;
 }
 
 /** the highlight prop of the Node component, what the highlight option of compile takes */

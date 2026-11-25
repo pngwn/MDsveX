@@ -27,11 +27,18 @@
 		return out;
 	}
 
-	/** html with attrs at the end of its pre open tag, unchanged when it does not open with one */
-	function with_pre_attributes(html: string, attrs: string): string {
-		if (attrs === '' || !/^<pre[\s>]/.test(html)) return html;
+	/** html with attrs at the end of the open tag it starts with, unchanged when that is no tag */
+	function with_attributes(html: string, tag: string, attrs: string): string {
+		const at = tag.length + 1;
+		const after = html.charCodeAt(at);
+		if (
+			attrs === '' ||
+			!html.startsWith('<' + tag) ||
+			(after !== 62 && after !== 32 && after !== 9 && after !== 10)
+		)
+			return html;
 		let quote = 0;
-		for (let i = 4; i < html.length; i++) {
+		for (let i = at; i < html.length; i++) {
 			const ch = html.charCodeAt(i);
 			if (quote !== 0) {
 				if (ch === quote) quote = 0;
@@ -60,7 +67,7 @@
 			if (typeof highlight === 'function') {
 				const out = highlight(code, { lang, meta, inline: false, open });
 				return typeof out === 'string'
-					? with_pre_attributes(out, attribute_text(attrs))
+					? with_attributes(out, 'pre', attribute_text(attrs))
 					: null;
 			}
 			const block = highlight.block(
@@ -84,6 +91,43 @@
 			);
 		} catch {
 			// an open fence can be code the highlighter can not read yet
+			return null;
+		}
+	}
+
+	/** the html of a code span with a #! hint from the highlighter, null draws it plain */
+	function span_html(
+		highlight: Highlight,
+		code: string,
+		lang: string,
+		attrs: Record<string, any>,
+		open: boolean
+	): string | null {
+		if (code.indexOf('\n') !== -1) code = code.replace(/\n/g, ' ');
+		try {
+			if (typeof highlight === 'function') {
+				const out = highlight(code, { lang, meta: '', inline: true, open });
+				return typeof out === 'string'
+					? with_attributes(out, 'code', attribute_text(attrs))
+					: null;
+			}
+			if (highlight.inline === undefined) return null;
+			const span = highlight.inline(
+				code,
+				lang,
+				open ? OPEN_HIGHLIGHT_CONTEXT : HIGHLIGHT_CONTEXT
+			);
+			if (span === null) return null;
+			if (span.attributes === null) return span.body;
+			return (
+				'<code' +
+				span.attributes +
+				attribute_text(attrs) +
+				'>' +
+				span.body +
+				'</code>'
+			);
+		} catch {
 			return null;
 		}
 	}
@@ -283,8 +327,9 @@
 			: undefined
 	);
 
+	// the info string of a fence, the #! hint of a code span
 	let fence_info = $derived(
-		kind === K_CODE_FENCE
+		kind === K_CODE_FENCE || kind === K_CODE_SPAN
 			? ((meta?.info as string | undefined) ??
 					(meta?.info_start != null
 						? source.slice(meta.info_start as number, meta.info_end as number)
@@ -294,7 +339,19 @@
 
 	// a highlighter that reads state runs again for a closed fence when that state changes
 	let highlighted = $derived.by(() => {
-		if (kind !== K_CODE_FENCE || !highlight) return null;
+		if (!highlight) return null;
+		if (kind === K_CODE_SPAN) {
+			// inline math is a code span too, it has no hint
+			if (!fence_info) return null;
+			return span_html(
+				highlight,
+				buf_code(buf, idx, source),
+				fence_info,
+				get_attrs(meta),
+				buf.end_at(idx) === NONE
+			);
+		}
+		if (kind !== K_CODE_FENCE) return null;
 		const code = buf_code(buf, idx, source);
 		const open = buf.end_at(idx) === NONE;
 		if (open && code.length > OPEN_FENCE_LIMIT) return null;
@@ -423,7 +480,7 @@
 	<em {...get_attrs(meta)}>{@render child_nodes(idx)}</em>
 {:else if kind === K_STRONG}
 	<strong {...get_attrs(meta)}>{@render child_nodes(idx)}</strong>
-{:else if kind === K_CODE_SPAN}
+{:else if kind === K_CODE_SPAN && highlighted === null}
 	<code {...get_attrs(meta)}
 		>{buf_code(buf, idx, source).replace(/\n/g, ' ')}</code
 	>
