@@ -49,6 +49,20 @@
 		return html;
 	}
 
+	/** the props of a typed element with those compile adds for its kind, the level of a heading and the start of an ordered list */
+	function typed_props(
+		tag: string,
+		props: Record<string, any>
+	): Record<string, any> {
+		if (tag.length === 2 && tag.charCodeAt(0) === 104) {
+			const level = tag.charCodeAt(1) - 48;
+			if (level >= 1 && level <= 6 && !('level' in props))
+				return { ...props, level };
+		} else if (tag === 'ol' && !('start' in props))
+			return { ...props, start: 1 };
+		return props;
+	}
+
 	const ATTRIBUTE = /([^\s"'=]+)(?:="([^"]*)"|='([^']*)')?/g;
 	const ENTITIES: Record<string, string> = {
 		'&quot;': '"',
@@ -932,7 +946,7 @@
 	{@const CustomComponent = element_component(tag, attrs)}
 	{@const is_raw_text = is_raw_text_tag(tag)}
 	{#if CustomComponent}
-		<CustomComponent {...spread}>
+		<CustomComponent {...typed_props(tag, spread)}>
 			{#if !meta?.self_closing}
 				{@render child_nodes(idx)}
 			{/if}

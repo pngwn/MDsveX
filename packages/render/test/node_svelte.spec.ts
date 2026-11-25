@@ -31,6 +31,14 @@ const OUTLINE = `<script>
 <nav>{@render label?.()}<ol>{#each data?.current?.outline?.headings ?? [] as entry}<li>{entry}</li>{/each}</ol></nav>
 `;
 
+/** a replacement that shows the props compile adds for the kind of its element */
+const KIND = `<script>
+	let { level, start, children } = $props();
+</script>
+
+<b data-level={level} data-start={start}>{@render children?.()}</b>
+`;
+
 /** writes the props it was given and its children, so a test reads what a replacement gets */
 const PROBE = `<script>
 	let { children, ...props } = $props();
@@ -41,6 +49,7 @@ const PROBE = `<script>
 
 let Node: Component<any>;
 let Outline: Component<any>;
+let Kind: Component<any>;
 let Probe: Component<any>;
 
 beforeAll(async () => {
@@ -48,6 +57,7 @@ beforeAll(async () => {
 	const modules: [string, string][] = [
 		['Node', readFileSync(join(HERE, '../src/Node.svelte'), 'utf8')],
 		['Outline', OUTLINE],
+		['Kind', KIND],
 		['Probe', PROBE],
 	];
 	for (const [name, source] of modules) {
@@ -59,6 +69,7 @@ beforeAll(async () => {
 	}
 	Node = (await import(pathToFileURL(join(DIR, 'Node.js')).href)).default;
 	Outline = (await import(pathToFileURL(join(DIR, 'Outline.js')).href)).default;
+	Kind = (await import(pathToFileURL(join(DIR, 'Kind.js')).href)).default;
 	Probe = (await import(pathToFileURL(join(DIR, 'Probe.js')).href)).default;
 });
 afterAll(() => rmSync(DIR, { recursive: true, force: true }));
@@ -193,6 +204,36 @@ describe('Node.svelte in a stream', () => {
 			await stream.end();
 			expect(html_of(stream), String(chunk)).toBe(want);
 		}
+	});
+});
+
+describe('a typed element a component replaces', () => {
+	function drawn(source: string): string {
+		const stream = new PluginStream({ plugins: [] });
+		for (const batch of batches_of(source, 64)) stream.apply(batch);
+		return render(Node, {
+			props: {
+				buf: stream.buffer,
+				idx: 0,
+				source: '',
+				components: { h2: Kind, ol: Kind, em: Kind },
+			},
+		}).body.replace(/<!--[^]*?-->/g, '');
+	}
+
+	test('a heading gets its level, as compile gives it', () => {
+		expect(drawn('<h2>typed</h2>\n')).toBe('<b data-level="2">typed</b>');
+	});
+
+	test('a level the author wrote is kept', () => {
+		expect(drawn('<h2 level="5">typed</h2>\n')).toBe(
+			'<b data-level="5">typed</b>'
+		);
+	});
+
+	test('an ordered list gets its start, and any other element gets neither', () => {
+		expect(drawn('<ol><li>a</li></ol>\n')).toContain('<b data-start="1">');
+		expect(drawn('a <em>b</em>\n')).toBe('<p>a <b>b</b></p>');
 	});
 });
 
@@ -528,7 +569,9 @@ describe('components in a stream', () => {
 	test('typed html is replaced too, unless component_mode is markdown', () => {
 		const source = '## made\n\n<h2 class="c">typed</h2>\n';
 		const made = probe({ level: 2 }, 'made');
-		expect(drawn(source, ['h2'])).toBe(made + probe({ class: 'c' }, 'typed'));
+		expect(drawn(source, ['h2'])).toBe(
+			made + probe({ class: 'c', level: 2 }, 'typed')
+		);
 		expect(drawn(source, ['h2'], { component_mode: 'markdown' })).toBe(
 			made + '<h2 class="c">typed</h2>'
 		);
@@ -622,7 +665,9 @@ describe('components in a stream', () => {
 	test('math never goes to pre or code, and code never goes to math', () => {
 		const source = 'so $`a^2`$ and `b`\n\n```math\nx\n```\n\n```js\ny\n```\n';
 		const html = drawn(source, ['math', 'pre', 'code'], { math });
-		expect(html).toContain(probe({ code: 'a^2' }, INLINE + '<math>a^2</math></span>'));
+		expect(html).toContain(
+			probe({ code: 'a^2' }, INLINE + '<math>a^2</math></span>')
+		);
 		expect(html).toContain(probe({}, 'b'));
 		expect(html).toContain(
 			probe(
@@ -639,7 +684,9 @@ describe('components in a stream', () => {
 	});
 
 	test('with no math renderer math is code and goes to pre and code', () => {
-		expect(drawn('so $`a^2`$\n\n```math\nx\n```\n', ['math', 'pre', 'code'])).toBe(
+		expect(
+			drawn('so $`a^2`$\n\n```math\nx\n```\n', ['math', 'pre', 'code'])
+		).toBe(
 			'<p>so ' +
 				probe({}, 'a^2') +
 				'</p>' +
@@ -652,9 +699,13 @@ describe('components in a stream', () => {
 
 	test('math the renderer throws on is plain code and goes to no replacement', () => {
 		expect(
-			drawn('so $`a^{2`$\n\n```math\n\\frac{a\n```\n', ['math', 'pre', 'code'], {
-				math,
-			})
+			drawn(
+				'so $`a^{2`$\n\n```math\n\\frac{a\n```\n',
+				['math', 'pre', 'code'],
+				{
+					math,
+				}
+			)
 		).toBe(
 			'<p>so <code>a^{2</code></p><pre><code class="language-math">\\frac{a</code></pre>'
 		);
