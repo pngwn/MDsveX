@@ -41,6 +41,17 @@ A plugin that looks something up later patches its node, and the renderer drops 
 
 What plugins write is followed as it changes, so a component that reads it renders again.
 
+### Highlighted code
+
+A fence goes through the highlighter compile uses, on every chunk while it is open.
+
+\`\`\`ts title="live.ts"
+const stream = new PluginStream({ plugins });
+stream.renderers.push(renderer);
+// each batch of the wire is one update
+socket.onmessage = (event) => stream.apply(JSON.parse(event.data));
+\`\`\`
+
 ## Plugins
 
 A plugin declares handlers by node type. Fused handlers run as nodes open and close, in the one pass the builder already makes.

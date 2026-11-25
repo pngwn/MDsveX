@@ -229,6 +229,39 @@ pre code {
 	color: var(--text-primary);
 }
 
+.prose .twinkleplop-block {
+	margin: 0 0 0.75rem;
+}
+.prose .twinkleplop-block > pre {
+	margin: 0;
+	border-top-left-radius: 0;
+	border-top-right-radius: 0;
+}
+.prose .twinkleplop-title {
+	display: block;
+	padding: 0.25rem 0.75rem;
+	background: var(--bg-secondary);
+	border-bottom: 1px solid var(--border);
+	color: var(--text-secondary);
+	font-family: var(--font-mono);
+	font-size: 0.7rem;
+}
+.prose .tok:is(.keyword, .operator) {
+	color: #ff7b72;
+}
+.prose .tok:is(.string, .template, .number, .boolean) {
+	color: #a5d6ff;
+}
+.prose .tok:is(.function, .property) {
+	color: #d2a8ff;
+}
+.prose .tok:is(.class_name, .type) {
+	color: #ffa657;
+}
+.prose .tok:is(.comment, .punctuation) {
+	color: var(--text-tertiary);
+}
+
 /* HTML element styles (rendered raw HTML) */
 
 .prose div,

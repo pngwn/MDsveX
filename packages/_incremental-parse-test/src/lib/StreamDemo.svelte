@@ -6,6 +6,8 @@
 	import { is_entity_name } from "@mdsvex/render/html-cursor";
 	import { PluginStream } from "@mdsvex/render/stream";
 	import Node from "@mdsvex/render/Node.svelte";
+	import { create_highlight, load_default_languages } from "mdsvex/highlight";
+	import type { HighlightConfig } from "mdsvex/highlight";
 	import Toc from "@mdsvex/plugin-toc/Toc.svelte";
 	import { bibliography, cite } from "@mdsvex/plugin-citations/directives";
 	import Bibliography from "@mdsvex/plugin-citations/Bibliography.svelte";
@@ -23,6 +25,8 @@
 	let fed = $state(0);
 	let playing = $state(false);
 	let ended = $state(false);
+	// undefined until the languages load, fences drawn before that are plain
+	let highlight = $state.raw<HighlightConfig>();
 	let chunk = $state(3);
 	let speed = $state(20);
 
@@ -101,7 +105,12 @@
 	}
 
 	// the page makes a new demo for each document, so one start is enough
-	onMount(restart);
+	onMount(() => {
+		restart();
+		load_default_languages().then((languages) => {
+			highlight = create_highlight({ languages });
+		});
+	});
 
 	onDestroy(() => {
 		pause();
@@ -179,6 +188,7 @@
 							idx={block.idx}
 							source=""
 							{directives}
+							{highlight}
 							plugin_data={data}
 						/>
 					{/key}
