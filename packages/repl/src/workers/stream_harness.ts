@@ -128,16 +128,20 @@ ${components.imports}${directives.imports}
 	// carries on from when the line was first marked, it does not start again
 	const MARKED = '.l.highlight, .l.emphasis, .l.diff-add, .l.diff-del, .l.diff-mod';
 	const marked_at = new Map();
+	// a line marked while the reader scrubs is drawn as it ends up
+	let scrubbed = false;
 	let output;
 
 	function keep_fades() {
 		const now = performance.now();
 		output.querySelectorAll('pre.twinkleplop').forEach((pre, p) => {
 			pre.querySelectorAll('.l').forEach((line, l) => {
-				if (!line.matches(MARKED) || line.style.animationDelay) return;
+				if (!line.matches(MARKED) || line.style.animationName || line.style.animationDelay) return;
 				const key = p + ':' + l;
-				if (!marked_at.has(key)) marked_at.set(key, now);
-				line.style.animationDelay = marked_at.get(key) - now + 'ms';
+				if (!marked_at.has(key)) marked_at.set(key, scrubbed ? -Infinity : now);
+				const since = now - marked_at.get(key);
+				if (since > 1000) line.style.animation = 'none';
+				else line.style.animationDelay = -since + 'ms';
 			});
 		});
 	}
@@ -182,6 +186,7 @@ ${components.imports}${directives.imports}
 	// the parser only goes forward, so a place behind is fed again from the start
 	function seek(to) {
 		pause();
+		scrubbed = true;
 		if (to < fed || ended) restart();
 		while (fed < to) tick();
 		if (to >= source.length) finish();
@@ -199,6 +204,7 @@ ${components.imports}${directives.imports}
 
 	function play() {
 		if (ended) restart();
+		scrubbed = false;
 		playing = true;
 		timer = setInterval(tick, every);
 	}
