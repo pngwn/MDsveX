@@ -1,5 +1,14 @@
 # @mdsvex/language-core
 
+## 0.1.2
+
+### Patch Changes
+
+- Updated dependencies [[`a195a07`](https://github.com/pngwn/MDsveX/commit/a195a075330e35433b4c3c54d1c08a8f79928c71), [`be110d0`](https://github.com/pngwn/MDsveX/commit/be110d0ef13150f5beb69d9527a090a7147f44e5), [`a195a07`](https://github.com/pngwn/MDsveX/commit/a195a075330e35433b4c3c54d1c08a8f79928c71), [`e11396a`](https://github.com/pngwn/MDsveX/commit/e11396a68a14a9667178ca8d976fbb85503fb6fe), [`7189fee`](https://github.com/pngwn/MDsveX/commit/7189feed542cef6ee94eb9f0276cdbb02295035c), [`179e01f`](https://github.com/pngwn/MDsveX/commit/179e01f321d9924149879f7c1accc0539300c690), [`358684a`](https://github.com/pngwn/MDsveX/commit/358684ab903c6c4cd7a4d2a7f5f6f4cf7d43408a), [`842117c`](https://github.com/pngwn/MDsveX/commit/842117c2776ab9b62f8830d93ee33bf0f973c9e8), [`e11396a`](https://github.com/pngwn/MDsveX/commit/e11396a68a14a9667178ca8d976fbb85503fb6fe), [`83697d2`](https://github.com/pngwn/MDsveX/commit/83697d2fe0698b0a37bfc337a1164df04d295a52), [`249f354`](https://github.com/pngwn/MDsveX/commit/249f35456122506c998673bdfd20b76376989e21), [`d9c87c6`](https://github.com/pngwn/MDsveX/commit/d9c87c6b36b56763f3ba22256470d08ac0ae4262), [`273aee8`](https://github.com/pngwn/MDsveX/commit/273aee89fa78e02e5cc63be6cf87e5e4cd00b95e), [`358684a`](https://github.com/pngwn/MDsveX/commit/358684ab903c6c4cd7a4d2a7f5f6f4cf7d43408a), [`358684a`](https://github.com/pngwn/MDsveX/commit/358684ab903c6c4cd7a4d2a7f5f6f4cf7d43408a)]:
+  - @mdsvex/render@1.1.0
+  - mdsvex@1.1.0
+  - @mdsvex/source-map@0.1.2
+
 ## 0.1.1
 
 ### Patch Changes
