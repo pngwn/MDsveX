@@ -5,7 +5,7 @@
  */
 
 import type { Bundle } from 'mdsvex/compile';
-import type { MdsvexCompileOptions } from './mdsvex';
+import type { MdsvexCompileOptions, ReplHighlight } from './mdsvex';
 import { PLUGINS_ENTRY } from './plugins';
 
 interface Source {
@@ -32,11 +32,41 @@ function table(prefix: string, sources: Source[]) {
 	return { imports, object: `{ ${object} }` };
 }
 
+/** the highlight config of the playground and the bundled languages the document names */
+export interface StreamHighlight {
+	options: ReplHighlight;
+	languages: string[];
+}
+
+/** the statements that build the highlighter once its languages have loaded */
+function load_highlight({ options, languages }: StreamHighlight): string {
+	return `		const highlight_options = ${JSON.stringify(options)};
+		const language_names = ${JSON.stringify(languages)};
+		Promise.all(language_names.map((name) => language_loaders[name]())).then((modules) => {
+			const languages = {};
+			language_names.forEach((name, i) => (languages[name] = modules[i]));
+			const annotations = highlight_options.annotations;
+			highlight = create_highlight({
+				...highlight_options,
+				languages: { ...languages, ...highlight_options.languages },
+				annotations: Array.isArray(annotations)
+					? annotations.map((name) =>
+							name === 'shiki_notation'
+								? shiki_notation()
+								: default_annotations.find((plugin) => plugin.verbs[0] === name)
+						)
+					: annotations,
+			});
+		});
+`;
+}
+
 export function stream_harness(
 	entry: string,
 	options: MdsvexCompileOptions,
 	bundles: Bundle[],
-	has_plugins: boolean
+	has_plugins: boolean,
+	highlight: StreamHighlight | null = null
 ): string {
 	const components = table('c', options.components ?? []);
 	// those of the plugins sit below the directives option, as in a compile
@@ -56,6 +86,11 @@ export function stream_harness(
 	import { is_entity_name } from '@mdsvex/render/html-cursor';
 	import { PluginStream } from '@mdsvex/render/stream';
 	import Node from '@mdsvex/render/Node.svelte';
+	${
+		highlight === null
+			? ''
+			: "import { create_highlight, default_annotations, language_loaders, shiki_notation } from 'mdsvex/highlight';"
+	}
 	import source from ${JSON.stringify(`./${entry}?raw`)};
 	${has_plugins ? `import exported from './${PLUGINS_ENTRY}';` : 'const exported = [];'}
 ${components.imports}${directives.imports}
@@ -81,6 +116,7 @@ ${components.imports}${directives.imports}
 	let ended = $state(false);
 	let stream = $state.raw(null);
 	let blocks = $state.raw([]);
+	let highlight = $state.raw();
 
 	const data = {
 		get current() {
@@ -162,7 +198,7 @@ ${components.imports}${directives.imports}
 	onMount(() => {
 		restart();
 		play();
-	});
+${highlight === null ? '' : load_highlight(highlight)}	});
 
 	onDestroy(() => {
 		pause();
@@ -204,7 +240,7 @@ ${components.imports}${directives.imports}
 {#if stream !== null}
 	{#each blocks as block (block.idx)}
 		{#key block.v}
-			<Node buf={stream.buffer} idx={block.idx} source="" {components} {directives} plugin_data={data} />
+			<Node buf={stream.buffer} idx={block.idx} source="" {components} {directives} {highlight} plugin_data={data} />
 		{/key}
 	{/each}
 {/if}
