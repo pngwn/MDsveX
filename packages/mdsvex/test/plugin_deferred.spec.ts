@@ -207,6 +207,66 @@ describe('what settle adds reaches needs', () => {
 		await session.settle(parsed);
 		expect(parsed.needs).toBeUndefined();
 	});
+
+	const STATICS = [
+		{ specifier: 'mdsvex:directives', names: ['callout'], static: ['callout'] },
+	];
+	const CALLOUT = ':::callout\nx\n:::\n';
+
+	test('a shell the document lacks is still a need once it settled', async () => {
+		const session = new CompilerSession();
+		const inputs = compile_inputs({
+			plugins: [labels()],
+			directives: STATICS,
+		});
+		const parsed = session.parse('# One\n\n' + CALLOUT, inputs);
+		const shell = expect.objectContaining({ type: 'shell', name: 'callout' });
+		expect(parsed.needs).toEqual([shell]);
+		await session.settle(parsed);
+		expect(parsed.needs).toEqual([shell]);
+	});
+
+	test('with nothing else to look for, and after the image and the source', async () => {
+		const session = new CompilerSession();
+		const inputs = compile_inputs({
+			plugins: [logos(), appendix()],
+			directives: STATICS,
+			import_images: true,
+		});
+		const parsed = session.parse(CALLOUT + '\n' + LOGO, inputs);
+		await session.settle(parsed);
+		expect(parsed.needs!.map((need) => need.type)).toEqual([
+			'image',
+			'source',
+			'shell',
+		]);
+
+		const bare = compile_inputs({ plugins: [labels()], directives: STATICS });
+		bare.sources = false;
+		bare.snippets = false;
+		const alone = session.parse('# One\n\n' + CALLOUT, bare);
+		await session.settle(alone);
+		expect(alone.needs).toHaveLength(1);
+	});
+
+	test('a shell the host made while the document waited is no longer one', async () => {
+		const session = new CompilerSession();
+		const inputs = compile_inputs({
+			plugins: [labels()],
+			directives: STATICS,
+		});
+		const shells = new Map();
+		inputs.shells = shells;
+		const parsed = session.parse('# One\n\n' + CALLOUT, inputs);
+		const [need] = parsed.needs!;
+		if (need.type !== 'shell') throw new Error('expected a shell');
+		shells.set(need.key, {
+			html: ['<aside>', '</aside>'],
+			holes: ['children'],
+		});
+		await session.settle(parsed);
+		expect(parsed.needs).toBeUndefined();
+	});
 });
 
 /** the plugins of bundles as a dispatcher takes them */
