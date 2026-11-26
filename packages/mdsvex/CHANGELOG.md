@@ -1,5 +1,11 @@
 # mdsvex
 
+## 1.1.1
+
+### Patch Changes
+
+- [#1319](https://github.com/pngwn/MDsveX/pull/1319) [`a7879f0`](https://github.com/pngwn/MDsveX/commit/a7879f04d0f7ae31b6bbfddfd8d1e80a35b5947b) Thanks [@pngwn](https://github.com/pngwn)! - A build no longer fails with `MISSING_EXPORT` when a document has a static directive and a plugin that defers work, such as `link_check` on a link to a `.svx` or `.md` file. The static directive now renders to HTML as it does in any other document.
+
 ## 1.1.0
 
 ### Minor Changes

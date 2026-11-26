@@ -2,7 +2,7 @@
 	"name": "vscode-pfm",
 	"displayName": "mdsvex",
 	"description": "Language support for mdsvex documents, .svx and .pfm files written in PFM (Penguin-Flavoured Markdown)",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"publisher": "mdsvex",
 	"license": "MIT",
 	"icon": "images/icon.png",
