@@ -57,7 +57,7 @@
     "remark-parse": "^11.0.0",
     "streamdown": "2.8.0",
     "streaming-markdown": "0.2.15",
-    "svelte": "^5.55.1",
+    "svelte": "^5.59.1",
     "unified": "^11.0.5",
     "vitest": "^1.5.0"
   },
