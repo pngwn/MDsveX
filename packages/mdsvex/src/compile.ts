@@ -1410,12 +1410,17 @@ class PluginHost {
 	}
 
 	/** a document that waits for its render, the dispatcher holds what they left until then */
-	wait(parsed: Parsed, inputs: CompileInputs): void {
+	wait(
+		parsed: Parsed,
+		inputs: CompileInputs,
+		statics: boolean,
+		root: ComponentScope | null
+	): void {
 		parsed._host = this;
 		parsed.data = this.dispatcher.data();
 		parsed.dependencies = this.dispatcher.dependencies();
-		// what settle applies can add images and fences, they are looked for again
-		if (this.pending !== null) parsed._scan = scan_of(inputs);
+		// settle can add images, fences and static directives
+		if (this.pending !== null) parsed._scan = scan_of(inputs, statics, root);
 	}
 
 	/**
@@ -1478,6 +1483,9 @@ function any_static(
 	return false;
 }
 
+/** what the search for shells reads */
+type ShellInputs = Pick<CompileInputs, 'templates' | 'filename' | 'shells'>;
+
 /**
  * the shells the document lacks, in the directive scope its template gives,
  * null when it lacks none
@@ -1487,7 +1495,7 @@ function shell_needs(
 	source: string,
 	metadata: Metadata | undefined,
 	root: ComponentScope | null,
-	inputs: CompileInputs
+	inputs: ShellInputs
 ): ShellNeed[] | null {
 	const options = inputs.templates;
 	let scope = root;
@@ -2099,10 +2107,11 @@ export class Parsed {
 	/** the parsed frontmatter, undefined when the document has none */
 	readonly metadata: Metadata | undefined;
 	/**
-	 * what the document asks for before it renders, images and then sources,
-	 * each in document order, undefined for nothing, only what the inputs of
-	 * the parse turned on is looked for, complete once settle resolved, as
-	 * what the plugins deferred can add an image or a src=
+	 * what the document asks for before it renders, images, then sources,
+	 * then shells, each in document order, undefined for nothing, only what
+	 * the inputs of the parse turned on is looked for, complete once settle
+	 * resolved, as what the plugins deferred can add an image, a src= or a
+	 * static directive
 	 */
 	needs: readonly Need[] | undefined = undefined;
 	/** @internal what settle looks for again once it applied, null when nothing waits */
@@ -2407,7 +2416,7 @@ export class CompilerSession {
 		const parsed = new Parsed(raw, source, metadata, nodes);
 		parsed.math = parsed._spans = this.spans;
 		parsed._notes = this.notes;
-		if (plugged) this.plugin_arena!.host.wait(parsed, inputs);
+		if (plugged) this.plugin_arena!.host.wait(parsed, inputs, false, null);
 		if (inputs.import_images === true)
 			need_images(
 				parsed,
@@ -2722,11 +2731,12 @@ export class CompilerSession {
 			)
 				shown = fences_of(nodes, source, inputs);
 			// only a config that registers a static directive looks for them
-			const statics =
+			const looks =
 				(kind === Kind.PARSE || inputs.await_shells) &&
-				any_static(directives, inputs.templates)
-					? shell_needs(nodes, source, metadata, directives, inputs)
-					: null;
+				any_static(directives, inputs.templates);
+			const statics = looks
+				? shell_needs(nodes, source, metadata, directives, inputs)
+				: null;
 			if (
 				kind === Kind.PARSE ||
 				(statics !== null && out !== undefined) ||
@@ -2739,7 +2749,7 @@ export class CompilerSession {
 				const waiting = new Parsed(raw, source, metadata, nodes);
 				waiting.math = waiting._spans = spans;
 				waiting._notes = notes;
-				if (host !== null) host.wait(waiting, inputs);
+				if (host !== null) host.wait(waiting, inputs, looks, directives);
 				need_images(waiting, images);
 				need_sources(waiting, shown);
 				if (statics !== null) need_shells(waiting, statics);
@@ -3035,26 +3045,42 @@ interface Scan {
 	shows: boolean;
 	runs: boolean;
 	filename: string | undefined;
+	/** null when the parse looked for no shells */
+	statics: (ShellInputs & { root: ComponentScope | null }) | null;
 }
 
 /** null when the parse looked for nothing settle could add */
-function scan_of(inputs: CompileInputs): Scan | null {
+function scan_of(
+	inputs: CompileInputs,
+	statics: boolean,
+	root: ComponentScope | null
+): Scan | null {
 	const images = inputs.import_images === true;
 	const shows = inputs.sources !== false;
 	const runs = inputs.snippets !== false;
-	if (!images && !shows && !runs) return null;
+	if (!images && !shows && !runs && !statics) return null;
 	return {
 		images,
 		enhanced: inputs.enhanced_images === true,
 		shows,
 		runs,
 		filename: inputs.filename,
+		// the host fills this table while the document waits
+		statics: statics
+			? {
+					root,
+					templates: inputs.templates,
+					filename: inputs.filename,
+					shells: inputs.shells,
+				}
+			: null,
 	};
 }
 
 /**
- * the images and fences of a settled document, a task or a document hook
- * may have added, changed or removed one, so its needs are made again whole
+ * the images, fences and static directives of a settled document, a task or
+ * a document hook may have added, changed or removed one, so its needs are
+ * made again whole
  */
 function rescan(parsed: Parsed): void {
 	const scan = parsed._scan;
@@ -3075,6 +3101,17 @@ function rescan(parsed: Parsed): void {
 			parsed,
 			source_fences(nodes, source, scan.filename, scan.shows, scan.runs)
 		);
+	const statics = scan.statics;
+	if (statics !== null) {
+		const shells = shell_needs(
+			nodes,
+			source,
+			parsed.metadata,
+			statics.root,
+			statics
+		);
+		if (shells !== null) need_shells(parsed, shells);
+	}
 }
 
 /**

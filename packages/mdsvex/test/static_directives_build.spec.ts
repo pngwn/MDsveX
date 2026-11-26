@@ -129,6 +129,29 @@ describe('static directives in a build', () => {
 	});
 });
 
+describe('a static directive in a document whose plugins defer', () => {
+	test('the build renders its shell', async () => {
+		const root = write_app(
+			CONFIG.replace(
+				"mdsvex({ components: '#lib/markdown.ts' })",
+				"mdsvex({ components: '#lib/markdown.ts', plugins: [{ name: 'late', parse: { paragraph: { parse: (node, ctx) => () => ctx.defer(node, async () => {}) } } }] })"
+			)
+		);
+		try {
+			await build({
+				root,
+				configFile: join(root, 'vite.config.js'),
+				logLevel: 'silent',
+			});
+			const js = read_all(join(root, 'dist'), '.js');
+			expect(js).toContain('callout warn');
+			expect(js).not.toContain('EFFECT_IN_COMPONENT');
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	}, 120_000);
+});
+
 describe('a build with an inline config', () => {
 	test('a static directive is an error naming it', async () => {
 		const root = write_app('export default {};');
