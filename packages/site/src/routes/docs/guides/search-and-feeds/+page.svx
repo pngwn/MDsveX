@@ -66,8 +66,6 @@ mdsvex({ heading_ids: true });
 ```
 
 ```js title="src/routes/search.json/+server.js"
-import { json } from '@sveltejs/kit';
-
 const pages = import.meta.glob('../docs/**/+page.svx', {
 	query: '?text',
 	import: 'default',
@@ -90,7 +88,7 @@ export function GET() {
 			});
 		}
 	}
-	return json(records);
+	return Response.json(records);
 }
 ```
 
